@@ -42,6 +42,9 @@ body,
 }
 
 body {
+  /* aucun element ne doit pouvoir elargir la page: sur telephone, un debordement
+     horizontal rend tout le tableau de bord inutilisable */
+  overflow-x: hidden;
   background: var(--plane);
   color: var(--ink);
   font-family: var(--font);
@@ -74,11 +77,10 @@ button {
   min-height: 0;
 }
 
-@media (max-width: 900px) {
-  .body {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
+/* Sans ca, un enfant large (les puces de filtre, le pied de page) elargit sa
+   colonne au-dela du viewport et toute la page defile horizontalement. */
+.body > * {
+  min-width: 0;
 }
 
 /* ------------------------------------------------------------------ entete */
@@ -930,4 +932,83 @@ button {
   padding: 8px 10px;
   font-size: 12.5px;
   color: var(--ink-muted);
+}
+
+
+/* ------------------------------------------------------------ telephone */
+
+@media (max-width: 900px) {
+  .body {
+    grid-template-columns: 1fr;
+    /* le flux d'abord, la carte ensuite: sur telephone on lit, on n'explore pas */
+    grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+
+  /* Les puces de filtre prenaient trois lignes et volaient la place du flux.
+     Sur telephone elles deviennent une bande qui defile horizontalement: on en
+     voit moins d'un coup, mais on voit enfin les evenements. */
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: 0 0 auto;
+  }
+
+  .header {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 10px 12px;
+  }
+
+  /* la baseline prenait quatre lignes a elle seule */
+  .brand span {
+    display: none;
+  }
+
+  .header .spacer {
+    display: none;
+  }
+
+  .kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .kpi {
+    padding: 8px 12px;
+  }
+
+  .kpi .value {
+    font-size: 20px;
+  }
+
+  .filters {
+    padding: 10px 12px;
+  }
+
+  .item {
+    padding: 9px 12px;
+  }
+
+  /* elle mangeait un tiers d'une carte deja minuscule */
+  .legend {
+    display: none;
+  }
+
+  .footer {
+    font-size: 10.5px;
+    gap: 6px 10px;
+    padding: 6px 12px;
+  }
+
+  .footer .spacer {
+    display: none;
+  }
 }

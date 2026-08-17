@@ -8,6 +8,9 @@ Aucune cle d'API n'est necessaire: les quinze sources sont publiques et ouvertes
 
 ![capture](docs/screenshot.png)
 
+<sub>Sur telephone, le flux passe devant et la carte dessous: on lit d'abord, on
+explore ensuite. [Capture mobile](docs/screenshot-mobile.png).</sub>
+
 ## Le principe
 
 Le "live a la seconde" ne vient pas d'un polling agressif d'une seule API. Il
