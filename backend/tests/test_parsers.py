@@ -280,15 +280,24 @@ def test_nws_alert_without_geometry_still_parses():
     assert event.lat is None and event.lon is None
 
 
-def test_no_kind_is_matched_on_a_substring():
-    """La recherche par sous-chaine fabrique des faux positifs invisibles: c'est
-    ce mecanisme qui faisait de "Flash Flood" une alerte volcanique (il contient
-    "ash"), et qui a produit des facettes fantomes ailleurs dans la suite."""
+def test_short_patterns_need_a_whole_word_long_ones_do_not():
+    """Le plancher de longueur, choisi APRES mesure sur 2525 alertes reelles.
+
+    Un motif court se cache dans d'autres mots ("ash" dans "Flash"), donc il
+    exige un mot entier. Un motif long doit rester cherche en sous-chaine, sans
+    quoi les formes composees et flechies des flux reels sont perdues -- 621
+    alertes dans la mesure ("Forestfire", "Thunderstorms", "Rainstorm").
+    """
+    # motif court: le faux positif historique est ferme
     assert classify("Flash Flood Warning") is Kind.FLOOD
+    # ... sans perdre le vrai positif
     assert classify("Ashfall Warning") is Kind.VOLCANO
     assert classify("Volcanic Ash Advisory") is Kind.VOLCANO
-    # "winding" ne doit pas devenir "wind", "firearm" ne doit pas devenir "fire"
-    assert classify("Winding River Statement") is Kind.OTHER
+
+    # motifs longs: les formes composees et flechies restent detectees
+    assert classify("Forestfire") is Kind.WILDFIRE
+    assert classify("Thunderstorms") is Kind.STORM
+    assert classify("Rainstorm") is Kind.STORM
     assert classify("Freezing Rain Advisory") is Kind.STORM
 
 

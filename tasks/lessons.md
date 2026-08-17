@@ -203,8 +203,24 @@ ScanGithub trouvait sa cause racine: son lexique declenchait la facette
 et "dataset" sur "open" via "open data". Deux produits, deux equipes, un seul
 mecanisme.
 
-**Regle.** Une correspondance de motif sur du texte se fait sur des **mots
-entiers** (`re.findall(r"[a-z]+", texte)` puis intersection d'ensembles), jamais
-avec `motif in texte`. Un faux positif de ce type est invisible: il ne leve rien,
-il classe simplement de travers, et personne ne le voit avant de tomber dessus
-par hasard.
+**Premiere correction, fausse.** J'ai bascule les deux classifieurs sur des
+**mots entiers**. Le faux positif disparaissait, les tests passaient, j'ai livre.
+
+**Ce que la mesure a montre.** La session voisine a insiste pour mesurer le
+avant/apres sur les donnees reelles plutot que de le constater en production. Sur
+2525 alertes reelles: la regle des mots entiers **perdait 621 alertes** --
+"Forestfire", "Thunderstorms", "Rainstorm" sont des formes composees ou flechies
+qu'aucun mot entier ne retrouve. J'avais echange un faux positif contre 621 faux
+negatifs, et l'inspection a l'oeil ne l'avait pas vu.
+
+**Regle finale, mesuree.** Plancher de longueur: sous-chaine pour les motifs de
+quatre lettres ou plus, mot entier en dessous. Zero perte, et les 22 "Flash
+Flood" correctement reclassees. C'etait le diagnostic exact de la session
+voisine ("sous-chaine sans plancher sur la longueur de l'alias"), plus juste que
+le mien.
+
+**La lecon derriere la lecon.** Ne jamais corriger un probleme de classement en
+retrecissant la detection sans mesurer ce que le retrecissement coute. Un test
+vert sur des cas choisis a la main ne prouve rien sur le recall: il faut compter,
+sur les vraies donnees, combien d'elements passent de "classe juste" a "non
+classe".

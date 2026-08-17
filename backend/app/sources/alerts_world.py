@@ -25,6 +25,7 @@ import httpx
 
 from app.models.event import Event, Kind, Severity, to_utc
 from app.sources.base import Emit, Source
+from app.sources.nws import _matches
 from app.sources.regional import USER_AGENT, JsonPollSource
 
 log = logging.getLogger(__name__)
@@ -228,8 +229,7 @@ WMO_SEVERITY = {
     4: Severity.MINOR,
 }
 
-# Les motifs sont cherches sur des MOTS entiers: en sous-chaine, "Flash Flood"
-# contenait "ash" et devenait une alerte volcanique.
+# Meme regle de correspondance que dans `nws.py`, mesuree sur les flux reels.
 WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("tsunami",), Kind.TSUNAMI),
     (("volcano", "volcanic", "ash", "ashfall"), Kind.VOLCANO),
@@ -244,9 +244,10 @@ WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
 
 
 def classify_wmo(event_name: str) -> Kind:
-    words = set(re.findall(r"[a-z]+", (event_name or "").lower()))
+    text = (event_name or "").lower()
+    words = set(re.findall(r"[a-z]+", text))
     for patterns, kind in WMO_KIND_PATTERNS:
-        if words & set(patterns):
+        if _matches(text, words, patterns):
             return kind
     return Kind.OTHER
 
