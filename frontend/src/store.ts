@@ -235,6 +235,12 @@ export const useStore = create<State>((set, get) => ({
       return
     }
 
+    // Le snapshot initial est filtre `primary_only` cote serveur, mais chaque
+    // diffusion arrivait telle quelle: les solutions secondaires du meme seisme
+    // (BMKG et USGS pour un evenement indonesien, par exemple) s'affichaient en
+    // double jusqu'a la prochaine reconnexion.
+    if (message.primary === false) return
+
     const incoming = message.event
     const state = get()
     const known = state.events.findIndex((e) => e.id === incoming.id)

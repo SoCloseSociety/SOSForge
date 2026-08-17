@@ -210,9 +210,10 @@ class MeteoalarmSource(Source):
                     except Exception as exc:
                         self.health.fail(exc)
                         log.warning("meteoalarm %s: %s", country, exc)
-                # aucun pays joignable = source morte, elle ne doit pas paraitre saine
-                if alive:
-                    self.health.ok(seen)
+                # la sante est deja marquee pays par pays au-dessus; la remarquer
+                # ici additionnait le meme total une seconde fois
+                if not alive:
+                    log.warning("meteoalarm: aucun pays joignable sur ce cycle")
                 await asyncio.sleep(self.poll_seconds)
 
 

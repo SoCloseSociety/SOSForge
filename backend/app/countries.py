@@ -69,9 +69,6 @@ US_STATES = {
     "west virginia",
     "wisconsin",
     "wyoming",
-    # "georgia" est ambigu (Etat americain ou pays du Caucase). L'USGS l'emploie
-    # pour l'Etat dans l'immense majorite des cas: on tranche pour les US.
-    "georgia",
     # abreviations postales vues dans les flux
     "ak",
     "al",
@@ -123,6 +120,26 @@ US_STATES = {
     "wi",
     "wv",
     "wy",
+}
+
+# Libelles qui contiennent le nom d'un pays ou d'un Etat SANS etre ce lieu.
+# Chacun a ete observe dans un flux reel et produisait un faux drapeau:
+#   "GULF OF CALIFORNIA"  -> Californie -> Etats-Unis, alors que ce sont des
+#                            eaux mexicaines (231 evenements EMSC sur un an)
+#   "NEAR EAST COAST OF NEW GUINEA" -> "guinea" -> Guinee (Afrique de l'Ouest)
+#   "LAC KIVU REGION, CONGO" -> Congo-Brazzaville, alors que le Kivu est en RDC
+#   "SOUTH GEORGIA RISE" -> Georgie -> Etats-Unis, en plein ocean Austral
+AMBIGUOUS_PHRASES = {
+    "new guinea": None,  # Papouasie ou Guinee equatoriale: on ne tranche pas
+    "equatorial guinea": "GQ",
+    "papua new guinea": "PG",
+    "gulf of california": "MX",
+    "sea of japan": None,
+    "south georgia": None,
+    "south georgia rise": None,
+    "south georgia island": None,
+    "lac kivu": "CD",
+    "kivu": "CD",
 }
 
 NAME_TO_ISO2: dict[str, str] = {
@@ -235,7 +252,14 @@ NAME_TO_ISO2: dict[str, str] = {
     "democratic republic of congo": "CD",
     "the democratic republic of congo": "CD",
     "democratic republic of the congo": "CD",
-    "congo": "CG",
+    # Sans precision, "Congo" dans un libelle sismique designe le Rift
+    # est-africain, donc la RDC. Le Congo-Brazzaville reste joignable par son
+    # nom complet ci-dessous.
+    "congo": "CD",
+    "republic of congo": "CG",
+    "republic of the congo": "CG",
+    "congo-brazzaville": "CG",
+    "georgia": "GE",
     "angola": "AO",
     "zambia": "ZM",
     "zimbabwe": "ZW",
@@ -352,11 +376,24 @@ def _lookup(candidate: str) -> str | None:
     key = _normalize(candidate)
     if not key:
         return None
+    if key in AMBIGUOUS_PHRASES:
+        return AMBIGUOUS_PHRASES[key]
     if key in NAME_TO_ISO2:
         return NAME_TO_ISO2[key]
     if key in US_STATES:
         return "US"
     return None
+
+
+def _is_ambiguous(text: str) -> str | None | bool:
+    """Une phrase ambigue est tranchee AVANT tout matching par suffixe: sinon
+    "GULF OF CALIFORNIA" retombe sur "california" et devient americain.
+    Rend False si le texte n'est pas ambigu, sinon le code (ou None)."""
+    lowered = _normalize(text)
+    for phrase, iso2 in AMBIGUOUS_PHRASES.items():
+        if phrase in lowered:
+            return iso2
+    return False
 
 
 def resolve(country: str | None, place: str | None = None) -> str | None:
@@ -373,12 +410,16 @@ def resolve(country: str | None, place: str | None = None) -> str | None:
     if not place:
         return None
 
+    verdict = _is_ambiguous(place)
+    if verdict is not False:
+        return verdict
+
     # Les libelles USGS et EMSC finissent par la region: "..., CA",
-    # "..., Indonesia", "FLORES REGION, INDONESIA".
+    # "..., Indonesia", "FLORES REGION, INDONESIA". SEUL ce dernier segment est
+    # interrogé: chercher plus loin faisait dire "Georgie" a
+    # "21 km NNW of T'q'ibuli, Georgia" pour l'Etat americain.
     if "," in place:
-        found = _lookup(place.rsplit(",", 1)[1])
-        if found:
-            return found
+        return _lookup(place.rsplit(",", 1)[1])
 
     # Certains libelles n'ont pas de virgule: "Fiji region", "WESTERN TEXAS",
     # "Banda Sea". On essaie le libelle entier, puis ses suffixes de plus en plus

@@ -51,7 +51,11 @@ class EventStore:
             if existing.fingerprint() == event.fingerprint():
                 # rien de neuf, mais la source vient de le rementionner: c'est
                 # exactement ce que `last_seen` doit enregistrer
-                existing.last_seen = utcnow()
+                # pendant un replay, `last_seen` doit rester celui du journal:
+                # le rafraichir redonnait six heures de sursis a toute alerte
+                # morte a chaque redemarrage, et masquait la purge entierement
+                if not self._replaying:
+                    existing.last_seen = utcnow()
                 return existing, "noop"
 
             # revision: on garde l'objet en place (donc dans le ring) et on le met a jour
@@ -59,7 +63,7 @@ class EventStore:
             event.cluster_id = existing.cluster_id or event.cluster_id
             event.revision = existing.revision + 1
             event.updated_at = utcnow()
-            event.last_seen = utcnow()
+            event.last_seen = existing.last_seen if self._replaying else utcnow()
             self._by_id[event.id] = event
             for i, e in enumerate(self._ring):
                 if e.id == event.id:
@@ -152,7 +156,11 @@ class EventStore:
         """
         cutoff = utcnow() - timedelta(hours=max_silence_hours)
         with self._lock:
-            stale = [e for e in self._ring if e.last_seen < cutoff]
+            # SEULES les alertes en cours sont concernees. Un seisme n'est pas
+            # "muet": sa source cesse normalement d'en parler des qu'il sort de
+            # sa fenetre de publication. Purger les non-ongoing revenait a ne
+            # garder que sept heures d'historique alors que l'UI propose 24 h.
+            stale = [e for e in self._ring if e.ongoing and e.last_seen < cutoff]
             if not stale:
                 return []
             dead = {e.id for e in stale}

@@ -134,3 +134,45 @@ des flux que le backend prend en direct en cent lignes.
 
 **Regle.** Utiliser un outil pour ce qu'il fait bien, et savoir dire qu'il ne va
 pas dans le produit final. Le dire franchement au proprietaire de l'outil aussi.
+
+
+## 14. Un garde-fou trop large coupe la valeur qu'il protege
+
+**Erreur.** Le rejet des horodatages futurs, ajoute contre les horloges qui
+derivent, rejetait aussi les vigilances meteo -- publiees AVANT leur debut, ce
+qui est precisement leur interet. Une vigilance orange espagnole apparaissait
+deux minutes apres le debut du danger au lieu de deux heures avant.
+
+**Regle.** Avant d'ajouter un filtre, lister ce qu'il coupe de LEGITIME. Ici la
+distinction utile n'etait pas "futur ou passe" mais "evenement ponctuel ou
+alerte en cours".
+
+## 15. Une position fausse est bien pire qu'une position absente
+
+**Erreur.** `parse_iso6709` acceptait `+3237.5+13040.7` (degres-minutes) et
+rendait `lat=3237.5`. Rien en aval ne bornait la valeur: seul le hasard de
+l'horizon a empeche ce point d'atterrir hors du globe sur la carte.
+
+**Regle.** Tout parseur de coordonnees borne son resultat (|lat| &lt;= 90,
+|lon| &lt;= 180) et rejette au lieu de laisser passer. Un evenement sans position
+s'affiche dans le flux; un evenement mal place ment.
+
+## 16. Une source qui relaie n'est pas la source
+
+**Erreur.** La JMA relaie les seismes lointains (un M7.7 indonesien). On leur
+collait `country="Japan"`: en production, un seisme indonesien portait le
+drapeau japonais.
+
+**Regle.** Distinguer "qui publie" de "ou ca se passe". Un flux national contient
+souvent des evenements etrangers, et le type de bulletin le dit.
+
+## 17. Un filtre par defaut peut effacer ce qu'il n'a jamais vise
+
+**Erreur.** Le balayage des alertes muettes purgeait aussi les seismes: la
+source cesse normalement d'en parler des qu'ils sortent de sa fenetre de
+publication. Le store ne gardait plus que sept heures d'historique alors que
+l'interface propose 24 h et "tout". Et le rejeu du journal remettait le compteur
+de silence a zero, ce qui masquait le probleme a chaque redemarrage.
+
+**Regle.** Un balayage cible explicitement ce qu'il doit retirer (`ongoing`), et
+un rejeu restaure l'etat tel qu'il etait, horloges comprises.

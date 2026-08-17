@@ -180,6 +180,10 @@ Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
   GDACS courante) echappe a l'horizon tant que sa source la publie. Mais un
   balayage retire celles qu'aucune source ne mentionne plus depuis six heures:
   une source qui se tait a implicitement dit que c'etait fini.
+- **Preavis d'une vigilance.** Une alerte meteo est publiee AVANT son debut --
+  c'est tout son interet. Son horodatage est donc legitimement dans le futur, et
+  le filtre anti-futur l'exempte quand elle est declaree en cours. Un seisme, lui,
+  ne peut pas etre date en avance.
 - **Horodatage dans le futur.** Une source dont l'horloge derive produisait un
   evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
   cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
@@ -189,8 +193,8 @@ Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
 ## Verification
 
 ```bash
-make test        # 84 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
-cd frontend && npx vitest run   # 55 tests frontend: filtres, ingestion, i18n, rendu
+make test        # 94 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
+cd frontend && npx vitest run   # 56 tests frontend: filtres, ingestion, i18n, rendu
 make lint
 make typecheck
 make smoke       # etat live des dix-neuf sources

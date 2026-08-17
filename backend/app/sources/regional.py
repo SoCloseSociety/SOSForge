@@ -89,6 +89,12 @@ SHINDO_SEVERITY = {
 # donc rien a poser sur une carte.
 JMA_SKIPPED_TITLES = {"震度速報"}
 
+# 遠地地震に関する情報 = information sur un seisme LOINTAIN. La JMA les relaie
+# (un M7.7 indonesien, un M7.1 en Amerique centrale), et leur coller
+# country="Japan" faisait porter le drapeau japonais a des seismes a l'autre
+# bout du monde -- ce qui etait le cas en production.
+JMA_DISTANT_TITLE = "遠地地震に関する情報"
+
 
 def parse_iso6709(value: str | None) -> tuple[float | None, float | None, float | None]:
     if not value:
@@ -98,6 +104,14 @@ def parse_iso6709(value: str | None) -> tuple[float | None, float | None, float 
         return None, None, None
     lat = float(match.group(1))
     lon = float(match.group(2))
+
+    # La JMA emet aussi de l'ISO 6709 en degres-MINUTES ("+3237.5+13040.7" =
+    # 32 deg 37,5 min N). Interprete en degres decimaux, ca donne lat=3237.5:
+    # hors globe, et rien en aval ne bornait la valeur. Une position fausse est
+    # bien pire qu'un rejet, donc on rejette.
+    if abs(lat) > 90 or abs(lon) > 180:
+        return None, None, None
+
     depth_m = match.group(3)
     depth_km = abs(float(depth_m)) / 1000.0 if depth_m is not None else None
     return lat, lon, depth_km
@@ -129,6 +143,7 @@ class JmaSource(JsonPollSource):
                 continue
 
             place = row.get("en_anm") or row.get("anm") or "Japon"
+            distant = row.get("ttl") == JMA_DISTANT_TITLE
             shindo = row.get("maxi") or None
             severity = severity_from_magnitude(magnitude)
             if shindo in SHINDO_SEVERITY:
@@ -152,7 +167,9 @@ class JmaSource(JsonPollSource):
                     magnitude=magnitude,
                     mag_type="Mj",
                     place=place,
-                    country="Japan",
+                    # un seisme lointain relaye par la JMA n'est pas au Japon:
+                    # on laisse le pipeline deduire le pays du libelle de lieu
+                    country=None if distant else "Japan",
                     severity=severity,
                     alert=f"shindo {shindo}" if shindo else None,
                     title=f"M {magnitude} -- {place}" if magnitude else place,

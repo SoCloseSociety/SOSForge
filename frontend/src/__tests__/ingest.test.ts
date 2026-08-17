@@ -110,3 +110,23 @@ describe('events et updates', () => {
     expect(useStore.getState().fresh.has('hot')).toBe(false)
   })
 })
+
+describe('doublons inter-sources', () => {
+  it("ignore une solution secondaire: le serveur a deja designe un representant", () => {
+    const store = useStore.getState()
+    store.ingest({
+      type: 'event',
+      event: makeEvent({ id: 'emsc:1', time: minutesAgo(1) }),
+      primary: true,
+      breaking: true,
+    })
+    store.ingest({
+      type: 'event',
+      // meme seisme vu par une autre agence: le serveur l'a marque non primaire
+      event: makeEvent({ id: 'usgs:1', time: minutesAgo(1) }),
+      primary: false,
+      breaking: true,
+    })
+    expect(useStore.getState().events.map((e) => e.id)).toEqual(['emsc:1'])
+  })
+})

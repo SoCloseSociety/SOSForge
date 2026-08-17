@@ -33,8 +33,12 @@ export function SearchBar() {
 
   useEffect(() => {
     const term = query.trim()
+    // Vider a CHAQUE changement de saisie: sinon, pendant les 450 ms d'attente
+    // puis le temps du reseau, presser Entree apres avoir tape "lyon" partait
+    // encore vers les resultats de "paris".
+    setPlaces(null)
+    setOpen(false)
     if (term.length < 3) {
-      setPlaces(null)
       return
     }
     // debounce: on ne geocode pas a chaque frappe, on attend que la saisie se

@@ -38,9 +38,28 @@ def test_resolve(country, place, expected):
 
 
 @pytest.mark.parametrize(
+    ("place", "expected"),
+    [
+        # tous observes dans des flux reels, tous produisaient un FAUX drapeau
+        ("GULF OF CALIFORNIA", "MX"),  # "california" -> Etats-Unis: eaux mexicaines
+        ("21 km NNW of T'q'ibuli, Georgia", "GE"),  # la Georgie du Caucase, pas l'Etat
+        ("LAC KIVU REGION, CONGO", "CD"),  # le Kivu est en RDC, pas au Congo-Brazzaville
+        ("EQUATORIAL GUINEA REGION", "GQ"),
+    ],
+)
+def test_ambiguous_labels_no_longer_produce_a_false_flag(place, expected):
+    assert resolve(None, place) == expected
+
+
+@pytest.mark.parametrize(
     "place",
     [
         "Banda Sea",
+        # "guinea" seul ne permet pas de trancher entre Papouasie et Guinee
+        "NEAR EAST COAST OF NEW GUINEA",
+        # la Georgie du Sud est une ile de l'ocean Austral, pas un pays
+        "SOUTH GEORGIA RISE",
+        "SOUTH GEORGIA ISLAND REGION",
         "South Sandwich Islands region",
         "Pacific-Antarctic Ridge",
         "South Atlantic Ocean",

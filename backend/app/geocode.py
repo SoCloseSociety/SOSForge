@@ -40,28 +40,31 @@ async def search(query: str, limit: int = 5) -> list[dict]:
     if key in _cache:
         return _cache[key]
 
+    # Le verrou ne protege QUE le calcul de la cadence. Faire la requete HTTP
+    # dessous gelait toute la file pendant la duree du timeout (12 s): dix
+    # utilisateurs qui cherchent en meme temps attendaient dix fois ca.
     async with _lock:
         wait = _MIN_INTERVAL - (time.monotonic() - _last_call)
         if wait > 0:
             await asyncio.sleep(wait)
         _last_call = time.monotonic()
 
-        try:
-            async with httpx.AsyncClient(
-                timeout=12.0,
-                headers={"User-Agent": USER_AGENT, "Accept-Language": "en"},
-            ) as client:
-                resp = await client.get(
-                    NOMINATIM,
-                    params={"q": query, "format": "jsonv2", "limit": str(limit)},
-                )
-                resp.raise_for_status()
-                payload = resp.json() or []
-        except Exception as exc:
-            # une recherche qui echoue ne doit jamais casser la page: le filtre
-            # textuel local, lui, continue de fonctionner
-            log.warning("geocodage indisponible: %s", exc)
-            return []
+    try:
+        async with httpx.AsyncClient(
+            timeout=12.0,
+            headers={"User-Agent": USER_AGENT, "Accept-Language": "en"},
+        ) as client:
+            resp = await client.get(
+                NOMINATIM,
+                params={"q": query, "format": "jsonv2", "limit": str(limit)},
+            )
+            resp.raise_for_status()
+            payload = resp.json() or []
+    except Exception as exc:
+        # une recherche qui echoue ne doit jamais casser la page: le filtre
+        # textuel local, lui, continue de fonctionner
+        log.warning("geocodage indisponible: %s", exc)
+        return []
 
     results = []
     for row in payload:

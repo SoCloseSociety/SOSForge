@@ -39,7 +39,11 @@ class Pipeline:
         # tri par date le clouait en tete du flux pour toujours. On tolere une
         # petite avance (les horloges ne sont jamais exactement synchrones) et on
         # rejette au-dela.
-        if event.age_seconds < -settings.future_tolerance_seconds:
+        # Exception decisive: une vigilance meteo est PUBLIEE AVANT son debut --
+        # c'est meme tout son interet, le preavis. Son `onset` est donc
+        # legitimement dans le futur. Seuls les evenements ponctuels (un seisme a
+        # eu lieu ou n'a pas eu lieu) ne peuvent pas etre dates en avance.
+        if not event.ongoing and event.age_seconds < -settings.future_tolerance_seconds:
             self.dropped += 1
             log.warning(
                 "%s: horodatage dans le futur de %.0f s, evenement rejete (%s)",

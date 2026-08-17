@@ -171,3 +171,74 @@ def test_replaying_the_journal_does_not_rewrite_it(tmp_path):
     reloaded = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
     assert reloaded.load_backlog(journal) == 1
     assert journal.read_text().count("\n") == before, "relire ne doit pas reecrire"
+
+
+# --- Second audit adversarial (defauts confirmes sur donnees reelles) ---------
+
+
+def test_a_warning_issued_in_advance_is_not_rejected_as_a_clock_error():
+    """Defaut 8. Une vigilance meteo est PUBLIEE AVANT son debut: c'est tout son
+    interet, le preavis. Son `onset` est donc legitimement dans le futur, et le
+    filtre anti-futur la rejetait a chaque cycle."""
+    from app.models.event import Kind as K
+
+    vigilance = quake("meteoalarm:1", minutes_ago=-96)  # debut dans 1 h 36
+    vigilance.kind = K.STORM
+    vigilance.ongoing = True
+    assert vigilance.age_seconds < 0
+
+    store = EventStore(maxlen=10, data_dir=None, persist=False)
+    pipeline = Pipeline(store, Deduper())
+    asyncio.run(pipeline.emit(vigilance))
+    assert [e.id for e in store.recent(limit=5)] == ["meteoalarm:1"]
+
+    # un seisme, lui, ne peut pas etre date en avance
+    futur = quake("usgs:futur", minutes_ago=-96)
+    asyncio.run(pipeline.emit(futur))
+    assert store.get("usgs:futur") is None
+
+
+def test_the_sweep_only_removes_ongoing_alerts():
+    """Defaut 9. Sans filtre `ongoing`, la purge effaçait les seismes ordinaires
+    apres six heures de silence: le store ne gardait plus que sept heures
+    d'historique alors que l'interface propose 24 h et "tout"."""
+    from datetime import timedelta as _td
+
+    store = EventStore(maxlen=50, data_dir=None, persist=False)
+
+    ancien_seisme = quake("usgs:vieux", 60 * 8)
+    ancien_seisme.last_seen = datetime.now(UTC) - _td(hours=8)
+    store.upsert(ancien_seisme)
+
+    alerte_muette = alert("gdacs:muette")
+    alerte_muette.ongoing = True
+    alerte_muette.last_seen = datetime.now(UTC) - _td(hours=8)
+    store.upsert(alerte_muette)
+
+    removed = store.prune_stale(max_silence_hours=6)
+    assert [e.id for e in removed] == ["gdacs:muette"]
+    assert store.get("usgs:vieux") is not None
+
+
+def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
+    """Defaut 10. Le replay rafraichissait `last_seen`, ce qui redonnait six
+    heures de sursis a toute alerte morte a CHAQUE redemarrage -- et masquait la
+    purge entierement en production."""
+    from datetime import timedelta as _td
+
+    store = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
+    vieille = alert("gdacs:x")
+    vieille.ongoing = True
+    vieille.last_seen = datetime.now(UTC) - _td(hours=20)
+    store.upsert(vieille)
+
+    journal = next(tmp_path.glob("events-*.jsonl"))
+    rechargee = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
+    rechargee.load_backlog(journal)
+    rechargee.load_backlog(journal)  # deuxieme passe: le chemin noop
+
+    restaure = rechargee.get("gdacs:x")
+    assert restaure is not None
+    silence_h = (datetime.now(UTC) - restaure.last_seen).total_seconds() / 3600
+    assert silence_h > 19, "le silence doit survivre au replay"
+    assert rechargee.prune_stale(max_silence_hours=6)
