@@ -1,10 +1,10 @@
 # SOSForge
 
 Suivi **temps reel** des seismes, tsunamis, volcans, cyclones et alertes
-catastrophes. Un flux unique, agrege depuis **quinze sources officielles**,
+catastrophes. Un flux unique, agrege depuis **dix-sept sources officielles**,
 diffuse a la seconde vers le navigateur par websocket. Interface en cinq langues.
 
-Aucune cle d'API n'est necessaire: les quinze sources sont publiques et ouvertes.
+Aucune cle d'API n'est necessaire: les dix-sept sources sont publiques et ouvertes.
 
 ![capture](docs/screenshot.png)
 
@@ -37,7 +37,7 @@ localise, sans attendre un cycle. Les autres sont des sources polling dont la
 cadence est calee sur leur frequence reelle de publication -- poller USGS plus
 vite que sa regeneration ne rendrait rien de plus.
 
-## Les quinze sources (aucune cle API requise)
+## Les dix-sept sources (aucune cle API requise)
 
 **Mondiales**
 
@@ -51,6 +51,7 @@ vite que sa regeneration ne rendrait rien de plus.
 | NHC | `nhc.noaa.gov/CurrentStorms.json` | poll 300 s | cyclones tropicaux Atlantique et Pacifique: position, vents, categorie, advisory |
 | GEOFON (GFZ) | `geofon.gfz.de/eqinfo/list.php?fmt=geojson` | poll 60 s | troisieme catalogue mondial: le dedup passe d'un accord a deux a un **vote a trois** |
 | NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events` | poll 600 s | evenements naturels en cours vus de l'espace: **feux de forets suivis comme des evenements**, second avis sur les tempetes |
+| OMM (agregat CAP) | `severeweather.wmo.int/json/wmo_all.json` | poll 300 s | alertes officielles du reste du monde (Inde, Chine, Indonesie, Amerique du Sud) en un appel |
 
 **Nationales et regionales** -- elles ne sont pas la pour la redondance: chacune apporte ce que l'EMSC n'a pas.
 
@@ -63,6 +64,7 @@ vite que sa regeneration ne rendrait rien de plus.
 | GeoNet (Nouvelle-Zelande) | `api.geonet.org.nz/quake?MMI=3` | poll 60 s | seuil de detection local tres bas sur une zone tres active |
 | INGV (Italie) | `webservices.ingv.it/fdsnws/event/1/query` | poll 60 s | idem, et au format FDSN standard (le meme contrat que l'USGS) |
 | AFAD (Turquie) | `deprem.afad.gov.tr/apiv2/event/filter` | poll 60 s | couverture fine de la faille nord-anatolienne |
+| Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{pays}` | poll 300 s | vigilances des services meteo nationaux de dix pays europeens |
 
 ## Demarrage
 
@@ -125,6 +127,16 @@ Messages websocket:
 - **Dedup inter-sources.** Le meme seisme arrive sous deux identifiants (EMSC et
   USGS). Il est regroupe en cluster: 90 s, 250 km et 1.2 point de magnitude
   d'ecart maximum. Rien n'est supprime, un seul representant est affiche.
+- **Volume des agregats d'alertes.** Meteoalarm et l'OMM deversent ~4300
+  bulletins par cycle, essentiellement de la pluie et de la chaleur de routine:
+  ils enterreraient seismes et tsunamis. Seuils obligatoires -- orange et rouge
+  pour Meteoalarm (92 vigilances francaises ramenees a 7), tiers superieur pour
+  l'OMM (2258 ramenees a 221). Reserve mesuree: l'echelle de gravite de l'OMM
+  n'est pas homogene d'un pays a l'autre, des "Small Craft Advisory" americains
+  arrivent au meme rang que des cyclones.
+- **Alertes sans position.** Meteoalarm et l'OMM decrivent leurs zones par des
+  codes administratifs (NUTS3), sans coordonnees. Ces alertes vivent dans le
+  flux, pas sur la carte -- et c'est dit plutot que masque.
 - **Bruit GDACS.** Le flux complet, c'est ~400 entrees dont ~344 feux verts et des
   secheresses ouvertes depuis un an. Filtre: orange et rouge toujours, vert
   seulement s'il vient d'etre publie (`SOS_GDACS_MAX_AGE_DAYS`).
@@ -150,7 +162,7 @@ Messages websocket:
   evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
   cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
 - **Panne d'une source.** Une source dont tous les flux echouent ne peut pas
-  s'afficher verte. Le pied de page montre l'etat reel des quinze.
+  s'afficher verte. Le pied de page montre l'etat reel des dix-sept.
 
 ## Verification
 
@@ -159,7 +171,7 @@ make test        # 66 tests backend: normalizers sur payloads reels, store, pipe
 cd frontend && npx vitest run   # 55 tests frontend: filtres, ingestion, i18n, rendu
 make lint
 make typecheck
-make smoke       # etat live des quinze sources
+make smoke       # etat live des dix-sept sources
 ```
 
 ## Choix d'architecture
