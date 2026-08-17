@@ -13,6 +13,7 @@ import pytest
 from app.dedupe import Deduper
 from app.hub import QUEUE_MAX, Client, Hub
 from app.models.event import Event, Kind, Severity
+from app.pipeline import Pipeline
 from app.sources.tsunami import TsunamiSource
 from app.store.ring import EventStore
 
@@ -103,6 +104,38 @@ async def test_an_evicted_client_is_signalled_not_left_hanging():
 
     assert hub.client_count == 0
     assert client.evicted.is_set(), "l'ejection doit etre signalee a la tache d'envoi"
+
+
+@pytest.mark.asyncio
+async def test_a_future_dated_event_is_rejected(monkeypatch):
+    """Defaut 7. Un horodatage dans le futur (fuseau mal pose cote source)
+    traversait tout: age negatif donc horizon franchi, `breaking` toujours vrai,
+    et tri par date decroissante -- il se clouait en tete du flux pour toujours.
+    """
+    from app import pipeline as pipeline_module
+    from app.core import config
+
+    sent: list[dict] = []
+
+    async def capture(message: dict) -> None:
+        sent.append(message)
+
+    monkeypatch.setattr(pipeline_module.hub, "broadcast", capture)
+    monkeypatch.setattr(config.settings, "future_tolerance_seconds", 120.0)
+
+    store = EventStore(maxlen=50, data_dir=None, persist=False)
+    pipeline = Pipeline(store, Deduper())
+
+    await pipeline.emit(quake("bad:1", minutes_ago=-30))  # date 30 min en avance
+    assert store.recent(limit=10) == []
+    assert pipeline.dropped == 1
+    assert sent == []
+
+    # une avance d'une minute reste toleree: les horloges ne sont jamais exactes
+    await pipeline.emit(quake("ok:1", minutes_ago=-1))
+    assert [e.id for e in store.recent(limit=10)] == ["ok:1"]
+    # ... mais elle n'est pas annoncee comme "vient de se produire"
+    assert sent[-1]["breaking"] is False
 
 
 def test_evicting_a_cluster_primary_promotes_a_survivor():

@@ -4,6 +4,7 @@ import { connectLive } from './live'
 import { Feed } from './components/Feed'
 import { MapView } from './components/MapView'
 import { LivePanel } from './components/LivePanel'
+import { SearchBar } from './components/SearchBar'
 import { LANGS } from './i18n'
 import {
   KIND_GLYPH,
@@ -124,17 +125,22 @@ function Filters({ events }: { events: SosEvent[] }) {
 
   return (
     <div className="filters">
-      {/* La fenetre en premier: c'est elle qui separe le direct de l'historique,
+      {/* La recherche en tout premier: c'est le raccourci vers "que se passe-t-il
+          LA-BAS", la question qu'on se pose quand on ouvre un tracker apres
+          avoir entendu parler de quelque chose. */}
+      <SearchBar />
+
+      {/* Puis la fenetre: c'est elle qui separe le direct de l'historique,
           et donc la question que l'utilisateur se pose en arrivant. */}
       <div className="segmented" role="group" aria-label={t('filters.window')}>
-        {WINDOWS.map((w) => (
+        {WINDOWS.map((minutes) => (
           <button
             type="button"
-            key={w.minutes}
-            aria-pressed={filters.windowMinutes === w.minutes}
-            onClick={() => setWindow(w.minutes)}
+            key={minutes}
+            aria-pressed={filters.windowMinutes === minutes}
+            onClick={() => setWindow(minutes)}
           >
-            {t(`window.${w.minutes}`)}
+            {t(`window.${minutes}`)}
           </button>
         ))}
       </div>
@@ -177,7 +183,11 @@ function LangPicker() {
   return (
     <label className="lang">
       <span aria-hidden="true">{LANGS.find((l) => l.code === lang)?.flag}</span>
-      <select value={lang} onChange={(e) => setLang(e.target.value as typeof lang)}>
+      <select
+        value={lang}
+        onChange={(e) => setLang(e.target.value as typeof lang)}
+        aria-label="Langue / Language"
+      >
         {LANGS.map((l) => (
           <option key={l.code} value={l.code}>
             {l.label}
@@ -198,7 +208,7 @@ function Footer() {
         <span className="source" key={source.name} title={source.last_error ?? 'OK'}>
           <span className={`dot ${source.connected ? 'up' : 'down'}`} />
           {SOURCE_LABEL[source.name] ?? source.name}
-          <span className="count">{source.events_seen}</span>
+          <span className="count">{source.ingested ?? source.events_seen}</span>
         </span>
       ))}
       <span className="spacer" />
@@ -248,7 +258,9 @@ export default function App() {
         </div>
         <span className="spacer" />
         <LangPicker />
-        <span className="clock">{formatClock(new Date(now))} UTC</span>
+        <span className="clock" aria-label={`${formatClock(new Date(now))} UTC`}>
+          {formatClock(new Date(now))} UTC
+        </span>
         <button
           type="button"
           className="toggle"
@@ -259,8 +271,10 @@ export default function App() {
           <span aria-hidden="true">{soundOn ? '🔔' : '🔕'}</span>
           {soundOn ? t('app.sound.on') : t('app.sound.off')}
         </button>
-        <span className={`live ${connected ? 'on' : 'off'}`}>
-          <span className="dot" />
+        {/* aria-live: l'etat de la connexion est LA chose qu'un lecteur d'ecran
+            doit apprendre sans avoir a la chercher */}
+        <span className={`live ${connected ? 'on' : 'off'}`} role="status" aria-live="polite">
+          <span className="dot" aria-hidden="true" />
           {connected ? t('app.live') : t('app.reconnecting')}
         </span>
       </header>
@@ -275,9 +289,11 @@ export default function App() {
             events={visible}
             now={now}
             emptyKey={
-              filters.windowMinutes > 0 && events.length > 0
-                ? 'filters.empty.window'
-                : 'filters.empty'
+              filters.query.trim()
+                ? 'filters.empty.search'
+                : filters.windowMinutes > 0 && events.length > 0
+                  ? 'filters.empty.window'
+                  : 'filters.empty'
             }
           />
         </section>

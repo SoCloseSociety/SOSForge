@@ -128,6 +128,8 @@ def parse_item(item: ET.Element) -> Event | None:
         place=country or title,
         country=country,
         severity=ALERT_TO_SEVERITY.get(alert, Severity.INFO),
+        # GDACS dit lui-meme si l'evenement est toujours d'actualite
+        ongoing=(_text(item, "gdacs:iscurrent") or "").lower() == "true",
         alert=alert or None,
         tsunami=kind is Kind.TSUNAMI,
         title=title,

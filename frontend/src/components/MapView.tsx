@@ -217,6 +217,20 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     return () => cancelAnimationFrame(frame)
   }, [fresh])
 
+  // --- recherche: aller a la zone demandee
+  const focus = useStore((s) => s.focus)
+  useEffect(() => {
+    const instance = map.current
+    if (!instance || !ready.current || !focus) return
+    instance.flyTo({
+      center: [focus.lon, focus.lat],
+      zoom: focus.zoom,
+      speed: 1.6,
+      curve: 1.5,
+      essential: true,
+    })
+  }, [focus])
+
   // --- selection: on centre et on ouvre la fiche
   const selected = useStore((s) => s.selected)
   useEffect(() => {

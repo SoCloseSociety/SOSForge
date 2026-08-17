@@ -49,6 +49,9 @@ class EventStore:
                 return event, "new"
 
             if existing.fingerprint() == event.fingerprint():
+                # rien de neuf, mais la source vient de le rementionner: c'est
+                # exactement ce que `last_seen` doit enregistrer
+                existing.last_seen = utcnow()
                 return existing, "noop"
 
             # revision: on garde l'objet en place (donc dans le ring) et on le met a jour
@@ -56,6 +59,7 @@ class EventStore:
             event.cluster_id = existing.cluster_id or event.cluster_id
             event.revision = existing.revision + 1
             event.updated_at = utcnow()
+            event.last_seen = utcnow()
             self._by_id[event.id] = event
             for i, e in enumerate(self._ring):
                 if e.id == event.id:
@@ -135,6 +139,30 @@ class EventStore:
         # remonte a chaque cycle de polling et squatterait la tete de liste)
         out.sort(key=lambda e: e.time, reverse=True)
         return out[:limit]
+
+    def prune_stale(self, max_silence_hours: float) -> list[Event]:
+        """Retire les evenements qu'aucune source n'a rementionnes depuis
+        longtemps.
+
+        L'horizon d'ingestion exempte les alertes graves ET en cours, parce
+        qu'un cyclone rouge ne devient pas caduc en trois jours. Mais rien ne
+        les faisait jamais partir: un cyclone dissipe, un bulletin volcanique
+        remplace, restaient affiches pour toujours. Une source qui cesse de
+        mentionner une alerte a implicitement dit qu'elle est terminee.
+        """
+        cutoff = utcnow() - timedelta(hours=max_silence_hours)
+        with self._lock:
+            stale = [e for e in self._ring if e.last_seen < cutoff]
+            if not stale:
+                return []
+            dead = {e.id for e in stale}
+            kept = [e for e in self._ring if e.id not in dead]
+            self._ring.clear()
+            self._ring.extend(kept)
+            for event_id in dead:
+                self._by_id.pop(event_id, None)
+            self._gc()
+        return stale
 
     def stats(self) -> dict:
         now = utcnow()

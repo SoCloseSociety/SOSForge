@@ -10,18 +10,19 @@ export interface Filters {
   sources: Set<string>
   /** fenetre temporelle en minutes; 0 = tout l'historique disponible */
   windowMinutes: number
+  /** recherche texte libre: lieu, titre, pays */
+  query: string
 }
 
-/** Les fenetres proposees. "Direct" est la vraie promesse du produit: ce qui
- * vient de tomber. Les autres servent a reprendre du contexte sans quitter la
- * page. */
-export const WINDOWS: { label: string; minutes: number; hint: string }[] = [
-  { label: 'Direct', minutes: 15, hint: 'les 15 dernières minutes' },
-  { label: '1 h', minutes: 60, hint: 'la dernière heure' },
-  { label: '6 h', minutes: 360, hint: 'les 6 dernières heures' },
-  { label: '24 h', minutes: 1440, hint: 'les 24 dernières heures' },
-  { label: 'Tout', minutes: 0, hint: 'tout ce que le serveur garde en mémoire' },
-]
+/** Les fenetres proposees, en minutes (0 = tout l'historique disponible).
+ *
+ * Seules les valeurs vivent ici: les libelles viennent de l'i18n
+ * (`t('window.15')`, ...). Des libelles stockes a cote seraient du francais
+ * code en dur qui contournerait la traduction le jour ou quelqu'un les
+ * afficherait. "Direct" (15 min) est la vraie promesse du produit: ce qui vient
+ * de tomber; les autres servent a reprendre du contexte sans quitter la page.
+ */
+export const WINDOWS: number[] = [15, 60, 360, 1440, 0]
 
 interface State {
   events: SosEvent[]
@@ -38,6 +39,8 @@ interface State {
   lang: Lang
   filters: Filters
   fresh: Set<string>
+  /** zone vers laquelle la carte doit se rendre (resultat de recherche) */
+  focus: { lat: number; lon: number; zoom: number; name: string } | null
 
   ingest: (message: ServerMessage) => void
   setConnected: (value: boolean) => void
@@ -46,6 +49,8 @@ interface State {
   toggleKind: (kind: Kind) => void
   setMinMagnitude: (value: number) => void
   setWindow: (minutes: number) => void
+  setQuery: (query: string) => void
+  setFocus: (focus: State['focus']) => void
   setLang: (lang: Lang) => void
   t: (key: string, vars?: Record<string, string | number>) => string
 }
@@ -120,8 +125,10 @@ export const useStore = create<State>((set, get) => ({
     // 24 h par defaut: assez pour du contexte, assez court pour que la carte
     // montre l'actualite et non un catalogue
     windowMinutes: 1440,
+    query: '',
   },
   fresh: new Set(),
+  focus: null,
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -140,6 +147,8 @@ export const useStore = create<State>((set, get) => ({
   setMinMagnitude: (value) =>
     set((state) => ({ filters: { ...state.filters, minMagnitude: value } })),
   setWindow: (minutes) => set((state) => ({ filters: { ...state.filters, windowMinutes: minutes } })),
+  setQuery: (query) => set((state) => ({ filters: { ...state.filters, query } })),
+  setFocus: (focus) => set({ focus }),
   setLang: (lang) => {
     persistLang(lang)
     document.documentElement.lang = lang
@@ -157,6 +166,9 @@ export const useStore = create<State>((set, get) => ({
         clockSkew: new Date(message.server_time).getTime() - now,
         lastMessageAt: now,
         connected: true,
+        // une reconnexion repart d'un etat propre: sans ca, des halos "vient de
+        // tomber" survivaient a une coupure de plusieurs minutes
+        fresh: new Set(),
       })
       return
     }
@@ -212,15 +224,30 @@ export const useStore = create<State>((set, get) => ({
  * sous React 19, et le composant ne monte jamais.
  */
 export function filterEvents(events: SosEvent[], filters: Filters, now: number): SosEvent[] {
-  const { kinds, minMagnitude, windowMinutes } = filters
+  const { kinds, minMagnitude, windowMinutes, query } = filters
   const cutoff = windowMinutes > 0 ? now - windowMinutes * 60_000 : null
+  const needle = query.trim().toLowerCase()
   return events.filter((event) => {
+    if (needle) {
+      // on cherche dans ce que l'utilisateur VOIT (le lieu, le titre) plus le
+      // pays, qui n'est affiche que comme drapeau mais reste ce qu'on tape
+      const haystack = `${event.place} ${event.title} ${event.country ?? ''} ${event.country_code ?? ''}`
+      if (!haystack.toLowerCase().includes(needle)) return false
+    }
     // la fenetre d'abord: c'est elle qui separe le direct de l'historique
     if (cutoff !== null && Date.parse(event.time) < cutoff) return false
     if (!kinds.has(event.kind)) return false
     // un evenement sans magnitude (alerte, volcan) n'est pas filtre par le
     // curseur de magnitude: il n'a simplement pas cette dimension
-    if (minMagnitude > 0 && event.kind === 'earthquake' && (event.magnitude ?? 0) < minMagnitude) {
+    // `magnitude: null` n'est PAS zero: c'est "pas encore publiee" (revision
+    // precoce de l'EMSC). Le traiter comme 0 faisait disparaitre un seisme reel
+    // des que le curseur quittait le minimum.
+    if (
+      minMagnitude > 0 &&
+      event.kind === 'earthquake' &&
+      event.magnitude !== null &&
+      event.magnitude < minMagnitude
+    ) {
       return false
     }
     return true

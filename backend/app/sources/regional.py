@@ -28,7 +28,7 @@ from typing import Any
 
 import httpx
 
-from app.models.event import Event, Kind, Severity, severity_from_magnitude
+from app.models.event import Event, Kind, Severity, severity_from_magnitude, to_utc
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -124,10 +124,8 @@ class JmaSource(JsonPollSource):
                 magnitude = None
 
             # `at` porte deja son decalage (+09:00): on ne devine aucun fuseau
-            when = row.get("at") or row.get("rdt")
-            try:
-                time = datetime.fromisoformat(when).astimezone(UTC)
-            except (TypeError, ValueError):
+            time = to_utc(row.get("at") or row.get("rdt"))
+            if time is None:
                 continue
 
             place = row.get("en_anm") or row.get("anm") or "Japon"
@@ -177,10 +175,8 @@ class BmkgSource(JsonPollSource):
         rows = ((data or {}).get("Infogempa") or {}).get("gempa") or []
         events: list[Event] = []
         for row in rows:
-            when = row.get("DateTime")
-            try:
-                time = datetime.fromisoformat(when).astimezone(UTC)
-            except (TypeError, ValueError):
+            time = to_utc(row.get("DateTime"))
+            if time is None:
                 continue
 
             lat = lon = None
@@ -247,11 +243,8 @@ class GeonetSource(JsonPollSource):
             public_id = props.get("publicID")
             if not public_id:
                 continue
-            try:
-                time = datetime.fromisoformat(
-                    (props.get("time") or "").replace("Z", "+00:00")
-                ).astimezone(UTC)
-            except (TypeError, ValueError):
+            time = to_utc(props.get("time"))
+            if time is None:
                 continue
 
             # attention: GeoNet ne met que [lon, lat] dans la geometrie, la
@@ -305,12 +298,10 @@ class IngvSource(JsonPollSource):
                 continue
 
             # l'INGV publie en UTC mais SANS suffixe de fuseau: on le pose nous-memes
-            raw_time = props.get("time")
-            try:
-                parsed = datetime.fromisoformat((raw_time or "").replace("Z", "+00:00"))
-            except (TypeError, ValueError):
+            # l'INGV publie en UTC mais SANS suffixe de fuseau
+            time = to_utc(props.get("time"))
+            if time is None:
                 continue
-            time = parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
             coords = (feature.get("geometry") or {}).get("coordinates") or []
             lon = coords[0] if len(coords) > 0 else None
@@ -325,7 +316,7 @@ class IngvSource(JsonPollSource):
                     source="ingv",
                     source_id=str(event_id),
                     kind=Kind.EARTHQUAKE,
-                    time=time.astimezone(UTC),
+                    time=time,
                     lat=lat,
                     lon=lon,
                     depth_km=depth,
@@ -417,10 +408,9 @@ class AfadSource(JsonPollSource):
             if lat is None or lon is None:
                 continue
 
-            try:
-                # naif mais UTC (prouve): on pose le fuseau nous-memes
-                time = datetime.fromisoformat(row["date"]).replace(tzinfo=UTC)
-            except (TypeError, ValueError, KeyError):
+            # naif mais UTC (prouve par recoupement EMSC)
+            time = to_utc(row.get("date"))
+            if time is None:
                 continue
 
             place = row.get("location") or "Turquie"
@@ -450,4 +440,70 @@ class AfadSource(JsonPollSource):
             )
         # le tri par fraicheur nous appartient, l'API ne le garantit pas
         events.sort(key=lambda e: e.time, reverse=True)
+        return events
+
+
+# ------------------------------------------------------------------------ GEOFON
+
+
+class GeofonSource(JsonPollSource):
+    """GEOFON (GFZ Potsdam) -- troisieme catalogue mondial, a cote de l'EMSC et
+    de l'USGS.
+
+    Son interet n'est pas la couverture (les trois se recoupent) mais le **vote**:
+    avec trois solutions independantes, le dedup inter-sources confirme un
+    evenement au lieu de le supposer, et un desaccord de magnitude devient
+    visible au lieu d'etre invisible.
+
+    Le service FDSN de GEOFON refuse `format=json` (400): il ne parle que `text`
+    et QuakeML. On passe donc par son service eqinfo, qui rend du GeoJSON de la
+    meme famille que l'USGS.
+    """
+
+    name = "geofon"
+    kind = "poll"
+    url = "https://geofon.gfz.de/eqinfo/list.php?fmt=geojson&nmax=100"
+
+    def parse_payload(self, data: Any) -> list[Event]:
+        events: list[Event] = []
+        for feature in (data or {}).get("features") or []:
+            props = feature.get("properties") or {}
+            event_id = feature.get("id")
+            if not event_id:
+                continue
+
+            # horodatage sans suffixe de fuseau, comme l'INGV
+            time = to_utc(props.get("time"))
+            if time is None:
+                continue
+
+            coords = (feature.get("geometry") or {}).get("coordinates") or []
+            lon = coords[0] if len(coords) > 0 else None
+            lat = coords[1] if len(coords) > 1 else None
+            depth = coords[2] if len(coords) > 2 else None
+
+            magnitude = props.get("mag")
+            place = props.get("place") or "region inconnue"
+            events.append(
+                Event(
+                    id=f"geofon:{event_id}",
+                    source="geofon",
+                    source_id=str(event_id),
+                    kind=Kind.EARTHQUAKE,
+                    time=time,
+                    lat=lat,
+                    lon=lon,
+                    depth_km=depth,
+                    magnitude=magnitude,
+                    mag_type=props.get("magType"),
+                    place=place,
+                    severity=severity_from_magnitude(magnitude),
+                    # "C:confirmed" vs "A:automatic": une solution revue par un
+                    # analyste ne vaut pas une detection automatique
+                    alert=(props.get("status") or "").split(":")[-1] or None,
+                    title=f"M {magnitude} -- {place}" if magnitude else place,
+                    url=props.get("url"),
+                    raw={"status": props.get("status"), "has_moment_tensor": props.get("hasMT")},
+                )
+            )
         return events

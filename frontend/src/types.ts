@@ -54,6 +54,8 @@ export interface SourceHealth {
   last_ok: string | null
   last_error: string | null
   events_seen: number
+  /** ce qui est reellement entre dans le store (events_seen compte les lectures) */
+  ingested?: number
   errors: number
 }
 

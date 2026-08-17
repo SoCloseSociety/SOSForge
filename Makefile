@@ -20,8 +20,15 @@ dev-api: ## API FastAPI en rechargement automatique sur :8300
 dev-web: ## frontend Vite sur :5273 (proxy /api et /ws vers :8300)
 	cd frontend && npm run dev
 
-test: ## tests des normalizers sur payloads reels
+test: ## tests backend + frontend
 	cd backend && .venv/bin/python -m pytest tests -q
+	cd frontend && npx vitest run
+
+test-backend: ## tests des normalizers sur payloads reels
+	cd backend && .venv/bin/python -m pytest tests -q
+
+test-frontend: ## tests du store, des filtres, de l'i18n et du rendu
+	cd frontend && npx vitest run
 
 lint: ## ruff
 	cd backend && .venv/bin/ruff check app tests

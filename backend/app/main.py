@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.dedupe import Deduper
+from app.geocode import search as geocode_search
 from app.hub import Client, hub
 from app.models.event import utcnow
 from app.nearby import deep_links, windy_webcams
@@ -21,11 +22,12 @@ from app.pipeline import Pipeline
 from app.sources.base import Source
 from app.sources.emsc_ws import EmscWebsocketSource
 from app.sources.gdacs import GdacsSource
-from app.sources.hazards import AshSource, NhcSource
+from app.sources.hazards import AshSource, EonetSource, NhcSource
 from app.sources.nws import NwsSource
 from app.sources.regional import (
     AfadSource,
     BmkgSource,
+    GeofonSource,
     GeonetSource,
     IngvSource,
     JmaSource,
@@ -87,6 +89,10 @@ def build_sources() -> list[Source]:
         built.append(NhcSource(settings.nhc_poll_seconds))
     if settings.enable_ash:
         built.append(AshSource(settings.ash_poll_seconds))
+    if settings.enable_geofon:
+        built.append(GeofonSource(settings.geofon_poll_seconds))
+    if settings.enable_eonet:
+        built.append(EonetSource(settings.eonet_poll_seconds))
     return built
 
 
@@ -101,9 +107,26 @@ async def heartbeat() -> None:
                     "type": "tick",
                     "server_time": utcnow().isoformat(),
                     "stats": store.stats(),
-                    "sources": [s.health.snapshot() for s in sources],
+                    "sources": [
+                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
+                        for s in sources
+                    ],
                     "clients": hub.client_count,
                 }
+            )
+
+
+async def sweep_stale() -> None:
+    """Balaye les alertes que plus aucune source ne mentionne."""
+    while True:
+        await asyncio.sleep(settings.sweep_seconds)
+        removed = store.prune_stale(settings.stale_after_hours)
+        if removed:
+            log.info(
+                "purge: %d alertes sans nouvelle depuis %.0f h (%s)",
+                len(removed),
+                settings.stale_after_hours,
+                ", ".join(sorted({e.source for e in removed})),
             )
 
 
@@ -133,6 +156,7 @@ async def lifespan(app: FastAPI):
     # 2. lancer les ingesteurs + le heartbeat
     tasks = [asyncio.create_task(s.supervise(pipeline.emit), name=f"src:{s.name}") for s in sources]
     tasks.append(asyncio.create_task(heartbeat(), name="heartbeat"))
+    tasks.append(asyncio.create_task(sweep_stale(), name="sweep"))
     log.info(
         "SOSForge en ligne -- %d sources: %s", len(sources), ", ".join(s.name for s in sources)
     )
@@ -226,6 +250,13 @@ async def api_event(event_id: str) -> dict:
     return {"found": True, "event": event.public(), "raw": event.raw}
 
 
+@app.get("/api/geocode")
+async def api_geocode(q: str = Query(min_length=2, max_length=120)) -> dict:
+    """Recherche d'une zone par son nom. Proxifie pour tenir la cadence
+    imposee par Nominatim (1 req/s) que des appels navigateur violeraient."""
+    return {"query": q, "results": await geocode_search(q)}
+
+
 @app.get("/api/stats")
 async def api_stats() -> dict:
     return store.stats()
@@ -233,9 +264,16 @@ async def api_stats() -> dict:
 
 @app.get("/api/sources")
 async def api_sources() -> dict:
+    # `events_seen` compte ce que la source a LU a chaque cycle (la liste JMA en
+    # rend 763 a chaque poll), `ingested` ce qui est reellement entre dans le
+    # store. Afficher le premier seul donnait une observabilite trompeuse.
+    ingested = store.counters
     return {
         "server_time": utcnow().isoformat(),
-        "sources": [{**s.health.snapshot(), "mode": s.kind} for s in sources],
+        "sources": [
+            {**s.health.snapshot(), "mode": s.kind, "ingested": ingested.get(s.name, 0)}
+            for s in sources
+        ],
     }
 
 
@@ -257,7 +295,10 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     "server_time": utcnow().isoformat(),
                     "events": [e.public() for e in snapshot],
                     "stats": store.stats(),
-                    "sources": [s.health.snapshot() for s in sources],
+                    "sources": [
+                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
+                        for s in sources
+                    ],
                 },
                 default=str,
             )

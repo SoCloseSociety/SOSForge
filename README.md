@@ -1,10 +1,10 @@
 # SOSForge
 
 Suivi **temps reel** des seismes, tsunamis, volcans, cyclones et alertes
-catastrophes. Un flux unique, agrege depuis **treize sources officielles**,
+catastrophes. Un flux unique, agrege depuis **quinze sources officielles**,
 diffuse a la seconde vers le navigateur par websocket. Interface en cinq langues.
 
-Aucune cle d'API n'est necessaire: les treize sources sont publiques et ouvertes.
+Aucune cle d'API n'est necessaire: les quinze sources sont publiques et ouvertes.
 
 ![capture](docs/screenshot.png)
 
@@ -34,7 +34,7 @@ localise, sans attendre un cycle. Les autres sont des sources polling dont la
 cadence est calee sur leur frequence reelle de publication -- poller USGS plus
 vite que sa regeneration ne rendrait rien de plus.
 
-## Les treize sources (aucune cle API requise)
+## Les quinze sources (aucune cle API requise)
 
 **Mondiales**
 
@@ -46,6 +46,8 @@ vite que sa regeneration ne rendrait rien de plus.
 | GDACS | `gdacs.org/xml/rss.xml` | poll 120 s | cyclones, inondations, feux, volcans, secheresses, avec niveau vert/orange/rouge |
 | SIGMET cendres (AWC) | `aviationweather.gov/api/data/isigmet?hazard=VA` | poll 180 s | **cendres volcaniques structurees, monde entier** -- le seul flux machine-lisible equivalent aux VAAC |
 | NHC | `nhc.noaa.gov/CurrentStorms.json` | poll 300 s | cyclones tropicaux Atlantique et Pacifique: position, vents, categorie, advisory |
+| GEOFON (GFZ) | `geofon.gfz.de/eqinfo/list.php?fmt=geojson` | poll 60 s | troisieme catalogue mondial: le dedup passe d'un accord a deux a un **vote a trois** |
+| NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events` | poll 600 s | evenements naturels en cours vus de l'espace: **feux de forets suivis comme des evenements**, second avis sur les tempetes |
 
 **Nationales et regionales** -- elles ne sont pas la pour la redondance: chacune apporte ce que l'EMSC n'a pas.
 
@@ -78,6 +80,7 @@ En docker: `make up` puis <http://localhost:8380>.
 | `GET /api/events` | flux recent. Filtres: `limit`, `kind`, `min_magnitude`, `hours`, `primary_only` |
 | `GET /api/events/{id}` | un evenement avec son payload source brut |
 | `GET /api/events/{id}/nearby` | vues en direct de la zone: liens profonds + webcams |
+| `GET /api/geocode?q=` | recherche de zone (proxy Nominatim, cadence et cache) |
 | `GET /api/stats` | compteurs de la derniere heure |
 | `GET /api/sources` | sante de chaque source (connectee, evenements vus, derniere erreur) |
 | `WS /ws` | snapshot a la connexion, puis `event` / `update` / `tick` (1/s) |
@@ -101,6 +104,10 @@ Messages websocket:
   que les sources JMA et BMKG servent.
 - **Drapeau du pays** sur chaque evenement, resolu cote serveur. Pas de pays
   identifiable (haute mer)? Un globe, jamais un drapeau approximatif.
+- **Recherche de zone**: taper un nom filtre le flux instantanement (lieu, titre,
+  pays) *et* propose d'aller a cette zone sur la carte, meme si rien ne s'y passe
+  -- c'est le cas le plus utile en situation reelle. Le geocodage passe par le
+  backend, qui tient la cadence d'une requete par seconde imposee par Nominatim.
 - **Clic sur un evenement**: la carte plonge au plus pres de la zone, et une fiche
   ouvre les **vues en direct** -- webcams Windy, recherche YouTube live, imagerie
   satellite NASA Worldview du jour, vue satellite. Ces liens marchent sans aucune
@@ -132,16 +139,24 @@ Messages websocket:
   (`SOS_MAX_EVENT_AGE_DAYS`) les ecarte, avec une nuance qui compte: une alerte
   grave **et en cours** (cyclone rouge) survit, un seisme passe non -- un seisme
   est instantane, il ne "dure" pas.
+- **Alerte terminee.** Une alerte "en cours" (feu EONET, cyclone NHC, alerte
+  GDACS courante) echappe a l'horizon tant que sa source la publie. Mais un
+  balayage retire celles qu'aucune source ne mentionne plus depuis six heures:
+  une source qui se tait a implicitement dit que c'etait fini.
+- **Horodatage dans le futur.** Une source dont l'horloge derive produisait un
+  evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
+  cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
 - **Panne d'une source.** Une source dont tous les flux echouent ne peut pas
-  s'afficher verte. Le pied de page montre l'etat reel des treize.
+  s'afficher verte. Le pied de page montre l'etat reel des quinze.
 
 ## Verification
 
 ```bash
-make test        # 62 tests: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
+make test        # 66 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
+cd frontend && npx vitest run   # 55 tests frontend: filtres, ingestion, i18n, rendu
 make lint
 make typecheck
-make smoke       # etat live des treize sources
+make smoke       # etat live des quinze sources
 ```
 
 ## Choix d'architecture

@@ -72,7 +72,9 @@ export function Feed({ events, now, emptyKey }: Props) {
     return <div className="feed-empty">{t(emptyKey)}</div>
   }
   return (
-    <div className="feed">
+    // aria-live="polite": un nouvel evenement est annonce sans interrompre la
+    // lecture en cours. "assertive" serait insupportable a 20 evenements/minute.
+    <div className="feed" role="feed" aria-live="polite" aria-busy={false}>
       {events.map((event) => (
         <Row key={event.id} event={event} now={now} />
       ))}

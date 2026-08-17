@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 
-from app.models.event import Event, Kind, Severity
+from app.models.event import Event, Kind, Severity, to_utc
 from app.sources.regional import JsonPollSource
 
 log = logging.getLogger(__name__)
@@ -62,11 +62,8 @@ class NhcSource(JsonPollSource):
             lat = storm.get("latitudeNumeric")
             lon = storm.get("longitudeNumeric")
 
-            try:
-                time = datetime.fromisoformat(
-                    (storm.get("lastUpdate") or "").replace("Z", "+00:00")
-                ).astimezone(UTC)
-            except (TypeError, ValueError):
+            time = to_utc(storm.get("lastUpdate"))
+            if time is None:
                 continue
 
             name = storm.get("name") or "sans nom"
@@ -87,6 +84,8 @@ class NhcSource(JsonPollSource):
                     mag_type="kt",
                     place=name,
                     severity=cyclone_severity(wind_kt, classification),
+                    # CurrentStorms ne liste QUE les tempetes actives
+                    ongoing=True,
                     alert=classification.lower() or None,
                     title=f"{classification} {name} -- {wind_kt or '?'} kt",
                     url=advisory or "https://www.nhc.noaa.gov/",
@@ -169,6 +168,133 @@ class AshSource(JsonPollSource):
                         "base_ft": sigmet.get("base"),
                         "direction": sigmet.get("dir"),
                         "speed_kt": sigmet.get("spd"),
+                    },
+                )
+            )
+        return events
+
+
+# ------------------------------------------------------------------------- EONET
+
+
+def centroid(coords) -> tuple[float | None, float | None]:
+    """Barycentre d'une geometrie GeoJSON de profondeur quelconque."""
+    points: list[tuple[float, float]] = []
+
+    def walk(node) -> None:
+        if (
+            isinstance(node, (list, tuple))
+            and len(node) == 2
+            and all(isinstance(v, (int, float)) for v in node)
+        ):
+            points.append((float(node[0]), float(node[1])))
+        elif isinstance(node, (list, tuple)):
+            for child in node:
+                walk(child)
+
+    walk(coords)
+    if not points:
+        return None, None
+    return (
+        sum(p[1] for p in points) / len(points),
+        sum(p[0] for p in points) / len(points),
+    )
+
+
+# EONET classe par categorie; on retombe sur nos propres types d'alea.
+EONET_KIND = {
+    "wildfires": Kind.WILDFIRE,
+    "severeStorms": Kind.CYCLONE,
+    "volcanoes": Kind.VOLCANO,
+    "floods": Kind.FLOOD,
+    "drought": Kind.DROUGHT,
+    "earthquakes": Kind.EARTHQUAKE,
+    "landslides": Kind.OTHER,
+    "seaLakeIce": Kind.OTHER,
+    "snow": Kind.STORM,
+    "dustHaze": Kind.OTHER,
+    "manmade": Kind.OTHER,
+    "waterColor": Kind.OTHER,
+    "temperatureExtremes": Kind.HEAT,
+}
+
+
+class EonetSource(JsonPollSource):
+    """NASA EONET -- evenements naturels en cours, observes depuis l'espace.
+
+    Ce qu'il apporte que rien d'autre n'a ici: les **feux de forets** suivis
+    comme des evenements (avec un identifiant stable et une trajectoire), la ou
+    FIRMS ne donne que des pixels chauds a clusteriser soi-meme et GDACS ne voit
+    que les plus gros. C'est aussi un second avis mondial sur les tempetes.
+
+    Latence: EONET agrege des sources qui vont de la minute a quelques heures.
+    Ce n'est donc pas du "direct" au sens de l'EMSC, et le drapeau `breaking` du
+    pipeline s'en charge tout seul en regardant l'age reel de l'evenement.
+    """
+
+    name = "eonet"
+    kind = "poll"
+    # `days=14`: EONET garde des evenements "open" tres longtemps (un feu non
+    # clos reste ouvert des semaines apres sa derniere observation). Sans cette
+    # borne, 250 feux dont beaucoup dorment depuis un mois noyaient la carte.
+    url = "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14&limit=200"
+
+    def parse_payload(self, data) -> list[Event]:
+        events: list[Event] = []
+        for row in (data or {}).get("events") or []:
+            event_id = row.get("id")
+            geometry = row.get("geometry") or []
+            if not event_id or not geometry:
+                continue
+
+            # `geometry` est une TRAJECTOIRE: la derniere entree est la position
+            # courante. Prendre la premiere afficherait un cyclone la ou il etait
+            # il y a trois jours.
+            last = geometry[-1]
+            time = to_utc(last.get("date"))
+            if time is None:
+                continue
+
+            coords = last.get("coordinates") or []
+            lat = lon = None
+            if last.get("type") == "Point" and len(coords) >= 2:
+                lon, lat = coords[0], coords[1]
+            elif coords:
+                # emprise (Polygon): on pose le point en son centre
+                lat, lon = centroid(coords)
+
+            categories = row.get("categories") or []
+            category = (categories[0] or {}).get("id") if categories else None
+            kind = EONET_KIND.get(category or "", Kind.OTHER)
+
+            magnitude = last.get("magnitudeValue")
+            unit = last.get("magnitudeUnit")
+            severity = Severity.MODERATE
+            if kind is Kind.CYCLONE and isinstance(magnitude, (int, float)):
+                severity = cyclone_severity(float(magnitude), "HU" if magnitude >= 64 else "TS")
+
+            title = row.get("title") or "evenement EONET"
+            events.append(
+                Event(
+                    id=f"eonet:{event_id}",
+                    source="eonet",
+                    source_id=str(event_id),
+                    kind=kind,
+                    time=time,
+                    lat=lat,
+                    lon=lon,
+                    magnitude=float(magnitude) if isinstance(magnitude, (int, float)) else None,
+                    mag_type=unit,
+                    place=title,
+                    severity=severity,
+                    # on interroge EONET avec status=open: par definition en cours
+                    ongoing=True,
+                    title=title,
+                    url=row.get("link"),
+                    raw={
+                        "category": category,
+                        "sources": [s.get("id") for s in row.get("sources") or []],
+                        "track_points": len(geometry),
                     },
                 )
             )

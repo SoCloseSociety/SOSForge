@@ -44,7 +44,10 @@ export const SOURCE_LABEL: Record<string, string> = {
  * drapeau, jamais un drapeau approximatif -- la haute mer n'appartient a
  * personne. */
 export function flagEmoji(iso2: string | null): string | null {
-  if (!iso2 || iso2.length !== 2) return null
+  // deux caracteres NON alphabetiques ('12', '??') sortaient de la plage des
+  // indicateurs regionaux et affichaient un caractere parasite -- alors que la
+  // regle du produit est: jamais un drapeau approximatif
+  if (!iso2 || !/^[A-Za-z]{2}$/.test(iso2)) return null
   return String.fromCodePoint(
     ...[...iso2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
   )

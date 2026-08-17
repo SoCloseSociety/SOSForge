@@ -16,7 +16,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from app.models.event import Event, Kind, Severity
+from app.models.event import Event, Kind, Severity, to_utc
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -83,13 +83,7 @@ def _centroid(geometry: dict | None) -> tuple[float | None, float | None]:
 
 
 def _parse_time(value: str | None) -> datetime:
-    if value:
-        try:
-            dt = datetime.fromisoformat(value)
-            return dt.astimezone(UTC)
-        except ValueError:
-            pass
-    return datetime.now(UTC)
+    return to_utc(value) or datetime.now(UTC)
 
 
 def parse_feature(feature: dict) -> Event | None:

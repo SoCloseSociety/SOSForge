@@ -88,7 +88,12 @@ class VolcanoSource(Source):
         lat, lon, country = self._catalog.get(vnum, (None, None, None))
 
         return Event(
-            id=f"volcano:{vnum}:{identifier}",
+            # Cle = le VOLCAN, pas le bulletin. Chaque nouveau bulletin pour le
+            # meme volcan doit mettre a jour l'entree existante: sinon les
+            # bulletins s'empilaient en marqueurs superposes, et comme une alerte
+            # volcanique est "en cours" (jamais coupee par l'horizon), les
+            # anciens ne partaient jamais.
+            id=f"volcano:{vnum or identifier}",
             source="volcano",
             source_id=vnum or identifier,
             kind=Kind.VOLCANO,
@@ -98,10 +103,13 @@ class VolcanoSource(Source):
             place=name,
             country=country,
             severity=COLOR_SEVERITY.get(color, Severity.INFO),
+            # getElevatedVolcanoes ne rend que les volcans actuellement en alerte
+            ongoing=True,
             alert=color.lower(),
             title=f"{name} -- alerte {level or color} ({row.get('obs_abbr', '').upper()})",
             url=row.get("notice_url"),
             raw={
+                "notice": identifier,
                 "color_code": color,
                 "alert_level": level,
                 "observatory": row.get("obs_fullname"),

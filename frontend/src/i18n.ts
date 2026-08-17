@@ -46,6 +46,10 @@ const fr: Dict = {
   'banner.major': 'ALERTE MAJEURE',
   'banner.others': '{n} autre(s) alerte(s) en cours',
 
+  'search.placeholder': 'Rechercher une zone...',
+  'search.goto': 'Aller à',
+  'search.none': 'Aucune zone trouvée',
+  'filters.empty.search': 'Aucun événement ne correspond à cette recherche.',
   'filters.window': 'Fenêtre',
   'filters.minmag': 'Magnitude min',
   'filters.empty': 'Aucun événement ne correspond aux filtres.',
@@ -127,6 +131,10 @@ const en: Dict = {
   'banner.major': 'MAJOR ALERT',
   'banner.others': '{n} other alert(s) ongoing',
 
+  'search.placeholder': 'Search an area...',
+  'search.goto': 'Go to',
+  'search.none': 'No area found',
+  'filters.empty.search': 'No event matches this search.',
   'filters.window': 'Window',
   'filters.minmag': 'Min magnitude',
   'filters.empty': 'No event matches the filters.',
@@ -207,6 +215,10 @@ const es: Dict = {
   'banner.major': 'ALERTA MAYOR',
   'banner.others': '{n} otra(s) alerta(s) en curso',
 
+  'search.placeholder': 'Buscar una zona...',
+  'search.goto': 'Ir a',
+  'search.none': 'Ninguna zona encontrada',
+  'filters.empty.search': 'Ningún evento coincide con esta búsqueda.',
   'filters.window': 'Ventana',
   'filters.minmag': 'Magnitud mín.',
   'filters.empty': 'Ningún evento coincide con los filtros.',
@@ -287,6 +299,10 @@ const ja: Dict = {
   'banner.major': '重大警報',
   'banner.others': '他に {n} 件の警報が継続中',
 
+  'search.placeholder': '地域を検索...',
+  'search.goto': '移動',
+  'search.none': '地域が見つかりません',
+  'filters.empty.search': 'この検索に一致する事象はありません。',
   'filters.window': '期間',
   'filters.minmag': '最小マグニチュード',
   'filters.empty': '条件に一致する事象はありません。',
@@ -367,6 +383,10 @@ const id: Dict = {
   'banner.major': 'PERINGATAN BESAR',
   'banner.others': '{n} peringatan lain sedang berlangsung',
 
+  'search.placeholder': 'Cari wilayah...',
+  'search.goto': 'Ke',
+  'search.none': 'Wilayah tidak ditemukan',
+  'filters.empty.search': 'Tidak ada kejadian yang cocok dengan pencarian ini.',
   'filters.window': 'Rentang',
   'filters.minmag': 'Magnitudo min.',
   'filters.empty': 'Tidak ada kejadian yang cocok dengan filter.',
@@ -429,7 +449,16 @@ const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id }
 const STORAGE_KEY = 'sosforge.lang'
 
 export function detectLang(): Lang {
-  const stored = localStorage.getItem(STORAGE_KEY) as Lang | null
+  // `detectLang` s'execute a la creation du store, donc au chargement du module.
+  // Un acces localStorage qui jette (iframe aux cookies bloques, certains modes
+  // prives) provoquerait exactement ce que ce produit redoute le plus: une page
+  // blanche au demarrage.
+  let stored: Lang | null = null
+  try {
+    stored = localStorage.getItem(STORAGE_KEY) as Lang | null
+  } catch {
+    stored = null
+  }
   if (stored && stored in DICTS) return stored
   for (const candidate of navigator.languages ?? [navigator.language]) {
     const code = candidate.slice(0, 2).toLowerCase() as Lang

@@ -42,6 +42,8 @@ class Settings(BaseSettings):
     # aleas non sismiques a forte valeur: cyclones NHC, cendres volcaniques
     enable_nhc: bool = True
     enable_ash: bool = True
+    enable_geofon: bool = True
+    enable_eonet: bool = True
 
     emsc_ws_url: str = "wss://www.seismicportal.eu/standing_order/websocket"
     usgs_feed_url: str = (
@@ -62,6 +64,8 @@ class Settings(BaseSettings):
     afad_poll_seconds: float = 60.0
     nhc_poll_seconds: float = 300.0
     ash_poll_seconds: float = 180.0
+    geofon_poll_seconds: float = 60.0
+    eonet_poll_seconds: float = 600.0
 
     # backfill au demarrage: on ne veut pas d'une carte vide
     backfill_url: str = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
@@ -82,6 +86,13 @@ class Settings(BaseSettings):
     # La liste JMA remonte a plus de neuf mois, GDACS garde ses alertes des
     # semaines. Les gravites severe et extreme ne sont jamais coupees.
     max_event_age_days: float = 3.0
+    # une alerte "en cours" qu'aucune source ne mentionne plus depuis ce delai
+    # est consideree terminee. Le cycle de polling le plus lent est de 300 s,
+    # donc 6 h laissent une marge tres large avant de conclure au silence.
+    # tolerance d'avance d'horloge avant de considerer un horodatage comme faux
+    future_tolerance_seconds: float = 120.0
+    stale_after_hours: float = 6.0
+    sweep_seconds: float = 300.0
 
     # --- dedup inter-sources ---
     dedupe_window_seconds: float = 90.0

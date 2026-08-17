@@ -33,6 +33,22 @@ class Pipeline:
             self.dropped += 1
             return
 
+        # Un horodatage DANS LE FUTUR est une erreur de source (fuseau mal pose,
+        # horloge derivante). Non filtre, il traversait tout: l'horizon le laissait
+        # passer (age negatif), il etait annonce "en direct" en permanence, et le
+        # tri par date le clouait en tete du flux pour toujours. On tolere une
+        # petite avance (les horloges ne sont jamais exactement synchrones) et on
+        # rejette au-dela.
+        if event.age_seconds < -settings.future_tolerance_seconds:
+            self.dropped += 1
+            log.warning(
+                "%s: horodatage dans le futur de %.0f s, evenement rejete (%s)",
+                event.source,
+                -event.age_seconds,
+                event.id,
+            )
+            return
+
         # Horizon d'ingestion. Plusieurs sources servent un catalogue et non un
         # flux: la liste JMA remonte a plus de neuf mois, GDACS garde ses alertes
         # des semaines. Sans horizon, ces archives remplissent le ring buffer et
@@ -42,9 +58,12 @@ class Pipeline:
         # seisme, lui, est instantane: passe l'horizon c'est de l'histoire, meme
         # a magnitude 8. Sans cette nuance, un vieux seisme japonais a shindo 6
         # restait affiche neuf mois plus tard.
-        ongoing = event.kind is not Kind.EARTHQUAKE and event.severity in (
-            Severity.SEVERE,
-            Severity.EXTREME,
+        # "En cours" vient d'abord de la source quand elle le dit (EONET publie
+        # status=open, le NHC ne liste que les tempetes actives). La gravite
+        # elevee reste un repli pour les sources qui ne le disent pas.
+        ongoing = event.ongoing or (
+            event.kind is not Kind.EARTHQUAKE
+            and event.severity in (Severity.SEVERE, Severity.EXTREME)
         )
         if event.age_seconds > settings.max_event_age_days * 86400 and not ongoing:
             self.dropped += 1
@@ -68,7 +87,7 @@ class Pipeline:
         # alertes des jours: au premier cycle, une centaine d'evenements anciens
         # entrent d'un coup. Ils doivent apparaitre sur la carte, mais surtout pas
         # clignoter ni declencher le son comme s'ils venaient de tomber.
-        breaking = action == "new" and stored.age_seconds <= settings.breaking_seconds
+        breaking = action == "new" and 0 <= stored.age_seconds <= settings.breaking_seconds
 
         await hub.broadcast(
             {

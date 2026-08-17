@@ -35,6 +35,25 @@ def utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def to_utc(value: str | None) -> datetime | None:
+    """Parse un horodatage ISO et le ramene en UTC.
+
+    Le piege que ce helper existe pour fermer: `fromisoformat("2026-08-17T10:00")`
+    rend un datetime NAIF, et `.astimezone(UTC)` l'interprete alors comme l'heure
+    LOCALE DU SERVEUR. Un backend a Paris decalerait silencieusement de deux
+    heures tous les evenements d'une source qui omet son fuseau -- pas de crash,
+    juste des heures fausses sur un produit d'urgence. Ici, un horodatage sans
+    fuseau est declare UTC, ce que font toutes nos sources.
+    """
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
 class Event(BaseModel):
     """Un evenement, quelle que soit sa source."""
 
@@ -47,6 +66,11 @@ class Event(BaseModel):
     time: datetime
     received_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime | None = None
+    # derniere fois qu'une source a mentionne cet evenement. Sert a purger les
+    # alertes "en cours" que leur source a cesse de publier: sans ca, un cyclone
+    # dissipe ou un vieux bulletin volcanique restait affiche indefiniment,
+    # puisque l'horizon d'ingestion exempte justement les alertes en cours.
+    last_seen: datetime = Field(default_factory=utcnow)
 
     lat: float | None = None
     lon: float | None = None
@@ -63,6 +87,11 @@ class Event(BaseModel):
     country_code: str | None = None
 
     severity: Severity = Severity.INFO
+    # Evenement declare EN COURS par sa source (feu actif EONET, tempete NHC
+    # active, alerte GDACS courante). Il echappe a l'horizon d'ingestion tant
+    # que sa source continue de le publier -- c'est le balayage des alertes
+    # devenues muettes qui le fera partir, pas son age.
+    ongoing: bool = False
     tsunami: bool = False
     alert: str | None = Field(default=None, description="PAGER USGS: green/yellow/orange/red")
 
