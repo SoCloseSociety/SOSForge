@@ -1,0 +1,92 @@
+import type { Kind, Severity, SosEvent } from './types'
+
+export type T = (key: string, vars?: Record<string, string | number>) => string
+
+/** Gravite: couleur de la palette status + glyphe. Le LIBELLE vient de i18n --
+ * les trois voyagent toujours ensemble a l'affichage, la couleur seule ne doit
+ * jamais porter l'information. */
+export const SEVERITY_META: Record<Severity, { glyph: string; color: string }> = {
+  info: { glyph: 'i', color: '#6f7379' },
+  minor: { glyph: '▪', color: '#0ca30c' },
+  moderate: { glyph: '▲', color: '#fab219' },
+  severe: { glyph: '⚠', color: '#ec835a' },
+  extreme: { glyph: '⛔', color: '#d03b3b' },
+}
+
+export const KIND_GLYPH: Record<Kind, string> = {
+  earthquake: '🌍',
+  tsunami: '🌊',
+  volcano: '🌋',
+  cyclone: '🌀',
+  flood: '💧',
+  wildfire: '🔥',
+  storm: '⛈️',
+  heat: '🌡️',
+  drought: '🏜️',
+  other: '⚠️',
+}
+
+export const SOURCE_LABEL: Record<string, string> = {
+  emsc: 'EMSC (push)',
+  usgs: 'USGS',
+  tsunami: 'NOAA tsunami',
+  gdacs: 'GDACS',
+  nws: 'NWS',
+  volcano: 'USGS volcans',
+  jma: 'JMA',
+  bmkg: 'BMKG',
+  geonet: 'GeoNet',
+  ingv: 'INGV',
+}
+
+/** Le drapeau se calcule a partir du code ISO2 (deux indicateurs regionaux
+ * Unicode): aucune image a charger, et rien a stocker. Pas de code = pas de
+ * drapeau, jamais un drapeau approximatif -- la haute mer n'appartient a
+ * personne. */
+export function flagEmoji(iso2: string | null): string | null {
+  if (!iso2 || iso2.length !== 2) return null
+  return String.fromCodePoint(
+    ...[...iso2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
+  )
+}
+
+/** Nom du pays dans la langue de l'utilisateur, gratuitement, via l'Intl du
+ * navigateur: c'est deja traduit dans les cinq langues du produit. */
+export function countryName(lang: string, iso2: string | null): string | null {
+  if (!iso2) return null
+  try {
+    return new Intl.DisplayNames([lang], { type: 'region' }).of(iso2) ?? iso2
+  } catch {
+    return iso2
+  }
+}
+
+export function severityLabel(t: T, severity: Severity): string {
+  return t(`sev.${severity}`)
+}
+
+export function kindLabel(t: T, kind: Kind): string {
+  return t(`kind.${kind}`)
+}
+
+export function formatAge(t: T, seconds: number): string {
+  if (!Number.isFinite(seconds)) return ''
+  if (seconds < 5) return t('age.now')
+  if (seconds < 60) return t('age.s', { n: Math.floor(seconds) })
+  if (seconds < 3600) return t('age.min', { n: Math.floor(seconds / 60) })
+  if (seconds < 86400) return t('age.h', { n: Math.floor(seconds / 3600) })
+  return t('age.d', { n: Math.floor(seconds / 86400) })
+}
+
+export function formatClock(date: Date): string {
+  return date.toISOString().slice(11, 19)
+}
+
+/** Ce qu'on affiche dans la pastille de gauche: une magnitude si l'evenement en
+ * a une, sinon le pictogramme du type d'alea. */
+export function badge(event: SosEvent): { value: string; unit: string } {
+  if (event.magnitude !== null) {
+    return { value: event.magnitude.toFixed(1), unit: event.mag_type?.toUpperCase() ?? 'MAG' }
+  }
+  return { value: KIND_GLYPH[event.kind], unit: '' }
+}

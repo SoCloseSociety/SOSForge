@@ -1,0 +1,27 @@
+services:
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    environment:
+      SOS_DATA_DIR: /srv/data
+    volumes:
+      - sos-data:/srv/data
+    restart: unless-stopped
+    # pas de port publie: seul nginx parle a l'API
+    expose:
+      - '8300'
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    depends_on:
+      - api
+    ports:
+      - '8380:80'
+    restart: unless-stopped
+
+volumes:
+  sos-data:

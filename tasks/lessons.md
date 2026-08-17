@@ -1,0 +1,87 @@
+# SOSForge -- lessons
+
+Erreurs commises, cause racine, regle qui evite la repetition.
+
+## 1. Un selecteur Zustand qui derive un tableau tue l'application
+
+**Erreur.** `const visible = useStore(selectVisible)` ou `selectVisible` fait un
+`.filter()`. Page **entierement blanche**, aucune erreur visible dans l'UI, et le
+build comme `tsc` restent verts.
+
+**Cause racine.** Sous React 19, `useSyncExternalStore` compare les snapshots par
+identite. Un nouveau tableau a chaque appel = changement perpetuel = boucle
+infinie, et le composant ne monte jamais.
+
+**Regle.** Un selecteur `useStore` ne rend qu'une tranche **stable** (primitive ou
+reference existante). Toute derivation passe par `useMemo` dans le composant.
+
+## 2. Ne jamais conclure "l'UI marche" sans l'avoir regardee
+
+**Erreur.** Backend valide par curl, `tsc` vert, build vert. L'application ne
+montait pas du tout.
+
+**Cause racine.** Aucune de ces verifications n'execute le rendu dans un vrai
+navigateur.
+
+**Regle.** Toute UI se termine par une capture d'ecran de l'app qui tourne, et par
+la lecture des erreurs console (`--enable-logging=stderr --v=1` en headless).
+Une page blanche est une panne silencieuse: les erreurs console sont le seul
+endroit ou elle parle.
+
+## 3. Une dependance de rendu ne doit pas pouvoir tuer le produit
+
+**Erreur.** `new maplibregl.Map(...)` leve sans WebGL et l'exception non rattrapee
+demontait tout l'arbre React: le flux d'alertes disparaissait a cause d'un fond
+de carte.
+
+**Regle.** Toute initialisation de bibliotheque dependante du materiel (WebGL,
+WebAudio, WebRTC) est dans un `try/catch` avec un repli. Sur un produit d'urgence,
+la donnee passe avant l'agrement.
+
+## 4. "Nouveau pour mon buffer" n'est pas "vient de se produire"
+
+**Erreur.** Le premier cycle GDACS poussait ~96 alertes vieilles de plusieurs
+jours, toutes annoncees comme du direct (halo, clignotement, son).
+
+**Cause racine.** La fraicheur etait deduite de l'action du store (`new`) au lieu
+de l'age reel de l'evenement.
+
+**Regle.** La fraicheur se calcule sur l'horodatage de **l'evenement**, jamais sur
+son heure d'arrivee. Le serveur tranche (`breaking`), le client obeit.
+
+## 5. Un flux "live" se trie par date d'evenement, pas d'arrivee
+
+**Erreur.** Un bulletin tsunami vieux de trois jours, re-poll a chaque cycle,
+occupait la tete du direct.
+
+**Regle.** L'ordre d'arrivee est un detail d'implementation du polling. Ce que
+l'utilisateur lit, c'est une chronologie d'evenements.
+
+## 6. Une source agregatrice doit etre filtree avant d'etre affichee
+
+**Erreur.** GDACS integre tel quel: 397 entrees dont 344 feux verts et des
+secheresses ouvertes depuis un an, qui noyaient seismes et tsunamis.
+
+**Regle.** Toute source agregatrice arrive avec une regle de pertinence
+explicite et configurable. Ici: gravite elevee toujours conservee, le reste
+seulement s'il vient d'etre publie.
+
+## 7. Un champ XML peut porter sa valeur dans un attribut
+
+**Erreur.** `float(gdacs:severity.text)` sur `"Magnitude 5.8M, Depth:54.7km"`:
+magnitude systematiquement perdue. La vraie valeur est dans l'attribut `value`.
+
+**Regle.** Avant d'ecrire un normalizer, dumper le payload reel et lire les
+**attributs** autant que le texte. Aucun schema ne se devine: les conventions
+divergent d'une source a l'autre (profondeur negative chez EMSC, positive chez
+USGS; epoch ms chez USGS, ISO chez EMSC).
+
+## 8. Une fixture de test doit venir de la vraie source
+
+**Erreur.** Fixture Atom tsunami ecrite a la main avec de vrais elements XHTML;
+elle a fait echouer un parseur qui, lui, fonctionnait sur le flux reel (ou le
+XHTML arrive echappe). Une heure a debugger le mauvais cote.
+
+**Regle.** Les fixtures sont des extraits verbatim de reponses capturees. Quand
+deux formes existent dans la nature, on parse la forme **normalisee** (ici: le
+texte debalise), pas le balisage.

@@ -1,0 +1,26 @@
+# secrets et donnees locales
+.env
+/backend/data/
+*.jsonl
+
+# python
+__pycache__/
+*.py[cod]
+/backend/.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# node (ancres: un ignore non ancre a deja fait disparaitre du vrai source)
+/frontend/node_modules/
+/frontend/dist/
+/frontend/tsconfig.tsbuildinfo
+*.local
+
+# captures de verification
+/frontend/*.png
+
+# os / editeurs
+.DS_Store
+.vscode/
+.idea/
