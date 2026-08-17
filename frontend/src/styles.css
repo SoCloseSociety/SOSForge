@@ -1012,3 +1012,22 @@ button {
     display: none;
   }
 }
+
+.live-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.live-actions button {
+  color: var(--ink-muted);
+  font-size: 14px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 6px;
+}
+
+.live-actions button:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}

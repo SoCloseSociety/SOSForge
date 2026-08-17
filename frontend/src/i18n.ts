@@ -96,6 +96,7 @@ const fr: Dict = {
   'detail.source': 'Source',
   'detail.official': 'Détail officiel',
   'detail.close': 'Fermer',
+  'detail.share': 'Copier le lien vers cet événement',
 
   'live.title': 'Voir la zone en direct',
   'live.cameras': 'Webcams à proximité',
@@ -180,6 +181,7 @@ const en: Dict = {
   'detail.source': 'Source',
   'detail.official': 'Official detail',
   'detail.close': 'Close',
+  'detail.share': 'Copy link to this event',
 
   'live.title': 'See the area live',
   'live.cameras': 'Nearby webcams',
@@ -264,6 +266,7 @@ const es: Dict = {
   'detail.source': 'Fuente',
   'detail.official': 'Detalle oficial',
   'detail.close': 'Cerrar',
+  'detail.share': 'Copiar enlace a este evento',
 
   'live.title': 'Ver la zona en directo',
   'live.cameras': 'Webcams cercanas',
@@ -348,6 +351,7 @@ const ja: Dict = {
   'detail.source': '情報源',
   'detail.official': '公式情報',
   'detail.close': '閉じる',
+  'detail.share': 'この事象へのリンクをコピー',
 
   'live.title': '現地のライブ映像',
   'live.cameras': '近くのウェブカメラ',
@@ -432,6 +436,7 @@ const id: Dict = {
   'detail.source': 'Sumber',
   'detail.official': 'Rincian resmi',
   'detail.close': 'Tutup',
+  'detail.share': 'Salin tautan ke kejadian ini',
 
   'live.title': 'Lihat lokasi secara langsung',
   'live.cameras': 'Webcam terdekat',

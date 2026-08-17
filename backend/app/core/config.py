@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     # alertes officielles hors USA
     enable_meteoalarm: bool = True
     enable_wmo: bool = True
+    # Relais tiers non officiel (Wolfx): enrichit, ne fait autorite sur rien.
+    # L'alerte precoce japonaise est la seule information de ce produit qui
+    # puisse encore servir a se mettre a l'abri.
+    enable_jma_eew: bool = True
+    enable_cenc: bool = True
 
     emsc_ws_url: str = "wss://www.seismicportal.eu/standing_order/websocket"
     usgs_feed_url: str = (
@@ -71,6 +76,9 @@ class Settings(BaseSettings):
     eonet_poll_seconds: float = 600.0
     meteoalarm_poll_seconds: float = 300.0
     wmo_poll_seconds: float = 300.0
+    # une EEW se compte en secondes; on reste raisonnable avec un service tiers
+    jma_eew_poll_seconds: float = 5.0
+    cenc_poll_seconds: float = 120.0
     # Meteoalarm: 1 vert, 2 jaune, 3 orange, 4 rouge. En dessous d'orange, c'est
     # du bulletin meteo, et il y en a plus de 2000 par cycle sur dix pays.
     meteoalarm_min_level: int = 3

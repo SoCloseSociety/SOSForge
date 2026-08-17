@@ -106,6 +106,45 @@ export function playAlert(severity: Severity) {
   }
 }
 
+const FILTERS_KEY = 'sosforge.filters'
+
+/** Les filtres survivent au rechargement: revenir sur la page et retrouver
+ * "Direct + seismes seulement" evite de refaire trois clics a chaque visite.
+ * La recherche texte, elle, n'est PAS persistee -- retrouver un filtre invisible
+ * qui masque tout le flux serait deroutant. */
+function loadFilters(): Pick<Filters, 'kinds' | 'minMagnitude' | 'windowMinutes'> | null {
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw)
+    const kinds: Kind[] = Array.isArray(saved.kinds) ? saved.kinds : ALL_KINDS
+    return {
+      kinds: new Set(kinds.filter((k) => ALL_KINDS.includes(k))),
+      minMagnitude: Number(saved.minMagnitude) || 0,
+      windowMinutes: WINDOWS.includes(Number(saved.windowMinutes))
+        ? Number(saved.windowMinutes)
+        : 1440,
+    }
+  } catch {
+    return null
+  }
+}
+
+function saveFilters(filters: Filters): void {
+  try {
+    localStorage.setItem(
+      FILTERS_KEY,
+      JSON.stringify({
+        kinds: [...filters.kinds],
+        minMagnitude: filters.minMagnitude,
+        windowMinutes: filters.windowMinutes,
+      }),
+    )
+  } catch {
+    /* mode prive: les filtres ne survivront pas, sans plus */
+  }
+}
+
 export const useStore = create<State>((set, get) => ({
   events: [],
   connected: false,
@@ -126,6 +165,7 @@ export const useStore = create<State>((set, get) => ({
     // montre l'actualite et non un catalogue
     windowMinutes: 1440,
     query: '',
+    ...(loadFilters() ?? {}),
   },
   fresh: new Set(),
   focus: null,
@@ -142,11 +182,22 @@ export const useStore = create<State>((set, get) => ({
       const kinds = new Set(state.filters.kinds)
       if (kinds.has(kind)) kinds.delete(kind)
       else kinds.add(kind)
-      return { filters: { ...state.filters, kinds } }
+      const next = { ...state.filters, kinds }
+      saveFilters(next)
+      return { filters: next }
     }),
   setMinMagnitude: (value) =>
-    set((state) => ({ filters: { ...state.filters, minMagnitude: value } })),
-  setWindow: (minutes) => set((state) => ({ filters: { ...state.filters, windowMinutes: minutes } })),
+    set((state) => {
+      const next = { ...state.filters, minMagnitude: value }
+      saveFilters(next)
+      return { filters: next }
+    }),
+  setWindow: (minutes) =>
+    set((state) => {
+      const next = { ...state.filters, windowMinutes: minutes }
+      saveFilters(next)
+      return { filters: next }
+    }),
   setQuery: (query) => set((state) => ({ filters: { ...state.filters, query } })),
   setFocus: (focus) => set({ focus }),
   setLang: (lang) => {

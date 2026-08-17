@@ -21,6 +21,7 @@ from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
 from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
+from app.sources.eew import CencSource, JmaEewSource
 from app.sources.emsc_ws import EmscWebsocketSource
 from app.sources.gdacs import GdacsSource
 from app.sources.hazards import AshSource, EonetSource, NhcSource
@@ -100,6 +101,10 @@ def build_sources() -> list[Source]:
                 settings.meteoalarm_poll_seconds, min_level=settings.meteoalarm_min_level
             )
         )
+    if settings.enable_jma_eew:
+        built.append(JmaEewSource(settings.jma_eew_poll_seconds))
+    if settings.enable_cenc:
+        built.append(CencSource(settings.cenc_poll_seconds))
     if settings.enable_wmo:
         built.append(WmoCapSource(settings.wmo_poll_seconds, settings.wmo_max_severity_rank))
     return built

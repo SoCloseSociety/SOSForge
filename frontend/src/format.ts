@@ -37,6 +37,15 @@ export const SOURCE_LABEL: Record<string, string> = {
   bmkg: 'BMKG',
   geonet: 'GeoNet',
   ingv: 'INGV',
+  geofon: 'GEOFON',
+  eonet: 'NASA EONET',
+  meteoalarm: 'Meteoalarm',
+  wmo: 'OMM',
+  nhc: 'NHC',
+  ash: 'Cendres (SIGMET)',
+  afad: 'AFAD',
+  jma_eew: 'JMA alerte precoce',
+  cenc: 'CENC',
 }
 
 /** Le drapeau se calcule a partir du code ISO2 (deux indicateurs regionaux

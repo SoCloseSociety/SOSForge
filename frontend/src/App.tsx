@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ALL_KINDS, WINDOWS, filterEvents, useStore } from './store'
 import { connectLive } from './live'
+import { syncDeepLink } from './deeplink'
 import { Feed } from './components/Feed'
 import { MapView } from './components/MapView'
 import { LivePanel } from './components/LivePanel'
@@ -245,6 +246,7 @@ export default function App() {
   )
 
   useEffect(() => connectLive(), [])
+  useEffect(() => syncDeepLink(), [])
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])

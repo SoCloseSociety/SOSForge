@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { eventUrl } from '../deeplink'
 import { useStore } from '../store'
 import {
   SEVERITY_META,
@@ -47,6 +48,7 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
   const select = useStore((s) => s.select)
   const [nearby, setNearby] = useState<Nearby | null>(null)
   const [loading, setLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (event.lat === null || event.lon === null) {
@@ -86,9 +88,23 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
             {formatAge(t, (now - Date.parse(event.time)) / 1000)}
           </p>
         </div>
-        <button type="button" onClick={() => select(null)} aria-label={t('detail.close')}>
-          ✕
-        </button>
+        <span className="live-actions">
+          <button
+            type="button"
+            onClick={() => {
+              void navigator.clipboard?.writeText(eventUrl(event.id))
+              setCopied(true)
+              window.setTimeout(() => setCopied(false), 2000)
+            }}
+            title={t('detail.share')}
+            aria-label={t('detail.share')}
+          >
+            {copied ? '✓' : '🔗'}
+          </button>
+          <button type="button" onClick={() => select(null)} aria-label={t('detail.close')}>
+            ✕
+          </button>
+        </span>
       </header>
 
       <dl className="live-facts">

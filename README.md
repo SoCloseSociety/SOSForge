@@ -1,10 +1,10 @@
 # SOSForge
 
 Suivi **temps reel** des seismes, tsunamis, volcans, cyclones et alertes
-catastrophes. Un flux unique, agrege depuis **dix-sept sources officielles**,
+catastrophes. Un flux unique, agrege depuis **dix-neuf sources officielles**,
 diffuse a la seconde vers le navigateur par websocket. Interface en cinq langues.
 
-Aucune cle d'API n'est necessaire: les dix-sept sources sont publiques et ouvertes.
+Aucune cle d'API n'est necessaire: les dix-neuf sources sont publiques et ouvertes.
 
 ![capture](docs/screenshot.png)
 
@@ -37,7 +37,7 @@ localise, sans attendre un cycle. Les autres sont des sources polling dont la
 cadence est calee sur leur frequence reelle de publication -- poller USGS plus
 vite que sa regeneration ne rendrait rien de plus.
 
-## Les dix-sept sources (aucune cle API requise)
+## Les dix-neuf sources (aucune cle API requise)
 
 **Mondiales**
 
@@ -65,6 +65,8 @@ vite que sa regeneration ne rendrait rien de plus.
 | INGV (Italie) | `webservices.ingv.it/fdsnws/event/1/query` | poll 60 s | idem, et au format FDSN standard (le meme contrat que l'USGS) |
 | AFAD (Turquie) | `deprem.afad.gov.tr/apiv2/event/filter` | poll 60 s | couverture fine de la faille nord-anatolienne |
 | Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{pays}` | poll 300 s | vigilances des services meteo nationaux de dix pays europeens |
+| JMA alerte precoce | `api.wolfx.jp/jma_eew.json` | poll 5 s | **la seule source emise PENDANT la propagation des ondes**, avant l'arrivee des secousses |
+| CENC (Chine) | `api.wolfx.jp/cenc_eqlist.json` | poll 120 s | Chine continentale, sans autre couverture ici |
 
 ## Demarrage
 
@@ -99,6 +101,20 @@ Messages websocket:
 {"type": "tick",     "server_time": "...", "stats": {...}}  // battement, chaque seconde
 ```
 
+### Une source d'une autre nature: l'alerte precoce
+
+Les dix-huit autres sources publient **apres** coup: un seisme a eu lieu, une
+agence le localise, on l'affiche. L'alerte precoce japonaise (EEW) est emise
+**pendant** la propagation des ondes, quelques secondes apres la detection par
+les stations les plus proches. C'est la seule information de ce produit qui
+puisse encore servir a se mettre a l'abri.
+
+**Reserve assumee.** La JMA et le CENC n'exposent pas d'API ouverte: on passe par
+le relais **tiers non officiel** Wolfx. C'est une source "au mieux": elle
+enrichit, elle ne fait autorite sur rien, et sa panne ne casse rien. Ses
+websockets refusent les clients non navigateur (403 Cloudflare), d'ou le polling.
+Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
+
 ## L'interface
 
 - **Fenetre temporelle**: Direct (15 min), 1 h, 6 h, 24 h, Tout. C'est la premiere
@@ -113,6 +129,12 @@ Messages websocket:
   pays) *et* propose d'aller a cette zone sur la carte, meme si rien ne s'y passe
   -- c'est le cas le plus utile en situation reelle. Le geocodage passe par le
   backend, qui tient la cadence d'une requete par seconde imposee par Nominatim.
+- **Lien partageable**: chaque evenement a son URL (`#e/<id>`). Sans elle, on ne
+  pouvait pas dire "regarde CE seisme" -- le destinataire tombait sur un flux qui
+  avait deja bouge. Le bouton de la fiche copie le lien.
+- **Filtres memorises**: fenetre, types et magnitude survivent au rechargement.
+  La recherche texte, non: retrouver un filtre invisible qui masque tout le flux
+  serait deroutant.
 - **Clic sur un evenement**: la carte plonge au plus pres de la zone, et une fiche
   ouvre les **vues en direct** -- webcams Windy, recherche YouTube live, imagerie
   satellite NASA Worldview du jour, vue satellite. Ces liens marchent sans aucune
@@ -162,16 +184,16 @@ Messages websocket:
   evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
   cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
 - **Panne d'une source.** Une source dont tous les flux echouent ne peut pas
-  s'afficher verte. Le pied de page montre l'etat reel des dix-sept.
+  s'afficher verte. Le pied de page montre l'etat reel des dix-neuf.
 
 ## Verification
 
 ```bash
-make test        # 66 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
+make test        # 84 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
 cd frontend && npx vitest run   # 55 tests frontend: filtres, ingestion, i18n, rendu
 make lint
 make typecheck
-make smoke       # etat live des dix-sept sources
+make smoke       # etat live des dix-neuf sources
 ```
 
 ## Choix d'architecture
