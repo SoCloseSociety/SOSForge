@@ -87,3 +87,57 @@ et Makefile fournis. Aucune cle API n'est requise.
   faudrait refaire une detection type GlobalQuake pour en tirer un seisme.
 - **JMA, Kandilli, ExpTech**: regionaux, et le vrai temps reel japonais est sous
   contrat. A rouvrir si une couverture Japon devient un besoin.
+
+
+---
+
+## Phase 2 -- elargissement et audit (2026-08-17 soir)
+
+Pilotee avec les outils maison: **ScanGithub** (scan #38) pour la veille repos,
+**ScrapMe** (monte en local) pour les sources sans API, et des agents **Fable**
+pour la decouverte de flux et l'audit adversarial.
+
+### Sources: 6 -> 13
+
+Ajoutees apres verification live de chaque endpoint (statut HTTP + payload reel):
+JMA, BMKG, GeoNet, INGV, AFAD, NHC (cyclones), SIGMET cendres volcaniques.
+
+Critere de selection assume: **l'EMSC relaie deja la plupart des agences
+nationales**. Une source regionale n'entre que si elle apporte autre chose --
+le shindo japonais, le potentiel tsunami indonesien, un seuil de detection local.
+
+### Ce que ScrapMe a apporte (et pourquoi il n'est pas dans le produit)
+
+Demarre en local (postgres + redis + worker + app), session obtenue, cinq
+scrapes reels lances sur des agences sismiques. Verdict honnete: **9 agences sur
+10 exposent un flux JSON/XML meilleur que n'importe quel scrape HTML**. Son
+`WebsiteScraper` est un extracteur de leads qui rend un apercu texte de 2000
+caracteres, jamais des lignes structurees. ScrapMe a donc servi a **trouver** les
+flux, pas a les consommer. C'est le bon usage.
+
+### Audit adversarial: 6 defauts confirmes, corriges
+
+1. **Fenetre de dedup balayee** -- les alertes re-emises a chaque cycle (~146/min)
+   vidaient l'historique en 5,5 min, alors que l'USGS publie 5 a 15 min apres
+   l'EMSC. Le dedup ratait donc sa cible principale.
+2. **Source tsunami affichee verte alors que ses deux feeds etaient morts** --
+   violation frontale de la regle produit.
+3. **Client ejecte laisse en connexion muette** -- sa tache d'envoi dormait pour
+   toujours.
+4. **Eviction du primaire d'un cluster** -- le seisme disparaissait du flux.
+5. **`load_backlog` jamais appele** et journal duplique a chaque redemarrage.
+6. Revision d'un evenement evince (consequence du 4).
+
+Cinq tests de non-regression couvrent maintenant ces cas: `tests/test_audit_fixes.py`.
+
+### Interface
+
+Fenetre temporelle (Direct / 1 h / 6 h / 24 h / Tout), zoom rapproche au clic,
+fiche avec vues en direct de la zone, cinq langues, drapeaux pays.
+
+### Backlog verifie (endpoints prouves, pas encore branches)
+
+Meteoalarm (Europe, CAP par pays), agregat CAP mondial de l'OMM, Environment
+Canada, JTWC. Ecartes avec raison: FIRMS et EFFIS (latence 3 h, pas d'ID
+d'evenement), GloFAS (cle obligatoire), BOM Australie (reutilisation interdite
+par son propre payload).

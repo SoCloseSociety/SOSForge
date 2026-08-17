@@ -85,3 +85,52 @@ XHTML arrive echappe). Une heure a debugger le mauvais cote.
 **Regle.** Les fixtures sont des extraits verbatim de reponses capturees. Quand
 deux formes existent dans la nature, on parse la forme **normalisee** (ici: le
 texte debalise), pas le balisage.
+
+
+## 9. Un agregateur ne doit jamais se declarer sain quand tout est mort
+
+**Erreur.** `TsunamiSource` appelait `health.ok()` apres sa boucle sur les deux
+centres, meme quand les deux avaient echoue. L'interface affichait la source
+d'alerte tsunami en vert alors qu'elle ne recevait plus rien.
+
+**Regle.** Une source multi-feed compte ses succes. Zero succes = pas de `ok()`.
+Sur un produit d'urgence, une sonde de sante qui ment est pire que pas de sonde.
+
+## 10. Une fenetre glissante se dimensionne en TEMPS, pas en nombre d'entrees
+
+**Erreur.** Le deduper gardait 800 entrees. Les alertes re-emises a chaque cycle
+de polling (~146/minute) la vidaient en 5,5 minutes, alors que l'USGS publie sa
+solution 5 a 15 minutes apres le push EMSC.
+
+**Regle.** Quand une fenetre doit couvrir une duree, elle se borne par le temps.
+Et on n'y met que ce qui peut reellement matcher: les non-seismes n'avaient rien
+a y faire.
+
+## 11. Attention a l'ordre des routes quand un converter avale les slashs
+
+**Erreur.** `/api/events/{event_id:path}` declaree avant
+`/api/events/{event_id:path}/nearby`: la generique matchait aussi la seconde, qui
+n'aurait jamais ete atteinte.
+
+**Regle.** La route la plus specifique se declare en premier. Avec `:path`,
+verifier l'ordre est obligatoire, pas optionnel.
+
+## 12. Le drapeau approximatif est une information fausse
+
+**Tentation.** Rattacher chaque evenement a un pays par boite englobante pour
+avoir un drapeau partout.
+
+**Regle.** Un seisme en pleine mer n'appartient a aucun pays. Table de
+correspondance explicite, et **None** quand on ne peut pas conclure: l'interface
+affiche un globe. Sur un produit d'urgence, ne rien dire vaut mieux que dire faux.
+
+## 13. Un outil maison peut etre le bon instrument sans etre la bonne piece
+
+**Constat.** ScrapMe a ete monte en local et lance sur cinq agences sismiques. Il
+a parfaitement servi a **decouvrir** que ces agences cachent des flux JSON. Mais
+le mettre dans le chemin de donnees aurait ajoute un service, une auth par
+cookie, un cycle job/poll asynchrone et une facturation en credits -- pour lire
+des flux que le backend prend en direct en cent lignes.
+
+**Regle.** Utiliser un outil pour ce qu'il fait bien, et savoir dire qu'il ne va
+pas dans le produit final. Le dire franchement au proprietaire de l'outil aussi.
