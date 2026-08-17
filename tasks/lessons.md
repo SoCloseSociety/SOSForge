@@ -192,3 +192,19 @@ ligne de commande que d'autres partagent (`make stop-api`). Et quand une panne
 voisine coincide avec mes propres actions, chercher ma responsabilite AVANT de
 designer une cause externe: une explication plausible et confortable n'est pas
 une preuve.
+
+
+## 19. Le meme bug de sous-chaine a frappe deux produits le meme soir
+
+**Constat.** Mon classifieur d'aleas faisait de "Flash Flood" une alerte
+volcanique, parce que "Flash" contient "ash". Le meme soir, l'audit de
+ScanGithub trouvait sa cause racine: son lexique declenchait la facette
+"documentation" sur le mot "rate" parce que "rate" est inclus dans "curated",
+et "dataset" sur "open" via "open data". Deux produits, deux equipes, un seul
+mecanisme.
+
+**Regle.** Une correspondance de motif sur du texte se fait sur des **mots
+entiers** (`re.findall(r"[a-z]+", texte)` puis intersection d'ensembles), jamais
+avec `motif in texte`. Un faux positif de ce type est invisible: il ne leve rien,
+il classe simplement de travers, et personne ne le voit avant de tomber dessus
+par hasard.

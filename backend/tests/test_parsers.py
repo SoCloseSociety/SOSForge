@@ -280,6 +280,18 @@ def test_nws_alert_without_geometry_still_parses():
     assert event.lat is None and event.lon is None
 
 
+def test_no_kind_is_matched_on_a_substring():
+    """La recherche par sous-chaine fabrique des faux positifs invisibles: c'est
+    ce mecanisme qui faisait de "Flash Flood" une alerte volcanique (il contient
+    "ash"), et qui a produit des facettes fantomes ailleurs dans la suite."""
+    assert classify("Flash Flood Warning") is Kind.FLOOD
+    assert classify("Ashfall Warning") is Kind.VOLCANO
+    assert classify("Volcanic Ash Advisory") is Kind.VOLCANO
+    # "winding" ne doit pas devenir "wind", "firearm" ne doit pas devenir "fire"
+    assert classify("Winding River Statement") is Kind.OTHER
+    assert classify("Freezing Rain Advisory") is Kind.STORM
+
+
 def test_nws_classification_order():
     # "Tsunami Warning" ne doit pas tomber dans le seau "storm"
     assert classify("Tsunami Warning") is Kind.TSUNAMI

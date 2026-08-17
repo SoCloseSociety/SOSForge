@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import UTC, datetime
 
 import httpx
@@ -33,24 +34,46 @@ NWS_SEVERITY = {
     "Unknown": Severity.INFO,
 }
 
-# ordre important: le premier motif trouve gagne ("Tsunami" avant "Flood")
+# Ordre important: le premier motif trouve gagne ("Tsunami" avant "Flood").
+#
+# Les motifs sont des MOTS ENTIERS, jamais des sous-chaines. La recherche par
+# sous-chaine fabrique des faux positifs invisibles: "Flash Flood" contient
+# "ash" et devenait une alerte volcanique dans le classifieur voisin. Le meme
+# mecanisme a produit des facettes fantomes dans un autre produit de la suite
+# ("rate" trouve dans "curated"). On ne le laisse pas en place ici.
 KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("tsunami",), Kind.TSUNAMI),
-    (("volcan", "ashfall"), Kind.VOLCANO),
-    (("hurricane", "tropical", "typhoon", "storm surge"), Kind.CYCLONE),
-    (("flood", "flash flood"), Kind.FLOOD),
-    (("fire", "red flag"), Kind.WILDFIRE),
+    (("volcano", "volcanic", "ash", "ashfall"), Kind.VOLCANO),
+    (("hurricane", "tropical", "typhoon", "surge"), Kind.CYCLONE),
+    (("flood", "flooding"), Kind.FLOOD),
+    (("fire", "wildfire", "flag"), Kind.WILDFIRE),
     (("earthquake",), Kind.EARTHQUAKE),
     (("heat",), Kind.HEAT),
-    (("tornado", "thunderstorm", "wind", "blizzard", "winter", "ice storm"), Kind.STORM),
+    (
+        (
+            "tornado",
+            "thunderstorm",
+            "wind",
+            "blizzard",
+            "winter",
+            "ice",
+            "snow",
+            "rain",
+            "freeze",
+            "freezing",
+            "frost",
+            "gale",
+        ),
+        Kind.STORM,
+    ),
     (("drought",), Kind.DROUGHT),
 ]
 
 
 def classify(event_name: str) -> Kind:
-    lowered = event_name.lower()
+    words = set(re.findall(r"[a-z]+", (event_name or "").lower()))
     for patterns, kind in KIND_PATTERNS:
-        if any(p in lowered for p in patterns):
+        if words & set(patterns):
             return kind
     return Kind.OTHER
 
