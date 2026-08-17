@@ -8,8 +8,8 @@ SuiteForge reste autoritaire pour les conventions inter-produits.
 ## Ce que c'est
 
 Un tracker temps reel des seismes, tsunamis, volcans et alertes catastrophes.
-Six sources publiques agregees en un flux normalise, diffuse par websocket avec
-un battement d'une seconde. FastAPI + React 19 / Vite / TypeScript / Zustand /
+Dix-neuf sources publiques agregees en un flux normalise, diffuse par websocket
+avec un battement d'une seconde. FastAPI + React 19 / Vite / TypeScript / Zustand /
 MapLibre. Aucune cle API: tout est public.
 
 ## La regle qui gouverne le produit
@@ -70,6 +70,16 @@ tracker eteint. Concretement:
 - **MapLibre**: l'initialisation est dans un `try/catch`. Sans WebGL, la carte
   affiche un repli et le flux continue.
 
+## Piege d'exploitation partage avec les autres produits SuiteForge
+
+**Ne jamais arreter cette API par motif de process.** Tous les produits de la
+suite lancent litteralement `uvicorn app.main:app`: un
+`pkill -f "uvicorn app.main:app"` tue aussi ScanGithub (`:8894`) et les autres
+qui tournent sur la meme machine. Cette erreur a deja coute a une session
+voisine trois balayages GitHub en cours, et l'a envoyee chercher la panne dans
+son propre code. Utiliser `make stop-api` (qui vise le port 8300) ou
+`lsof -ti tcp:8300 | xargs kill`.
+
 ## Commandes
 
 ```bash
@@ -78,7 +88,8 @@ make dev-api      # API :8300
 make dev-web      # UI :5273
 make test         # tests des normalizers sur payloads reels
 make lint typecheck
-make smoke        # etat live des six sources
+make stop-api     # arret par PORT, jamais par motif de process
+make smoke        # etat live des sources
 make up           # docker, UI sur :8380
 ```
 

@@ -17,6 +17,18 @@ dev: ## lance API + frontend (deux terminaux recommandes: dev-api / dev-web)
 dev-api: ## API FastAPI en rechargement automatique sur :8300
 	cd backend && .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8300
 
+# NE JAMAIS arreter cette API par motif de process. Tous les produits SuiteForge
+# lancent "uvicorn app.main:app": un `pkill -f "uvicorn app.main:app"` tue aussi
+# ScanGithub (:8894) et les autres, et cette erreur a deja coute des balayages
+# en cours a une autre session. Le port, lui, n'appartient qu'a nous.
+stop-api: ## arrete UNIQUEMENT l'API SOSForge, par son port
+	@lsof -ti tcp:8300 | xargs kill 2>/dev/null || echo "aucune API SOSForge sur :8300"
+
+restart-api: stop-api ## redemarre proprement l'API SOSForge
+	@sleep 1
+	cd backend && SOS_DATA_DIR=./data .venv/bin/python -m uvicorn app.main:app \
+		--host 127.0.0.1 --port 8300
+
 dev-web: ## frontend Vite sur :5273 (proxy /api et /ws vers :8300)
 	cd frontend && npm run dev
 

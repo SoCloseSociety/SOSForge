@@ -176,3 +176,19 @@ de silence a zero, ce qui masquait le probleme a chaque redemarrage.
 
 **Regle.** Un balayage cible explicitement ce qu'il doit retirer (`ongoing`), et
 un rejeu restaure l'etat tel qu'il etait, horloges comprises.
+
+
+## 18. Ne jamais arreter un service par motif de process sur une machine partagee
+
+**Erreur.** J'ai redemarre l'API une quinzaine de fois avec
+`pkill -f "uvicorn app.main:app"`. Tous les produits SuiteForge lancent
+exactement cette ligne: j'ai donc tue l'API de ScanGithub (`:8894`) a chaque
+fois, emportant ses balayages GitHub en cours. Pire, j'en ai tire une conclusion
+fausse et je l'ai transmise: j'ai attribue ces morts a la saturation du swap.
+Le swap etait bien sature, mais ce n'est pas lui qui les a tuees -- c'est moi.
+
+**Regle.** Un service s'arrete par son PORT ou son PID, jamais par un motif de
+ligne de commande que d'autres partagent (`make stop-api`). Et quand une panne
+voisine coincide avec mes propres actions, chercher ma responsabilite AVANT de
+designer une cause externe: une explication plausible et confortable n'est pas
+une preuve.
