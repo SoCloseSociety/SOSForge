@@ -72,7 +72,9 @@ class Pipeline:
         # Le pays est resolu ICI et pas dans chaque source: six sources sur dix
         # le donnent deja, l'USGS ne donne qu'un texte de lieu, et une regle
         # unique vaut mieux que dix variantes.
-        event.country_code = resolve_country(event.country, event.place)
+        # une source qui connait deja le code pays fait autorite: l'agregat de
+        # l'OMM le porte dans l'identifiant, on ne va pas le redeviner d'un texte
+        event.country_code = event.country_code or resolve_country(event.country, event.place)
 
         self.deduper.assign(event)
         stored, action = self.store.upsert(event)

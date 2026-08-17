@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     enable_ash: bool = True
     enable_geofon: bool = True
     enable_eonet: bool = True
+    # alertes officielles hors USA
+    enable_meteoalarm: bool = True
+    enable_wmo: bool = True
 
     emsc_ws_url: str = "wss://www.seismicportal.eu/standing_order/websocket"
     usgs_feed_url: str = (
@@ -66,6 +69,17 @@ class Settings(BaseSettings):
     ash_poll_seconds: float = 180.0
     geofon_poll_seconds: float = 60.0
     eonet_poll_seconds: float = 600.0
+    meteoalarm_poll_seconds: float = 300.0
+    wmo_poll_seconds: float = 300.0
+    # Meteoalarm: 1 vert, 2 jaune, 3 orange, 4 rouge. En dessous d'orange, c'est
+    # du bulletin meteo, et il y en a plus de 2000 par cycle sur dix pays.
+    meteoalarm_min_level: int = 3
+    # OMM: rang CAP, 1 = Extreme, 2 = Severe. Reserve mesuree sur le flux reel:
+    # l'echelle n'est PAS homogene d'un pays a l'autre (des "Small Craft
+    # Advisory" americains arrivent en rang 1, quand l'Inde tague en rang 2 des
+    # pluies de routine). On s'en tient donc au tiers superieur declare par
+    # chaque pays -- 221 alertes sur 2258 -- plutot que de croire l'echelle.
+    wmo_max_severity_rank: int = 1
 
     # backfill au demarrage: on ne veut pas d'une carte vide
     backfill_url: str = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"

@@ -19,6 +19,7 @@ from app.hub import Client, hub
 from app.models.event import utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
+from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
 from app.sources.emsc_ws import EmscWebsocketSource
 from app.sources.gdacs import GdacsSource
@@ -93,6 +94,14 @@ def build_sources() -> list[Source]:
         built.append(GeofonSource(settings.geofon_poll_seconds))
     if settings.enable_eonet:
         built.append(EonetSource(settings.eonet_poll_seconds))
+    if settings.enable_meteoalarm:
+        built.append(
+            MeteoalarmSource(
+                settings.meteoalarm_poll_seconds, min_level=settings.meteoalarm_min_level
+            )
+        )
+    if settings.enable_wmo:
+        built.append(WmoCapSource(settings.wmo_poll_seconds, settings.wmo_max_severity_rank))
     return built
 
 
