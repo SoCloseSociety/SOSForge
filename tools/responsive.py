@@ -91,6 +91,13 @@ MEASURE = r"""
   out.regions = { header: box('.header'), feed: box('.feed'), map: box('.map-wrap, .map-column'),
                   footer: box('.footer') };
   out.items = document.querySelectorAll('.item').length;
+  // When the feed is missing, say WHY: an empty feed renders `.feed-empty`
+  // with a message that names the reason (no match, empty window, nothing at
+  // all). Without this the tool could only report "0 px" and let the reader
+  // assume a CSS fault.
+  const empty = document.querySelector('.feed-empty');
+  out.emptyMessage = empty ? empty.textContent.trim().slice(0, 80) : null;
+  out.connected = !!document.querySelector('.live.on');
   // Do the stylesheet and the components agree on what a phone is? The CSS
   // switches the map above the feed; the components collapse the filters. If
   // only one of the two fires, the layout is a chimera -- which is exactly
@@ -173,21 +180,41 @@ async def measure(url: str, width: int, height: int, port: int) -> dict:
             # nothing to show. Against the live site over HTTPS that produced
             # three false failures out of eight. A gate that cries wolf is a
             # gate people learn to ignore.
-            ready = False
-            for _ in range(60):
-                await asyncio.sleep(0.5)
+            # And wait for it to STAY. On its first seconds the client shows
+            # "reconnecting" once or twice before the snapshot settles, and a
+            # measurement taken in one of those holes reports an empty feed --
+            # which is a data condition, not a layout one, and blaming the CSS
+            # for it is exactly the wrong conclusion. Two consecutive readings
+            # with events, or it is not settled.
+            async def item_count() -> int:
                 probe = await call("Runtime.evaluate", {
                     "expression": "document.querySelectorAll('.item').length",
                     "returnByValue": True,
                 })
-                if probe["result"]["result"]["value"] > 0:
-                    ready = True
+                return probe["result"]["result"]["value"]
+
+            ready, streak = False, 0
+            for _ in range(80):
+                await asyncio.sleep(0.5)
+                if await item_count() > 0:
+                    streak += 1
+                    if streak >= 2:
+                        ready = True
+                        break
+                else:
+                    streak = 0
+            await asyncio.sleep(1.0)
+            # Measure, and if the feed came back empty after we HAD seen
+            # events, the page hit one of those reconnection holes between the
+            # check and the measurement: wait it out and measure again rather
+            # than reporting a layout failure that is not one.
+            for attempt in range(4):
+                res = await call("Runtime.evaluate", {"expression": MEASURE, "returnByValue": True})
+                measured = res["result"]["result"]["value"]
+                if not ready or measured["items"] > 0:
                     break
-            # a little more, so late-arriving events do not resize mid-measure
-            await asyncio.sleep(1.5)
-            res = await call("Runtime.evaluate", {"expression": MEASURE, "returnByValue": True})
-            measured = res["result"]["result"]["value"]
-            measured["gotData"] = ready
+                await asyncio.sleep(2.5)
+            measured["gotData"] = ready and measured["items"] > 0
             return measured
     finally:
         chrome.terminate()
@@ -210,6 +237,11 @@ def verdict(label: str, width: int, m: dict) -> list[str]:
         failures.append(f"{len(seen)} element(s) off screen: {detail}")
     feed = m["regions"].get("feed")
     if not feed or feed["h"] < 40:
+        why = m.get("emptyMessage")
+        if why:
+            # Not a layout verdict: the feed rendered its empty state, which is
+            # a data or filter condition, not a sizing one.
+            return [f"the feed is empty, not squeezed -- it says: {why!r}"]
         failures.append(f"the feed is {feed['h'] if feed else 0} px tall: no events are readable")
     if m["itemsAboveFold"] < 1 and m["items"] > 0:
         failures.append("not one event is visible without scrolling")
