@@ -1075,3 +1075,76 @@ button {
 .chip.empty:hover {
   opacity: 0.75;
 }
+
+/* ------------------------------------------------- inbound seismic waves */
+
+/* The only element on screen with a deadline, so it takes the top and it is
+   allowed to be loud. It disappears on its own once the wave has passed. */
+.arrival {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 18px;
+  text-align: left;
+  background: rgba(208, 59, 59, 0.2);
+  border-bottom: 1px solid var(--sev-extreme);
+  animation: arrival-in 0.25s ease-out;
+}
+
+@keyframes arrival-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+.arrival:hover {
+  background: rgba(208, 59, 59, 0.28);
+}
+
+.arrival-count {
+  display: grid;
+  place-items: center;
+  min-width: 62px;
+  padding: 4px 8px;
+  border-radius: var(--radius);
+  background: var(--sev-extreme);
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+  animation: arrival-pulse 1s ease-in-out infinite;
+}
+
+.arrival-count small {
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+@keyframes arrival-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgba(208, 59, 59, 0.28);
+  }
+}
+
+.arrival-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.arrival-text strong {
+  font-size: 14px;
+}
+
+.arrival-text span {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.arrival-phase {
+  font-variant-numeric: tabular-nums;
+}

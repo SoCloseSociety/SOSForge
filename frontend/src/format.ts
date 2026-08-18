@@ -82,6 +82,18 @@ export function kindLabel(t: T, kind: Kind): string {
 
 export function formatAge(t: T, seconds: number): string {
   if (!Number.isFinite(seconds)) return ''
+
+  // A negative age means the event has not started yet: a weather warning is
+  // published BEFORE its onset, and that lead time is the whole point of it.
+  // Showing "just now" for something starting in two hours threw away the one
+  // piece of anticipation those feeds give us.
+  if (seconds < -60) {
+    const ahead = -seconds
+    if (ahead < 3600) return t('age.in.min', { n: Math.round(ahead / 60) })
+    if (ahead < 86400) return t('age.in.h', { n: Math.round(ahead / 3600) })
+    return t('age.in.d', { n: Math.round(ahead / 86400) })
+  }
+
   if (seconds < 5) return t('age.now')
   if (seconds < 60) return t('age.s', { n: Math.floor(seconds) })
   if (seconds < 3600) return t('age.min', { n: Math.floor(seconds / 60) })

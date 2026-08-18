@@ -41,6 +41,9 @@ interface State {
   fresh: Set<string>
   /** area the map should fly to (search result) */
   focus: { lat: number; lon: number; zoom: number; name: string } | null
+  /** the place the user wants to be warned about. Wave arrival is computed
+   * against this point, so it is opt-in and never guessed silently. */
+  watch: { lat: number; lon: number; name: string } | null
 
   ingest: (message: ServerMessage) => void
   setConnected: (value: boolean) => void
@@ -51,6 +54,7 @@ interface State {
   setWindow: (minutes: number) => void
   setQuery: (query: string) => void
   setFocus: (focus: State['focus']) => void
+  setWatch: (watch: State['watch']) => void
   setLang: (lang: Lang) => void
   t: (key: string, vars?: Record<string, string | number>) => string
 }
@@ -107,6 +111,30 @@ export function playAlert(severity: Severity) {
 }
 
 const FILTERS_KEY = 'sosforge.filters'
+const WATCH_KEY = 'sosforge.watch'
+
+/** The watched place survives a reload: an alert you have to re-arm on every
+ * visit is an alert you will not have when it matters. */
+function loadWatch(): { lat: number; lon: number; name: string } | null {
+  try {
+    const raw = localStorage.getItem(WATCH_KEY)
+    if (!raw) return null
+    const saved = JSON.parse(raw)
+    if (typeof saved?.lat !== 'number' || typeof saved?.lon !== 'number') return null
+    return { lat: saved.lat, lon: saved.lon, name: String(saved.name ?? '') }
+  } catch {
+    return null
+  }
+}
+
+function saveWatch(watch: { lat: number; lon: number; name: string } | null): void {
+  try {
+    if (watch) localStorage.setItem(WATCH_KEY, JSON.stringify(watch))
+    else localStorage.removeItem(WATCH_KEY)
+  } catch {
+    /* private mode: it just will not persist */
+  }
+}
 
 /** Filters survive a reload: coming back to the page and finding
  * "Live + earthquakes only" already set avoids redoing three clicks on
@@ -169,6 +197,7 @@ export const useStore = create<State>((set, get) => ({
   },
   fresh: new Set(),
   focus: null,
+  watch: loadWatch(),
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -200,6 +229,10 @@ export const useStore = create<State>((set, get) => ({
     }),
   setQuery: (query) => set((state) => ({ filters: { ...state.filters, query } })),
   setFocus: (focus) => set({ focus }),
+  setWatch: (watch) => {
+    saveWatch(watch)
+    set({ watch })
+  },
   setLang: (lang) => {
     persistLang(lang)
     document.documentElement.lang = lang

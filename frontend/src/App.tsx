@@ -6,6 +6,7 @@ import { Feed } from './components/Feed'
 import { MapView } from './components/MapView'
 import { LivePanel } from './components/LivePanel'
 import { SearchBar } from './components/SearchBar'
+import { ArrivalAlert } from './components/ArrivalAlert'
 import { LANGS } from './i18n'
 import {
   KIND_GLYPH,
@@ -289,6 +290,8 @@ export default function App() {
         </span>
       </header>
 
+      {/* Above everything: it is the only element with a deadline. */}
+      <ArrivalAlert events={events} now={now} />
       <Kpis now={now} />
       <Banner events={events} now={now} />
 

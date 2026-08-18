@@ -26,6 +26,7 @@ export function SearchBar() {
   const query = useStore((s) => s.filters.query)
   const setQuery = useStore((s) => s.setQuery)
   const setFocus = useStore((s) => s.setFocus)
+  const setWatch = useStore((s) => s.setWatch)
   const t = useStore((s) => s.t)
 
   const [places, setPlaces] = useState<Place[] | null>(null)
@@ -71,6 +72,9 @@ export function SearchBar() {
       zoom = span > 20 ? 3 : span > 5 ? 5 : span > 1 ? 7 : 10
     }
     setFocus({ lat: place.lat, lon: place.lon, zoom, name: place.name })
+    // Going to a place is also the clearest way to say "this is the place I
+    // care about": arming the arrival countdown here costs the user nothing.
+    setWatch({ lat: place.lat, lon: place.lon, name: place.name.split(',')[0] })
     setOpen(false)
     inputRef.current?.blur()
   }

@@ -91,3 +91,18 @@ describe('badge: the left-hand badge', () => {
     })
   })
 })
+
+describe('lead time', () => {
+  it('a warning that has not started yet counts DOWN, it is not "just now"', () => {
+    // Weather warnings are published before their onset: that advance notice is
+    // the only anticipation those feeds give, and it was being thrown away.
+    expect(formatAge(t, -7200)).toBe('in 2 h')
+    expect(formatAge(t, -600)).toBe('in 10 min')
+    expect(formatAge(t, -172800)).toBe('in 2 d')
+  })
+
+  it('a small clock difference still reads as "just now", not as the future', () => {
+    expect(formatAge(t, -5)).toBe('just now')
+    expect(formatAge(t, -59)).toBe('just now')
+  })
+})
