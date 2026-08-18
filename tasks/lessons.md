@@ -227,3 +227,57 @@ narrow grep and my hurry produced a confident wrong answer.
 unanchored grep, the SSH config, the shared memory, the fleet docs. And when an
 address does not match my expectation, the first hypothesis is that my map is
 incomplete, not that the world is misconfigured.
+
+## 21. jsdom cannot see a broken layout, and a screenshot cannot name the cause
+
+**The mistake.** The phone layout shipped with `.feed` **0 pixels tall**: the
+product displayed no events at all on a phone. Build green, 114 frontend tests
+green, TypeScript clean, and a `@media (max-width: 900px)` block in the sheet
+that read perfectly sensibly.
+
+**Root cause.** Two of them, and the second only became visible after measuring:
+
+1. The phone layout tried to fit header + five counters + banner + 266 px of
+   filters + map + feed into one non-scrolling screen. Something had to lose,
+   and CSS gave the loss to the flexible child -- the feed.
+2. The stylesheet and the components disagreed about what a phone is. The CSS
+   switched at `max-width: 900px`; the components had no idea. In landscape
+   (844x390) the CSS stacked the page while the filter panel stayed expanded
+   at 242 px, burying every event below the fold.
+
+**Why nothing caught it.** jsdom has no layout engine. It reports a healthy DOM
+for a page that renders as an empty screen, so no unit test can ever see this
+class of defect. Only a real browser can.
+
+**Two traps that produced wrong conclusions while investigating:**
+
+- `--window-size=390,844` does NOT give a 390 px viewport. Chrome laid the page
+  out at 500 px and cropped the screenshot to 390, which looks exactly like a
+  horizontal-overflow bug and is not one. Use
+  `Emulation.setDeviceMetricsOverride` over the DevTools protocol.
+- A screenshot taken before the websocket delivers anything shows an empty,
+  disconnected product. Same failure as lesson 17, different tool.
+
+**The rule.** `make responsive` measures the real layout in Chrome at eight real
+viewports and fails on: a feed under 40 px, no event visible without scrolling,
+horizontal page overflow, a touch target under 36 px, and -- the one that would
+have caught defect 2 -- the stylesheet and the components disagreeing on the
+breakpoint. Numbers, not pictures: a picture proves there is a problem, only a
+measurement says which element causes it.
+
+## 22. Never run a formatter the project does not use
+
+**The mistake.** `npx prettier --write src` on a project with no `.prettierrc`
+and no prettier dependency. It reformatted 33 files -- 2354 deletions of code
+nobody asked me to touch -- and part of that noise reached a commit (`store.ts`
+328 lines changed, `types.ts` 153, for edits of a dozen lines each).
+
+**Root cause.** `npx` silently downloads and runs a tool that is not part of the
+project, with ITS defaults, not the project's conventions. This codebase writes
+single quotes and no semicolons; prettier's defaults disagreed, so every line
+it touched changed.
+
+**The rule.** Before running any formatter, check it is actually a project tool
+(`package.json`, a config file, a Makefile target). If it is not, do not run it.
+A review cannot find a real defect inside a thousand lines of reformatting, and
+the diff is the only thing a reviewer has.

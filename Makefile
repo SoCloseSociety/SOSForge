@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke clean
+.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean
 
 VENV := backend/.venv
 PY := $(VENV)/bin/python
@@ -63,6 +63,9 @@ down:
 
 logs:
 	docker compose logs -f --tail=100
+
+responsive: ## measure the layout in a real browser at every breakpoint (needs make dev-web)
+	@backend/.venv/bin/python tools/responsive.py
 
 smoke: ## check the API is up and the sources respond
 	@curl -sf http://127.0.0.1:8300/healthz | python3 -m json.tool

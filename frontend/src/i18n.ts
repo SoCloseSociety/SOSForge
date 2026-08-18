@@ -128,6 +128,9 @@ const fr: Dict = {
 
   'footer.clients': '{n} client(s) connecté(s)',
   'footer.basemap': 'Fonds de carte OpenStreetMap / CARTO',
+  'filters.open': 'Filtres et recherche',
+  'filters.close': 'Fermer les filtres',
+  'footer.sources': '{up}/{total} sources en ligne',
 }
 
 const en: Dict = {
@@ -235,6 +238,9 @@ const en: Dict = {
 
   'footer.clients': '{n} client(s) connected',
   'footer.basemap': 'Basemap OpenStreetMap / CARTO',
+  'filters.open': 'Filters and search',
+  'filters.close': 'Close filters',
+  'footer.sources': '{up}/{total} sources online',
 }
 
 const es: Dict = {
@@ -342,6 +348,9 @@ const es: Dict = {
 
   'footer.clients': '{n} cliente(s) conectado(s)',
   'footer.basemap': 'Mapa base OpenStreetMap / CARTO',
+  'filters.open': 'Filtros y busqueda',
+  'filters.close': 'Cerrar filtros',
+  'footer.sources': '{up}/{total} fuentes en linea',
 }
 
 const ja: Dict = {
@@ -449,6 +458,9 @@ const ja: Dict = {
 
   'footer.clients': '接続中のクライアント {n} 台',
   'footer.basemap': '地図データ OpenStreetMap / CARTO',
+  'filters.open': '絞り込みと検索',
+  'filters.close': '絞り込みを閉じる',
+  'footer.sources': '稼働中のソース {up}/{total}',
 }
 
 const id: Dict = {
@@ -556,6 +568,9 @@ const id: Dict = {
 
   'footer.clients': '{n} klien terhubung',
   'footer.basemap': 'Peta dasar OpenStreetMap / CARTO',
+  'filters.open': 'Filter dan pencarian',
+  'filters.close': 'Tutup filter',
+  'footer.sources': '{up}/{total} sumber aktif',
 }
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id }

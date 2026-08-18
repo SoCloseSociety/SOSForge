@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { ALL_KINDS, WINDOWS, filterEvents, useStore } from './store'
 import { connectLive } from './live'
 import { syncDeepLink } from './deeplink'
 import { Feed } from './components/Feed'
-import { Suspense, lazy } from 'react'
+import { useIsPhone } from './useMediaQuery'
 
 /** MapLibre is over a megabyte, and the feed is readable without it. Loading it
  * lazily takes the entry bundle from 1277 kB to a fraction of that, which is
@@ -132,8 +132,40 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
     return map
   }, [events])
 
+  // On a phone the filter stack measured 266 px on a 844 px screen that also
+  // has to hold a header, five counters, a banner, a map and the feed. It won
+  // that fight and the FEED came out 0 px tall: the product showed no events at
+  // all. Here it collapses to one line, and that line says what it is hiding.
+  const isPhone = useIsPhone()
+  const [open, setOpen] = useState(false)
+  // "active" means narrowed from the default, not merely set: every kind
+  // selected over 24 h is the resting state, and badging that would cry wolf.
+  const active =
+    (filters.query.trim() ? 1 : 0) +
+    (filters.minMagnitude > 0 ? 1 : 0) +
+    (filters.kinds.size < ALL_KINDS.length ? 1 : 0) +
+    (filters.windowMinutes !== 1440 ? 1 : 0)
+
+  if (isPhone && !open) {
+    return (
+      <div className="filters-collapsed">
+        <button type="button" className="filters-toggle" onClick={() => setOpen(true)}>
+          <span aria-hidden="true">☰</span>
+          {t('filters.open')}
+          {active > 0 ? <span className="badge">{active}</span> : null}
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="filters">
+      {isPhone ? (
+        <button type="button" className="filters-toggle open" onClick={() => setOpen(false)}>
+          <span aria-hidden="true">✕</span>
+          {t('filters.close')}
+        </button>
+      ) : null}
       {/* Search comes first: it's the shortcut to "what's happening OVER
           THERE", the question people ask when they open a tracker after
           hearing about something. */}
@@ -223,8 +255,34 @@ function Footer() {
   const sources = useStore((s) => s.sources)
   const clients = useStore((s) => s.clients)
   const t = useStore((s) => s.t)
+  const isPhone = useIsPhone()
+  const [open, setOpen] = useState(false)
+  const up = sources.filter((s) => s.connected).length
+
+  // The source list is this product's honesty made visible, and it is also
+  // 139 px of a 844 px phone screen. On a phone it collapses to the one line
+  // that carries the meaning -- how many sources are actually feeding us --
+  // and opens on demand.
+  if (isPhone && !open) {
+    return (
+      <footer className="footer footer-compact">
+        <button type="button" className="sources-toggle" onClick={() => setOpen(true)}>
+          <span className={`dot ${up === sources.length ? 'up' : 'down'}`} />
+          {t('footer.sources', { up, total: sources.length })}
+        </button>
+        <span className="spacer" />
+        <span>{t('footer.clients', { n: clients })}</span>
+      </footer>
+    )
+  }
+
   return (
     <footer className="footer">
+      {isPhone ? (
+        <button type="button" className="sources-toggle" onClick={() => setOpen(false)}>
+          ✕
+        </button>
+      ) : null}
       {sources.map((source) => (
         <span className="source" key={source.name} title={source.last_error ?? 'OK'}>
           <span className={`dot ${source.connected ? 'up' : 'down'}`} />
@@ -291,7 +349,9 @@ export default function App() {
           title={t('app.sound.title')}
         >
           <span aria-hidden="true">{soundOn ? '🔔' : '🔕'}</span>
-          {soundOn ? t('app.sound.on') : t('app.sound.off')}
+          {/* wrapped so the phone layout can drop the word and keep the icon:
+              a bare text node cannot be targeted by CSS */}
+          <span className="label">{soundOn ? t('app.sound.on') : t('app.sound.off')}</span>
         </button>
         {/* aria-live: connection status is THE thing a screen reader user
             needs to learn without having to go looking for it */}

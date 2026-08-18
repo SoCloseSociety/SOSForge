@@ -27,7 +27,7 @@
   --accent: #3987e5;
 
   --radius: 10px;
-  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 * {
@@ -172,7 +172,7 @@ button {
   color: var(--ink-2);
 }
 
-.toggle[aria-pressed='true'] {
+.toggle[aria-pressed="true"] {
   color: var(--ink);
   border-color: rgba(57, 135, 229, 0.6);
 }
@@ -242,15 +242,27 @@ button {
 
 /* ------------------------------------------------------------------- panel */
 
+/* The sidebar scrolls as one piece, filters included.
+   It used to be the feed alone that scrolled, with the filters holding a fixed
+   448 px at the top -- fine on a tall screen, ruinous on a short one: measured
+   at 1024x768 the feed was left 47 px and showed two events, and in phone
+   landscape it was left ZERO. The filter block must be able to scroll out of
+   the way; it is consulted occasionally, the feed is the product. */
 .panel {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  overflow-y: auto;
   background: var(--surface);
   border-right: 1px solid var(--hairline);
 }
 
 .filters {
+  /* container, so the chips below can wrap or scroll based on the width of
+     THIS column rather than the width of the window: the same 1024 px screen
+     gives a 339 px sidebar and a 1440 px one gives 432 px, and the right
+     answer differs. */
+  container-type: inline-size;
   padding: 12px 14px;
   border-bottom: 1px solid var(--hairline);
   display: flex;
@@ -259,9 +271,39 @@ button {
 }
 
 .chips {
+  /* One scrolling row, at every size. Wrapped, these eleven chips measured
+     210 px in a 339 px sidebar -- five rows of filters sitting on top of the
+     feed on a laptop, which is how the feed ended up with 47 px and two
+     events. The fade on the right edge says the row continues; without it a
+     cut-off chip reads as a rendering bug. */
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 6px;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  -webkit-mask-image: linear-gradient(to right, #000 92%, transparent);
+  mask-image: linear-gradient(to right, #000 92%, transparent);
+}
+
+.chips::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+}
+
+/* Where the column is wide enough, every kind is visible at once -- a filter
+   you cannot see is a filter you will not use. The scrolling strip is the
+   fallback for narrow columns, not the design. */
+@container (min-width: 430px) {
+  .chips {
+    flex-wrap: wrap;
+    overflow-x: visible;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
 }
 
 .chip {
@@ -276,7 +318,7 @@ button {
   font-size: 12px;
 }
 
-.chip[aria-pressed='true'] {
+.chip[aria-pressed="true"] {
   color: var(--ink);
   background: var(--surface-3);
   border-color: rgba(255, 255, 255, 0.25);
@@ -311,8 +353,9 @@ button {
 /* --------------------------------------------------------------------- feed */
 
 .feed {
-  overflow-y: auto;
-  flex: 1;
+  /* the scroller is the panel above, not this: two nested scrollers is how the
+     feed reached zero height, and it steals the wheel on desktop too */
+  flex: 0 0 auto;
   min-height: 0;
 }
 
@@ -334,11 +377,21 @@ button {
   border-left: 3px solid transparent;
 }
 
+/* A grid column sized `1fr` does NOT shrink below the intrinsic width of its
+   content unless it is told to. Without this, one long region name ("Norte y
+   nordeste de Mallorca") pushed the row wider than the screen and threw the
+   age out of view -- measured at 360 px, where the age ended 4 px past the
+   right edge. It only shows on the narrowest phones, which is exactly where
+   nobody was looking. */
+.item > * {
+  min-width: 0;
+}
+
 .item:hover {
   background: var(--surface-2);
 }
 
-.item[aria-selected='true'] {
+.item[aria-selected="true"] {
   background: var(--surface-3);
   border-left-color: var(--accent);
 }
@@ -619,7 +672,7 @@ button {
   color: var(--ink-2);
 }
 
-.segmented button[aria-pressed='true'] {
+.segmented button[aria-pressed="true"] {
   background: var(--surface-3);
   color: var(--ink);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
@@ -934,19 +987,181 @@ button {
   color: var(--ink-muted);
 }
 
-
 /* ------------------------------------------------------------ phone */
 
-@media (max-width: 900px) {
-  .body {
-    grid-template-columns: 1fr;
-    /* feed first, map second: on phone you read, you don't explore */
-    grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr);
+/* Measured before rewriting, at 390x844 (iPhone 14, device emulation, not a
+   resized desktop window -- Chrome laid the page out at 500 px when asked for
+   390, and a measurement taken there describes no real phone):
+
+     header  92 px | counters ~200 | banner ~50 | filters 266 | footer 139
+     => .feed ended up 0 px tall. The product showed NO events on a phone.
+
+   The old block tried to fit everything into one non-scrolling screen and let
+   the feed lose the fight. A phone screen is not a dashboard: it scrolls. So
+   here the page becomes a document, the map takes a bounded slice of it, and
+   the feed takes whatever it needs -- it can no longer be squeezed to nothing
+   by anything above it. */
+
+/* Narrow OR short. A phone held sideways is 844 px wide and 390 px tall: wide
+   enough for the desktop grid, far too short for it, and the feed came out at
+   zero pixels there exactly as it did on a portrait phone. The breakpoint has
+   to watch both axes. */
+@media (max-width: 820px), (max-height: 560px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
   }
 
-  /* Filter chips were taking up three lines and stealing room from the feed.
-     On phone they become a horizontally scrolling strip: you see fewer at
-     once, but you finally see the events. */
+  .app {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* The one thing that must never scroll away: whether the feed is live.
+     Everything else on this page is worthless if that lies. */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 12px;
+  }
+
+  .brand strong {
+    font-size: 16px;
+  }
+
+  /* the tagline took four lines on its own */
+  .brand span,
+  .header .spacer,
+  .header .clock {
+    display: none;
+  }
+
+  /* Five counters at two per row cost 200 px before the reader saw a single
+     event. One scrolling row costs 68. */
+  .kpis {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 0;
+  }
+
+  .kpis::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A strip that scrolls with no edge treatment reads as a strip that is
+     BROKEN -- the last counter looks chopped off rather than continued. The
+     fade says "there is more this way" without adding a control. */
+  .kpis {
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+    mask-image: linear-gradient(to right, #000 88%, transparent);
+  }
+
+  .kpi {
+    flex: 0 0 auto;
+    min-width: 132px;
+    padding: 7px 14px;
+    border-right: 1px solid var(--hairline);
+  }
+
+  .kpi .value {
+    font-size: 19px;
+  }
+
+  .kpi .sub {
+    font-size: 11px;
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    /* no fr rows: they are what starved the feed */
+    grid-template-columns: none;
+    grid-template-rows: none;
+  }
+
+  .panel {
+    border-right: none;
+    /* here the PAGE is the scroller: on touch, an inner scroller steals the
+       swipe that should move the page */
+    overflow: visible;
+    min-height: 0;
+  }
+
+  /* The map comes FIRST on a phone, and this was measured the hard way: with
+     the feed above it, the map sat at y=20968 -- three hundred events and
+     twenty thousand pixels below the fold. Nobody scrolls to that. Bounded to
+     a third of the screen so it cannot eat the feed, always one flick away. */
+  .map-column {
+    order: 1;
+    height: 36dvh;
+    /* No fixed floor. A 240 px floor on a 390 px landscape screen pushed the
+       first event below the fold on its own -- the map was taller than the
+       room left for it. `dvh` already scales; a floor in px does not. */
+    min-height: 140px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .panel {
+    order: 2;
+  }
+
+  /* Three hundred rows is twenty thousand pixels of layout on a device that
+     has neither the memory nor the CPU for it. `content-visibility` lets the
+     browser skip what is off screen; the intrinsic size keeps the scrollbar
+     honest so the page does not jump while scrolling. */
+  .item {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 72px;
+  }
+
+  /* One row, not two: a sticky header is paid for on every screen, and it was
+     costing 102 px of 844. The sound label and the spelled-out language name
+     go first -- the icon and the flag say the same thing in a quarter of the
+     width.
+
+     The <select> is NOT hidden, it is made transparent on top of the flag:
+     hiding it would leave a phone with no way to change language at all, and
+     this product ships in five. It stays a native select, so it stays
+     keyboard- and screen-reader-operable. */
+  .toggle .label {
+    display: none;
+  }
+
+  .lang {
+    position: relative;
+    padding: 0 2px;
+    /* the select sits on top of the flag and is out of flow, so the label has
+       to hold the tap target open by itself */
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .lang select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+  }
+
+  /* Filters collapse behind one line. Open, they are a sheet over the feed
+     rather than 266 px pushing it off screen. */
+  .filters-collapsed {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .filters {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
   .chips {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -962,39 +1177,8 @@ button {
     flex: 0 0 auto;
   }
 
-  .header {
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    padding: 10px 12px;
-  }
-
-  /* the tagline was taking up four lines all by itself */
-  .brand span {
-    display: none;
-  }
-
-  .header .spacer {
-    display: none;
-  }
-
-  .kpis {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .kpi {
-    padding: 8px 12px;
-  }
-
-  .kpi .value {
-    font-size: 20px;
-  }
-
-  .filters {
-    padding: 10px 12px;
-  }
-
   .item {
-    padding: 9px 12px;
+    padding: 11px 12px;
   }
 
   /* it was eating a third of an already tiny map */
@@ -1002,14 +1186,96 @@ button {
     display: none;
   }
 
+  /* A card floating over a 46vh map covers the map. On a phone it becomes
+     what it always was in intent: a sheet, at the bottom, thumb-reachable. */
+  .live-panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 62dvh;
+    border-radius: 14px 14px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    z-index: 30;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
   .footer {
-    font-size: 10.5px;
+    font-size: 11px;
     gap: 6px 10px;
-    padding: 6px 12px;
+    padding: 7px 12px;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
   }
 
   .footer .spacer {
     display: none;
+  }
+
+  .footer-compact .spacer {
+    display: block;
+  }
+}
+
+/* -------------------------------------------------- collapsed filter bar */
+
+.filters-toggle,
+.sources-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+}
+
+.filters-toggle {
+  width: 100%;
+  justify-content: center;
+}
+
+.filters-toggle .badge {
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sources-toggle {
+  padding: 4px 9px;
+  font-size: 11px;
+}
+
+/* Touch, not mouse: a 21 px tall control is a control you miss. Apple asks
+   for 44 pt, Material for 48 dp; 44 is the floor here. Keyed on the POINTER,
+   not on the width -- a touchscreen laptop is not a phone but the thumb is
+   still a thumb. */
+@media (pointer: coarse) {
+  button,
+  select,
+  input,
+  [role="button"],
+  .chip,
+  .segmented button {
+    min-height: 44px;
+  }
+
+  .search input {
+    padding: 12px 0;
+  }
+
+  .live-actions button,
+  .search-clear,
+  .sources-toggle {
+    min-height: 36px;
+    min-width: 36px;
   }
 }
 
