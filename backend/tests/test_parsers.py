@@ -1,8 +1,8 @@
-"""Tests des normalizers, sur des payloads reels captures sur les sources live.
+"""Normalizer tests, on real payloads captured from the live sources.
 
-Les fixtures ci-dessous ne sont pas inventees: ce sont des extraits verbatim des
-reponses des APIs (frame websocket EMSC du 2026-08-17, feature USGS all_hour,
-entry Atom PAAQ, item RSS GDACS, alerte api.weather.gov, ligne HANS).
+The fixtures below are not invented: they are verbatim excerpts from the API
+responses (EMSC websocket frame of 2026-08-17, USGS all_hour feature, PAAQ Atom
+entry, GDACS RSS item, api.weather.gov alert, HANS row).
 """
 
 from __future__ import annotations
@@ -53,14 +53,14 @@ def test_emsc_frame():
     assert event.kind is Kind.EARTHQUAKE
     assert event.magnitude == 2.7
     assert event.lat == -8.29 and event.lon == 121.48
-    # geometry.coordinates[2] vaut -10.0 chez EMSC: la profondeur doit rester positive
+    # geometry.coordinates[2] is -10.0 at EMSC: the depth must stay positive
     assert event.depth_km == 10.0
     assert event.place == "FLORES REGION, INDONESIA"
     assert event.time.tzinfo is not None
 
 
 def test_emsc_depth_from_geometry_only():
-    """Si `properties.depth` manque, on retombe sur la 3e coordonnee (negative)."""
+    """If `properties.depth` is missing, fall back to the 3rd coordinate (negative)."""
     frame = {"action": "create", "data": {**EMSC_FRAME["data"]}}
     frame["data"]["properties"] = {
         k: v
@@ -107,7 +107,7 @@ def test_usgs_feature():
     assert event is not None
     assert event.id == "usgs:ci40674530"
     assert event.magnitude == 0.48
-    # chez USGS la profondeur est deja positive
+    # at USGS the depth is already positive
     assert event.depth_km == 15.59
     assert event.lat == 33.682666
     assert event.tsunami is False
@@ -169,7 +169,7 @@ def test_tsunami_information_bulletin_is_not_an_alert():
     event = parse_entry(_first_entry(TSUNAMI_ATOM), "PAAQ")
     assert event is not None
     assert event.alert == "information"
-    # un bulletin "NO tsunami danger" ne doit surtout pas lever le drapeau tsunami
+    # a "NO tsunami danger" bulletin must absolutely not raise the tsunami flag
     assert event.tsunami is False
     assert event.severity is Severity.INFO
     assert event.magnitude == 4.0
@@ -219,12 +219,12 @@ GDACS_OLD_DROUGHT = """<rss xmlns:gdacs="http://www.gdacs.org"><channel><item>
 def test_gdacs_severity_comes_from_the_attribute_not_the_text():
     event = parse_item(ET.fromstring(GDACS_ITEM).find(".//item"))
     assert event is not None
-    assert event.magnitude == 5.8  # et non un ValueError sur "Magnitude 5.8M, ..."
+    assert event.magnitude == 5.8  # and not a ValueError on "Magnitude 5.8M, ..."
     assert event.mag_type == "M"
     assert event.kind is Kind.EARTHQUAKE
     assert event.lat == 53.024 and event.lon == 159.7106
     assert event.country == "Russian Federation"
-    assert event.id == "gdacs:EQ1559459"  # stable a travers les episodes
+    assert event.id == "gdacs:EQ1559459"  # stable across episodes
 
 
 def test_gdacs_stale_green_is_filtered_out():
@@ -268,7 +268,7 @@ def test_nws_alert():
     assert event is not None
     assert event.kind is Kind.FLOOD
     assert event.severity is Severity.SEVERE
-    # barycentre du polygone
+    # centroid of the polygon
     assert event.lat == 39.5 and event.lon == -82.5
     assert event.time.tzinfo is not None
 
@@ -281,20 +281,21 @@ def test_nws_alert_without_geometry_still_parses():
 
 
 def test_short_patterns_need_a_whole_word_long_ones_do_not():
-    """Le plancher de longueur, choisi APRES mesure sur 2525 alertes reelles.
+    """The length floor, chosen AFTER measuring against 2525 real alerts.
 
-    Un motif court se cache dans d'autres mots ("ash" dans "Flash"), donc il
-    exige un mot entier. Un motif long doit rester cherche en sous-chaine, sans
-    quoi les formes composees et flechies des flux reels sont perdues -- 621
-    alertes dans la mesure ("Forestfire", "Thunderstorms", "Rainstorm").
+    A short pattern hides inside other words ("ash" in "Flash"), so it
+    requires a whole word. A long pattern must still be matched as a
+    substring, otherwise the compound and inflected forms found in the real
+    feeds are lost -- 621 alerts in the measurement ("Forestfire",
+    "Thunderstorms", "Rainstorm").
     """
-    # motif court: le faux positif historique est ferme
+    # short pattern: the historical false positive is closed
     assert classify("Flash Flood Warning") is Kind.FLOOD
-    # ... sans perdre le vrai positif
+    # ... without losing the true positive
     assert classify("Ashfall Warning") is Kind.VOLCANO
     assert classify("Volcanic Ash Advisory") is Kind.VOLCANO
 
-    # motifs longs: les formes composees et flechies restent detectees
+    # long patterns: compound and inflected forms are still detected
     assert classify("Forestfire") is Kind.WILDFIRE
     assert classify("Thunderstorms") is Kind.STORM
     assert classify("Rainstorm") is Kind.STORM
@@ -302,7 +303,7 @@ def test_short_patterns_need_a_whole_word_long_ones_do_not():
 
 
 def test_nws_classification_order():
-    # "Tsunami Warning" ne doit pas tomber dans le seau "storm"
+    # "Tsunami Warning" must not fall into the "storm" bucket
     assert classify("Tsunami Warning") is Kind.TSUNAMI
     assert classify("Hurricane Warning") is Kind.CYCLONE
     assert classify("Red Flag Warning") is Kind.WILDFIRE
@@ -311,7 +312,7 @@ def test_nws_classification_order():
     assert classify("Special Marine Statement") is Kind.OTHER
 
 
-# ------------------------------------------------------------------------ volcans
+# -------------------------------------------------------------------- volcanoes
 
 HANS_ROW = {
     "obs_fullname": "Alaska Volcano Observatory",
@@ -332,7 +333,7 @@ def test_volcano_joins_the_smithsonian_catalog():
     event = source.parse(HANS_ROW)
     assert event is not None
     assert event.kind is Kind.VOLCANO
-    assert event.severity is Severity.SEVERE  # code couleur ORANGE
+    assert event.severity is Severity.SEVERE  # colour code ORANGE
     assert event.lat == 52.076
     assert "Great Sitkin" in event.title
 
@@ -340,7 +341,7 @@ def test_volcano_joins_the_smithsonian_catalog():
 def test_volcano_without_catalog_keeps_the_alert():
     event = VolcanoSource().parse(HANS_ROW)
     assert event is not None
-    assert event.lat is None  # position inconnue, mais l'alerte n'est pas perdue
+    assert event.lat is None  # unknown position, but the alert is not lost
     assert event.severity is Severity.SEVERE
 
 
@@ -362,7 +363,7 @@ def test_emsc_and_usgs_report_of_the_same_quake_share_a_cluster():
             "properties": {
                 "mag": 3.0,
                 "place": "Flores Sea",
-                "time": 1786986152000,  # 30s apres l'evenement EMSC
+                "time": 1786986152000,  # 30s after the EMSC event
                 "updated": 1786986152000,
                 "tsunami": 0,
                 "magType": "mb",
@@ -381,7 +382,7 @@ def test_emsc_and_usgs_report_of_the_same_quake_share_a_cluster():
 def test_distant_quakes_are_not_merged():
     deduper = Deduper()
     emsc = parse_message(EMSC_FRAME)
-    far = parse_usgs(USGS_FEATURE)  # Californie
+    far = parse_usgs(USGS_FEATURE)  # California
     deduper.assign(emsc)
     deduper.assign(far)
     assert emsc.cluster_id != far.cluster_id

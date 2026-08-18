@@ -1,0 +1,9 @@
+# SOSForge -- https://sosforge.soclose.co
+# Everything is public. The API is open too, but crawling it wastes both our
+# time: it changes every second and holds no lasting content.
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /ws
+
+Sitemap: https://sosforge.soclose.co/sitemap.xml

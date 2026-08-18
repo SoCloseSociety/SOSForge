@@ -9,17 +9,18 @@ interface Place {
   bbox: number[] | null
 }
 
-/** Recherche de zone.
+/** Area search.
  *
- * Elle fait deux choses volontairement, parce que l'utilisateur ne sait pas
- * toujours laquelle il veut: taper "Tokyo" **filtre** immediatement le flux sur
- * ce qui mentionne Tokyo (instantane, local), et propose en dessous d'**aller**
- * a Tokyo sur la carte, meme si aucun evenement n'y est en cours. Le second cas
- * est le plus utile en situation reelle: on veut regarder une zone precise.
+ * It deliberately does two things, because the user doesn't always know
+ * which one they want: typing "Tokyo" immediately **filters** the feed to
+ * whatever mentions Tokyo (instant, local), and offers below to **go to**
+ * Tokyo on the map, even if no event is currently happening there. The
+ * second case is the more useful one in a real situation: you want to look
+ * at a specific area.
  *
- * Le geocodage passe par notre backend (`/api/geocode`), qui tient la cadence
- * d'une requete par seconde imposee par Nominatim -- un appel direct depuis
- * chaque onglet la violerait.
+ * Geocoding goes through our backend (`/api/geocode`), which keeps to the
+ * one-request-per-second rate imposed by Nominatim -- a direct call from
+ * each tab would violate it.
  */
 export function SearchBar() {
   const query = useStore((s) => s.filters.query)
@@ -33,16 +34,16 @@ export function SearchBar() {
 
   useEffect(() => {
     const term = query.trim()
-    // Vider a CHAQUE changement de saisie: sinon, pendant les 450 ms d'attente
-    // puis le temps du reseau, presser Entree apres avoir tape "lyon" partait
-    // encore vers les resultats de "paris".
+    // Clear on EVERY input change: otherwise, during the 450 ms wait plus
+    // network time, pressing Enter right after typing "lyon" would still go
+    // to the results for "paris".
     setPlaces(null)
     setOpen(false)
     if (term.length < 3) {
       return
     }
-    // debounce: on ne geocode pas a chaque frappe, on attend que la saisie se
-    // pose. Le filtrage local, lui, reste instantane.
+    // debounce: we don't geocode on every keystroke, we wait for typing to
+    // settle. Local filtering, on the other hand, stays instant.
     const controller = new AbortController()
     const timer = window.setTimeout(() => {
       fetch(`/api/geocode?q=${encodeURIComponent(term)}`, { signal: controller.signal })
@@ -61,8 +62,8 @@ export function SearchBar() {
   }, [query])
 
   const goTo = (place: Place) => {
-    // une ville se regarde de pres, un pays de loin: la bbox renvoyee par
-    // Nominatim dit laquelle des deux on vient de demander
+    // a city is viewed up close, a country from afar: the bbox returned by
+    // Nominatim tells us which of the two was just requested
     let zoom = 9
     if (place.bbox && place.bbox.length === 4) {
       const [south, north, west, east] = place.bbox

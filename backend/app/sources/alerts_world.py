@@ -1,17 +1,17 @@
-"""Alertes officielles hors USA.
+"""Official alerts outside the USA.
 
-Le trou que ces deux sources ferment: SOSForge n'avait d'alertes meteo, crues et
-tempetes que pour les Etats-Unis (`nws`). Le reste du monde n'avait que GDACS,
-qui ne voit que les catastrophes majeures.
+The hole these two sources close: SOSForge only had weather, flood and storm
+alerts for the United States (`nws`). The rest of the world only had GDACS,
+which only sees major disasters.
 
-- **Meteoalarm** agrege les vigilances des services meteo nationaux europeens,
-  en CAP, un flux par pays.
-- **l'agregat CAP de l'OMM** couvre le reste (Inde, Chine, Indonesie, Amerique
-  du Sud...) en un seul appel.
+- **Meteoalarm** aggregates the warnings of the European national weather
+  services, in CAP, one feed per country.
+- **the WMO CAP aggregate** covers the rest (India, China, Indonesia, South
+  America...) in a single call.
 
-Aucune des deux ne porte de coordonnees: les zones sont decrites par des codes
-administratifs (NUTS3 en Europe). Les evenements sortent donc sans position, ce
-que le modele accepte -- ils s'affichent dans le flux, pas sur la carte.
+Neither carries coordinates: areas are described by administrative codes
+(NUTS3 in Europe). Events therefore come out without a position, which the
+model accepts -- they show up in the feed, not on the map.
 """
 
 from __future__ import annotations
@@ -35,9 +35,9 @@ log = logging.getLogger(__name__)
 
 METEOALARM_API = "https://feeds.meteoalarm.org/api/v1/warnings/feeds-{country}"
 
-# Les pays les plus exposes et les plus peuples de la zone couverte. La liste
-# est volontairement courte: c'est un GET par pays et par cycle, et Meteoalarm
-# n'expose aucun flux paneuropeen (`feeds-europe` renvoie 404).
+# The most exposed and most populated countries of the covered area. The list
+# is deliberately short: it is one GET per country per cycle, and Meteoalarm
+# exposes no pan-European feed (`feeds-europe` returns 404).
 METEOALARM_COUNTRIES = (
     "france",
     "italy",
@@ -51,24 +51,24 @@ METEOALARM_COUNTRIES = (
     "croatia",
 )
 
-# `awareness_type` est un code standard Meteoalarm, en anglais, la ou `event`
-# est redige dans la langue du pays. C'est donc lui qui doit piloter le type.
+# `awareness_type` is a standard Meteoalarm code, in English, whereas `event`
+# is written in the country's language. So it is the one that must drive the type.
 AWARENESS_TYPE_KIND = {
-    "1": Kind.STORM,  # vent
-    "2": Kind.STORM,  # neige, verglas
-    "3": Kind.STORM,  # orages
-    "4": Kind.OTHER,  # brouillard
-    "5": Kind.HEAT,  # temperature haute
-    "6": Kind.STORM,  # temperature basse
-    "7": Kind.FLOOD,  # phenomene cotier
-    "8": Kind.WILDFIRE,  # feu de foret
+    "1": Kind.STORM,  # wind
+    "2": Kind.STORM,  # snow, black ice
+    "3": Kind.STORM,  # thunderstorms
+    "4": Kind.OTHER,  # fog
+    "5": Kind.HEAT,  # high temperature
+    "6": Kind.STORM,  # low temperature
+    "7": Kind.FLOOD,  # coastal event
+    "8": Kind.WILDFIRE,  # forest fire
     "9": Kind.OTHER,  # avalanches
-    "10": Kind.STORM,  # pluie
-    "11": Kind.FLOOD,  # inondation
-    "12": Kind.FLOOD,  # pluie-inondation
+    "10": Kind.STORM,  # rain
+    "11": Kind.FLOOD,  # flooding
+    "12": Kind.FLOOD,  # rain-flood
 }
 
-# niveau 1 vert (aucun danger) -> 4 rouge (danger majeur)
+# level 1 green (no danger) -> 4 red (major danger)
 AWARENESS_LEVEL_SEVERITY = {
     "1": Severity.INFO,
     "2": Severity.MODERATE,
@@ -86,7 +86,7 @@ def _parameters(info: dict) -> dict[str, str]:
 
 
 def _level_of(event: Event) -> int:
-    """Niveau Meteoalarm (1 vert -> 4 rouge) relu depuis le brut."""
+    """Meteoalarm level (1 green -> 4 red) re-read from the raw payload."""
     raw = (event.raw.get("awareness_level") or "").split(";")[0].strip()
     try:
         return int(raw)
@@ -95,8 +95,8 @@ def _level_of(event: Event) -> int:
 
 
 def _pick_info(blocks: list[dict]) -> dict | None:
-    """Une alerte Meteoalarm porte le meme contenu deux fois: langue locale et
-    anglais. Sans ce choix, chaque vigilance produisait deux evenements."""
+    """A Meteoalarm alert carries the same content twice: local language and
+    English. Without this choice, each warning produced two events."""
     if not blocks:
         return None
     for block in blocks:
@@ -115,7 +115,7 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
     params = _parameters(info)
     level, awareness_type = None, None
     if params.get("awareness_level"):
-        # format compose: "1; green; Minor"
+        # compound format: "1; green; Minor"
         level = params["awareness_level"].split(";")[0].strip()
     if params.get("awareness_type"):
         awareness_type = params["awareness_type"].split(";")[0].strip()
@@ -123,8 +123,8 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
     severity = AWARENESS_LEVEL_SEVERITY.get(level or "", Severity.INFO)
     kind = AWARENESS_TYPE_KIND.get(awareness_type or "", Kind.OTHER)
 
-    # `AllClear` veut dire que la vigilance est LEVEE. Comme les bulletins
-    # tsunami "pas de danger", elle s'affiche mais n'alerte pas.
+    # `AllClear` means the warning is LIFTED. Like the "no danger" tsunami
+    # bulletins, it is displayed but does not alert.
     lifted = "AllClear" in (info.get("responseType") or [])
     if lifted:
         severity = Severity.INFO
@@ -144,9 +144,9 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         place=place or country.replace("-", " ").title(),
         country=country.replace("-", " "),
         severity=severity,
-        # une vigilance court jusqu'a son expiration: c'est une alerte en cours
+        # a warning runs until its expiration: it is an ongoing alert
         ongoing=not lifted,
-        alert=("levee" if lifted else (params.get("awareness_level") or "").split(";")[-1].strip())
+        alert=("lifted" if lifted else (params.get("awareness_level") or "").split(";")[-1].strip())
         or None,
         title=info.get("headline") or info.get("event") or place,
         url=info.get("web"),
@@ -161,14 +161,14 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
 
 
 class MeteoalarmSource(Source):
-    """Un GET par pays et par cycle, sequentiels: leur serveur n'a pas a subir
-    dix requetes simultanees toutes les cinq minutes.
+    """One GET per country per cycle, sequential: their server does not have
+    to endure ten simultaneous requests every five minutes.
 
-    **Seuil de gravite obligatoire.** Sans lui, dix pays europeens rendent plus
-    de 2000 vigilances par cycle -- essentiellement du jaune "orages possibles"
-    -- qui evincent seismes et tsunamis du buffer. SOSForge montre des
-    evenements, pas le bulletin meteo: on ne garde que l'orange et le rouge,
-    c'est-a-dire un danger reel pour les personnes.
+    **Severity threshold is mandatory.** Without it, ten European countries
+    return over 2000 warnings per cycle -- essentially yellow "possible
+    thunderstorms" -- which evict quakes and tsunamis from the buffer.
+    SOSForge shows events, not the weather report: we only keep orange and
+    red, that is, a real danger to people.
     """
 
     name = "meteoalarm"
@@ -204,24 +204,24 @@ class MeteoalarmSource(Source):
                                 kept += 1
                                 await emit(event)
                         seen += kept
-                        # on marque la sante a CHAQUE pays: dix GET sequentiels
-                        # prennent plus d'une minute, et la source paraissait
-                        # morte pendant tout son premier cycle
+                        # mark health at EACH country: ten sequential GETs
+                        # take over a minute, and the source looked dead for
+                        # its entire first cycle
                         self.health.ok(kept)
                     except Exception as exc:
                         self.health.fail(exc)
                         log.warning("meteoalarm %s: %s", country, exc)
-                # la sante est deja marquee pays par pays au-dessus; la remarquer
-                # ici additionnait le meme total une seconde fois
+                # health is already marked country by country above; marking it
+                # here again added the same total a second time
                 if not alive:
-                    log.warning("meteoalarm: aucun pays joignable sur ce cycle")
+                    log.warning("meteoalarm: no country reachable this cycle")
                 await asyncio.sleep(self.poll_seconds)
 
 
-# ------------------------------------------------------------------- OMM (WMO)
+# ------------------------------------------------------------------------- WMO
 
-# `s`, `u`, `c` encodent severity / urgency / certainty CAP par leur rang
-# (1 = le plus grave), 0 quand le pays ne l'a pas renseigne.
+# `s`, `u`, `c` encode CAP severity / urgency / certainty by their rank
+# (1 = most severe), 0 when the country did not fill it in.
 WMO_SEVERITY = {
     1: Severity.EXTREME,
     2: Severity.SEVERE,
@@ -229,7 +229,7 @@ WMO_SEVERITY = {
     4: Severity.MINOR,
 }
 
-# Meme regle de correspondance que dans `nws.py`, mesuree sur les flux reels.
+# Same matching rule as in `nws.py`, measured on the real feeds.
 WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("tsunami",), Kind.TSUNAMI),
     (("volcano", "volcanic", "ash", "ashfall"), Kind.VOLCANO),
@@ -257,7 +257,7 @@ def parse_wmo(item: dict) -> Event | None:
     if not item_id:
         return None
 
-    # `sent` et `effective` sont sans fuseau et en UTC
+    # `sent` and `effective` have no timezone and are in UTC
     time = to_utc((item.get("sent") or "").replace(" ", "T")) or to_utc(
         (item.get("effective") or "").replace(" ", "T")
     )
@@ -272,11 +272,12 @@ def parse_wmo(item: dict) -> Event | None:
 
     severity = WMO_SEVERITY.get(rank(item.get("s")) or 0, Severity.INFO)
 
-    # l'identifiant est prefixe du code pays ISO2 ("IN-...", "CN-..."): c'est la
-    # seule indication de pays du flux, et elle suffit a poser un drapeau
+    # the identifier is prefixed with the ISO2 country code ("IN-...",
+    # "CN-..."): it is the feed's only country indication, and enough to show
+    # a flag
     prefix = str(item_id).split("-", 1)[0]
     country_code = prefix.upper() if len(prefix) == 2 and prefix.isalpha() else None
-    event_name = item.get("event") or "alerte"
+    event_name = item.get("event") or "alert"
     place = item.get("areaDesc") or ""
 
     return Event(
@@ -291,8 +292,8 @@ def parse_wmo(item: dict) -> Event | None:
         ongoing=True,
         alert=event_name.lower(),
         title=item.get("headline") or event_name,
-        # le JSON agrege a montre des horaires incoherents avec le CAP source:
-        # pour toute heure critique, c'est le CAP qui fait foi
+        # the aggregated JSON has shown times inconsistent with the source
+        # CAP: for any critical time, the CAP is authoritative
         url=f"https://severeweather.wmo.int/v2/cap-alerts/{item.get('url')}"
         if item.get("url")
         else None,
@@ -307,11 +308,11 @@ def parse_wmo(item: dict) -> Event | None:
 
 
 class WmoCapSource(JsonPollSource):
-    """Agregat CAP mondial de l'Organisation meteorologique mondiale.
+    """Worldwide CAP aggregate of the World Meteorological Organization.
 
-    Un megaoctet par appel: on envoie `If-Modified-Since` pour obtenir un 304
-    tant que le fichier n'a pas bouge, plutot que de retelecharger 2200 alertes
-    toutes les cinq minutes.
+    One megabyte per call: we send `If-Modified-Since` to get a 304 as long
+    as the file has not moved, rather than re-downloading 2200 alerts every
+    five minutes.
     """
 
     name = "wmo"
@@ -321,9 +322,10 @@ class WmoCapSource(JsonPollSource):
     def __init__(self, poll_seconds: float = 300.0, max_severity_rank: int = 1):
         super().__init__(poll_seconds)
         self._last_modified: str | None = None
-        # `s` est un rang CAP: 1 = Extreme, 2 = Severe. Au-dela on entre dans le
-        # bulletin meteo courant, et l'agregat en contient 2250 par cycle -- de
-        # quoi remplir le buffer a lui seul et enterrer tout le reste.
+        # `s` is a CAP rank: 1 = Extreme, 2 = Severe. Beyond that we enter
+        # everyday weather-bulletin territory, and the aggregate holds 2250 of
+        # those per cycle -- enough to fill the buffer by itself and bury
+        # everything else.
         self.max_severity_rank = max_severity_rank
 
     def parse_payload(self, data: Any) -> list[Event]:

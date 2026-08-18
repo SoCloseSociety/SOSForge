@@ -1,4 +1,4 @@
-"""Tests des agences regionales, sur payloads reels captures le 2026-08-17."""
+"""Regional agency tests, on real payloads captured on 2026-08-17."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ JMA_ROWS = [
         "maxi": "2",
     },
     {
-        # alerte d'intensite emise avant localisation: ni epicentre ni magnitude
+        # intensity alert issued before location: no epicentre, no magnitude
         "eid": "20260817230000",
         "ttl": "震度速報",
         "at": "2026-08-17T23:00:00+09:00",
@@ -41,32 +41,32 @@ JMA_ROWS = [
 def test_iso6709_depth_is_metres_and_negative():
     lat, lon, depth = parse_iso6709("+32.5+130.6-10000/")
     assert (lat, lon) == (32.5, 130.6)
-    assert depth == 10.0  # 10000 m sous le niveau de la mer -> 10 km
+    assert depth == 10.0  # 10000 m below sea level -> 10 km
 
     lat, lon, depth = parse_iso6709("+32.5+130.6+0/")
     assert depth == 0.0
     assert parse_iso6709(None) == (None, None, None)
-    assert parse_iso6709("n'importe quoi") == (None, None, None)
+    assert parse_iso6709("anything at all") == (None, None, None)
 
 
 def test_jma_parses_and_converts_to_utc():
     events = JmaSource().parse_payload(JMA_ROWS)
-    assert len(events) == 1  # le 震度速報 est ecarte, il n'a pas d'epicentre
+    assert len(events) == 1  # the 震度速報 is discarded, it has no epicentre
 
     event = events[0]
     assert event.id == "jma:20260817230907"
     assert event.kind is Kind.EARTHQUAKE
     assert event.magnitude == 3.2
     assert event.depth_km == 10.0
-    # 23:09 heure du Japon (+09:00) = 14:09 UTC
+    # 23:09 Japan time (+09:00) = 14:09 UTC
     assert event.time.astimezone(UTC).hour == 14
     assert event.place == "Kumamoto Region, Kumamoto Prefecture"
     assert event.alert == "shindo 2"
 
 
 def test_a_strong_shindo_outranks_a_modest_magnitude():
-    """Un M4.5 ressenti shindo 6+ fait des degats: la gravite doit suivre
-    l'intensite ressentie, pas seulement l'energie liberee."""
+    """An M4.5 felt at shindo 6+ does damage: severity must follow the felt
+    intensity, not only the released energy."""
     row = {**JMA_ROWS[0], "eid": "x1", "mag": "4.5", "maxi": "6+"}
     event = JmaSource().parse_payload([row])[0]
     assert event.severity is Severity.EXTREME  # severity_from_magnitude(4.5) = moderate
@@ -108,8 +108,8 @@ def test_bmkg_no_tsunami_potential():
 
 
 def test_bmkg_tsunami_potential_is_an_alert():
-    """C'est le seul interet de BMKG face a l'EMSC: le drapeau tsunami officiel
-    indonesien, publie avant les bulletins du PTWC."""
+    """This is BMKG's only value over EMSC: the official Indonesian tsunami
+    flag, published before the PTWC bulletins."""
     payload = {
         "Infogempa": {
             "gempa": [
@@ -156,7 +156,7 @@ def test_geonet_depth_is_a_property_not_a_coordinate():
     event = GeonetSource().parse_payload(GEONET_PAYLOAD)[0]
     assert event.id == "geonet:2026p617265"
     assert event.lat == -39.527153015 and event.lon == 175.646270752
-    # la geometrie GeoNet n'a que 2 composantes: lire coords[2] donnerait None
+    # GeoNet geometry has only 2 components: reading coords[2] would give None
     assert event.depth_km is not None and round(event.depth_km, 1) == 10.2
     assert event.magnitude == 3.4
     assert event.alert == "MMI 4"
@@ -187,15 +187,15 @@ def test_ingv_naive_timestamp_is_treated_as_utc():
     assert event.id == "ingv:46919052"
     assert event.magnitude == 1.9
     assert event.depth_km == 8.4
-    # l'INGV publie en UTC mais sans suffixe de fuseau: sans traitement, le
-    # datetime serait naif et les calculs d'age exploseraient
+    # INGV publishes in UTC but without a timezone suffix: untreated, the
+    # datetime would be naive and the age computations would blow up
     assert event.time.tzinfo is not None
     assert event.time.hour == 16
     assert event.mag_type == "ML"
 
 
 def test_regional_sources_ignore_malformed_rows():
-    """Une entree cassee ne doit jamais interrompre le reste du lot."""
-    assert JmaSource().parse_payload([{"eid": "x", "cod": "casse", "at": "hier"}]) == []
+    """A broken entry must never interrupt the rest of the batch."""
+    assert JmaSource().parse_payload([{"eid": "x", "cod": "broken", "at": "not a date"}]) == []
     assert GeonetSource().parse_payload({"features": [{"properties": {}}]}) == []
     assert IngvSource().parse_payload({"features": [{"properties": {"eventId": 1}}]}) == []

@@ -1,25 +1,25 @@
-"""Resolution du pays -> code ISO 3166-1 alpha-2, pour afficher un drapeau.
+"""Country resolution -> ISO 3166-1 alpha-2 code, to display a flag.
 
-Six des dix sources donnent deja un nom de pays. La septieme, l'USGS, ne donne
-qu'un texte de lieu ("7 km WSW of Anza, CA", "84 km NE of Ruteng, Indonesia").
-Sur une semaine entiere de flux USGS (2110 evenements), ce texte ne produit que
-**58 terminaisons distinctes**, tres majoritairement des Etats americains: une
-table ciblee resout donc le probleme entierement, sans dependance ni geocodage
-inverse approximatif.
+Six of the ten sources already give a country name. The seventh, USGS, only
+gives a place text ("7 km WSW of Anza, CA", "84 km NE of Ruteng, Indonesia").
+Over a full week of USGS feed (2110 events), that text produces only **58
+distinct endings**, overwhelmingly US states: a targeted table therefore
+solves the problem entirely, with no dependency and no approximate reverse
+geocoding.
 
-Regle de conduite: en cas de doute, PAS de drapeau. Un seisme en pleine mer
-("South Sandwich Islands region", "Banda Sea") n'appartient a aucun pays, et
-coller un drapeau au hasard serait une information fausse sur un produit
-d'urgence. `resolve` rend `None` et l'interface affiche un globe (le drapeau lui-meme
-est calcule cote navigateur a partir du code, il n'a rien a faire ici).
+Guiding rule: when in doubt, NO flag. A quake in open sea ("South Sandwich
+Islands region", "Banda Sea") belongs to no country, and slapping on a random
+flag would be false information on an emergency product. `resolve` returns
+`None` and the UI shows a globe (the flag itself is computed browser-side from
+the code, it has no business here).
 """
 
 from __future__ import annotations
 
 import re
 
-# Etats, territoires et abreviations utilises par l'USGS: tous -> US, sauf ceux
-# qui ont leur propre code ISO (Porto Rico, Guam, iles Vierges...).
+# States, territories and abbreviations used by USGS: all -> US, except those
+# that have their own ISO code (Puerto Rico, Guam, Virgin Islands...).
 US_STATES = {
     "alabama",
     "alaska",
@@ -70,7 +70,7 @@ US_STATES = {
     "west virginia",
     "wisconsin",
     "wyoming",
-    # abreviations postales vues dans les flux
+    # postal abbreviations seen in the feeds
     "ak",
     "al",
     "ar",
@@ -123,15 +123,16 @@ US_STATES = {
     "wy",
 }
 
-# Libelles qui contiennent le nom d'un pays ou d'un Etat SANS etre ce lieu.
-# Chacun a ete observe dans un flux reel et produisait un faux drapeau:
-#   "GULF OF CALIFORNIA"  -> Californie -> Etats-Unis, alors que ce sont des
-#                            eaux mexicaines (231 evenements EMSC sur un an)
-#   "NEAR EAST COAST OF NEW GUINEA" -> "guinea" -> Guinee (Afrique de l'Ouest)
-#   "LAC KIVU REGION, CONGO" -> Congo-Brazzaville, alors que le Kivu est en RDC
-#   "SOUTH GEORGIA RISE" -> Georgie -> Etats-Unis, en plein ocean Austral
+# Labels that contain the name of a country or state WITHOUT being that place.
+# Each was observed in a real feed and produced a wrong flag:
+#   "GULF OF CALIFORNIA"  -> California -> United States, when these are
+#                            Mexican waters (231 EMSC events over a year)
+#   "NEAR EAST COAST OF NEW GUINEA" -> "guinea" -> Guinea (West Africa)
+#   "LAC KIVU REGION, CONGO" -> Congo-Brazzaville, when Kivu is in the DRC
+#   "SOUTH GEORGIA RISE" -> Georgia -> United States, in the middle of the
+#                           Southern Ocean
 AMBIGUOUS_PHRASES = {
-    "new guinea": None,  # Papouasie ou Guinee equatoriale: on ne tranche pas
+    "new guinea": None,  # Papua or Equatorial Guinea: we do not decide
     "equatorial guinea": "GQ",
     "papua new guinea": "PG",
     "gulf of california": "MX",
@@ -144,7 +145,7 @@ AMBIGUOUS_PHRASES = {
 }
 
 NAME_TO_ISO2: dict[str, str] = {
-    # Amerique du Nord et centrale
+    # North and Central America
     "united states": "US",
     "united states of america": "US",
     "usa": "US",
@@ -175,7 +176,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "barbados": "BB",
     "greenland": "GL",
     "bermuda": "BM",
-    # Amerique du Sud
+    # South America
     "colombia": "CO",
     "venezuela": "VE",
     "ecuador": "EC",
@@ -233,7 +234,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "cyprus": "CY",
     "russia": "RU",
     "russian federation": "RU",
-    # Afrique
+    # Africa
     "morocco": "MA",
     "algeria": "DZ",
     "tunisia": "TN",
@@ -253,9 +254,9 @@ NAME_TO_ISO2: dict[str, str] = {
     "democratic republic of congo": "CD",
     "the democratic republic of congo": "CD",
     "democratic republic of the congo": "CD",
-    # Sans precision, "Congo" dans un libelle sismique designe le Rift
-    # est-africain, donc la RDC. Le Congo-Brazzaville reste joignable par son
-    # nom complet ci-dessous.
+    # Unqualified, "Congo" in a seismic label means the East African Rift,
+    # hence the DRC. Congo-Brazzaville stays reachable through its full name
+    # below.
     "congo": "CD",
     "republic of congo": "CG",
     "republic of the congo": "CG",
@@ -290,7 +291,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "mauritania": "MR",
     "benin": "BJ",
     "togo": "TG",
-    # Asie de l'Ouest et centrale
+    # West and Central Asia
     "turkey": "TR",
     "turkiye": "TR",
     "türkiye": "TR",
@@ -316,7 +317,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "kyrgyzstan": "KG",
     "tajikistan": "TJ",
     "afghanistan": "AF",
-    # Asie du Sud et de l'Est
+    # South and East Asia
     "pakistan": "PK",
     "india": "IN",
     "nepal": "NP",
@@ -342,7 +343,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "indonesia": "ID",
     "philippines": "PH",
     "timor-leste": "TL",
-    # Oceanie
+    # Oceania
     "australia": "AU",
     "new zealand": "NZ",
     "papua new guinea": "PG",
@@ -361,8 +362,8 @@ NAME_TO_ISO2: dict[str, str] = {
     "french polynesia": "PF",
 }
 
-# Zones que les flux nomment mais qui n'appartiennent a aucun pays: on veut un
-# echec explicite plutot qu'un rattachement approximatif.
+# Areas the feeds name but that belong to no country: we want an explicit
+# failure rather than an approximate attachment.
 RE_STRIP = re.compile(r"\s+(region|border region|area|sea|ocean|ridge|rise)$", re.I)
 RE_SEPARATORS = re.compile(r"\s*[;/]\s*")
 
@@ -386,18 +387,19 @@ def _lookup(candidate: str) -> str | None:
     return None
 
 
-# Sentinel: distingue "pas une phrase ambigue" de "phrase ambigue, aucun pays".
-# Un booleen melange a un code pays rendait la signature intenable (mypy le
-# signalait), et surtout illisible a la lecture.
+# Sentinel: distinguishes "not an ambiguous phrase" from "ambiguous phrase, no
+# country". A boolean mixed with a country code made the signature untenable
+# (mypy flagged it), and above all unreadable.
 NOT_AMBIGUOUS = "?"
 
 
 def _is_ambiguous(text: str) -> str | None:
-    """Une phrase ambigue est tranchee AVANT tout matching par suffixe: sinon
-    "GULF OF CALIFORNIA" retombe sur "california" et devient americain.
+    """An ambiguous phrase is settled BEFORE any suffix matching: otherwise
+    "GULF OF CALIFORNIA" falls back to "california" and becomes American.
 
-    Rend `NOT_AMBIGUOUS` si le texte n'est pas ambigu, sinon le code pays (ou
-    None quand la phrase est ambigue au point qu'on refuse de trancher).
+    Returns `NOT_AMBIGUOUS` if the text is not ambiguous, otherwise the
+    country code (or None when the phrase is so ambiguous we refuse to
+    decide).
     """
     lowered = _normalize(text)
     for phrase, iso2 in AMBIGUOUS_PHRASES.items():
@@ -407,10 +409,10 @@ def _is_ambiguous(text: str) -> str | None:
 
 
 def resolve(country: str | None, place: str | None = None) -> str | None:
-    """Rend un code ISO2, ou None si on ne peut pas conclure honnetement."""
+    """Returns an ISO2 code, or None if we cannot honestly conclude."""
     if country:
-        # GDACS liste parfois plusieurs pays: "Kenya, Somalia, Ethiopia".
-        # Le premier suffit a poser un drapeau representatif.
+        # GDACS sometimes lists several countries: "Kenya, Somalia, Ethiopia".
+        # The first is enough to show a representative flag.
         for chunk in RE_SEPARATORS.split(country):
             for part in chunk.split(","):
                 found = _lookup(part)
@@ -424,17 +426,17 @@ def resolve(country: str | None, place: str | None = None) -> str | None:
     if verdict != NOT_AMBIGUOUS:
         return verdict
 
-    # Les libelles USGS et EMSC finissent par la region: "..., CA",
-    # "..., Indonesia", "FLORES REGION, INDONESIA". SEUL ce dernier segment est
-    # interrogé: chercher plus loin faisait dire "Georgie" a
-    # "21 km NNW of T'q'ibuli, Georgia" pour l'Etat americain.
+    # USGS and EMSC labels end with the region: "..., CA", "..., Indonesia",
+    # "FLORES REGION, INDONESIA". ONLY that last segment is looked up:
+    # searching further made "21 km NNW of T'q'ibuli, Georgia" resolve to the
+    # US state of Georgia.
     if "," in place:
         return _lookup(place.rsplit(",", 1)[1])
 
-    # Certains libelles n'ont pas de virgule: "Fiji region", "WESTERN TEXAS",
-    # "Banda Sea". On essaie le libelle entier, puis ses suffixes de plus en plus
-    # courts ("western texas" -> "texas"), ce qui couvre les regions Flynn de
-    # l'EMSC. "Banda Sea" reste sans reponse: c'est une mer, tant mieux.
+    # Some labels have no comma: "Fiji region", "WESTERN TEXAS", "Banda Sea".
+    # We try the full label, then its shorter and shorter suffixes ("western
+    # texas" -> "texas"), which covers EMSC's Flynn regions. "Banda Sea" stays
+    # unanswered: it is a sea, and that is the right answer.
     found = _lookup(place)
     if found:
         return found

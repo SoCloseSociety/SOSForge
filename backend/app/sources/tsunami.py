@@ -1,13 +1,14 @@
-"""NOAA / NWS tsunami.gov -- bulletins des deux centres d'alerte americains.
+"""NOAA / NWS tsunami.gov -- bulletins from the two US warning centers.
 
-PAAQ = National Tsunami Warning Center (Palmer, Alaska) -- couvre US/Canada.
-PHEB = Pacific Tsunami Warning Center (Honolulu) -- couvre le Pacifique et les
-Caraibes pour le compte de l'UNESCO/IOC.
+PAAQ = National Tsunami Warning Center (Palmer, Alaska) -- covers US/Canada.
+PHEB = Pacific Tsunami Warning Center (Honolulu) -- covers the Pacific and the
+Caribbean on behalf of UNESCO/IOC.
 
-Le flux Atom ne contient que le dernier bulletin emis, et la donnee qui compte
-(la categorie: Information / Watch / Advisory / Warning) est enfouie dans le HTML
-du `summary`. On l'extrait par regex: le format de ces bulletins est fige depuis
-des annees, et dependre d'un parseur HTML complet pour trois champs serait pire.
+The Atom feed only contains the latest bulletin issued, and the data that
+matters (the category: Information / Watch / Advisory / Warning) is buried in
+the `summary` HTML. We extract it by regex: the format of these bulletins has
+been frozen for years, and depending on a full HTML parser for three fields
+would be worse.
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ CENTER_NAMES = {
     "PHEB": "Pacific Tsunami Warning Center",
 }
 
-# Warning > Advisory > Watch > Information (ordre decroissant de gravite)
+# Warning > Advisory > Watch > Information (decreasing order of severity)
 CATEGORY_SEVERITY = {
     "warning": Severity.EXTREME,
     "advisory": Severity.SEVERE,
@@ -51,10 +52,10 @@ CATEGORY_SEVERITY = {
     "cancellation": Severity.INFO,
 }
 
-# On regexe sur le texte DEBALISE, jamais sur le balisage: selon les bulletins,
-# tsunami.gov sert le summary tantot en xhtml echappe (&lt;strong&gt;), tantot en
-# vrais elements -- qui ressortent alors prefixes par le namespace Atom. Le texte
-# nu, lui, est identique dans les deux cas.
+# We regex on the STRIPPED text, never on the markup: depending on the
+# bulletin, tsunami.gov serves the summary sometimes as escaped xhtml
+# (&lt;strong&gt;), sometimes as real elements -- which then come out prefixed
+# with the Atom namespace. The bare text is identical in both cases.
 RE_TAGS = re.compile(r"<[^>]+>")
 RE_CATEGORY = re.compile(r"Category:?\s*([A-Za-z]+)", re.I)
 RE_MAGNITUDE = re.compile(r"Preliminary Magnitude:?\s*([0-9]+(?:\.[0-9]+)?)", re.I)
@@ -62,14 +63,14 @@ RE_MAG_FALLBACK = re.compile(r"Magnitude[^0-9]{0,40}([0-9]+\.[0-9])", re.I)
 
 
 def strip_markup(value: str) -> str:
-    """Balises supprimees, entites resolues, espaces normalises."""
+    """Tags removed, entities resolved, whitespace normalized."""
     text = unescape(value)
     text = RE_TAGS.sub(" ", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
 def _inner_xml(node: ET.Element | None) -> str:
-    """Reserialise un noeud (le summary Atom est du xhtml inline)."""
+    """Re-serializes a node (the Atom summary is inline xhtml)."""
     if node is None:
         return ""
     chunks = [node.text or ""]
@@ -112,10 +113,10 @@ def parse_entry(entry: ET.Element, center: str) -> Event | None:
     except (TypeError, ValueError):
         lat = lon = None
 
-    place = _text(entry, "atom:title") or "region inconnue"
+    place = _text(entry, "atom:title") or "unknown region"
     severity = CATEGORY_SEVERITY.get(category, Severity.INFO)
-    # Un bulletin "Information" dit en general "NO tsunami danger": ce n'est pas
-    # une alerte tsunami, on ne doit pas faire hurler l'interface pour ca.
+    # An "Information" bulletin generally says "NO tsunami danger": it is not
+    # a tsunami alert, and the UI must not scream over it.
     is_alert = category in ("warning", "advisory", "watch")
 
     link = None
@@ -179,9 +180,9 @@ class TsunamiSource(Source):
                     except Exception as exc:
                         self.health.fail(exc)
                         log.warning("tsunami %s: %s", center, exc)
-                # Ne JAMAIS se declarer en bonne sante si aucun feed n'a repondu:
-                # une source d'alerte tsunami affichee verte alors qu'elle est
-                # morte est exactement le mensonge que ce produit s'interdit.
+                # NEVER declare good health if no feed responded: a tsunami
+                # alert source shown green while it is dead is exactly the lie
+                # this product forbids itself.
                 if alive:
                     self.health.ok(seen)
                 await asyncio.sleep(self.poll_seconds)

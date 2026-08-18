@@ -1,8 +1,8 @@
-"""GDACS -- flux multi-alea (seismes majeurs, cyclones, inondations, volcans, feux).
+"""GDACS -- multi-hazard feed (major quakes, cyclones, floods, volcanoes, fires).
 
-C'est ce qui fait de SOSForge autre chose qu'un compteur de seismes: GDACS agrege
-les alertes mondiales avec un niveau (Green/Orange/Red) deja calcule par la
-Commission europeenne + l'ONU.
+This is what makes SOSForge more than an earthquake counter: GDACS aggregates
+worldwide alerts with a level (Green/Orange/Red) already computed by the
+European Commission + the UN.
 """
 
 from __future__ import annotations
@@ -73,9 +73,9 @@ def parse_item(item: ET.Element) -> Event | None:
         or _parse_date(_text(item, "pubDate"))
         or datetime.now(UTC)
     )
-    # pubDate = derniere publication GDACS. C'est ca, la fraicheur: une secheresse
-    # "en cours" depuis juillet 2025 a un fromdate d'il y a un an mais n'est pas
-    # une info du moment.
+    # pubDate = latest GDACS publication. That is what freshness means: a
+    # drought "ongoing" since July 2025 has a fromdate a year old but is not
+    # current news.
     published = _parse_date(_text(item, "pubDate")) or time
 
     lat = lon = None
@@ -93,13 +93,13 @@ def parse_item(item: ET.Element) -> Event | None:
         except (TypeError, ValueError):
             lat = lon = None
 
-    title = _text(item, "title") or "alerte GDACS"
+    title = _text(item, "title") or "GDACS alert"
     country = _text(item, "gdacs:country")
     kind = EVENT_TYPE_TO_KIND.get(event_type, Kind.OTHER)
 
-    # gdacs:severity porte la valeur numerique dans l'ATTRIBUT `value`; le texte
-    # ("Magnitude 5.8M, Depth:54.7km") est destine a un humain. L'unite change
-    # selon le type: M pour un seisme, km/h pour un cyclone, ha pour un feu.
+    # gdacs:severity carries the numeric value in the `value` ATTRIBUTE; the
+    # text ("Magnitude 5.8M, Depth:54.7km") is meant for a human. The unit
+    # changes with the type: M for a quake, km/h for a cyclone, ha for a fire.
     severity_node = item.find("gdacs:severity", NS)
     severity_value: float | None = None
     severity_unit = None
@@ -113,8 +113,8 @@ def parse_item(item: ET.Element) -> Event | None:
             severity_value = None
 
     return Event(
-        # un evenement GDACS a plusieurs episodes: on garde l'eventid comme cle
-        # pour que les episodes successifs mettent a jour la meme entree.
+        # a GDACS event has several episodes: keep the eventid as the key so
+        # successive episodes update the same entry.
         id=f"gdacs:{event_type}{event_id}",
         source="gdacs",
         source_id=f"{event_type}{event_id}",
@@ -128,7 +128,7 @@ def parse_item(item: ET.Element) -> Event | None:
         place=country or title,
         country=country,
         severity=ALERT_TO_SEVERITY.get(alert, Severity.INFO),
-        # GDACS dit lui-meme si l'evenement est toujours d'actualite
+        # GDACS itself says whether the event is still current
         ongoing=(_text(item, "gdacs:iscurrent") or "").lower() == "true",
         alert=alert or None,
         tsunami=kind is Kind.TSUNAMI,
@@ -148,10 +148,10 @@ def parse_item(item: ET.Element) -> Event | None:
 
 
 def is_relevant(event: Event, max_age_days: float) -> bool:
-    """Le flux GDACS complet, c'est ~400 entrees dont ~344 feux verts et des
-    secheresses ouvertes depuis un an. Non filtre, il noie les seismes et les
-    tsunamis dans du bruit. Regle: on garde tout ce qui est orange/rouge (c'est
-    l'interet de GDACS), et le vert seulement s'il vient d'etre publie.
+    """The full GDACS feed is ~400 entries, ~344 of which are green fires plus
+    droughts open for a year. Unfiltered, it drowns quakes and tsunamis in
+    noise. Rule: keep everything orange/red (that is GDACS's whole point), and
+    green only if it was just published.
     """
     if event.severity in (Severity.SEVERE, Severity.EXTREME):
         return True
@@ -177,8 +177,8 @@ class GdacsSource(Source):
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
-        # gdacs.org sert 1.2 Mo de RSS et met regulierement 60s a repondre:
-        # un timeout court ferait echouer la source a tous les cycles.
+        # gdacs.org serves 1.2 MB of RSS and regularly takes 60s to respond:
+        # a short timeout would fail the source on every cycle.
         async with httpx.AsyncClient(
             timeout=120.0, headers=headers, follow_redirects=True
         ) as client:
@@ -195,7 +195,7 @@ class GdacsSource(Source):
                             kept += 1
                             await emit(event)
                     self.health.ok(kept)
-                    log.debug("gdacs: %d items, %d retenus", len(items), kept)
+                    log.debug("gdacs: %d items, %d kept", len(items), kept)
                 except Exception as exc:
                     self.health.fail(exc)
                     log.warning("gdacs poll: %s", exc)

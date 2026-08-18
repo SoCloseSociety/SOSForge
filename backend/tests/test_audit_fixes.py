@@ -1,6 +1,6 @@
-"""Non-regressions issues de l'audit adversarial du 2026-08-17.
+"""Non-regressions from the adversarial audit of 2026-08-17.
 
-Chaque test correspond a un defaut qui avait ete REPRODUIT sur le systeme vivant.
+Each test corresponds to a defect that had been REPRODUCED on the live system.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def quake(event_id: str, minutes_ago: float, lat: float = 10.0, lon: float = 20.
         lat=lat,
         lon=lon,
         magnitude=4.0,
-        place="quelque part",
+        place="somewhere",
     )
 
 
@@ -47,37 +47,37 @@ def alert(event_id: str) -> Event:
 
 
 def test_alert_repolls_no_longer_flush_the_dedup_window():
-    """Defaut 1. Les alertes re-emises a chaque cycle (NWS, GDACS, tsunami:
-    ~146/minute mesurees) remplissaient l'historique du deduper et evinçaient
-    l'entree EMSC avant que l'USGS ne publie sa solution, 5 a 15 min plus tard.
+    """Defect 1. Alerts re-emitted every cycle (NWS, GDACS, tsunami:
+    ~146/minute, measured) filled the deduper's history and evicted the EMSC
+    entry before USGS published its own solution, 5 to 15 minutes later.
     """
     deduper = Deduper(history=50)
     emsc = quake("emsc:1", minutes_ago=1)
     deduper.assign(emsc)
 
-    # le bruit de fond: dix fois la capacite de l'historique
+    # the background noise: ten times the history's capacity
     for i in range(500):
         deduper.assign(alert(f"nws:{i}"))
 
     usgs = quake("usgs:1", minutes_ago=0.5)
     deduper.assign(usgs)
 
-    assert usgs.cluster_id == emsc.cluster_id, "le dedup EMSC/USGS doit survivre au bruit"
+    assert usgs.cluster_id == emsc.cluster_id, "the EMSC/USGS dedup must survive the noise"
 
 
 @pytest.mark.asyncio
 async def test_a_source_whose_every_feed_failed_is_not_green():
-    """Defaut 2. `health.ok()` etait appele meme quand les deux centres tsunami
-    etaient injoignables: l'interface affichait une source d'alerte tsunami
-    saine alors qu'elle etait morte."""
-    # deux feeds sur un port ferme
+    """Defect 2. `health.ok()` was called even when both tsunami centres were
+    unreachable: the interface showed a healthy tsunami alert source when it
+    was dead."""
+    # two feeds on a closed port
     source = TsunamiSource(
         poll_seconds=0.01,
         feeds={"A": "http://127.0.0.1:9/a.xml", "B": "http://127.0.0.1:9/b.xml"},
     )
 
-    async def emit(_: Event) -> None:  # pragma: no cover - jamais appele
-        raise AssertionError("aucun evenement ne peut sortir d'un feed mort")
+    async def emit(_: Event) -> None:  # pragma: no cover - never called
+        raise AssertionError("no event can come out of a dead feed")
 
     task = asyncio.create_task(source.run(emit))
     await asyncio.sleep(0.4)
@@ -92,25 +92,25 @@ async def test_a_source_whose_every_feed_failed_is_not_green():
 
 @pytest.mark.asyncio
 async def test_an_evicted_client_is_signalled_not_left_hanging():
-    """Defaut 3. Le client trop lent etait retire du hub mais sa websocket
-    restait ouverte et muette: sa tache d'envoi dormait pour toujours sur
-    queue.get()."""
+    """Defect 3. The too-slow client was removed from the hub but its websocket
+    stayed open and silent: its send task slept forever on queue.get()."""
     hub = Hub()
-    client = Client("lent")
+    client = Client("slow")
     await hub.register(client)
 
     for i in range(QUEUE_MAX + 5):
         await hub.broadcast({"type": "tick", "n": i})
 
     assert hub.client_count == 0
-    assert client.evicted.is_set(), "l'ejection doit etre signalee a la tache d'envoi"
+    assert client.evicted.is_set(), "the eviction must be signalled to the send task"
 
 
 @pytest.mark.asyncio
 async def test_a_future_dated_event_is_rejected(monkeypatch):
-    """Defaut 7. Un horodatage dans le futur (fuseau mal pose cote source)
-    traversait tout: age negatif donc horizon franchi, `breaking` toujours vrai,
-    et tri par date decroissante -- il se clouait en tete du flux pour toujours.
+    """Defect 7. A future timestamp (timezone mishandled source-side) went
+    through everything: negative age so the horizon passed, `breaking` always
+    true, and descending date sort -- it nailed itself to the head of the feed
+    forever.
     """
     from app import pipeline as pipeline_module
     from app.core import config
@@ -126,43 +126,43 @@ async def test_a_future_dated_event_is_rejected(monkeypatch):
     store = EventStore(maxlen=50, data_dir=None, persist=False)
     pipeline = Pipeline(store, Deduper())
 
-    await pipeline.emit(quake("bad:1", minutes_ago=-30))  # date 30 min en avance
+    await pipeline.emit(quake("bad:1", minutes_ago=-30))  # dated 30 min ahead
     assert store.recent(limit=10) == []
     assert pipeline.dropped == 1
     assert sent == []
 
-    # une avance d'une minute reste toleree: les horloges ne sont jamais exactes
+    # one minute ahead is still tolerated: clocks are never exact
     await pipeline.emit(quake("ok:1", minutes_ago=-1))
     assert [e.id for e in store.recent(limit=10)] == ["ok:1"]
-    # ... mais elle n'est pas annoncee comme "vient de se produire"
+    # ... but it is not announced as "just happened"
     assert sent[-1]["breaking"] is False
 
 
 def test_evicting_a_cluster_primary_promotes_a_survivor():
-    """Defaut 4. `primary_only` masque tout evenement dont le cluster_id n'est
-    pas le sien. Quand le ring evinçait le representant (l'EMSC, arrive en
-    premier, part en premier), le seisme disparaissait entierement du flux."""
+    """Defect 4. `primary_only` hides any event whose cluster_id is not its
+    own. When the ring evicted the representative (the EMSC entry, first in,
+    first out), the earthquake vanished from the feed entirely."""
     store = EventStore(maxlen=3, data_dir=None, persist=False)
 
     emsc = quake("emsc:1", 5)
     emsc.cluster_id = "emsc:1"
     usgs = quake("usgs:1", 4)
-    usgs.cluster_id = "emsc:1"  # meme cluster, secondaire
+    usgs.cluster_id = "emsc:1"  # same cluster, secondary
     store.upsert(emsc)
     store.upsert(usgs)
 
-    # on sature le ring: emsc:1 est le plus ancien, il saute
+    # saturate the ring: emsc:1 is the oldest, it goes
     store.upsert(quake("x:1", 3))
     store.upsert(quake("x:2", 2))
 
     assert store.get("emsc:1") is None
     ids = [e.id for e in store.recent(limit=10, primary_only=True)]
-    assert "usgs:1" in ids, "le survivant doit etre promu, pas efface du flux"
+    assert "usgs:1" in ids, "the survivor must be promoted, not erased from the feed"
 
 
 def test_replaying_the_journal_does_not_rewrite_it(tmp_path):
-    """Defaut 5. Chaque redemarrage reecrivait tout le journal du jour: 747
-    lignes dont 368 doublons apres deux redemarrages."""
+    """Defect 5. Every restart rewrote the whole day's journal: 747 lines
+    including 368 duplicates after two restarts."""
     store = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
     store.upsert(quake("usgs:a", 1))
     journal = next(tmp_path.glob("events-*.jsonl"))
@@ -170,92 +170,92 @@ def test_replaying_the_journal_does_not_rewrite_it(tmp_path):
 
     reloaded = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
     assert reloaded.load_backlog(journal) == 1
-    assert journal.read_text().count("\n") == before, "relire ne doit pas reecrire"
+    assert journal.read_text().count("\n") == before, "replaying must not rewrite"
 
 
-# --- Second audit adversarial (defauts confirmes sur donnees reelles) ---------
+# --- Second adversarial audit (defects confirmed on real data) ----------------
 
 
 def test_a_warning_issued_in_advance_is_not_rejected_as_a_clock_error():
-    """Defaut 8. Une vigilance meteo est PUBLIEE AVANT son debut: c'est tout son
-    interet, le preavis. Son `onset` est donc legitimement dans le futur, et le
-    filtre anti-futur la rejetait a chaque cycle."""
+    """Defect 8. A weather warning is PUBLISHED BEFORE it starts: advance
+    notice is its whole point. Its `onset` is therefore legitimately in the
+    future, and the anti-future filter rejected it on every cycle."""
     from app.models.event import Kind as K
 
-    vigilance = quake("meteoalarm:1", minutes_ago=-96)  # debut dans 1 h 36
-    vigilance.kind = K.STORM
-    vigilance.ongoing = True
-    assert vigilance.age_seconds < 0
+    warning = quake("meteoalarm:1", minutes_ago=-96)  # starts in 1 h 36
+    warning.kind = K.STORM
+    warning.ongoing = True
+    assert warning.age_seconds < 0
 
     store = EventStore(maxlen=10, data_dir=None, persist=False)
     pipeline = Pipeline(store, Deduper())
-    asyncio.run(pipeline.emit(vigilance))
+    asyncio.run(pipeline.emit(warning))
     assert [e.id for e in store.recent(limit=5)] == ["meteoalarm:1"]
 
-    # un seisme, lui, ne peut pas etre date en avance
-    futur = quake("usgs:futur", minutes_ago=-96)
-    asyncio.run(pipeline.emit(futur))
-    assert store.get("usgs:futur") is None
+    # an earthquake, though, cannot be dated in advance
+    future_quake = quake("usgs:future", minutes_ago=-96)
+    asyncio.run(pipeline.emit(future_quake))
+    assert store.get("usgs:future") is None
 
 
 def test_the_sweep_only_removes_ongoing_alerts():
-    """Defaut 9. Sans filtre `ongoing`, la purge effaçait les seismes ordinaires
-    apres six heures de silence: le store ne gardait plus que sept heures
-    d'historique alors que l'interface propose 24 h et "tout"."""
+    """Defect 9. Without the `ongoing` filter, the sweep erased ordinary
+    earthquakes after six hours of silence: the store kept only seven hours of
+    history while the interface offers 24 h and "all"."""
     from datetime import timedelta as _td
 
     store = EventStore(maxlen=50, data_dir=None, persist=False)
 
-    ancien_seisme = quake("usgs:vieux", 60 * 8)
-    ancien_seisme.last_seen = datetime.now(UTC) - _td(hours=8)
-    store.upsert(ancien_seisme)
+    old_quake = quake("usgs:old", 60 * 8)
+    old_quake.last_seen = datetime.now(UTC) - _td(hours=8)
+    store.upsert(old_quake)
 
-    alerte_muette = alert("gdacs:muette")
-    alerte_muette.ongoing = True
-    alerte_muette.last_seen = datetime.now(UTC) - _td(hours=8)
-    store.upsert(alerte_muette)
+    mute_alert = alert("gdacs:mute")
+    mute_alert.ongoing = True
+    mute_alert.last_seen = datetime.now(UTC) - _td(hours=8)
+    store.upsert(mute_alert)
 
     removed = store.prune_stale(max_silence_hours=6)
-    assert [e.id for e in removed] == ["gdacs:muette"]
-    assert store.get("usgs:vieux") is not None
+    assert [e.id for e in removed] == ["gdacs:mute"]
+    assert store.get("usgs:old") is not None
 
 
 def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
-    """Defaut 10. Le replay rafraichissait `last_seen`, ce qui redonnait six
-    heures de sursis a toute alerte morte a CHAQUE redemarrage -- et masquait la
-    purge entierement en production."""
+    """Defect 10. The replay refreshed `last_seen`, which handed six more
+    hours of reprieve to every dead alert on EVERY restart -- and masked the
+    sweep entirely in production."""
     from datetime import timedelta as _td
 
     store = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
-    vieille = alert("gdacs:x")
-    vieille.ongoing = True
-    vieille.last_seen = datetime.now(UTC) - _td(hours=20)
-    store.upsert(vieille)
+    old_alert = alert("gdacs:x")
+    old_alert.ongoing = True
+    old_alert.last_seen = datetime.now(UTC) - _td(hours=20)
+    store.upsert(old_alert)
 
     journal = next(tmp_path.glob("events-*.jsonl"))
-    rechargee = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
-    rechargee.load_backlog(journal)
-    rechargee.load_backlog(journal)  # deuxieme passe: le chemin noop
+    reloaded = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
+    reloaded.load_backlog(journal)
+    reloaded.load_backlog(journal)  # second pass: the noop path
 
-    restaure = rechargee.get("gdacs:x")
-    assert restaure is not None
-    silence_h = (datetime.now(UTC) - restaure.last_seen).total_seconds() / 3600
-    assert silence_h > 19, "le silence doit survivre au replay"
-    assert rechargee.prune_stale(max_silence_hours=6)
+    restored = reloaded.get("gdacs:x")
+    assert restored is not None
+    silence_h = (datetime.now(UTC) - restored.last_seen).total_seconds() / 3600
+    assert silence_h > 19, "the silence must survive the replay"
+    assert reloaded.prune_stale(max_silence_hours=6)
 
 
 def test_old_journals_are_purged(tmp_path):
-    """Defaut 11. Le journal grossit d'environ 5 Mo par jour et n'etait jamais
-    purge: sur un service qui tourne en continu, le volume finit par saturer un
-    disque partage avec les autres produits de la suite."""
+    """Defect 11. The journal grows by about 5 MB per day and was never
+    purged: on a service that runs continuously, the volume ends up saturating
+    a disk shared with the other products of the suite."""
     from datetime import timedelta as _td
 
     store = EventStore(maxlen=10, data_dir=tmp_path, persist=True)
     today = datetime.now(UTC)
     for age in (0, 1, 9, 30):
         (tmp_path / f"events-{(today - _td(days=age)):%Y-%m-%d}.jsonl").write_text("{}\n")
-    # un fichier qui ne suit pas la convention ne doit pas etre touche
-    (tmp_path / "notes.txt").write_text("garder")
+    # a file that does not follow the convention must not be touched
+    (tmp_path / "notes.txt").write_text("keep")
 
     removed = store.purge_journals(keep_days=7)
 

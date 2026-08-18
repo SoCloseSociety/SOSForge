@@ -1,6 +1,6 @@
-"""Alertes hors USA: Meteoalarm (Europe) et agregat CAP de l'OMM.
+"""Non-US alerts: Meteoalarm (Europe) and the WMO CAP aggregate.
 
-Fixtures: extraits verbatim des flux captures le 2026-08-17.
+Fixtures: verbatim excerpts from the feeds captured on 2026-08-17.
 """
 
 from __future__ import annotations
@@ -10,8 +10,8 @@ from app.sources.alerts_world import classify_wmo, parse_meteoalarm, parse_wmo
 
 # ------------------------------------------------------------------ Meteoalarm
 
-# une vigilance orages active, avec ses deux blocs `info` (francais puis anglais)
-ALERTE = {
+# an active thunderstorm warning, with its two `info` blocks (French then English)
+ALERT = {
     "alert": {
         "identifier": "2.49.0.0.250.0.FR.20260812160107.974023",
         "info": [
@@ -52,7 +52,7 @@ ALERTE = {
     }
 }
 
-LEVEE = {
+LIFTED = {
     "alert": {
         "identifier": "2.49.0.0.250.0.FR.20260812060108.090023",
         "info": [
@@ -75,39 +75,39 @@ LEVEE = {
 
 
 def test_only_one_event_per_warning_despite_two_language_blocks():
-    """Chaque vigilance porte son contenu deux fois (langue locale + anglais).
-    Sans choix explicite, chacune produisait deux evenements."""
-    event = parse_meteoalarm(ALERTE, "france")
+    """Each warning carries its content twice (local language + English).
+    Without an explicit choice, each one produced two events."""
+    event = parse_meteoalarm(ALERT, "france")
     assert event is not None
-    # le bloc anglais est preferé: le titre ne doit pas etre en francais
+    # the English block is preferred: the title must not be in French
     assert event.title == "Yellow thunderstorm warning"
 
 
 def test_awareness_type_drives_the_kind_not_the_local_label():
-    """`event` est redige dans la langue du pays ("Vigilance jaune orages"):
-    seul `awareness_type`, code standard en anglais, est exploitable."""
-    event = parse_meteoalarm(ALERTE, "france")
+    """`event` is written in the country's language ("Vigilance jaune orages"):
+    only `awareness_type`, a standard code in English, is usable."""
+    event = parse_meteoalarm(ALERT, "france")
     assert event is not None
     assert event.kind is Kind.STORM
 
 
 def test_awareness_level_is_a_composite_string():
-    """ "2; yellow; Moderate" -- la gravite est le premier champ, pas la chaine."""
-    event = parse_meteoalarm(ALERTE, "france")
+    """ "2; yellow; Moderate" -- the severity is the first field, not the string."""
+    event = parse_meteoalarm(ALERT, "france")
     assert event is not None
     assert event.severity is Severity.MODERATE
     assert event.ongoing is True
-    assert event.time.tzinfo is not None  # onset porte un offset local (+02:00)
+    assert event.time.tzinfo is not None  # onset carries a local offset (+02:00)
     assert "Alpes-de-Haute-Provence" in event.place
 
 
 def test_allclear_is_a_lifted_warning_not_an_alert():
-    """Comme les bulletins tsunami "pas de danger": ca s'affiche, ca n'alerte pas."""
-    event = parse_meteoalarm(LEVEE, "france")
+    """Like the "no danger" tsunami bulletins: it is displayed, it does not alert."""
+    event = parse_meteoalarm(LIFTED, "france")
     assert event is not None
     assert event.severity is Severity.INFO
     assert event.ongoing is False
-    assert event.alert == "levee"
+    assert event.alert == "lifted"
 
 
 def test_meteoalarm_garbage_is_ignored():
@@ -115,7 +115,7 @@ def test_meteoalarm_garbage_is_ignored():
     assert parse_meteoalarm({"alert": {"identifier": "x", "info": []}}, "france") is None
 
 
-# ------------------------------------------------------------------------- OMM
+# ------------------------------------------------------------------------- WMO
 
 WMO_ITEM = {
     "id": "IN-1786996079872015_69",
@@ -134,8 +134,8 @@ WMO_ITEM = {
 
 
 def test_wmo_ranks_are_cap_positions_not_scores():
-    """`s` vaut 1 pour Extreme et 4 pour Minor: c'est un rang CAP, donc plus
-    c'est petit, plus c'est grave."""
+    """`s` is 1 for Extreme and 4 for Minor: it is a CAP rank, so the smaller
+    it is, the more severe."""
     event = parse_wmo(WMO_ITEM)
     assert event is not None
     assert event.severity is Severity.MODERATE  # s = 3
@@ -155,8 +155,8 @@ def test_wmo_timestamps_have_no_timezone_and_are_utc():
 
 
 def test_wmo_links_back_to_the_source_cap():
-    """Les horaires de l'agregat ont montre des ecarts avec le CAP source: le
-    lien vers le CAP doit rester accessible."""
+    """The aggregate's timestamps have shown gaps against the source CAP: the
+    link to the CAP must remain reachable."""
     event = parse_wmo(WMO_ITEM)
     assert event is not None
     assert event.url is not None
@@ -164,10 +164,10 @@ def test_wmo_links_back_to_the_source_cap():
 
 
 def test_wmo_country_comes_from_the_id_prefix():
-    """C'est la seule indication de pays du flux, et elle suffit au drapeau."""
+    """It is the feed's only country indication, and it is enough for the flag."""
     assert parse_wmo(WMO_ITEM).country_code == "IN"
     assert parse_wmo({**WMO_ITEM, "id": "CN-42"}).country_code == "CN"
-    # un identifiant sans prefixe pays ne doit pas inventer de drapeau
+    # an identifier without a country prefix must not invent a flag
     assert parse_wmo({**WMO_ITEM, "id": "12345-x"}).country_code is None
 
 
@@ -182,4 +182,4 @@ def test_wmo_classification():
 
 def test_wmo_garbage_is_ignored():
     assert parse_wmo({}) is None
-    assert parse_wmo({"id": "x", "sent": "pas une date"}) is None
+    assert parse_wmo({"id": "x", "sent": "not a date"}) is None

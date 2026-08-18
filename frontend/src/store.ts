@@ -8,19 +8,19 @@ export interface Filters {
   kinds: Set<Kind>
   minMagnitude: number
   sources: Set<string>
-  /** fenetre temporelle en minutes; 0 = tout l'historique disponible */
+  /** time window in minutes; 0 = all available history */
   windowMinutes: number
-  /** recherche texte libre: lieu, titre, pays */
+  /** free-text search: place, title, country */
   query: string
 }
 
-/** Les fenetres proposees, en minutes (0 = tout l'historique disponible).
+/** The offered windows, in minutes (0 = all available history).
  *
- * Seules les valeurs vivent ici: les libelles viennent de l'i18n
- * (`t('window.15')`, ...). Des libelles stockes a cote seraient du francais
- * code en dur qui contournerait la traduction le jour ou quelqu'un les
- * afficherait. "Direct" (15 min) est la vraie promesse du produit: ce qui vient
- * de tomber; les autres servent a reprendre du contexte sans quitter la page.
+ * Only the values live here: the labels come from i18n (`t('window.15')`,
+ * ...). Labels stored alongside would be hardcoded French that would bypass
+ * translation the day someone displays them. "Live" (15 min) is the
+ * product's real promise: what just happened; the others are for regaining
+ * context without leaving the page.
  */
 export const WINDOWS: number[] = [15, 60, 360, 1440, 0]
 
@@ -31,7 +31,7 @@ interface State {
   stats: Stats | null
   sources: SourceHealth[]
   clients: number
-  /** decalage horloge navigateur -> horloge serveur, en ms */
+  /** browser clock -> server clock offset, in ms */
   clockSkew: number
   lastMessageAt: number
   selected: string | null
@@ -39,7 +39,7 @@ interface State {
   lang: Lang
   filters: Filters
   fresh: Set<string>
-  /** zone vers laquelle la carte doit se rendre (resultat de recherche) */
+  /** area the map should fly to (search result) */
   focus: { lat: number; lon: number; zoom: number; name: string } | null
 
   ingest: (message: ServerMessage) => void
@@ -76,9 +76,9 @@ const SEVERITY_RANK: Record<Severity, number> = {
   extreme: 4,
 }
 
-/** Un bip synthetise: pas de fichier audio a embarquer, et le timbre monte avec
- * la gravite. Le navigateur exige un geste utilisateur avant de jouer du son,
- * d'ou le bouton d'activation explicite dans l'entete. */
+/** A synthesized beep: no audio file to bundle, and the pitch rises with
+ * severity. The browser requires a user gesture before playing sound, hence
+ * the explicit enable button in the header. */
 let audioContext: AudioContext | null = null
 
 export function playAlert(severity: Severity) {
@@ -102,16 +102,16 @@ export function playAlert(severity: Severity) {
       osc.stop(now + i * 0.22 + 0.18)
     }
   } catch {
-    /* pas de son disponible: ce n'est pas une raison pour casser le flux */
+    /* no sound available: not a reason to break the feed */
   }
 }
 
 const FILTERS_KEY = 'sosforge.filters'
 
-/** Les filtres survivent au rechargement: revenir sur la page et retrouver
- * "Direct + seismes seulement" evite de refaire trois clics a chaque visite.
- * La recherche texte, elle, n'est PAS persistee -- retrouver un filtre invisible
- * qui masque tout le flux serait deroutant. */
+/** Filters survive a reload: coming back to the page and finding
+ * "Live + earthquakes only" already set avoids redoing three clicks on
+ * every visit. Text search, though, is NOT persisted -- finding an invisible
+ * filter that hides the whole feed would be confusing. */
 function loadFilters(): Pick<Filters, 'kinds' | 'minMagnitude' | 'windowMinutes'> | null {
   try {
     const raw = localStorage.getItem(FILTERS_KEY)
@@ -141,7 +141,7 @@ function saveFilters(filters: Filters): void {
       }),
     )
   } catch {
-    /* mode prive: les filtres ne survivront pas, sans plus */
+    /* private mode: filters won't survive, that's all */
   }
 }
 
@@ -161,8 +161,8 @@ export const useStore = create<State>((set, get) => ({
     kinds: new Set(ALL_KINDS),
     minMagnitude: 0,
     sources: new Set(),
-    // 24 h par defaut: assez pour du contexte, assez court pour que la carte
-    // montre l'actualite et non un catalogue
+    // 24 h by default: enough for context, short enough that the map shows
+    // current events rather than a catalog
     windowMinutes: 1440,
     query: '',
     ...(loadFilters() ?? {}),
@@ -217,8 +217,8 @@ export const useStore = create<State>((set, get) => ({
         clockSkew: new Date(message.server_time).getTime() - now,
         lastMessageAt: now,
         connected: true,
-        // une reconnexion repart d'un etat propre: sans ca, des halos "vient de
-        // tomber" survivaient a une coupure de plusieurs minutes
+        // a reconnection starts from a clean state: without this, "just
+        // happened" halos would survive an outage of several minutes
         fresh: new Set(),
       })
       return
@@ -235,10 +235,10 @@ export const useStore = create<State>((set, get) => ({
       return
     }
 
-    // Le snapshot initial est filtre `primary_only` cote serveur, mais chaque
-    // diffusion arrivait telle quelle: les solutions secondaires du meme seisme
-    // (BMKG et USGS pour un evenement indonesien, par exemple) s'affichaient en
-    // double jusqu'a la prochaine reconnexion.
+    // The initial snapshot is filtered `primary_only` server-side, but each
+    // broadcast arrived as-is: secondary solutions for the same earthquake
+    // (BMKG and USGS for an Indonesian event, for example) showed up as
+    // duplicates until the next reconnection.
     if (message.primary === false) return
 
     const incoming = message.event
@@ -251,14 +251,14 @@ export const useStore = create<State>((set, get) => ({
 
     events.sort((a, b) => Date.parse(b.time) - Date.parse(a.time))
 
-    // `breaking` vient du serveur: il distingue "vient de se produire" de "vient
-    // d'arriver dans le buffer". Sans lui, le premier cycle GDACS ferait clignoter
-    // une centaine d'alertes vieilles de plusieurs jours.
+    // `breaking` comes from the server: it distinguishes "just happened"
+    // from "just arrived in the buffer". Without it, the first GDACS cycle
+    // would make a hundred alerts several days old flash.
     let fresh = state.fresh
     if (message.breaking) {
       fresh = new Set(state.fresh)
       fresh.add(incoming.id)
-      // le halo s'eteint tout seul au bout de 30 s
+      // the halo fades out on its own after 30 s
       window.setTimeout(() => {
         const current = new Set(useStore.getState().fresh)
         current.delete(incoming.id)
@@ -274,11 +274,11 @@ export const useStore = create<State>((set, get) => ({
   },
 }))
 
-/** Fonction pure, a memoiser cote composant (`useMemo`).
+/** Pure function, to be memoized on the component side (`useMemo`).
  *
- * A ne surtout PAS passer directement a `useStore`: un selecteur qui renvoie un
- * nouveau tableau a chaque appel fait boucler `useSyncExternalStore` a l'infini
- * sous React 19, et le composant ne monte jamais.
+ * Never pass this straight to `useStore`: a selector that returns a fresh
+ * array on every call sends `useSyncExternalStore` into an infinite loop
+ * under React 19, and the component never mounts.
  */
 export function filterEvents(events: SosEvent[], filters: Filters, now: number): SosEvent[] {
   const { kinds, minMagnitude, windowMinutes, query } = filters
@@ -286,19 +286,19 @@ export function filterEvents(events: SosEvent[], filters: Filters, now: number):
   const needle = query.trim().toLowerCase()
   return events.filter((event) => {
     if (needle) {
-      // on cherche dans ce que l'utilisateur VOIT (le lieu, le titre) plus le
-      // pays, qui n'est affiche que comme drapeau mais reste ce qu'on tape
+      // we search in what the user SEES (place, title) plus the country,
+      // which is only shown as a flag but is still what gets typed
       const haystack = `${event.place} ${event.title} ${event.country ?? ''} ${event.country_code ?? ''}`
       if (!haystack.toLowerCase().includes(needle)) return false
     }
-    // la fenetre d'abord: c'est elle qui separe le direct de l'historique
+    // window first: it's what separates live from historical
     if (cutoff !== null && Date.parse(event.time) < cutoff) return false
     if (!kinds.has(event.kind)) return false
-    // un evenement sans magnitude (alerte, volcan) n'est pas filtre par le
-    // curseur de magnitude: il n'a simplement pas cette dimension
-    // `magnitude: null` n'est PAS zero: c'est "pas encore publiee" (revision
-    // precoce de l'EMSC). Le traiter comme 0 faisait disparaitre un seisme reel
-    // des que le curseur quittait le minimum.
+    // an event without a magnitude (alert, volcano) is not filtered by the
+    // magnitude slider: it simply doesn't have that dimension
+    // `magnitude: null` is NOT zero: it means "not yet published" (early
+    // EMSC revision). Treating it as 0 was making a real earthquake
+    // disappear as soon as the slider left the minimum.
     if (
       minMagnitude > 0 &&
       event.kind === 'earthquake' &&

@@ -1,21 +1,22 @@
-"""Agences sismiques regionales.
+"""Regional seismic agencies.
 
-Pourquoi ces quatre-la et pas les sept trouvees: l'EMSC relaie deja les solutions
-de la plupart des agences nationales (on voit passer `"auth": "BMKG"` dans ses
-propres frames). Une source regionale ne merite donc sa place que si elle apporte
-quelque chose que l'EMSC n'a pas:
+Why these four and not the seven found: EMSC already relays the solutions of
+most national agencies (we see `"auth": "BMKG"` go by in its own frames). A
+regional source therefore only earns its place if it brings something EMSC
+does not have:
 
-- **JMA**: l'intensite japonaise (shindo, echelle 0 a 7) mesure ce qui a ete
-  *ressenti au sol*, la ou la magnitude mesure l'energie liberee. C'est
-  l'information qui compte au Japon, et elle n'existe nulle part ailleurs.
-- **BMKG**: le drapeau officiel de potentiel tsunami pour l'Indonesie, premier
-  pays expose au monde. Il arrive avant les bulletins du PTWC.
-- **INGV** et **GeoNet**: seuil de detection local tres bas (M1 et moins) sur deux
-  zones tres actives, et une redondance utile le jour ou l'EMSC tombe.
+- **JMA**: the Japanese intensity (shindo, scale 0 to 7) measures what was
+  *felt on the ground*, where magnitude measures the energy released. It is
+  the information that matters in Japan, and it exists nowhere else.
+- **BMKG**: the official tsunami-potential flag for Indonesia, the most
+  exposed country in the world. It arrives before the PTWC bulletins.
+- **INGV** and **GeoNet**: very low local detection threshold (M1 and below)
+  over two very active areas, and useful redundancy the day EMSC goes down.
 
-Ecartes volontairement, avec leurs endpoints verifies, dans le README: AFAD
-(Turquie), IGN (Espagne), SSN (Mexique). Redondants avec l'EMSC, et payes au prix
-d'un parsing fragile (fuseau local implicite, magnitude a extraire d'une phrase).
+Deliberately set aside, with their verified endpoints, in the README: AFAD
+(Turkey), IGN (Spain), SSN (Mexico). Redundant with EMSC, and paid for with
+fragile parsing (implicit local timezone, magnitude to extract from a
+sentence).
 """
 
 from __future__ import annotations
@@ -37,7 +38,7 @@ USER_AGENT = "SOSForge/1.0 (+https://soclose.co)"
 
 
 class JsonPollSource(Source):
-    """Socle commun: on poll une URL JSON, on normalise, on emet."""
+    """Common base: poll a JSON URL, normalize, emit."""
 
     url: str = ""
 
@@ -47,17 +48,17 @@ class JsonPollSource(Source):
         if url:
             self.url = url
 
-    def parse_payload(self, data: Any) -> list[Event]:  # pragma: no cover - abstrait
+    def parse_payload(self, data: Any) -> list[Event]:  # pragma: no cover - abstract
         raise NotImplementedError
 
     def build_url(self) -> str:
-        """URL a interroger a ce cycle. Redefinie par les sources dont l'URL
-        depend de l'instant (AFAD demande une fenetre temporelle glissante)."""
+        """URL to query this cycle. Overridden by sources whose URL depends
+        on the current moment (AFAD wants a sliding time window)."""
         return self.url
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-        # follow_redirects: AFAD repond 302 avant son JSON
+        # follow_redirects: AFAD answers 302 before its JSON
         async with httpx.AsyncClient(
             timeout=30.0, headers=headers, follow_redirects=True
         ) as client:
@@ -77,12 +78,12 @@ class JsonPollSource(Source):
 
 # --------------------------------------------------------------------------- JMA
 
-# ISO 6709 tel que le publie la JMA: "+32.5+130.6-10000/" = lat, lon, puis la
-# profondeur en METRES et en negatif (sous le niveau de la mer).
+# ISO 6709 as JMA publishes it: "+32.5+130.6-10000/" = lat, lon, then the
+# depth in METERS and negative (below sea level).
 RE_ISO6709 = re.compile(r"([+-]\d+(?:\.\d+)?)([+-]\d+(?:\.\d+)?)(?:([+-]\d+(?:\.\d+)?))?/?")
 
-# Le shindo n'est pas lineaire et n'est pas une magnitude: a partir de 5-, les
-# degats aux batiments commencent; 6+ et 7 sont destructeurs.
+# Shindo is not linear and is not a magnitude: from 5- on, building damage
+# begins; 6+ and 7 are destructive.
 SHINDO_SEVERITY = {
     "5-": Severity.SEVERE,
     "5+": Severity.SEVERE,
@@ -91,14 +92,14 @@ SHINDO_SEVERITY = {
     "7": Severity.EXTREME,
 }
 
-# 震度速報 est une alerte d'intensite emise AVANT localisation: pas d'epicentre,
-# donc rien a poser sur une carte.
+# 震度速報 is an intensity alert issued BEFORE localization: no epicenter,
+# so nothing to place on a map.
 JMA_SKIPPED_TITLES = {"震度速報"}
 
-# 遠地地震に関する情報 = information sur un seisme LOINTAIN. La JMA les relaie
-# (un M7.7 indonesien, un M7.1 en Amerique centrale), et leur coller
-# country="Japan" faisait porter le drapeau japonais a des seismes a l'autre
-# bout du monde -- ce qui etait le cas en production.
+# 遠地地震に関する情報 = information about a DISTANT earthquake. JMA relays
+# them (an Indonesian M7.7, an M7.1 in Central America), and sticking
+# country="Japan" on them made quakes on the other side of the world carry
+# the Japanese flag -- which was the case in production.
 JMA_DISTANT_TITLE = "遠地地震に関する情報"
 
 
@@ -111,10 +112,10 @@ def parse_iso6709(value: str | None) -> tuple[float | None, float | None, float 
     lat = float(match.group(1))
     lon = float(match.group(2))
 
-    # La JMA emet aussi de l'ISO 6709 en degres-MINUTES ("+3237.5+13040.7" =
-    # 32 deg 37,5 min N). Interprete en degres decimaux, ca donne lat=3237.5:
-    # hors globe, et rien en aval ne bornait la valeur. Une position fausse est
-    # bien pire qu'un rejet, donc on rejette.
+    # JMA also emits ISO 6709 in degrees-MINUTES ("+3237.5+13040.7" =
+    # 32 deg 37.5 min N). Interpreted as decimal degrees, that gives
+    # lat=3237.5: off the globe, and nothing downstream bounded the value. A
+    # wrong position is far worse than a rejection, so we reject.
     if abs(lat) > 90 or abs(lon) > 180:
         return None, None, None
 
@@ -143,17 +144,17 @@ class JmaSource(JsonPollSource):
             except (TypeError, ValueError):
                 magnitude = None
 
-            # `at` porte deja son decalage (+09:00): on ne devine aucun fuseau
+            # `at` already carries its offset (+09:00): no timezone guessing
             time = to_utc(row.get("at") or row.get("rdt"))
             if time is None:
                 continue
 
-            place = row.get("en_anm") or row.get("anm") or "Japon"
+            place = row.get("en_anm") or row.get("anm") or "Japan"
             distant = row.get("ttl") == JMA_DISTANT_TITLE
             shindo = row.get("maxi") or None
             severity = severity_from_magnitude(magnitude)
             if shindo in SHINDO_SEVERITY:
-                # l'intensite ressentie prime sur la magnitude quand elle est forte
+                # felt intensity beats magnitude when it is strong
                 severity = max(
                     severity,
                     SHINDO_SEVERITY[shindo],
@@ -173,8 +174,8 @@ class JmaSource(JsonPollSource):
                     magnitude=magnitude,
                     mag_type="Mj",
                     place=place,
-                    # un seisme lointain relaye par la JMA n'est pas au Japon:
-                    # on laisse le pipeline deduire le pays du libelle de lieu
+                    # a distant quake relayed by JMA is not in Japan: let the
+                    # pipeline deduce the country from the place label
                     country=None if distant else "Japan",
                     severity=severity,
                     alert=f"shindo {shindo}" if shindo else None,
@@ -220,12 +221,13 @@ class BmkgSource(JsonPollSource):
             if depth_match:
                 depth = float(depth_match.group(1))
 
-            # "Tidak berpotensi tsunami" = aucun potentiel. Toute autre formulation
-            # ("Berpotensi tsunami...") est une alerte, et elle arrive avant le PTWC.
+            # "Tidak berpotensi tsunami" = no potential. Any other wording
+            # ("Berpotensi tsunami...") is an alert, and it arrives before the
+            # PTWC.
             potential = (row.get("Potensi") or "").strip()
             tsunami = bool(potential) and "tidak berpotensi" not in potential.lower()
 
-            place = row.get("Wilayah") or "Indonesie"
+            place = row.get("Wilayah") or "Indonesia"
             events.append(
                 Event(
                     id=f"bmkg:{row.get('DateTime')}",
@@ -256,7 +258,7 @@ class BmkgSource(JsonPollSource):
 class GeonetSource(JsonPollSource):
     name = "geonet"
     kind = "poll"
-    # MMI=3: en dessous, ce sont des micro-seismes que personne ne ressent
+    # MMI=3: below that, these are micro-quakes nobody feels
     url = "https://api.geonet.org.nz/quake?MMI=3"
 
     def parse_payload(self, data: Any) -> list[Event]:
@@ -270,14 +272,14 @@ class GeonetSource(JsonPollSource):
             if time is None:
                 continue
 
-            # attention: GeoNet ne met que [lon, lat] dans la geometrie, la
-            # profondeur est une propriete a part
+            # careful: GeoNet only puts [lon, lat] in the geometry, the depth
+            # is a separate property
             coords = (feature.get("geometry") or {}).get("coordinates") or []
             lon = coords[0] if len(coords) > 0 else None
             lat = coords[1] if len(coords) > 1 else None
 
             magnitude = props.get("magnitude")
-            place = props.get("locality") or "Nouvelle-Zelande"
+            place = props.get("locality") or "New Zealand"
             events.append(
                 Event(
                     id=f"geonet:{public_id}",
@@ -308,8 +310,8 @@ class GeonetSource(JsonPollSource):
 class IngvSource(JsonPollSource):
     name = "ingv"
     kind = "poll"
-    # FDSN standard: exactement le meme contrat que l'USGS, a la casse des
-    # champs pres. C'est la source la moins chere a maintenir du lot.
+    # Standard FDSN: exactly the same contract as USGS, down to the field
+    # casing. The cheapest source to maintain of the lot.
     url = "https://webservices.ingv.it/fdsnws/event/1/query?format=geojson&limit=200&orderby=time"
 
     def parse_payload(self, data: Any) -> list[Event]:
@@ -320,8 +322,7 @@ class IngvSource(JsonPollSource):
             if event_id is None:
                 continue
 
-            # l'INGV publie en UTC mais SANS suffixe de fuseau: on le pose nous-memes
-            # l'INGV publie en UTC mais SANS suffixe de fuseau
+            # INGV publishes in UTC but WITHOUT a timezone suffix: we attach it
             time = to_utc(props.get("time"))
             if time is None:
                 continue
@@ -332,7 +333,7 @@ class IngvSource(JsonPollSource):
             depth = coords[2] if len(coords) > 2 else None
 
             magnitude = props.get("mag")
-            place = props.get("place") or "Italie"
+            place = props.get("place") or "Italy"
             events.append(
                 Event(
                     id=f"ingv:{event_id}",
@@ -360,16 +361,16 @@ class IngvSource(JsonPollSource):
 
 
 class AfadSource(JsonPollSource):
-    """AFAD (Turquie).
+    """AFAD (Türkiye).
 
-    Deux pieges verifies sur l'API reelle:
+    Two traps verified against the real API:
 
-    1. `date` est en **UTC**, pas en heure de Turquie. Prouve par recoupement:
-       le seisme AFAD de 17:30:37 correspond au meme evenement EMSC horodate
-       17:30:38 UTC. Un decalage de 3 h aurait saute aux yeux.
-    2. `limit` tronque **avant** le tri: `orderby=timedesc&limit=3` ne rend pas
-       les 3 plus recents mais les 3 plus VIEUX de la fenetre, ensuite tries.
-       On demande donc une fenetre courte avec une limite large, et on trie ici.
+    1. `date` is in **UTC**, not Türkiye time. Proven by cross-checking: the
+       AFAD quake at 17:30:37 matches the same EMSC event timestamped 17:30:38
+       UTC. A 3 h offset would have been obvious.
+    2. `limit` truncates **before** sorting: `orderby=timedesc&limit=3` does not
+       return the 3 most recent but the 3 OLDEST of the window, then sorted. So
+       we ask for a short window with a large limit, and sort here.
     """
 
     name = "afad"
@@ -406,18 +407,18 @@ class AfadSource(JsonPollSource):
                 except (TypeError, ValueError):
                     return None
 
-            # tous les nombres arrivent en string
+            # all numbers arrive as strings
             lat, lon = number(row.get("latitude")), number(row.get("longitude"))
             magnitude = number(row.get("magnitude"))
             if lat is None or lon is None:
                 continue
 
-            # naif mais UTC (prouve par recoupement EMSC)
+            # naive but UTC (proven by EMSC cross-check)
             time = to_utc(row.get("date"))
             if time is None:
                 continue
 
-            place = row.get("location") or "Turquie"
+            place = row.get("location") or "Türkiye"
             events.append(
                 Event(
                     id=f"afad:{event_id}",
@@ -442,7 +443,7 @@ class AfadSource(JsonPollSource):
                     },
                 )
             )
-        # le tri par fraicheur nous appartient, l'API ne le garantit pas
+        # sorting by freshness is our job, the API does not guarantee it
         events.sort(key=lambda e: e.time, reverse=True)
         return events
 
@@ -451,17 +452,16 @@ class AfadSource(JsonPollSource):
 
 
 class GeofonSource(JsonPollSource):
-    """GEOFON (GFZ Potsdam) -- troisieme catalogue mondial, a cote de l'EMSC et
-    de l'USGS.
+    """GEOFON (GFZ Potsdam) -- third worldwide catalog, next to EMSC and USGS.
 
-    Son interet n'est pas la couverture (les trois se recoupent) mais le **vote**:
-    avec trois solutions independantes, le dedup inter-sources confirme un
-    evenement au lieu de le supposer, et un desaccord de magnitude devient
-    visible au lieu d'etre invisible.
+    Its value is not coverage (all three overlap) but the **vote**: with three
+    independent solutions, the cross-source dedup confirms an event instead
+    of assuming it, and a magnitude disagreement becomes visible instead of
+    invisible.
 
-    Le service FDSN de GEOFON refuse `format=json` (400): il ne parle que `text`
-    et QuakeML. On passe donc par son service eqinfo, qui rend du GeoJSON de la
-    meme famille que l'USGS.
+    GEOFON's FDSN service refuses `format=json` (400): it only speaks `text`
+    and QuakeML. So we go through its eqinfo service, which returns GeoJSON
+    of the same family as USGS.
     """
 
     name = "geofon"
@@ -476,7 +476,7 @@ class GeofonSource(JsonPollSource):
             if not event_id:
                 continue
 
-            # horodatage sans suffixe de fuseau, comme l'INGV
+            # timestamp without a timezone suffix, like INGV
             time = to_utc(props.get("time"))
             if time is None:
                 continue
@@ -487,7 +487,7 @@ class GeofonSource(JsonPollSource):
             depth = coords[2] if len(coords) > 2 else None
 
             magnitude = props.get("mag")
-            place = props.get("place") or "region inconnue"
+            place = props.get("place") or "unknown region"
             events.append(
                 Event(
                     id=f"geofon:{event_id}",
@@ -502,8 +502,8 @@ class GeofonSource(JsonPollSource):
                     mag_type=props.get("magType"),
                     place=place,
                     severity=severity_from_magnitude(magnitude),
-                    # "C:confirmed" vs "A:automatic": une solution revue par un
-                    # analyste ne vaut pas une detection automatique
+                    # "C:confirmed" vs "A:automatic": a solution reviewed by an
+                    # analyst is not the same thing as an automatic detection
                     alert=(props.get("status") or "").split(":")[-1] or None,
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url=props.get("url"),

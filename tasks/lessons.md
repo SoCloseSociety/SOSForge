@@ -1,226 +1,229 @@
 # SOSForge -- lessons
 
-Erreurs commises, cause racine, regle qui evite la repetition.
+Mistakes made, root cause, and the rule that prevents a repeat.
 
-## 1. Un selecteur Zustand qui derive un tableau tue l'application
+## 1. A Zustand selector that derives an array kills the app
 
-**Erreur.** `const visible = useStore(selectVisible)` ou `selectVisible` fait un
-`.filter()`. Page **entierement blanche**, aucune erreur visible dans l'UI, et le
-build comme `tsc` restent verts.
+**Mistake.** `const visible = useStore(selectVisible)` where `selectVisible`
+does a `.filter()`. **Completely blank page**, no visible error in the UI, and
+both the build and `tsc` stay green.
 
-**Cause racine.** Sous React 19, `useSyncExternalStore` compare les snapshots par
-identite. Un nouveau tableau a chaque appel = changement perpetuel = boucle
-infinie, et le composant ne monte jamais.
+**Root cause.** Under React 19, `useSyncExternalStore` compares snapshots by
+identity. A new array on every call means perpetual change, an infinite loop,
+and the component never mounts.
 
-**Regle.** Un selecteur `useStore` ne rend qu'une tranche **stable** (primitive ou
-reference existante). Toute derivation passe par `useMemo` dans le composant.
+**Rule.** A `useStore` selector returns a **stable** slice only (a primitive or
+an existing reference). Every derivation goes through `useMemo` in the component.
 
-## 2. Ne jamais conclure "l'UI marche" sans l'avoir regardee
+## 2. Never conclude "the UI works" without looking at it
 
-**Erreur.** Backend valide par curl, `tsc` vert, build vert. L'application ne
-montait pas du tout.
+**Mistake.** Backend validated with curl, `tsc` green, build green. The app was
+not mounting at all.
 
-**Cause racine.** Aucune de ces verifications n'execute le rendu dans un vrai
-navigateur.
+**Rule.** Any UI work ends with a screenshot of the running app and a read of the
+console errors (`--enable-logging=stderr --v=1` in headless). A blank page is a
+silent failure: the console is the only place it speaks.
 
-**Regle.** Toute UI se termine par une capture d'ecran de l'app qui tourne, et par
-la lecture des erreurs console (`--enable-logging=stderr --v=1` en headless).
-Une page blanche est une panne silencieuse: les erreurs console sont le seul
-endroit ou elle parle.
+## 3. A rendering dependency must not be able to kill the product
 
-## 3. Une dependance de rendu ne doit pas pouvoir tuer le produit
+**Mistake.** `new maplibregl.Map(...)` throws without WebGL, and the uncaught
+exception tore down the whole React tree: the alert feed disappeared because of
+a basemap.
 
-**Erreur.** `new maplibregl.Map(...)` leve sans WebGL et l'exception non rattrapee
-demontait tout l'arbre React: le flux d'alertes disparaissait a cause d'un fond
-de carte.
+**Rule.** Any hardware-dependent library init (WebGL, WebAudio, WebRTC) sits
+inside a `try/catch` with a fallback. On an emergency product, the data comes
+before the ornament.
 
-**Regle.** Toute initialisation de bibliotheque dependante du materiel (WebGL,
-WebAudio, WebRTC) est dans un `try/catch` avec un repli. Sur un produit d'urgence,
-la donnee passe avant l'agrement.
+## 4. "New to my buffer" is not "just happened"
 
-## 4. "Nouveau pour mon buffer" n'est pas "vient de se produire"
+**Mistake.** The first GDACS cycle pushed ~96 alerts several days old, all
+announced as live (halo, flashing, sound).
 
-**Erreur.** Le premier cycle GDACS poussait ~96 alertes vieilles de plusieurs
-jours, toutes annoncees comme du direct (halo, clignotement, son).
+**Root cause.** Freshness was inferred from the store's action (`new`) instead of
+the event's actual age.
 
-**Cause racine.** La fraicheur etait deduite de l'action du store (`new`) au lieu
-de l'age reel de l'evenement.
+**Rule.** Freshness is computed on the **event's** timestamp, never on its
+arrival time. The server decides (`breaking`), the client obeys.
 
-**Regle.** La fraicheur se calcule sur l'horodatage de **l'evenement**, jamais sur
-son heure d'arrivee. Le serveur tranche (`breaking`), le client obeit.
+## 5. A "live" feed sorts by event date, not arrival date
 
-## 5. Un flux "live" se trie par date d'evenement, pas d'arrivee
+**Mistake.** A tsunami bulletin three days old, re-polled on every cycle, sat at
+the top of the live feed.
 
-**Erreur.** Un bulletin tsunami vieux de trois jours, re-poll a chaque cycle,
-occupait la tete du direct.
+**Rule.** Arrival order is an implementation detail of polling. What the user
+reads is a chronology of events.
 
-**Regle.** L'ordre d'arrivee est un detail d'implementation du polling. Ce que
-l'utilisateur lit, c'est une chronologie d'evenements.
+## 6. An aggregating source must be filtered before being displayed
 
-## 6. Une source agregatrice doit etre filtree avant d'etre affichee
+**Mistake.** GDACS integrated as-is: 397 entries of which 344 were green
+wildfires and droughts open for a year, drowning earthquakes and tsunamis.
 
-**Erreur.** GDACS integre tel quel: 397 entrees dont 344 feux verts et des
-secheresses ouvertes depuis un an, qui noyaient seismes et tsunamis.
+**Rule.** Every aggregating source arrives with an explicit, configurable
+relevance rule. Here: high severity always kept, the rest only if freshly
+published.
 
-**Regle.** Toute source agregatrice arrive avec une regle de pertinence
-explicite et configurable. Ici: gravite elevee toujours conservee, le reste
-seulement s'il vient d'etre publie.
+## 7. An XML field can carry its value in an attribute
 
-## 7. Un champ XML peut porter sa valeur dans un attribut
+**Mistake.** `float(gdacs:severity.text)` on `"Magnitude 5.8M, Depth:54.7km"`:
+magnitude lost every time. The real value is in the `value` attribute.
 
-**Erreur.** `float(gdacs:severity.text)` sur `"Magnitude 5.8M, Depth:54.7km"`:
-magnitude systematiquement perdue. La vraie valeur est dans l'attribut `value`.
+**Rule.** Before writing a normalizer, dump the real payload and read the
+**attributes** as much as the text. No schema can be guessed: conventions differ
+from one source to the next (negative depth at EMSC, positive at USGS; epoch ms
+at USGS, ISO at EMSC).
 
-**Regle.** Avant d'ecrire un normalizer, dumper le payload reel et lire les
-**attributs** autant que le texte. Aucun schema ne se devine: les conventions
-divergent d'une source a l'autre (profondeur negative chez EMSC, positive chez
-USGS; epoch ms chez USGS, ISO chez EMSC).
+## 8. A test fixture must come from the real source
 
-## 8. Une fixture de test doit venir de la vraie source
+**Mistake.** A tsunami Atom fixture written by hand with real XHTML elements; it
+failed a parser that worked fine on the real feed (where the XHTML arrives
+escaped). An hour spent debugging the wrong side.
 
-**Erreur.** Fixture Atom tsunami ecrite a la main avec de vrais elements XHTML;
-elle a fait echouer un parseur qui, lui, fonctionnait sur le flux reel (ou le
-XHTML arrive echappe). Une heure a debugger le mauvais cote.
+**Rule.** Fixtures are verbatim excerpts of captured responses. When two shapes
+exist in the wild, parse the **normalized** shape (here: the stripped text), not
+the markup.
 
-**Regle.** Les fixtures sont des extraits verbatim de reponses capturees. Quand
-deux formes existent dans la nature, on parse la forme **normalisee** (ici: le
-texte debalise), pas le balisage.
+## 9. An aggregator must never report healthy when everything is dead
 
+**Mistake.** `TsunamiSource` called `health.ok()` after its loop over both
+centres, even when both had failed. The UI showed the tsunami alert source green
+while it was receiving nothing.
 
-## 9. Un agregateur ne doit jamais se declarer sain quand tout est mort
+**Rule.** A multi-feed source counts its successes. Zero successes means no
+`ok()`. On an emergency product, a health probe that lies is worse than none.
 
-**Erreur.** `TsunamiSource` appelait `health.ok()` apres sa boucle sur les deux
-centres, meme quand les deux avaient echoue. L'interface affichait la source
-d'alerte tsunami en vert alors qu'elle ne recevait plus rien.
+## 10. A sliding window is sized in TIME, not in number of entries
 
-**Regle.** Une source multi-feed compte ses succes. Zero succes = pas de `ok()`.
-Sur un produit d'urgence, une sonde de sante qui ment est pire que pas de sonde.
+**Mistake.** The deduper kept 800 entries. Alerts re-emitted on every polling
+cycle (~146/minute) emptied it in 5.5 minutes, while USGS publishes its solution
+5 to 15 minutes after the EMSC push.
 
-## 10. Une fenetre glissante se dimensionne en TEMPS, pas en nombre d'entrees
+**Rule.** When a window must cover a duration, bound it by time. And only put in
+it what can actually match: non-earthquakes had no business being there.
 
-**Erreur.** Le deduper gardait 800 entrees. Les alertes re-emises a chaque cycle
-de polling (~146/minute) la vidaient en 5,5 minutes, alors que l'USGS publie sa
-solution 5 a 15 minutes apres le push EMSC.
+## 11. Watch route order when a converter swallows slashes
 
-**Regle.** Quand une fenetre doit couvrir une duree, elle se borne par le temps.
-Et on n'y met que ce qui peut reellement matcher: les non-seismes n'avaient rien
-a y faire.
+**Mistake.** `/api/events/{event_id:path}` declared before
+`/api/events/{event_id:path}/nearby`: the generic one matched the second too,
+which would never have been reached.
 
-## 11. Attention a l'ordre des routes quand un converter avale les slashs
+**Rule.** The most specific route is declared first. With `:path`, checking the
+order is mandatory, not optional.
 
-**Erreur.** `/api/events/{event_id:path}` declaree avant
-`/api/events/{event_id:path}/nearby`: la generique matchait aussi la seconde, qui
-n'aurait jamais ete atteinte.
+## 12. An approximate flag is false information
 
-**Regle.** La route la plus specifique se declare en premier. Avec `:path`,
-verifier l'ordre est obligatoire, pas optionnel.
+**Temptation.** Attach every event to a country by bounding box so there is a
+flag everywhere.
 
-## 12. Le drapeau approximatif est une information fausse
+**Rule.** An earthquake on the high seas belongs to no country. Explicit lookup
+table, and **None** when we cannot conclude: the UI shows a globe. On an
+emergency product, saying nothing beats saying something wrong.
 
-**Tentation.** Rattacher chaque evenement a un pays par boite englobante pour
-avoir un drapeau partout.
+## 13. An in-house tool can be the right instrument without being the right part
 
-**Regle.** Un seisme en pleine mer n'appartient a aucun pays. Table de
-correspondance explicite, et **None** quand on ne peut pas conclure: l'interface
-affiche un globe. Sur un produit d'urgence, ne rien dire vaut mieux que dire faux.
+**Observation.** ScrapMe was brought up locally and pointed at five seismic
+agencies. It served perfectly to **discover** that those agencies hide JSON
+feeds. But putting it in the data path would have added a service, cookie auth,
+an async job/poll cycle and credit billing -- to read feeds the backend takes
+directly in a hundred lines.
 
-## 13. Un outil maison peut etre le bon instrument sans etre la bonne piece
+**Rule.** Use a tool for what it is good at, and be able to say it does not
+belong in the final product. Say it plainly to the tool's owner too.
 
-**Constat.** ScrapMe a ete monte en local et lance sur cinq agences sismiques. Il
-a parfaitement servi a **decouvrir** que ces agences cachent des flux JSON. Mais
-le mettre dans le chemin de donnees aurait ajoute un service, une auth par
-cookie, un cycle job/poll asynchrone et une facturation en credits -- pour lire
-des flux que le backend prend en direct en cent lignes.
+## 14. A guard that is too broad cuts the value it protects
 
-**Regle.** Utiliser un outil pour ce qu'il fait bien, et savoir dire qu'il ne va
-pas dans le produit final. Le dire franchement au proprietaire de l'outil aussi.
+**Mistake.** Rejecting future timestamps, added against drifting clocks, also
+rejected weather warnings -- published BEFORE they start, which is precisely
+their point. A Spanish orange warning would have appeared two minutes after the
+danger began instead of two hours before.
 
+**Rule.** Before adding a filter, list what LEGITIMATE things it cuts. The useful
+distinction here was not "future or past" but "point-in-time event or ongoing
+alert".
 
-## 14. Un garde-fou trop large coupe la valeur qu'il protege
+## 15. A wrong position is far worse than a missing one
 
-**Erreur.** Le rejet des horodatages futurs, ajoute contre les horloges qui
-derivent, rejetait aussi les vigilances meteo -- publiees AVANT leur debut, ce
-qui est precisement leur interet. Une vigilance orange espagnole apparaissait
-deux minutes apres le debut du danger au lieu de deux heures avant.
+**Mistake.** `parse_iso6709` accepted `+3237.5+13040.7` (degrees-minutes) and
+returned `lat=3237.5`. Nothing downstream bounded the value: only the accident of
+the ingestion horizon kept that point off the map, off the globe.
 
-**Regle.** Avant d'ajouter un filtre, lister ce qu'il coupe de LEGITIME. Ici la
-distinction utile n'etait pas "futur ou passe" mais "evenement ponctuel ou
-alerte en cours".
+**Rule.** Every coordinate parser bounds its result (|lat| <= 90, |lon| <= 180)
+and rejects rather than passing it on. An event without a position shows in the
+feed; an event in the wrong place lies.
 
-## 15. Une position fausse est bien pire qu'une position absente
+## 16. A relaying source is not the source
 
-**Erreur.** `parse_iso6709` acceptait `+3237.5+13040.7` (degres-minutes) et
-rendait `lat=3237.5`. Rien en aval ne bornait la valeur: seul le hasard de
-l'horizon a empeche ce point d'atterrir hors du globe sur la carte.
+**Mistake.** The JMA relays distant earthquakes (a M7.7 in Indonesia). We stamped
+them `country="Japan"`: in production, an Indonesian earthquake wore a Japanese
+flag.
 
-**Regle.** Tout parseur de coordonnees borne son resultat (|lat| &lt;= 90,
-|lon| &lt;= 180) et rejette au lieu de laisser passer. Un evenement sans position
-s'affiche dans le flux; un evenement mal place ment.
+**Rule.** Separate "who publishes" from "where it happens". A national feed often
+contains foreign events, and the bulletin type says so.
 
-## 16. Une source qui relaie n'est pas la source
+## 17. A default filter can erase what it never targeted
 
-**Erreur.** La JMA relaie les seismes lointains (un M7.7 indonesien). On leur
-collait `country="Japan"`: en production, un seisme indonesien portait le
-drapeau japonais.
+**Mistake.** The sweep of silent alerts also purged earthquakes: a source
+normally stops mentioning them as soon as they leave its publication window. The
+store kept only seven hours of history while the UI offers 24 h and "all". And
+replaying the journal reset the silence counter, which hid the problem at every
+restart.
 
-**Regle.** Distinguer "qui publie" de "ou ca se passe". Un flux national contient
-souvent des evenements etrangers, et le type de bulletin le dit.
+**Rule.** A sweep explicitly targets what it must remove (`ongoing`), and a
+replay restores state as it was, clocks included.
 
-## 17. Un filtre par defaut peut effacer ce qu'il n'a jamais vise
+## 18. Never stop a service by process pattern on a shared machine
 
-**Erreur.** Le balayage des alertes muettes purgeait aussi les seismes: la
-source cesse normalement d'en parler des qu'ils sortent de sa fenetre de
-publication. Le store ne gardait plus que sept heures d'historique alors que
-l'interface propose 24 h et "tout". Et le rejeu du journal remettait le compteur
-de silence a zero, ce qui masquait le probleme a chaque redemarrage.
+**Mistake.** I restarted the API about fifteen times with
+`pkill -f "uvicorn app.main:app"`. Every SuiteForge product runs exactly that
+command line, so I killed ScanGithub's API (`:8894`) every single time, taking
+its in-flight GitHub sweeps with it. Worse, I drew a false conclusion and passed
+it on: I blamed those deaths on swap exhaustion. The swap was indeed nearly full,
+but that is not what killed them -- I did.
 
-**Regle.** Un balayage cible explicitement ce qu'il doit retirer (`ongoing`), et
-un rejeu restaure l'etat tel qu'il etait, horloges comprises.
+**Rule.** A service is stopped by its PORT or its PID, never by a command-line
+pattern others share (`make stop-api`). And when a neighbour's failure coincides
+with my own actions, look for my responsibility BEFORE naming an external cause:
+a plausible and comfortable explanation is not evidence.
 
+## 19. The same substring bug hit two products on the same evening
 
-## 18. Ne jamais arreter un service par motif de process sur une machine partagee
+**Observation.** My hazard classifier turned "Flash Flood" into a volcanic alert,
+because "Flash" contains "ash". That same evening, the ScanGithub audit found its
+root cause: its lexicon triggered the "documentation" facet on the word "rate"
+because "rate" is inside "curated", and "dataset" on "open" via "open data". Two
+products, two teams, one mechanism.
 
-**Erreur.** J'ai redemarre l'API une quinzaine de fois avec
-`pkill -f "uvicorn app.main:app"`. Tous les produits SuiteForge lancent
-exactement cette ligne: j'ai donc tue l'API de ScanGithub (`:8894`) a chaque
-fois, emportant ses balayages GitHub en cours. Pire, j'en ai tire une conclusion
-fausse et je l'ai transmise: j'ai attribue ces morts a la saturation du swap.
-Le swap etait bien sature, mais ce n'est pas lui qui les a tuees -- c'est moi.
+**First fix, wrong.** I switched both classifiers to **whole words**. The false
+positive disappeared, the tests passed, I shipped.
 
-**Regle.** Un service s'arrete par son PORT ou son PID, jamais par un motif de
-ligne de commande que d'autres partagent (`make stop-api`). Et quand une panne
-voisine coincide avec mes propres actions, chercher ma responsabilite AVANT de
-designer une cause externe: une explication plausible et confortable n'est pas
-une preuve.
+**What measuring showed.** The neighbouring session insisted on measuring
+before/after on real data instead of observing it in production. Across 2525 real
+alerts, the whole-word rule **lost 621 alerts** -- "Forestfire", "Thunderstorms",
+"Rainstorm" are compound or inflected forms no whole word finds. I had traded one
+false positive for 621 false negatives, and eyeballing had not caught it.
 
+**Final rule, measured.** Length floor: substring for patterns of four characters
+or more, whole word below. Zero loss, and the 22 "Flash Flood" alerts correctly
+reclassified. That was the neighbouring session's exact diagnosis
+("substring without a floor on alias length"), sharper than mine.
 
-## 19. Le meme bug de sous-chaine a frappe deux produits le meme soir
+**The lesson behind the lesson.** Never fix a classification problem by narrowing
+detection without measuring what the narrowing costs. A green test on hand-picked
+cases proves nothing about recall: you have to count, on real data, how many
+items go from "correctly classified" to "unclassified".
 
-**Constat.** Mon classifieur d'aleas faisait de "Flash Flood" une alerte
-volcanique, parce que "Flash" contient "ash". Le meme soir, l'audit de
-ScanGithub trouvait sa cause racine: son lexique declenchait la facette
-"documentation" sur le mot "rate" parce que "rate" est inclus dans "curated",
-et "dataset" sur "open" via "open data". Deux produits, deux equipes, un seul
-mecanisme.
+## 20. I deployed to the wrong machine because I stopped searching too early
 
-**Premiere correction, fausse.** J'ai bascule les deux classifieurs sur des
-**mots entiers**. Le faux positif disparaissait, les tests passaient, j'ai livre.
+**Mistake.** `sosforge.soclose.co` pointed at 212.227.202.92 while every other
+product pointed at the hub. I grepped for DNS credentials with a pattern anchored
+to the START of the variable name, found nothing, concluded there was no
+automated DNS access, and deployed on the hub -- telling the owner the DNS was
+wrong.
 
-**Ce que la mesure a montre.** La session voisine a insiste pour mesurer le
-avant/apres sur les donnees reelles plutot que de le constater en production. Sur
-2525 alertes reelles: la regle des mots entiers **perdait 621 alertes** --
-"Forestfire", "Thunderstorms", "Rainstorm" sont des formes composees ou flechies
-qu'aucun mot entier ne retrouve. J'avais echange un faux positif contre 621 faux
-negatifs, et l'inspection a l'oeil ne l'avait pas vu.
+**Root cause.** The DNS was right. 212.227.202.92 is the fleet's **helper VPS**,
+listed in `~/.ssh/config` as `helper-vps` and documented in the shared memory. My
+narrow grep and my hurry produced a confident wrong answer.
 
-**Regle finale, mesuree.** Plancher de longueur: sous-chaine pour les motifs de
-quatre lettres ou plus, mot entier en dessous. Zero perte, et les 22 "Flash
-Flood" correctement reclassees. C'etait le diagnostic exact de la session
-voisine ("sous-chaine sans plancher sur la longueur de l'alias"), plus juste que
-le mien.
-
-**La lecon derriere la lecon.** Ne jamais corriger un probleme de classement en
-retrecissant la detection sans mesurer ce que le retrecissement coute. Un test
-vert sur des cas choisis a la main ne prouve rien sur le recall: il faut compter,
-sur les vraies donnees, combien d'elements passent de "classe juste" a "non
-classe".
+**Rule.** Before declaring something impossible, search wide, not narrow: an
+unanchored grep, the SSH config, the shared memory, the fleet docs. And when an
+address does not match my expectation, the first hypothesis is that my map is
+incomplete, not that the world is misconfigured.

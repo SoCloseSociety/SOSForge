@@ -1,10 +1,10 @@
-"""Recherche de zone: nom de lieu -> coordonnees, via Nominatim (OpenStreetMap).
+"""Area search: place name -> coordinates, via Nominatim (OpenStreetMap).
 
-Pourquoi passer par le backend plutot que d'appeler Nominatim depuis le
-navigateur: leur politique d'usage impose un User-Agent identifiant et **une
-requete par seconde maximum**. Un appel direct depuis chaque onglet ouvert
-violerait les deux, et nous ferait bannir. Ici, un seul point de sortie, cadence
-et cache compris.
+Why go through the backend instead of calling Nominatim from the browser:
+their usage policy requires an identifying User-Agent and **at most one
+request per second**. A direct call from every open tab would violate both,
+and get us banned. Here there is a single exit point, rate limiting and
+cache included.
 """
 
 from __future__ import annotations
@@ -20,13 +20,13 @@ log = logging.getLogger(__name__)
 NOMINATIM = "https://nominatim.openstreetmap.org/search"
 USER_AGENT = "SOSForge/1.0 (+https://github.com/SoCloseSociety/SOSForge)"
 
-# la politique Nominatim: une requete par seconde, absolument
+# the Nominatim policy: one request per second, no exceptions
 _MIN_INTERVAL = 1.0
 _last_call = 0.0
 _lock = asyncio.Lock()
 
-# une recherche de zone se repete beaucoup ("tokyo", "californie"): un cache
-# borne evite d'aller les redemander
+# area searches repeat a lot ("tokyo", "california"): a bounded cache avoids
+# asking for them again
 _cache: dict[str, list[dict]] = {}
 _CACHE_MAX = 500
 
@@ -40,9 +40,9 @@ async def search(query: str, limit: int = 5) -> list[dict]:
     if key in _cache:
         return _cache[key]
 
-    # Le verrou ne protege QUE le calcul de la cadence. Faire la requete HTTP
-    # dessous gelait toute la file pendant la duree du timeout (12 s): dix
-    # utilisateurs qui cherchent en meme temps attendaient dix fois ca.
+    # The lock protects ONLY the rate computation. Doing the HTTP request
+    # under it froze the whole queue for the duration of the timeout (12 s):
+    # ten users searching at the same time waited ten times that.
     async with _lock:
         wait = _MIN_INTERVAL - (time.monotonic() - _last_call)
         if wait > 0:
@@ -61,9 +61,9 @@ async def search(query: str, limit: int = 5) -> list[dict]:
             resp.raise_for_status()
             payload = resp.json() or []
     except Exception as exc:
-        # une recherche qui echoue ne doit jamais casser la page: le filtre
-        # textuel local, lui, continue de fonctionner
-        log.warning("geocodage indisponible: %s", exc)
+        # a failed search must never break the page: the local text filter
+        # keeps working regardless
+        log.warning("geocoding unavailable: %s", exc)
         return []
 
     results = []
@@ -75,7 +75,7 @@ async def search(query: str, limit: int = 5) -> list[dict]:
                     "lat": float(row["lat"]),
                     "lon": float(row["lon"]),
                     "type": row.get("type"),
-                    # bbox Nominatim: [sud, nord, ouest, est], pas l'ordre GeoJSON
+                    # Nominatim bbox: [south, north, west, east], not GeoJSON order
                     "bbox": [float(v) for v in row.get("boundingbox", [])] or None,
                 }
             )

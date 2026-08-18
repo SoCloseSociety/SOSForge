@@ -1,11 +1,11 @@
-"""NWS api.weather.gov -- alertes officielles US, tous aleas.
+"""NWS api.weather.gov -- official US alerts, all hazards.
 
-C'est la source la plus reactive du lot pour les alertes: elle publie a la seconde
-ou presque (cache 5s cote NWS), et couvre ce que les feeds sismiques ignorent --
-tornades, crues eclair, vents violents, chaleur extreme, et les Tsunami Warning
-cote americain.
+This is the most reactive alert source of the lot: it publishes within about a
+second (5s cache on the NWS side), and covers what the seismic feeds ignore --
+tornadoes, flash floods, violent winds, extreme heat, and the US-side Tsunami
+Warnings.
 
-Le NWS impose un User-Agent identifiant: sans lui, on se fait bloquer.
+The NWS requires an identifying User-Agent: without it, we get blocked.
 """
 
 from __future__ import annotations
@@ -34,26 +34,25 @@ NWS_SEVERITY = {
     "Unknown": Severity.INFO,
 }
 
-# Ordre important: le premier motif trouve gagne ("Tsunami" avant "Flood").
+# Order matters: the first pattern found wins ("Tsunami" before "Flood").
 
-# Correspondance: sous-chaine AU-DESSUS d'un plancher de longueur, mot entier
-# en dessous.
+# Matching: substring ABOVE a length floor, whole word below it.
 #
-# Les trois regles possibles ont ete mesurees sur les flux reels (2190 alertes
-# OMM, 335 alertes NWS), et le resultat a tranche:
+# The three possible rules were measured on the real feeds (2190 WMO alerts,
+# 335 NWS alerts), and the result settled it:
 #
-# - sous-chaine partout: "Flash Flood" devient une alerte VOLCANIQUE, parce que
-#   "Flash" contient "ash";
-# - mots entiers partout: le faux positif disparait, mais **621 alertes reelles
-#   sont perdues** -- "Forestfire", "Thunderstorms", "Rainstorm" sont des formes
-#   composees ou flechies qu'aucun mot entier ne retrouve. Corriger un probleme
-#   de classement en retrecissant la detection est un mauvais echange;
-# - plancher de longueur: **zero perte**, et les 22 "Flash Flood" reclassees
-#   correctement. C'est cette regle.
+# - substring everywhere: "Flash Flood" becomes a VOLCANIC alert, because
+#   "Flash" contains "ash";
+# - whole words everywhere: the false positive disappears, but **621 real
+#   alerts are lost** -- "Forestfire", "Thunderstorms", "Rainstorm" are
+#   compound or inflected forms that no whole word finds. Fixing a
+#   classification problem by shrinking detection is a bad trade;
+# - length floor: **zero loss**, and the 22 "Flash Flood" reclassified
+#   correctly. This is the rule.
 #
-# Un motif court ("ash", "ice", "hot") est celui qui se cache dans d'autres mots:
-# il exige donc un mot entier. Un motif de quatre lettres ou plus est assez
-# specifique pour etre cherche en sous-chaine.
+# A short pattern ("ash", "ice", "hot") is the kind that hides inside other
+# words: it therefore requires a whole word. A pattern of four letters or more
+# is specific enough to be searched as a substring.
 MIN_SUBSTRING = 4
 
 
@@ -100,8 +99,8 @@ def classify(event_name: str) -> Kind:
 
 
 def _centroid(geometry: dict | None) -> tuple[float | None, float | None]:
-    """Les alertes NWS sont des polygones (ou rien du tout quand la zone est
-    decrite par des codes UGC). On reduit au barycentre pour poser un point."""
+    """NWS alerts are polygons (or nothing at all when the area is described
+    by UGC codes). We reduce to the centroid to place a point."""
     if not geometry:
         return None, None
     coords = geometry.get("coordinates")
@@ -136,7 +135,7 @@ def parse_feature(feature: dict) -> Event | None:
     if not alert_id:
         return None
 
-    event_name = props.get("event") or "alerte"
+    event_name = props.get("event") or "alert"
     kind = classify(event_name)
     lat, lon = _centroid(feature.get("geometry"))
     severity = NWS_SEVERITY.get(props.get("severity") or "", Severity.INFO)
@@ -149,7 +148,7 @@ def parse_feature(feature: dict) -> Event | None:
         time=_parse_time(props.get("sent") or props.get("effective")),
         lat=lat,
         lon=lon,
-        place=props.get("areaDesc") or "zone non precisee",
+        place=props.get("areaDesc") or "unspecified area",
         country="United States",
         severity=severity,
         tsunami=kind is Kind.TSUNAMI,

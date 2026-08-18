@@ -1,10 +1,10 @@
-"""Dedup inter-sources.
+"""Cross-source dedup.
 
-EMSC et USGS publient le meme seisme sous deux identifiants differents, a quelques
-secondes d'ecart, avec des magnitudes qui divergent souvent de 0.2 a 0.5. On ne
-supprime rien -- on regroupe: le premier arrive devient le representant du cluster,
-les suivants pointent dessus. L'UI n'affiche qu'un representant par cluster mais
-peut montrer les deux estimations.
+EMSC and USGS publish the same quake under two different identifiers, a few
+seconds apart, with magnitudes that often diverge by 0.2 to 0.5. Nothing is
+deleted -- events are clustered: the first to arrive becomes the cluster's
+representative, later ones point at it. The UI shows only one representative
+per cluster but can display both estimates.
 """
 
 from __future__ import annotations
@@ -39,15 +39,15 @@ class Deduper:
         self._recent: deque[Event] = deque(maxlen=history)
 
     def assign(self, event: Event) -> Event:
-        """Pose `cluster_id` sur l'evenement. Idempotent."""
+        """Sets `cluster_id` on the event. Idempotent."""
         if event.kind.value != "earthquake" or event.lat is None or event.lon is None:
-            # On ne les met PAS dans l'historique: ils ne peuvent jamais matcher
-            # (la boucle ci-dessous n'apparie que des seismes localises), et les
-            # y mettre balayait la fenetre. Mesure: ~146 re-emissions/minute de
-            # NWS, GDACS et tsunami suffisaient a vider une deque de 800 en
-            # 5,5 minutes -- alors que l'USGS publie sa solution 5 a 15 min apres
-            # le push EMSC. Le dedup EMSC/USGS ratait donc sa cible, et les deux
-            # solutions du meme seisme s'affichaient en double.
+            # These are NOT added to the history: they can never match (the
+            # loop below only pairs located earthquakes), and adding them
+            # flushed the window. Measured: ~146 re-emissions/minute from NWS,
+            # GDACS and tsunami were enough to empty a deque of 800 in
+            # 5.5 minutes -- while USGS publishes its solution 5 to 15 min
+            # after the EMSC push. The EMSC/USGS dedup therefore missed its
+            # target, and both solutions of the same quake showed up twice.
             event.cluster_id = event.cluster_id or event.id
             return event
 
@@ -56,8 +56,8 @@ class Deduper:
             if other.id == event.id:
                 event.cluster_id = other.cluster_id
                 return event
-            # la deque est chronologique: passe la fenetre, plus rien ne peut
-            # matcher, on arrete de la parcourir
+            # the deque is chronological: past the window, nothing can match
+            # anymore, so stop scanning it
             if other.time.timestamp() < cutoff - self.window:
                 break
             if other.source == event.source:

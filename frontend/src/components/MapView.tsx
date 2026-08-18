@@ -6,7 +6,7 @@ import { SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
 import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
 
-/** Fond de carte sombre CARTO: pas de cle API, attribution OSM + CARTO obligatoire. */
+/** Dark CARTO basemap: no API key needed, OSM + CARTO attribution required. */
 const STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {
@@ -38,9 +38,9 @@ const SEVERITY_COLOR: maplibregl.ExpressionSpecification = [
   SEVERITY_META.info.color,
 ]
 
-/** Rayon: la magnitude quand elle existe, sinon un rayon fixe indexe sur la
- * gravite. Une magnitude 7 n'est pas "3.5x" une magnitude 2: l'echelle est
- * logarithmique en energie, donc on grossit vite dans le haut du spectre. */
+/** Radius: magnitude when it exists, otherwise a fixed radius indexed on
+ * severity. A magnitude 7 is not "3.5x" a magnitude 2: the scale is
+ * logarithmic in energy, so we grow fast at the top of the spectrum. */
 const RADIUS: maplibregl.ExpressionSpecification = [
   'interpolate',
   ['linear'],
@@ -64,7 +64,7 @@ function toFeatureCollection(events: SosEvent[], fresh: Set<string>): GeoJSON.Fe
           id: event.id,
           severity: event.severity,
           kind: event.kind,
-          // les alertes sans magnitude ont quand meme besoin d'une taille lisible
+          // alerts without a magnitude still need a readable size
           weight: event.magnitude ?? (event.severity === 'extreme' ? 6 : 4),
           fresh: fresh.has(event.id) ? 1 : 0,
         },
@@ -76,9 +76,9 @@ function popupHtml(event: SosEvent, now: number): string {
   const t = useStore.getState().t
   const severity = SEVERITY_META[event.severity]
 
-  // TOUT champ venant d'une source passe par `escape`. `mag_type` etait le seul
-  // oubli: il vient bien d'un flux externe (AFAD `type`, USGS/INGV `magType`) et
-  // partait tel quel dans le HTML de la popup.
+  // EVERY field coming from a source goes through `escape`. `mag_type` was the
+  // one field missed: it does come from an external feed (AFAD `type`,
+  // USGS/INGV `magType`) and was going straight into the popup's HTML as-is.
   const escape = (value: string) =>
     value.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
 
@@ -113,14 +113,14 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const latest = useRef({ events, now })
   latest.current = { events, now }
 
-  // --- initialisation, une seule fois
+  // --- initialization, once only
   useEffect(() => {
     if (!container.current || map.current) return
 
-    // MapLibre exige WebGL. Sans GPU (machine virtuelle, navigateur bride,
-    // pilote casse) le constructeur leve, et une exception non rattrapee ici
-    // demonterait TOUTE l'application: le flux d'alertes disparaitrait a cause
-    // d'un fond de carte. On degrade, on ne meurt pas.
+    // MapLibre requires WebGL. Without a GPU (virtual machine, locked-down
+    // browser, broken driver) the constructor throws, and an uncaught
+    // exception here would take down the WHOLE app: the alert feed would
+    // disappear because of a basemap. We degrade, we don't die.
     let instance: MapLibreMap
     try {
       instance = new maplibregl.Map({
@@ -142,8 +142,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     instance.on('load', () => {
       instance.addSource('events', { type: 'geojson', data: toFeatureCollection([], new Set()) })
 
-      // Fronts d'onde P et S, SOUS les marqueurs: ils donnent le contexte, ils
-      // ne doivent jamais cacher l'evenement lui-meme.
+      // P and S wave fronts, BELOW the markers: they provide context, they
+      // must never hide the event itself.
       instance.addSource('waves', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] },
@@ -171,8 +171,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         },
       })
 
-      // halo des evenements tout juste arrives: c'est le signal "ca vient de
-      // tomber", anime par la boucle plus bas
+      // halo for just-arrived events: it's the "this just happened" signal,
+      // animated by the loop further below
       instance.addLayer({
         id: 'events-halo',
         type: 'circle',
@@ -224,7 +224,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     }
   }, [])
 
-  // --- donnees
+  // --- data
   const fresh = useStore((s) => s.fresh)
   useEffect(() => {
     if (!map.current || !ready.current) return
@@ -232,13 +232,13 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     source?.setData(toFeatureCollection(events, fresh))
   }, [events, fresh])
 
-  // --- fronts d'onde: une boucle qui ne tourne QUE s'il y a un seisme assez
-  // recent pour que ses ondes soient encore en train de se propager. Le reste du
-  // temps, aucune frame n'est calculee.
+  // --- wave fronts: a loop that runs ONLY when there's an earthquake recent
+  // enough for its waves to still be propagating. The rest of the time, no
+  // frame is computed.
   const waveCandidates = useMemo(
     () => events.filter((e) => isWaveCandidate(e, now)).map((e) => e.id).join(','),
-    // `now` avance chaque seconde: on ne redemarre la boucle que si la LISTE
-    // des seismes concernes change, pas a chaque tick
+    // `now` advances every second: we only restart the loop if the LIST of
+    // relevant earthquakes changes, not on every tick
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [events, Math.floor(now / 30_000)],
   )
@@ -250,8 +250,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       const instance = map.current
       const source = instance?.getSource('waves') as maplibregl.GeoJSONSource | undefined
       if (source) {
-        // l'horloge serveur, pas celle du navigateur: un front dessine sur une
-        // horloge fausse serait au mauvais endroit
+        // the server clock, not the browser's: a front drawn against a wrong
+        // clock would be in the wrong place
         const serverNow = Date.now() + useStore.getState().clockSkew
         source.setData(waveFronts(latest.current.events, serverNow))
       }
@@ -265,7 +265,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     }
   }, [waveCandidates])
 
-  // --- pulsation du halo, uniquement quand il y a quelque chose de frais
+  // --- halo pulsation, only when there's something fresh
   useEffect(() => {
     if (fresh.size === 0) return
     let frame = 0
@@ -286,7 +286,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     return () => cancelAnimationFrame(frame)
   }, [fresh])
 
-  // --- recherche: aller a la zone demandee
+  // --- search: go to the requested area
   const focus = useStore((s) => s.focus)
   useEffect(() => {
     const instance = map.current
@@ -300,7 +300,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     })
   }, [focus])
 
-  // --- selection: on centre et on ouvre la fiche
+  // --- selection: center on it and open the card
   const selected = useStore((s) => s.selected)
   useEffect(() => {
     const instance = map.current
@@ -312,11 +312,11 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     const event = latest.current.events.find((e) => e.id === selected)
     if (!event || event.lat === null || event.lon === null) return
 
-    // Zoom au plus pres de la zone: l'utilisateur clique pour VOIR ce qui se
-    // passe la-bas, pas pour deviner un continent. Un evenement ponctuel
-    // (seisme, volcan) se regarde a l'echelle du quartier; une alerte decrite
-    // par une zone administrative (NWS, GDACS) n'a de sens qu'a l'echelle de la
-    // region, la ramener a 300 m ne montrerait qu'un champ.
+    // Zoom in as close as possible to the area: the user clicks to SEE what's
+    // happening there, not to guess a continent. A point event (earthquake,
+    // volcano) is viewed at neighborhood scale; an alert described by an
+    // administrative zone (NWS, GDACS) only makes sense at regional scale --
+    // pulling it in to 300 m would show nothing but a field.
     const pointLike = event.source !== 'nws' && event.source !== 'gdacs'
     instance.flyTo({
       center: [event.lon, event.lat],

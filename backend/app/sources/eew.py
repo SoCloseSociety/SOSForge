@@ -1,23 +1,23 @@
-"""Alerte precoce et couverture asiatique, via le relais Wolfx.
+"""Early warning and Asian coverage, via the Wolfx relay.
 
-**Ce que ces sources changent de nature.** Les seize autres sources publient
-APRES coup: un seisme a eu lieu, une agence le localise, on l'affiche. L'alerte
-precoce japonaise (EEW) est emise **pendant** la propagation des ondes, quelques
-secondes apres la detection par les stations les plus proches, avant que les
-ondes destructrices n'atteignent les villes. C'est la seule categorie
-d'information de ce produit qui puisse encore servir a se mettre a l'abri.
+**What these sources change in kind.** The sixteen other sources publish
+AFTER the fact: a quake happened, an agency locates it, we display it. The
+Japanese early warning (EEW) is issued **while** the waves are propagating,
+a few seconds after detection by the nearest stations, before the destructive
+waves reach the cities. It is the only category of information in this product
+that can still be used to take cover.
 
-**Reserve assumee, a lire avant de s'y fier.** Wolfx est un relais **tiers non
-officiel**. La JMA et le CENC ne publient pas d'API ouverte; ce service
-retransmet leurs flux. On le traite donc comme une source "au mieux": elle
-enrichit, elle ne fait autorite sur rien, et sa panne ne doit rien casser. Leurs
-websockets sont derriere Cloudflare et refusent tout client non navigateur (403),
-d'ou le polling.
+**Acknowledged caveat, read before trusting it.** Wolfx is an **unofficial
+third-party** relay. JMA and CENC publish no open API; this service rebroadcasts
+their feeds. So we treat it as a "best effort" source: it enriches, it is
+authoritative on nothing, and its failure must break nothing. Their websockets
+are behind Cloudflare and refuse any non-browser client (403), hence the
+polling.
 
-Deux pieges de fuseau, la raison principale de la vigilance de ce module: la JMA
-horodate en heure du Japon et le CENC en heure de Pekin, **tous deux sans
-indiquer le decalage**. Un `fromisoformat` naif les daterait de l'heure du
-serveur, soit sept a neuf heures d'ecart sur un produit ou la seconde compte.
+Two timezone traps, the main reason this module is careful: JMA timestamps in
+Japan time and CENC in Beijing time, **both without indicating the offset**. A
+naive `fromisoformat` would date them in server time, seven to nine hours off
+on a product where the second matters.
 """
 
 from __future__ import annotations
@@ -35,15 +35,15 @@ log = logging.getLogger(__name__)
 JST = ZoneInfo("Asia/Tokyo")
 CST = ZoneInfo("Asia/Shanghai")
 
-# Une EEW annulee (la detection etait un faux positif, frequent en debut
-# d'alerte) ne doit surtout pas rester affichee comme une alerte en cours.
+# A cancelled EEW (the detection was a false positive, common early in an
+# alert) must absolutely not stay displayed as an ongoing alert.
 JMA_CANCELLED = "キャンセル"
-# 警報 = alerte (secousse forte attendue), 予報 = prevision (information)
+# 警報 = warning (strong shaking expected), 予報 = forecast (information)
 JMA_WARNING_MARK = "警報"
 
 
 def _parse_local(value: str | None, zone: ZoneInfo) -> datetime | None:
-    """Horodatage local SANS decalage: on pose le fuseau nous-memes."""
+    """Local timestamp WITHOUT an offset: we attach the timezone ourselves."""
     if not value:
         return None
     text = value.strip().replace("/", "-")
@@ -55,15 +55,16 @@ def _parse_local(value: str | None, zone: ZoneInfo) -> datetime | None:
 
 
 class JmaEewSource(JsonPollSource):
-    """Alerte precoce japonaise (緊急地震速報).
+    """Japanese early warning (緊急地震速報).
 
-    L'endpoint ne rend qu'UNE alerte: la derniere emise, qu'elle date de dix
-    secondes ou de six heures. La fraicheur est donc jugee par le pipeline sur
-    l'horodatage reel, pas sur le fait qu'on vienne de la lire.
+    The endpoint returns only ONE alert: the latest issued, whether it is ten
+    seconds or six hours old. Freshness is therefore judged by the pipeline on
+    the real timestamp, not on the fact that we just read it.
 
-    Une meme alerte est reemise plusieurs fois avec un `Serial` croissant, la
-    magnitude et l'intensite se precisant a chaque envoi. La cle est l'`EventID`,
-    donc ces revisions mettent a jour la meme entree au lieu de s'empiler.
+    The same alert is re-issued several times with an increasing `Serial`,
+    the magnitude and intensity getting more precise with each send. The key
+    is the `EventID`, so these revisions update the same entry instead of
+    piling up.
     """
 
     name = "jma_eew"
@@ -79,7 +80,7 @@ class JmaEewSource(JsonPollSource):
 
         status = ((data.get("Issue") or {}).get("Status")) or ""
         if JMA_CANCELLED in status:
-            log.info("EEW JMA %s annulee par la source", event_id)
+            log.info("JMA EEW %s cancelled by the source", event_id)
             return []
 
         time = _parse_local(data.get("OriginTime"), JST) or _parse_local(
@@ -88,25 +89,25 @@ class JmaEewSource(JsonPollSource):
         if time is None:
             return []
 
-        # oui, la cle est bien orthographiee "Magunitude" dans leur API
+        # yes, the key really is spelled "Magunitude" in their API
         magnitude = data.get("Magunitude")
         shindo = str(data.get("MaxIntensity") or "").strip()
-        place = data.get("Hypocenter") or "Japon"
+        place = data.get("Hypocenter") or "Japan"
         title = data.get("Title") or ""
 
         severity = severity_from_magnitude(
             float(magnitude) if isinstance(magnitude, (int, float)) else None
         )
         if shindo in SHINDO_SEVERITY:
-            # l'intensite attendue au sol prime: c'est elle qui dit s'il faut
-            # se mettre a l'abri
+            # the expected ground intensity wins: it is what says whether to
+            # take cover
             severity = max(
                 severity,
                 SHINDO_SEVERITY[shindo],
                 key=lambda s: list(Severity).index(s),
             )
-        # une alerte (警報) vaut toujours au moins "fort", meme si la premiere
-        # estimation de magnitude est basse: c'est le principe de l'alerte precoce
+        # a warning (警報) is always worth at least "severe", even if the first
+        # magnitude estimate is low: that is the principle of early warning
         if JMA_WARNING_MARK in title and severity is not Severity.EXTREME:
             severity = Severity.SEVERE
 
@@ -127,7 +128,7 @@ class JmaEewSource(JsonPollSource):
                 country_code="JP",
                 severity=severity,
                 alert=f"EEW shindo {shindo}" if shindo else "EEW",
-                title=f"Alerte precoce -- {place} (shindo {shindo})" if shindo else place,
+                title=f"Early warning -- {place} (shindo {shindo})" if shindo else place,
                 url="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map",
                 raw={
                     "serial": data.get("Serial"),
@@ -135,17 +136,17 @@ class JmaEewSource(JsonPollSource):
                     "status": status,
                     "max_intensity": shindo,
                     "is_final": data.get("isFinal"),
-                    "relay": "wolfx (non officiel)",
+                    "relay": "wolfx (unofficial)",
                 },
             )
         ]
 
 
 class CencSource(JsonPollSource):
-    """CENC (Chine) -- la Chine continentale n'a aucune autre couverture ici.
+    """CENC (China) -- mainland China has no other coverage here.
 
-    Le payload n'est pas un tableau mais un dictionnaire indexe `No1`, `No2`...
-    Itérer sur les cles rendrait les chaines "No1", pas les evenements.
+    The payload is not an array but a dictionary indexed `No1`, `No2`...
+    Iterating over the keys would yield the strings "No1", not the events.
     """
 
     name = "cenc"
@@ -176,7 +177,7 @@ class CencSource(JsonPollSource):
 
             magnitude = number(row.get("magnitude"))
             lat, lon = number(row.get("latitude")), number(row.get("longitude"))
-            place = row.get("placeName") or row.get("location") or "Chine"
+            place = row.get("placeName") or row.get("location") or "China"
 
             events.append(
                 Event(
@@ -194,14 +195,14 @@ class CencSource(JsonPollSource):
                     country="China",
                     country_code="CN",
                     severity=severity_from_magnitude(magnitude),
-                    # "reviewed" (revu par un analyste) vs "automatic"
+                    # "reviewed" (checked by an analyst) vs "automatic"
                     alert=row.get("type"),
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url="https://news.ceic.ac.cn/",
                     raw={
                         "type": row.get("type"),
                         "intensity": row.get("intensity"),
-                        "relay": "wolfx (non officiel)",
+                        "relay": "wolfx (unofficial)",
                     },
                 )
             )

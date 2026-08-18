@@ -1,34 +1,34 @@
 import type { SosEvent } from './types'
 
-/** Propagation des ondes sismiques, dessinee en direct.
+/** Propagation of seismic waves, drawn live.
  *
- * Ce que ca montre et qu'aucun autre element de l'interface ne dit: **ou les
- * secousses arrivent MAINTENANT**. Un seisme est un point sur une carte; ce qui
- * se deplace, c'est le front d'onde, et il met des minutes a traverser une
- * region. Voir le cercle S atteindre une ville, c'est voir l'information que le
- * produit existe pour donner.
+ * What this shows, and that no other part of the interface says: **where
+ * the shaking is arriving RIGHT NOW**. An earthquake is a point on a map;
+ * what moves is the wave front, and it takes minutes to cross a region.
+ * Watching the S circle reach a city is watching the very information this
+ * product exists to give.
  *
- * Deux fronts, deux vitesses moyennes dans la croute:
- * - **P** (primaire, compression) ~6,0 km/s -- la premiere secousse, faible;
- * - **S** (secondaire, cisaillement) ~3,5 km/s -- celle qui fait les degats.
+ * Two fronts, two average speeds in the crust:
+ * - **P** (primary, compressional) ~6.0 km/s -- the first, weak jolt;
+ * - **S** (secondary, shear) ~3.5 km/s -- the one that does the damage.
  *
- * Ce sont des moyennes crustales, pas un modele de terre: au-dela d'un millier
- * de kilometres les ondes plongent dans le manteau et accelerent. Les cercles
- * sont donc justes pres de l'epicentre, approximatifs loin, et on les arrete
- * avant qu'ils ne deviennent mensongers.
+ * These are crustal averages, not an earth model: beyond about a thousand
+ * kilometers the waves dive into the mantle and speed up. So the circles
+ * are accurate near the epicenter, approximate far from it, and we stop
+ * them before they become misleading.
  */
 
 export const P_SPEED_KM_S = 6.0
 export const S_SPEED_KM_S = 3.5
 
-/** Au-dela, le modele a vitesse constante ne vaut plus rien. */
+/** Beyond this, the constant-speed model is no longer worth anything. */
 const MAX_RADIUS_KM = 1200
-/** Un seisme trop faible n'est ressenti nulle part: ne rien dessiner. */
+/** An earthquake too weak is felt nowhere: draw nothing. */
 const MIN_MAGNITUDE = 4.0
 
 const EARTH_RADIUS_KM = 6371
 
-/** Point atteint depuis un epicentre en suivant un cap, a une distance donnee. */
+/** Point reached from an epicenter following a bearing, at a given distance. */
 function destination(lat: number, lon: number, bearing: number, distanceKm: number): [number, number] {
   const angular = distanceKm / EARTH_RADIUS_KM
   const phi1 = (lat * Math.PI) / 180
@@ -48,8 +48,8 @@ function destination(lat: number, lon: number, bearing: number, distanceKm: numb
   return [((lambda2 * 180) / Math.PI + 540) % 360 - 180, (phi2 * 180) / Math.PI]
 }
 
-/** Le cercle est trace en coordonnees geographiques, pas en pixels: il reste
- * juste a tous les niveaux de zoom, et se deforme correctement pres des poles. */
+/** The circle is drawn in geographic coordinates, not pixels: it stays
+ * accurate at every zoom level, and deforms correctly near the poles. */
 export function waveRing(lat: number, lon: number, radiusKm: number, points = 72): [number, number][] {
   const ring: [number, number][] = []
   for (let i = 0; i <= points; i += 1) {
@@ -62,11 +62,11 @@ export function isWaveCandidate(event: SosEvent, now: number): boolean {
   if (event.kind !== 'earthquake' || event.lat === null || event.lon === null) return false
   if ((event.magnitude ?? 0) < MIN_MAGNITUDE) return false
   const elapsed = (now - Date.parse(event.time)) / 1000
-  // le front S doit encore etre dans la zone ou le modele tient
+  // the S front must still be within the zone where the model holds
   return elapsed > 0 && elapsed * S_SPEED_KM_S < MAX_RADIUS_KM
 }
 
-/** Les deux fronts de chaque seisme assez recent, a l'instant `now`. */
+/** The two fronts of each recent-enough earthquake, at instant `now`. */
 export function waveFronts(events: SosEvent[], now: number): GeoJSON.FeatureCollection {
   const features: GeoJSON.Feature[] = []
 
@@ -88,7 +88,7 @@ export function waveFronts(events: SosEvent[], now: number): GeoJSON.FeatureColl
         properties: {
           phase,
           id: event.id,
-          // le front s'efface en s'eloignant: il perd son sens avec la distance
+          // the front fades as it moves outward: it loses meaning with distance
           opacity: Math.max(0, 1 - radius / MAX_RADIUS_KM),
         },
       })

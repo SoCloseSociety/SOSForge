@@ -1,6 +1,6 @@
-/** Declaration locale pour les imports `?raw` de Vite (utilises par le test de
- * parite i18n). Le projet n'inclut pas `vite/client` dans son tsconfig et les
- * tests ne doivent pas modifier la config du build. */
+/** Local declaration for Vite's `?raw` imports (used by the i18n parity
+ * test). The project does not include `vite/client` in its tsconfig and the
+ * tests must not modify the build config. */
 declare module '*?raw' {
   const content: string
   export default content

@@ -1,9 +1,9 @@
-"""Le chemin unique que suit tout evenement, quelle que soit sa source.
+"""The single path every event follows, whatever its source.
 
-    source -> normalize -> filtre -> dedupe -> store -> hub -> navigateurs
+    source -> normalize -> filter -> dedupe -> store -> hub -> browsers
 
-Un seul point d'entree: si un jour une source dedoublonne mal ou floode, c'est ici
-qu'on regarde.
+One single entry point: if a source ever dedupes badly or floods, this is
+where to look.
 """
 
 from __future__ import annotations
@@ -26,45 +26,45 @@ class Pipeline:
         self.deduper = deduper
         self.ingested = 0
         self.dropped = 0
-        self.quiet = False  # pendant le backfill: on remplit sans reveiller personne
+        self.quiet = False  # during backfill: fill up without waking anyone
 
     async def emit(self, event: Event) -> None:
         if event.magnitude is not None and event.magnitude < settings.min_magnitude:
             self.dropped += 1
             return
 
-        # Un horodatage DANS LE FUTUR est une erreur de source (fuseau mal pose,
-        # horloge derivante). Non filtre, il traversait tout: l'horizon le laissait
-        # passer (age negatif), il etait annonce "en direct" en permanence, et le
-        # tri par date le clouait en tete du flux pour toujours. On tolere une
-        # petite avance (les horloges ne sont jamais exactement synchrones) et on
-        # rejette au-dela.
-        # Exception decisive: une vigilance meteo est PUBLIEE AVANT son debut --
-        # c'est meme tout son interet, le preavis. Son `onset` est donc
-        # legitimement dans le futur. Seuls les evenements ponctuels (un seisme a
-        # eu lieu ou n'a pas eu lieu) ne peuvent pas etre dates en avance.
+        # A timestamp IN THE FUTURE is a source error (misapplied timezone,
+        # drifting clock). Unfiltered, it went through everything: the horizon
+        # let it pass (negative age), it was announced as "live" permanently,
+        # and the date sort pinned it at the top of the feed forever. We
+        # tolerate a small lead (clocks are never exactly in sync) and reject
+        # beyond that.
+        # Decisive exception: a weather warning is PUBLISHED BEFORE it starts --
+        # that is its whole point, the advance notice. Its `onset` is therefore
+        # legitimately in the future. Only point-in-time events (a quake either
+        # happened or it did not) cannot be dated in advance.
         if not event.ongoing and event.age_seconds < -settings.future_tolerance_seconds:
             self.dropped += 1
             log.warning(
-                "%s: horodatage dans le futur de %.0f s, evenement rejete (%s)",
+                "%s: timestamp %.0f s in the future, event rejected (%s)",
                 event.source,
                 -event.age_seconds,
                 event.id,
             )
             return
 
-        # Horizon d'ingestion. Plusieurs sources servent un catalogue et non un
-        # flux: la liste JMA remonte a plus de neuf mois, GDACS garde ses alertes
-        # des semaines. Sans horizon, ces archives remplissent le ring buffer et
-        # evincent les evenements du moment -- l'inverse exact du produit.
-        # Exception: une alerte GRAVE ET EN COURS survit a l'horizon -- un cyclone
-        # rouge ne devient pas caduc parce qu'il dure depuis trois jours. Un
-        # seisme, lui, est instantane: passe l'horizon c'est de l'histoire, meme
-        # a magnitude 8. Sans cette nuance, un vieux seisme japonais a shindo 6
-        # restait affiche neuf mois plus tard.
-        # "En cours" vient d'abord de la source quand elle le dit (EONET publie
-        # status=open, le NHC ne liste que les tempetes actives). La gravite
-        # elevee reste un repli pour les sources qui ne le disent pas.
+        # Ingestion horizon. Several sources serve a catalog, not a feed: the
+        # JMA list goes back more than nine months, GDACS keeps its alerts for
+        # weeks. Without a horizon, those archives fill the ring buffer and
+        # evict the current events -- the exact opposite of the product.
+        # Exception: a SEVERE AND ONGOING alert survives the horizon -- a red
+        # cyclone does not expire because it has lasted three days. A quake,
+        # though, is instantaneous: past the horizon it is history, even at
+        # magnitude 8. Without this nuance, an old Japanese quake at shindo 6
+        # was still displayed nine months later.
+        # "Ongoing" comes first from the source when it says so (EONET
+        # publishes status=open, the NHC only lists active storms). High
+        # severity remains a fallback for sources that do not say it.
         ongoing = event.ongoing or (
             event.kind is not Kind.EARTHQUAKE
             and event.severity in (Severity.SEVERE, Severity.EXTREME)
@@ -73,11 +73,12 @@ class Pipeline:
             self.dropped += 1
             return
 
-        # Le pays est resolu ICI et pas dans chaque source: six sources sur dix
-        # le donnent deja, l'USGS ne donne qu'un texte de lieu, et une regle
-        # unique vaut mieux que dix variantes.
-        # une source qui connait deja le code pays fait autorite: l'agregat de
-        # l'OMM le porte dans l'identifiant, on ne va pas le redeviner d'un texte
+        # The country is resolved HERE and not in each source: six sources out
+        # of ten already provide it, USGS only gives a place text, and one
+        # single rule beats ten variants.
+        # a source that already knows the country code is authoritative: the
+        # WMO aggregate carries it in the identifier, no point re-guessing it
+        # from a text
         event.country_code = event.country_code or resolve_country(event.country, event.place)
 
         self.deduper.assign(event)
@@ -89,10 +90,10 @@ class Pipeline:
         if self.quiet:
             return
 
-        # "nouveau pour le store" n'est pas "vient de se produire". GDACS garde ses
-        # alertes des jours: au premier cycle, une centaine d'evenements anciens
-        # entrent d'un coup. Ils doivent apparaitre sur la carte, mais surtout pas
-        # clignoter ni declencher le son comme s'ils venaient de tomber.
+        # "new to the store" is not "just happened". GDACS keeps its alerts for
+        # days: on the first cycle, a hundred old events come in at once. They
+        # must appear on the map, but they must absolutely not blink or trigger
+        # the sound as if they had just landed.
         breaking = action == "new" and 0 <= stored.age_seconds <= settings.breaking_seconds
 
         await hub.broadcast(
@@ -105,7 +106,7 @@ class Pipeline:
         )
         if action == "new" and (stored.severity.value in ("severe", "extreme") or stored.tsunami):
             log.info(
-                "ALERTE %s %s M%s %s",
+                "ALERT %s %s M%s %s",
                 stored.severity.value.upper(),
                 stored.kind.value,
                 stored.magnitude,

@@ -1,7 +1,7 @@
-/* SOSForge -- interface sombre. La couleur de gravite vient de la palette
-   "status" (good/warning/serious/critical): elle est reservee, elle ne sert
-   jamais a distinguer une serie, et elle ne porte jamais le sens toute seule --
-   chaque niveau est toujours accompagne d'une icone et d'un libelle. */
+/* SOSForge -- dark interface. Severity color comes from the "status" palette
+   (good/warning/serious/critical): it's reserved, it's never used to
+   distinguish a series, and it never carries meaning on its own -- every
+   level is always paired with an icon and a label. */
 
 :root {
   color-scheme: dark;
@@ -17,7 +17,7 @@
   --hairline: rgba(255, 255, 255, 0.1);
   --grid: #2c2c2a;
 
-  /* palette status, fixe */
+  /* status palette, fixed */
   --sev-info: #6f7379;
   --sev-minor: #0ca30c;
   --sev-moderate: #fab219;
@@ -42,8 +42,8 @@ body,
 }
 
 body {
-  /* aucun element ne doit pouvoir elargir la page: sur telephone, un debordement
-     horizontal rend tout le tableau de bord inutilisable */
+  /* no element should be able to widen the page: on phone, horizontal
+     overflow makes the whole dashboard unusable */
   overflow-x: hidden;
   background: var(--plane);
   color: var(--ink);
@@ -62,8 +62,8 @@ button {
 
 /* ------------------------------------------------------------------ layout */
 
-/* flex plutot que grid: la banniere d'alerte apparait et disparait, et une
-   grille a lignes nommees se decalerait a chaque fois */
+/* flex rather than grid: the alert banner appears and disappears, and a
+   grid with named rows would shift every time */
 .app {
   display: flex;
   flex-direction: column;
@@ -77,13 +77,13 @@ button {
   min-height: 0;
 }
 
-/* Sans ca, un enfant large (les puces de filtre, le pied de page) elargit sa
-   colonne au-dela du viewport et toute la page defile horizontalement. */
+/* Without this, a wide child (filter chips, footer) widens its column
+   beyond the viewport and the whole page scrolls horizontally. */
 .body > * {
   min-width: 0;
 }
 
-/* ------------------------------------------------------------------ entete */
+/* ------------------------------------------------------------------ header */
 
 .header {
   display: flex;
@@ -177,7 +177,7 @@ button {
   border-color: rgba(57, 135, 229, 0.6);
 }
 
-/* --------------------------------------------------------------- bandeau kpi */
+/* --------------------------------------------------------------- kpi bar */
 
 .kpis {
   display: grid;
@@ -210,7 +210,7 @@ button {
   font-size: 12px;
 }
 
-/* ------------------------------------------------------------------ alerte */
+/* ------------------------------------------------------------------ alert */
 
 .banner {
   display: flex;
@@ -240,7 +240,7 @@ button {
   color: var(--ink-2);
 }
 
-/* ------------------------------------------------------------------- panneau */
+/* ------------------------------------------------------------------- panel */
 
 .panel {
   display: flex;
@@ -400,7 +400,7 @@ button {
   white-space: nowrap;
 }
 
-/* pastille de gravite: couleur + icone + libelle, jamais la couleur seule */
+/* severity badge: color + icon + label, never the color alone */
 .sev {
   display: inline-flex;
   align-items: center;
@@ -595,7 +595,7 @@ button {
   letter-spacing: 0.05em;
 }
 
-/* ------------------------------------------------------- fenetre temporelle */
+/* ------------------------------------------------------------- time window */
 
 .segmented {
   display: flex;
@@ -625,7 +625,7 @@ button {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
 }
 
-/* ------------------------------------------------------------------- langue */
+/* ------------------------------------------------------------------ language */
 
 .lang {
   display: inline-flex;
@@ -657,7 +657,7 @@ button {
   color: var(--ink);
 }
 
-/* --------------------------------------------------------- colonne de carte */
+/* --------------------------------------------------------------- map column */
 
 .map-column {
   position: relative;
@@ -665,7 +665,7 @@ button {
   display: grid;
 }
 
-/* ------------------------------------------------- fiche + vues en direct */
+/* ------------------------------------------------- card + live views */
 
 .live-panel {
   position: absolute;
@@ -827,11 +827,11 @@ button {
   font-size: 13px;
   line-height: 1;
   margin-right: 5px;
-  /* le drapeau est un indice, pas le sujet: il ne doit pas voler la ligne */
+  /* the flag is a hint, not the subject: it must not steal the line */
   opacity: 0.95;
 }
 
-/* --------------------------------------------------------------- recherche */
+/* --------------------------------------------------------------- search */
 
 .search {
   position: relative;
@@ -870,7 +870,7 @@ button {
   color: var(--ink-muted);
 }
 
-/* la petite croix native de Safari/Chrome fait doublon avec la notre */
+/* the native Safari/Chrome clear button duplicates our own */
 .search input::-webkit-search-cancel-button {
   display: none;
 }
@@ -935,18 +935,18 @@ button {
 }
 
 
-/* ------------------------------------------------------------ telephone */
+/* ------------------------------------------------------------ phone */
 
 @media (max-width: 900px) {
   .body {
     grid-template-columns: 1fr;
-    /* le flux d'abord, la carte ensuite: sur telephone on lit, on n'explore pas */
+    /* feed first, map second: on phone you read, you don't explore */
     grid-template-rows: minmax(0, 1.6fr) minmax(0, 1fr);
   }
 
-  /* Les puces de filtre prenaient trois lignes et volaient la place du flux.
-     Sur telephone elles deviennent une bande qui defile horizontalement: on en
-     voit moins d'un coup, mais on voit enfin les evenements. */
+  /* Filter chips were taking up three lines and stealing room from the feed.
+     On phone they become a horizontally scrolling strip: you see fewer at
+     once, but you finally see the events. */
   .chips {
     flex-wrap: nowrap;
     overflow-x: auto;
@@ -968,7 +968,7 @@ button {
     padding: 10px 12px;
   }
 
-  /* la baseline prenait quatre lignes a elle seule */
+  /* the tagline was taking up four lines all by itself */
   .brand span {
     display: none;
   }
@@ -997,7 +997,7 @@ button {
     padding: 9px 12px;
   }
 
-  /* elle mangeait un tiers d'une carte deja minuscule */
+  /* it was eating a third of an already tiny map */
   .legend {
     display: none;
   }
@@ -1032,7 +1032,7 @@ button {
   background: var(--surface-2);
 }
 
-/* fronts d'onde: la legende n'apparait que quand des ondes sont en cours */
+/* wave fronts: the legend only appears when waves are in progress */
 .legend-waves {
   list-style: none;
   margin: 8px 0 0;
@@ -1064,4 +1064,14 @@ button {
 .wave-line.s {
   border-top-width: 2.5px;
   border-top-color: var(--sev-severe);
+}
+
+/* A covered type with no event stays visible, dimmed: it's information
+   ("no tsunami in progress"), not an absence of information. */
+.chip.empty {
+  opacity: 0.45;
+}
+
+.chip.empty:hover {
+  opacity: 0.75;
 }

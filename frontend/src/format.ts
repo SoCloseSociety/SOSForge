@@ -2,9 +2,9 @@ import type { Kind, Severity, SosEvent } from './types'
 
 export type T = (key: string, vars?: Record<string, string | number>) => string
 
-/** Gravite: couleur de la palette status + glyphe. Le LIBELLE vient de i18n --
- * les trois voyagent toujours ensemble a l'affichage, la couleur seule ne doit
- * jamais porter l'information. */
+/** Severity: color from the status palette + glyph. The LABEL comes from
+ * i18n -- all three always travel together on display, the color alone must
+ * never carry the information. */
 export const SEVERITY_META: Record<Severity, { glyph: string; color: string }> = {
   info: { glyph: 'i', color: '#6f7379' },
   minor: { glyph: '▪', color: '#0ca30c' },
@@ -48,22 +48,21 @@ export const SOURCE_LABEL: Record<string, string> = {
   cenc: 'CENC',
 }
 
-/** Le drapeau se calcule a partir du code ISO2 (deux indicateurs regionaux
- * Unicode): aucune image a charger, et rien a stocker. Pas de code = pas de
- * drapeau, jamais un drapeau approximatif -- la haute mer n'appartient a
- * personne. */
+/** The flag is computed from the ISO2 code (two Unicode regional indicator
+ * symbols): no image to load, nothing to store. No code = no flag, never an
+ * approximate flag -- the high seas belong to no one. */
 export function flagEmoji(iso2: string | null): string | null {
-  // deux caracteres NON alphabetiques ('12', '??') sortaient de la plage des
-  // indicateurs regionaux et affichaient un caractere parasite -- alors que la
-  // regle du produit est: jamais un drapeau approximatif
+  // two NON-alphabetic characters ('12', '??') fell outside the regional
+  // indicator range and displayed a stray character -- whereas the product
+  // rule is: never an approximate flag
   if (!iso2 || !/^[A-Za-z]{2}$/.test(iso2)) return null
   return String.fromCodePoint(
     ...[...iso2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
   )
 }
 
-/** Nom du pays dans la langue de l'utilisateur, gratuitement, via l'Intl du
- * navigateur: c'est deja traduit dans les cinq langues du produit. */
+/** Country name in the user's language, for free, via the browser's Intl:
+ * it's already translated in the product's five languages. */
 export function countryName(lang: string, iso2: string | null): string | null {
   if (!iso2) return null
   try {
@@ -94,8 +93,8 @@ export function formatClock(date: Date): string {
   return date.toISOString().slice(11, 19)
 }
 
-/** Ce qu'on affiche dans la pastille de gauche: une magnitude si l'evenement en
- * a une, sinon le pictogramme du type d'alea. */
+/** What's shown in the left-hand badge: a magnitude if the event has one,
+ * otherwise the hazard type's pictogram. */
 export function badge(event: SosEvent): { value: string; unit: string } {
   if (event.magnitude !== null) {
     return { value: event.magnitude.toFixed(1), unit: event.mag_type?.toUpperCase() ?? 'MAG' }

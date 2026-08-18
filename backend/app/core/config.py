@@ -1,4 +1,4 @@
-"""Configuration SOSForge, pilotee par l'environnement (prefixe SOS_)."""
+"""SOSForge configuration, driven by the environment (SOS_ prefix)."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:5273,http://127.0.0.1:5273"
 
-    # --- stockage ---
+    # --- storage ---
     data_dir: Path = Path("./data")
     ring_size: int = 5000
     snapshot_size: int = 300
@@ -32,24 +32,24 @@ class Settings(BaseSettings):
     enable_gdacs: bool = True
     enable_nws: bool = True
     enable_volcano: bool = True
-    # agences regionales: elles apportent ce que l'EMSC n'a pas (shindo japonais,
-    # potentiel tsunami BMKG, seuil de detection local tres bas)
+    # regional agencies: they bring what EMSC does not have (Japanese shindo,
+    # BMKG tsunami potential, very low local detection threshold)
     enable_jma: bool = True
     enable_bmkg: bool = True
     enable_geonet: bool = True
     enable_ingv: bool = True
     enable_afad: bool = True
-    # aleas non sismiques a forte valeur: cyclones NHC, cendres volcaniques
+    # high-value non-seismic hazards: NHC cyclones, volcanic ash
     enable_nhc: bool = True
     enable_ash: bool = True
     enable_geofon: bool = True
     enable_eonet: bool = True
-    # alertes officielles hors USA
+    # official alerts outside the USA
     enable_meteoalarm: bool = True
     enable_wmo: bool = True
-    # Relais tiers non officiel (Wolfx): enrichit, ne fait autorite sur rien.
-    # L'alerte precoce japonaise est la seule information de ce produit qui
-    # puisse encore servir a se mettre a l'abri.
+    # Unofficial third-party relay (Wolfx): enriches, is authoritative on
+    # nothing. The Japanese early warning is the only information in this
+    # product that can still be used to take cover.
     enable_jma_eew: bool = True
     enable_cenc: bool = True
 
@@ -60,8 +60,8 @@ class Settings(BaseSettings):
     usgs_poll_seconds: float = 5.0
     tsunami_poll_seconds: float = 30.0
     gdacs_poll_seconds: float = 120.0
-    # au dela, un evenement GDACS vert (typiquement un feu) n'est plus une info
-    # du moment et ne fait qu'encombrer la carte. Orange et rouge passent toujours.
+    # beyond this, a green GDACS event (typically a fire) is no longer current
+    # news and only clutters the map. Orange and red always pass.
     gdacs_max_age_days: float = 1.0
     nws_poll_seconds: float = 20.0
     volcano_poll_seconds: float = 300.0
@@ -76,50 +76,52 @@ class Settings(BaseSettings):
     eonet_poll_seconds: float = 600.0
     meteoalarm_poll_seconds: float = 300.0
     wmo_poll_seconds: float = 300.0
-    # une EEW se compte en secondes; on reste raisonnable avec un service tiers
+    # an EEW is measured in seconds; stay reasonable with a third-party service
     jma_eew_poll_seconds: float = 5.0
     cenc_poll_seconds: float = 120.0
-    # Meteoalarm: 1 vert, 2 jaune, 3 orange, 4 rouge. En dessous d'orange, c'est
-    # du bulletin meteo, et il y en a plus de 2000 par cycle sur dix pays.
+    # Meteoalarm: 1 green, 2 yellow, 3 orange, 4 red. Below orange it is
+    # weather-bulletin material, and there are over 2000 per cycle across ten
+    # countries.
     meteoalarm_min_level: int = 3
-    # OMM: rang CAP, 1 = Extreme, 2 = Severe. Reserve mesuree sur le flux reel:
-    # l'echelle n'est PAS homogene d'un pays a l'autre (des "Small Craft
-    # Advisory" americains arrivent en rang 1, quand l'Inde tague en rang 2 des
-    # pluies de routine). On s'en tient donc au tiers superieur declare par
-    # chaque pays -- 221 alertes sur 2258 -- plutot que de croire l'echelle.
+    # WMO: CAP rank, 1 = Extreme, 2 = Severe. Caveat measured on the real
+    # feed: the scale is NOT homogeneous from one country to another (US
+    # "Small Craft Advisory" alerts arrive at rank 1, while India tags routine
+    # rain at rank 2). So we stick to the top tier as declared by each country
+    # -- 221 alerts out of 2258 -- rather than trusting the scale.
     wmo_max_severity_rank: int = 1
 
-    # backfill au demarrage: on ne veut pas d'une carte vide
+    # backfill at startup: we do not want an empty map
     backfill_url: str = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson"
 
-    # --- vues live a proximite (optionnel) ---
-    # sans cle, l'API ne rend que des liens profonds (Windy, YouTube, Worldview,
-    # Google Maps) qui marchent partout; avec cle, la vraie liste des webcams.
+    # --- nearby live views (optional) ---
+    # without a key, the API only returns deep links (Windy, YouTube,
+    # Worldview, Google Maps) that work everywhere; with a key, the real
+    # webcam list.
     windy_api_key: str = ""
     nearby_radius_km: int = 100
 
-    # --- diffusion ---
+    # --- broadcasting ---
     heartbeat_seconds: float = 1.0
-    # en deca de cet age, un evenement est annonce comme "en direct" cote UI
-    # (halo, clignotement, son). Au dela, il est ajoute silencieusement.
+    # below this age, an event is announced as "breaking" on the UI side
+    # (halo, blinking, sound). Beyond it, it is added silently.
     breaking_seconds: float = 900.0
     min_magnitude: float = 0.0
-    # horizon d'ingestion: au dela, un evenement n'est plus une info du moment.
-    # La liste JMA remonte a plus de neuf mois, GDACS garde ses alertes des
-    # semaines. Les gravites severe et extreme ne sont jamais coupees.
+    # ingestion horizon: beyond it, an event is no longer current news. The
+    # JMA list goes back more than nine months, GDACS keeps its alerts for
+    # weeks. Severe and extreme severities are never cut off.
     max_event_age_days: float = 3.0
-    # une alerte "en cours" qu'aucune source ne mentionne plus depuis ce delai
-    # est consideree terminee. Le cycle de polling le plus lent est de 300 s,
-    # donc 6 h laissent une marge tres large avant de conclure au silence.
-    # tolerance d'avance d'horloge avant de considerer un horodatage comme faux
+    # an "ongoing" alert that no source has mentioned for this long is
+    # considered over. The slowest polling cycle is 300 s, so 6 h leave a very
+    # wide margin before concluding silence.
+    # clock-lead tolerance before declaring a timestamp wrong
     future_tolerance_seconds: float = 120.0
     stale_after_hours: float = 6.0
     sweep_seconds: float = 300.0
-    # retention du journal: environ 5 Mo par jour, sur un disque partage avec les
-    # autres produits de la suite
+    # journal retention: about 5 MB per day, on a disk shared with the other
+    # products of the suite
     journal_keep_days: int = 7
 
-    # --- dedup inter-sources ---
+    # --- cross-source dedup ---
     dedupe_window_seconds: float = 90.0
     dedupe_radius_km: float = 250.0
     dedupe_mag_delta: float = 1.2

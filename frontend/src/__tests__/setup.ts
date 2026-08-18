@@ -1,3 +1,3 @@
-/** Charge les matchers jest-dom (toBeInTheDocument, ...) dans expect() de
- * Vitest. Reference depuis vitest.config.ts (setupFiles). */
+/** Loads the jest-dom matchers (toBeInTheDocument, ...) into Vitest's
+ * expect(). Referenced from vitest.config.ts (setupFiles). */
 import '@testing-library/jest-dom/vitest'

@@ -1,8 +1,8 @@
-"""Store en memoire: ring buffer + index par id, avec append JSONL optionnel.
+"""In-memory store: ring buffer + index by id, with optional JSONL append.
 
-Pas de base de donnees en v1: un tracker live a besoin de la derniere heure, pas
-d'un entrepot. La persistance JSONL suffit a rejouer/auditer, et Postgres pourra
-etre branche derriere la meme interface si l'historique devient un besoin.
+No database in v1: a live tracker needs the last hour, not a warehouse. The
+JSONL persistence is enough to replay/audit, and Postgres can be plugged in
+behind the same interface if history becomes a need.
 """
 
 from __future__ import annotations
@@ -33,10 +33,10 @@ class EventStore:
         if self._persist and self._data_dir:
             self._data_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------ ecriture
+    # ------------------------------------------------------------------- writing
 
     def upsert(self, event: Event) -> tuple[Event, str]:
-        """Insere ou met a jour. Retourne (event, action) ou action = new|update|noop."""
+        """Inserts or updates. Returns (event, action) where action = new|update|noop."""
         with self._lock:
             existing = self._by_id.get(event.id)
             if existing is None:
@@ -49,16 +49,16 @@ class EventStore:
                 return event, "new"
 
             if existing.fingerprint() == event.fingerprint():
-                # rien de neuf, mais la source vient de le rementionner: c'est
-                # exactement ce que `last_seen` doit enregistrer
-                # pendant un replay, `last_seen` doit rester celui du journal:
-                # le rafraichir redonnait six heures de sursis a toute alerte
-                # morte a chaque redemarrage, et masquait la purge entierement
+                # nothing new, but the source just mentioned it again: this is
+                # exactly what `last_seen` must record
+                # during a replay, `last_seen` must stay the journal's value:
+                # refreshing it gave every dead alert six more hours of grace
+                # at each restart, and masked the purge entirely
                 if not self._replaying:
                     existing.last_seen = utcnow()
                 return existing, "noop"
 
-            # revision: on garde l'objet en place (donc dans le ring) et on le met a jour
+            # revision: keep the object in place (thus in the ring) and update it
             event.received_at = existing.received_at
             event.cluster_id = existing.cluster_id or event.cluster_id
             event.revision = existing.revision + 1
@@ -73,13 +73,13 @@ class EventStore:
             return event, "update"
 
     def _gc(self) -> None:
-        """Le ring a evince des elements: purge l'index, et surtout PROMEUT un
-        survivant dans les clusters dont le representant vient de disparaitre.
+        """The ring evicted elements: purge the index, and above all PROMOTE a
+        survivor in the clusters whose representative just disappeared.
 
-        Sans cette promotion, un seisme entier sortait du flux: `primary_only`
-        masque tout evenement dont le `cluster_id` n'est pas le sien, donc si
-        l'EMSC (arrive en premier, evince en premier) partait pendant que la
-        solution USGS restait, plus personne n'affichait ce seisme.
+        Without this promotion, a whole quake dropped out of the feed:
+        `primary_only` hides any event whose `cluster_id` is not its own, so
+        if EMSC (arrived first, evicted first) left while the USGS solution
+        stayed, nobody displayed that quake anymore.
         """
         alive = {e.id for e in self._ring}
         for dead in [k for k in self._by_id if k not in alive]:
@@ -90,13 +90,13 @@ class EventStore:
             cluster = event.cluster_id
             if not cluster or cluster in alive:
                 continue
-            # le plus ancien survivant du cluster devient le nouveau primaire
+            # the oldest survivor of the cluster becomes the new primary
             new_primary = promoted.setdefault(cluster, event.id)
             event.cluster_id = new_primary
 
     def _write_jsonl(self, event: Event, action: str) -> None:
-        # `_replaying` evite de dupliquer le journal a chaque redemarrage: sans
-        # ce garde-fou, relire 400 evenements les reecrivait aussitot.
+        # `_replaying` avoids duplicating the journal on every restart: without
+        # this guard, re-reading 400 events immediately rewrote them.
         if self._replaying or not (self._persist and self._data_dir):
             return
         day = utcnow().strftime("%Y-%m-%d")
@@ -107,10 +107,10 @@ class EventStore:
                     json.dumps({"action": action, **event.model_dump(mode="json")}, default=str)
                     + "\n"
                 )
-        except OSError as exc:  # le disque ne doit jamais tuer le flux live
-            log.warning("persistance jsonl impossible: %s", exc)
+        except OSError as exc:  # the disk must never kill the live feed
+            log.warning("jsonl persistence failed: %s", exc)
 
-    # ------------------------------------------------------------------ lecture
+    # ------------------------------------------------------------------- reading
 
     def get(self, event_id: str) -> Event | None:
         with self._lock:
@@ -134,32 +134,31 @@ class EventStore:
                     continue
                 if since and e.time < since:
                     continue
-                # un cluster n'est represente que par son primaire (cluster_id == id)
+                # a cluster is only represented by its primary (cluster_id == id)
                 if primary_only and e.cluster_id and e.cluster_id != e.id:
                     continue
                 out.append(e)
-        # tri par date d'evenement decroissante: le flux montre ce qui vient de se
-        # produire, pas ce qui vient d'etre poll (un bulletin vieux de 3 jours
-        # remonte a chaque cycle de polling et squatterait la tete de liste)
+        # sort by event date, descending: the feed shows what just happened,
+        # not what was just polled (a 3-day-old bulletin comes back every
+        # polling cycle and would squat the top of the list)
         out.sort(key=lambda e: e.time, reverse=True)
         return out[:limit]
 
     def prune_stale(self, max_silence_hours: float) -> list[Event]:
-        """Retire les evenements qu'aucune source n'a rementionnes depuis
-        longtemps.
+        """Removes events that no source has mentioned again for a long time.
 
-        L'horizon d'ingestion exempte les alertes graves ET en cours, parce
-        qu'un cyclone rouge ne devient pas caduc en trois jours. Mais rien ne
-        les faisait jamais partir: un cyclone dissipe, un bulletin volcanique
-        remplace, restaient affiches pour toujours. Une source qui cesse de
-        mentionner une alerte a implicitement dit qu'elle est terminee.
+        The ingestion horizon exempts alerts that are severe AND ongoing,
+        because a red cyclone does not expire in three days. But nothing ever
+        made them leave: a dissipated cyclone, a replaced volcanic bulletin,
+        stayed displayed forever. A source that stops mentioning an alert has
+        implicitly said it is over.
         """
         cutoff = utcnow() - timedelta(hours=max_silence_hours)
         with self._lock:
-            # SEULES les alertes en cours sont concernees. Un seisme n'est pas
-            # "muet": sa source cesse normalement d'en parler des qu'il sort de
-            # sa fenetre de publication. Purger les non-ongoing revenait a ne
-            # garder que sept heures d'historique alors que l'UI propose 24 h.
+            # ONLY ongoing alerts are affected. A quake is not "silent": its
+            # source normally stops mentioning it as soon as it leaves its
+            # publication window. Purging non-ongoing events amounted to
+            # keeping only seven hours of history while the UI offers 24 h.
             stale = [e for e in self._ring if e.ongoing and e.last_seen < cutoff]
             if not stale:
                 return []
@@ -190,11 +189,11 @@ class EventStore:
         }
 
     def purge_journals(self, keep_days: int) -> list[Path]:
-        """Supprime les journaux plus vieux que `keep_days`.
+        """Deletes journals older than `keep_days`.
 
-        Le journal grossit d'environ 5 Mo par jour et n'etait jamais purge: sur
-        un service qui tourne en continu, le volume finit par saturer le disque
-        de l'hote -- partage avec les autres produits de la suite.
+        The journal grows by about 5 MB per day and was never purged: on a
+        service that runs continuously, the volume ends up saturating the
+        host's disk -- shared with the other products of the suite.
         """
         if not self._data_dir or not self._data_dir.exists():
             return []
@@ -202,17 +201,17 @@ class EventStore:
         removed = []
         for journal in sorted(self._data_dir.glob("events-*.jsonl")):
             day = journal.stem.removeprefix("events-")
-            # comparaison de chaines: le format ISO du nom de fichier est trie
+            # string comparison: the filename's ISO format sorts correctly
             if len(day) == 10 and day < cutoff:
                 try:
                     journal.unlink()
                     removed.append(journal)
                 except OSError as exc:
-                    log.warning("purge du journal %s impossible: %s", journal.name, exc)
+                    log.warning("could not purge journal %s: %s", journal.name, exc)
         return removed
 
     def load_backlog(self, path: Path) -> int:
-        """Recharge un JSONL au demarrage (redemarrage sans trou dans la carte)."""
+        """Reloads a JSONL at startup (restart without a hole in the map)."""
         if not path.exists():
             return 0
         loaded = 0

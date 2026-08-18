@@ -1,17 +1,16 @@
-"""Vues en direct a proximite d'un evenement.
+"""Live views near an event.
 
-Deux niveaux, volontairement:
+Two tiers, deliberately:
 
-1. **Les liens profonds** (toujours disponibles, aucune cle, aucun appel reseau):
-   on calcule des URLs qui ouvrent Windy, YouTube, NASA Worldview ou Google Maps
-   deja centres sur les coordonnees de l'evenement. C'est ce qui marche partout
-   et tout de suite.
-2. **Les webcams reelles** (optionnel): si `SOS_WINDY_API_KEY` est renseignee, on
-   interroge l'API webcams de Windy pour lister les cameras publiques autour du
-   point, avec vignette et lien.
+1. **Deep links** (always available, no key, no network call): we compute URLs
+   that open Windy, YouTube, NASA Worldview or Google Maps already centered on
+   the event's coordinates. This is what works everywhere, immediately.
+2. **Real webcams** (optional): if `SOS_WINDY_API_KEY` is set, we query the
+   Windy webcams API to list public cameras around the point, with thumbnail
+   and link.
 
-On ne touche QUE des cameras publiees volontairement par leurs proprietaires via
-une API officielle. Pas d'agregateur de flux ouverts par accident.
+We ONLY touch cameras deliberately published by their owners through an
+official API. No aggregator of accidentally open streams.
 """
 
 from __future__ import annotations
@@ -30,27 +29,27 @@ WINDY_API = "https://api.windy.com/webcams/api/v3/webcams"
 
 
 def deep_links(lat: float, lon: float, place: str, when: str | None = None) -> list[dict[str, str]]:
-    """Des vues de la zone qui s'ouvrent sans aucune cle d'API."""
+    """Views of the area that open without any API key."""
     query = quote_plus(f"{place} live")
     day = (when or "")[:10]
 
     return [
         {
             "id": "windy-webcams",
-            "label": "Webcams Windy",
-            "detail": "cameras publiques autour du point",
+            "label": "Windy webcams",
+            "detail": "public cameras around the point",
             "url": f"https://www.windy.com/-Webcams/webcams?webcams,{lat:.4f},{lon:.4f},9",
         },
         {
             "id": "youtube-live",
-            "label": "Direct YouTube",
-            "detail": "recherche de flux en direct sur la zone",
+            "label": "YouTube live",
+            "detail": "search for live streams over the area",
             "url": f"https://www.youtube.com/results?search_query={query}&sp=EgJAAQ%253D%253D",
         },
         {
             "id": "nasa-worldview",
-            "label": "Imagerie satellite",
-            "detail": "NASA Worldview, passage VIIRS du jour",
+            "label": "Satellite imagery",
+            "detail": "NASA Worldview, today's VIIRS pass",
             "url": (
                 "https://worldview.earthdata.nasa.gov/?v="
                 f"{lon - 3:.3f},{lat - 2:.3f},{lon + 3:.3f},{lat + 2:.3f}"
@@ -60,17 +59,17 @@ def deep_links(lat: float, lon: float, place: str, when: str | None = None) -> l
         },
         {
             "id": "google-maps",
-            "label": "Vue satellite",
-            "detail": "Google Maps centre sur l'epicentre",
+            "label": "Satellite view",
+            "detail": "Google Maps centered on the epicenter",
             "url": f"https://www.google.com/maps/@{lat:.4f},{lon:.4f},11z/data=!3m1!1e3",
         },
     ]
 
 
 async def windy_webcams(lat: float, lon: float, radius_km: int = 100, limit: int = 8) -> list[dict]:
-    """Cameras publiques Windy. Retourne une liste vide si aucune cle n'est
-    configuree ou si l'API repond mal: une vue d'appoint ne doit jamais faire
-    echouer la fiche d'un evenement."""
+    """Public Windy cameras. Returns an empty list if no key is configured or
+    if the API misbehaves: a supplementary view must never make an event's
+    detail page fail."""
     if not settings.windy_api_key:
         return []
 
@@ -87,7 +86,7 @@ async def windy_webcams(lat: float, lon: float, radius_km: int = 100, limit: int
             resp.raise_for_status()
             payload: Any = resp.json()
     except Exception as exc:
-        log.warning("webcams windy indisponibles: %s", exc)
+        log.warning("windy webcams unavailable: %s", exc)
         return []
 
     cameras = []

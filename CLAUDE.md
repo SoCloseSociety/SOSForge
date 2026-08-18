@@ -1,102 +1,149 @@
 # CLAUDE.md -- SOSForge
 
-Guide produit. Autoritaire pour l'interieur de SOSForge; le `CLAUDE.md` de
-SuiteForge reste autoritaire pour les conventions inter-produits.
+Product guide. Authoritative for the inside of SOSForge; the SuiteForge
+`CLAUDE.md` stays authoritative for cross-product conventions.
 
-> Jamais d'em dash. Utiliser `--`.
+> Never use em dashes. Use `--`.
+> The whole project is written in **English**: code, comments, docs, commit
+> messages. The only French left is inside the i18n dictionary and inside test
+> fixtures captured verbatim from real feeds.
 
-## Ce que c'est
+## What it is
 
-Un tracker temps reel des seismes, tsunamis, volcans et alertes catastrophes.
-Dix-neuf sources publiques agregees en un flux normalise, diffuse par websocket
-avec un battement d'une seconde. FastAPI + React 19 / Vite / TypeScript / Zustand /
-MapLibre. Aucune cle API: tout est public.
+A real-time tracker for earthquakes, tsunamis, volcanoes and disaster alerts.
+Nineteen public sources merged into one normalized feed, broadcast over
+websocket with a one-second heartbeat. FastAPI + React 19 / Vite / TypeScript /
+Zustand / MapLibre. No API key: everything is public.
 
-## La regle qui gouverne le produit
+Live at <https://sosforge.soclose.co> (helper VPS, `/root/SAAS/SuiteForge/SOSForge`).
 
-**Le flux ne doit jamais mentir sur sa propre fraicheur.** Un tracker d'urgence
-qui affiche des donnees figees en pretendant etre "en direct" est pire qu'un
-tracker eteint. Concretement:
+## The rule that governs the product
 
-- le serveur emet un `tick` chaque seconde; le client qui n'en recoit plus
-  pendant 15 s se declare deconnecte et reconnecte;
-- les ages ("il y a 12 s") sont calcules sur l'horloge **serveur** (`clockSkew`),
-  jamais sur celle du navigateur;
-- `/api/sources` expose l'etat reel de chaque source, y compris sa derniere
-  erreur, et le pied de page l'affiche en permanence;
-- une panne partielle (une source morte, WebGL absent) degrade, elle n'eteint pas.
+**The feed must never lie about its own freshness.** An emergency tracker that
+shows frozen data while claiming to be live is worse than one that is switched
+off. Concretely:
 
-## Fichiers critiques -- plan ecrit dans `tasks/todo.md` avant d'y toucher
+- the server emits a `tick` every second; a client that stops receiving them for
+  15 s declares itself disconnected and reconnects;
+- a server that accepts the connection and then says nothing is closed too --
+  otherwise the very first connection could hang forever announcing "LIVE";
+- ages ("12 s ago") are computed on the **server** clock (`clockSkew`), never on
+  the browser's;
+- `/api/sources` exposes the real state of every source, including its last
+  error, and the footer shows it permanently;
+- a partial failure (one dead source, no WebGL) degrades, it does not go dark.
 
-| Fichier | Pourquoi |
+## Critical files -- write a plan in `tasks/todo.md` before touching them
+
+| File | Why |
 |---|---|
-| `backend/app/pipeline.py` | le chemin unique de tout evenement. Un bug ici touche tout le produit |
-| `backend/app/dedupe.py` | regroupement inter-sources. Trop laxiste: des seismes disparaissent. Trop strict: doublons partout |
-| `backend/app/store/ring.py` | seul point de stockage, gere aussi les revisions |
-| `backend/app/hub.py` | fan-out websocket, et la politique d'ejection des clients lents |
-| `backend/app/sources/*.py` | chaque normalizer est cale sur un schema reel: ne jamais "corriger" un champ sans avoir revu le payload de la source |
-| `frontend/src/live.ts` | reconnexion + watchdog: c'est ce qui garantit la promesse "live" |
+| `backend/app/pipeline.py` | the single path of every event. A bug here touches the whole product |
+| `backend/app/dedupe.py` | cross-source grouping. Too loose: earthquakes vanish. Too strict: duplicates everywhere |
+| `backend/app/store/ring.py` | the only storage point, also handles revisions and sweeps |
+| `backend/app/hub.py` | websocket fan-out, and the slow-client eviction policy |
+| `backend/app/sources/*.py` | each normalizer is pinned to a real schema: never "fix" a field without re-reading the source payload |
+| `frontend/src/live.ts` | reconnection + watchdog: this is what backs the "live" promise |
 
-## Pieges verifies sur les vraies sources (ne pas les re-decouvrir)
+## Traps verified against the real sources (do not rediscover them)
 
-- **EMSC**: `geometry.coordinates[2]` est une elevation **negative** (`-10.0`);
-  `properties.depth` est positive en km. Timestamps ISO. `id` == `properties.unid`.
-- **USGS**: `time` et `updated` en **epoch millisecondes**; `geometry.coordinates[2]`
-  est une profondeur **positive**. Convention inverse de l'EMSC.
-- **GDACS**: `gdacs:severity` porte la valeur numerique dans l'**attribut** `value`
-  (le texte est humain: "Magnitude 5.8M, Depth:54.7km"). L'unite change selon le
-  type: M, km/h, ha. Un evenement a plusieurs episodes: la cle stable est `eventid`.
-  Le serveur met regulierement 60 s a repondre 1.2 Mo: timeout large obligatoire.
-- **tsunami.gov**: la categorie (Information / Watch / Advisory / Warning) et la
-  magnitude sont dans le HTML du `summary`, servi tantot echappe tantot en vrais
-  elements (qui ressortent prefixes par le namespace Atom). On regexe donc sur le
-  texte **debalise**, jamais sur le balisage. Le `link rel="self"` de PHEB pointe
-  a tort vers PAAQ: ne pas s'y fier.
-- **NWS**: User-Agent identifiant obligatoire; `limit` renvoie 400 sur
-  `/alerts/active`; `geometry` est souvent `null` (zones UGC) -- l'alerte doit
-  rester exploitable sans position.
-- **HANS volcans**: aucune coordonnee dans la reponse. Elles viennent du catalogue
-  Holocene du Smithsonian, joint sur `vnum` == `Volcano_Number`.
+- **EMSC**: `geometry.coordinates[2]` is a **negative** elevation (`-10.0`);
+  `properties.depth` is positive in km. ISO timestamps. `id` == `properties.unid`.
+- **USGS**: `time` and `updated` in **epoch milliseconds**;
+  `geometry.coordinates[2]` is a **positive** depth. The opposite convention to EMSC.
+- **GDACS**: `gdacs:severity` carries the numeric value in the **attribute**
+  `value` (the text is for humans: "Magnitude 5.8M, Depth:54.7km"). The unit
+  changes with the type: M, km/h, ha. One event has several episodes: the stable
+  key is `eventid`. The server regularly takes 60 s to return 1.2 MB, so a wide
+  timeout is mandatory.
+- **tsunami.gov**: the category (Information / Watch / Advisory / Warning) and
+  the magnitude live in the `summary` HTML, served sometimes escaped and
+  sometimes as real elements (which then come back prefixed by the Atom
+  namespace). So we regex on the **stripped** text, never on the markup. PHEB's
+  `link rel="self"` wrongly points at PAAQ: do not trust it.
+- **NWS**: identifying User-Agent mandatory; `limit` returns 400 on
+  `/alerts/active`; `geometry` is often `null` (UGC zones) -- the alert must stay
+  usable without a position.
+- **HANS volcanoes**: no coordinates in the response. They come from the
+  Smithsonian Holocene catalogue, joined on `vnum` == `Volcano_Number`. The key
+  is the VOLCANO, not the bulletin, otherwise notices stack up as markers.
+- **JMA**: ISO 6709 in `cod`, where depth is in **metres and negative**. The feed
+  also serves a **degrees-minutes** variant (`+3237.5+13040.7`) that must be
+  rejected, not parsed -- a wrong position is far worse than none. And the JMA
+  relays **distant** earthquakes (`遠地地震に関する情報`): do not stamp them
+  `country="Japan"`, a M7.7 in Indonesia was wearing a Japanese flag.
+- **JMA EEW / CENC (Wolfx relay)**: the magnitude key is misspelled
+  `Magunitude`; the CENC payload is a dict indexed `No1`/`No2`, not an array;
+  both timestamp in **local time without an offset** (Tokyo, Beijing); a
+  cancelled EEW must disappear.
+- **AFAD**: `date` is **UTC** (proven by cross-checking EMSC). `limit` truncates
+  **before** sorting, so `orderby=timedesc&limit=3` returns the three OLDEST of
+  the window: use a short window, a large limit, and sort client-side. Answers
+  302 before its JSON.
+- **Meteoalarm**: `awareness_level` is a composite string ("1; green; Minor");
+  `responseType: AllClear` means the warning is LIFTED; every warning carries its
+  content twice (local language + English) and must yield ONE event.
+- **WMO**: `s`/`u`/`c` are CAP ranks (1 = most severe), and the scale is **not**
+  homogeneous between countries.
+
+## Pattern matching on natural language
+
+Matching uses a **length floor**: substring for patterns of 4 characters or
+more, whole word below. Measured on 2525 real alerts, and the measurement
+decided:
+
+- substring everywhere: "Flash Flood" became a VOLCANIC alert ("Flash" contains "ash");
+- whole words everywhere: the false positive disappeared but **621 real alerts
+  were lost** -- "Forestfire", "Thunderstorms", "Rainstorm" are compound or
+  inflected forms no whole word finds;
+- length floor: zero loss, false positive closed.
+
+Never fix a classification problem by narrowing detection without measuring what
+the narrowing costs.
 
 ## Frontend
 
-- **Zustand + React 19**: ne jamais passer a `useStore` un selecteur qui construit
-  un nouvel objet ou tableau. `useSyncExternalStore` boucle a l'infini et le
-  composant ne monte jamais (page blanche, sans erreur visible dans l'UI). Les
-  derivations passent par `useMemo` sur des tranches stables.
-- **Couleur de gravite**: palette "status" reservee (`info`, `minor`, `moderate`,
-  `severe`, `extreme`). Elle ne sert jamais a distinguer une serie, et elle ne
-  porte jamais le sens seule: glyphe + libelle l'accompagnent partout.
-- **MapLibre**: l'initialisation est dans un `try/catch`. Sans WebGL, la carte
-  affiche un repli et le flux continue.
+- **Zustand + React 19**: never pass `useStore` a selector that builds a new
+  object or array. `useSyncExternalStore` loops forever and the component never
+  mounts (blank page, no visible error). Derivations go through `useMemo` on
+  stable slices.
+- **Severity colour**: reserved "status" palette (`info`, `minor`, `moderate`,
+  `severe`, `extreme`). It never distinguishes a series, and it never carries
+  meaning alone: a glyph and a label go with it everywhere.
+- **MapLibre**: initialization is inside a `try/catch`. Without WebGL the map
+  shows a fallback and the feed keeps running.
+- **Media queries** go at the END of the stylesheet. At equal specificity the
+  last rule wins, and a media block placed before the rules it overrides does
+  nothing (this broke the whole mobile layout once).
 
-## Piege d'exploitation partage avec les autres produits SuiteForge
+## Operational trap shared with the other SuiteForge products
 
-**Ne jamais arreter cette API par motif de process.** Tous les produits de la
-suite lancent litteralement `uvicorn app.main:app`: un
-`pkill -f "uvicorn app.main:app"` tue aussi ScanGithub (`:8894`) et les autres
-qui tournent sur la meme machine. Cette erreur a deja coute a une session
-voisine trois balayages GitHub en cours, et l'a envoyee chercher la panne dans
-son propre code. Utiliser `make stop-api` (qui vise le port 8300) ou
-`lsof -ti tcp:8300 | xargs kill`.
+**Never stop this API by process pattern.** Every product in the suite literally
+runs `uvicorn app.main:app`: a `pkill -f "uvicorn app.main:app"` also kills
+ScanGithub (`:8894`) and the others on the same machine. That mistake has
+already cost a neighbouring session three in-flight GitHub sweeps, and sent it
+hunting for the failure inside its own code. Use `make stop-api` (which targets
+port 8300) or `lsof -ti tcp:8300 | xargs kill`.
 
-## Commandes
+## Commands
 
 ```bash
-make install      # venv backend + npm install
-make dev-api      # API :8300
-make dev-web      # UI :5273
-make test         # tests des normalizers sur payloads reels
+make install      # backend venv + npm install
+make dev-api      # API on :8300
+make dev-web      # UI on :5273
+make test         # backend + frontend tests
 make lint typecheck
-make stop-api     # arret par PORT, jamais par motif de process
-make smoke        # etat live des sources
-make up           # docker, UI sur :8380
+make stop-api     # stop by PORT, never by process pattern
+make smoke        # live state of the sources
+make up           # docker, UI on :8380
 ```
 
-## Verification: ce qui compte comme "fait"
+## Verification: what counts as "done"
 
-Une source n'est pas "implementee" tant qu'elle n'a pas tourne **contre l'API
-reelle** et que `make smoke` ne la montre pas `up` avec des evenements vus. Un
-test unitaire sur un payload invente ne prouve rien ici: les fixtures de
-`tests/test_parsers.py` sont des extraits verbatim de reponses reelles, et c'est
-la seule forme de fixture acceptee dans ce produit.
+A source is not "implemented" until it has run **against the real API** and
+`make smoke` shows it `up` with events seen. A unit test on an invented payload
+proves nothing here: the fixtures in `backend/tests/` are verbatim excerpts of
+real responses, and that is the only accepted form of fixture in this product.
+
+For a classification or filtering change, "done" also means **measuring the
+before/after on real data**: green tests on hand-picked cases say nothing about
+recall.

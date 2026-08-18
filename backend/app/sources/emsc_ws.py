@@ -1,8 +1,9 @@
 """EMSC seismicportal -- websocket push.
 
-C'est la source qui rend le tracker vraiment "live": l'EMSC pousse le seisme des
-qu'il est localise, sans attendre un cycle de polling. Le message porte une action
-(`create` / `update`) car l'EMSC revise ses solutions dans les minutes qui suivent.
+This is the source that makes the tracker truly "live": EMSC pushes the quake
+as soon as it is located, without waiting for a polling cycle. The message
+carries an action (`create` / `update`) because EMSC revises its solutions in
+the following minutes.
 """
 
 from __future__ import annotations
@@ -32,11 +33,11 @@ def _parse_time(value: str | None) -> datetime | None:
 
 
 def parse_message(payload: dict) -> Event | None:
-    """Normalise un message websocket EMSC.
+    """Normalizes an EMSC websocket message.
 
-    Enveloppe: {"action": "create|update", "data": {<Feature GeoJSON>}}
-    Le Feature porte `properties` (lat/lon/depth/mag/magtype/time/flynn_region/unid)
-    et `geometry.coordinates` = [lon, lat, -depth_km].
+    Envelope: {"action": "create|update", "data": {<GeoJSON Feature>}}
+    The Feature carries `properties` (lat/lon/depth/mag/magtype/time/flynn_region/unid)
+    and `geometry.coordinates` = [lon, lat, -depth_km].
     """
     data = payload.get("data") or payload
     props = data.get("properties") or {}
@@ -61,7 +62,7 @@ def parse_message(payload: dict) -> Event | None:
         depth = abs(coords[2])
 
     mag = props.get("mag")
-    region = props.get("flynn_region") or props.get("region") or "region inconnue"
+    region = props.get("flynn_region") or props.get("region") or "unknown region"
 
     return Event(
         id=f"emsc:{unid}",
@@ -93,13 +94,13 @@ class EmscWebsocketSource(Source):
         self.url = url
 
     async def run(self, emit: Emit) -> None:
-        # ping_interval force la detection d'une connexion morte: sans ca un
-        # websocket peut rester "ouvert" des heures sans plus rien livrer.
+        # ping_interval forces dead-connection detection: without it a
+        # websocket can stay "open" for hours while delivering nothing.
         async with websockets.connect(
             self.url, ping_interval=20, ping_timeout=20, close_timeout=5, max_queue=256
         ) as ws:
             self.health.ok()
-            log.info("emsc websocket connecte")
+            log.info("emsc websocket connected")
             async for raw in ws:
                 try:
                     payload = json.loads(raw)
@@ -110,7 +111,7 @@ class EmscWebsocketSource(Source):
                     continue
                 self.health.ok(1)
                 await emit(event)
-            raise ConnectionError("emsc websocket ferme par le serveur")
+            raise ConnectionError("emsc websocket closed by the server")
 
     async def supervise(self, emit: Emit) -> None:
         delay = 1.0
@@ -121,7 +122,7 @@ class EmscWebsocketSource(Source):
                 raise
             except Exception as exc:
                 self.health.fail(exc)
-                log.warning("emsc ws deconnecte (%s), reconnexion dans %.0fs", exc, delay)
+                log.warning("emsc ws disconnected (%s), reconnecting in %.0fs", exc, delay)
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, 30.0)
             else:

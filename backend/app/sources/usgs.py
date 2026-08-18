@@ -1,9 +1,9 @@
-"""USGS -- feed GeoJSON mondial des seismes.
+"""USGS -- worldwide earthquake GeoJSON feed.
 
-Le fichier all_hour.geojson est regenere en continu (metadata.generated bouge
-toutes les quelques secondes). On le poll toutes les 5s: la latence reelle entre
-la detection USGS et la publication est de l'ordre de la minute, le polling n'est
-donc pas le facteur limitant.
+The all_hour.geojson file is regenerated continuously (metadata.generated
+moves every few seconds). We poll it every 5s: the real latency between USGS
+detection and publication is on the order of a minute, so polling is not the
+limiting factor.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ def parse_feature(feature: dict) -> Event | None:
 
     mag = props.get("mag")
     tsunami = bool(props.get("tsunami"))
-    place = props.get("place") or "lieu inconnu"
+    place = props.get("place") or "unknown location"
 
     return Event(
         id=f"usgs:{feature.get('id')}",
@@ -96,7 +96,7 @@ class UsgsSource(Source):
 
 
 async def backfill(url: str, emit: Emit) -> int:
-    """Charge l'historique recent au demarrage pour ne pas afficher une carte vide."""
+    """Loads recent history at startup so we don't show an empty map."""
     headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
     async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
         resp = await client.get(url)

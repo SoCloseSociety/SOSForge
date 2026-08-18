@@ -1,16 +1,16 @@
-/** Fabriques de fixtures partagees par les tests.
+/** Fixture factories shared by the tests.
  *
- * Contrairement au backend (fixtures verbatim des sources), le frontend ne
- * parle qu'au serveur SOSForge: le contrat est le type `SosEvent` normalise,
- * pas un payload externe. Une fabrique typee suffit donc ici.
+ * Unlike the backend (verbatim fixtures from the sources), the frontend only
+ * talks to the SOSForge server: the contract is the normalized `SosEvent`
+ * type, not an external payload. A typed factory is therefore enough here.
  */
 import type { SosEvent, Stats } from '../types'
 import { useStore } from '../store'
 
-/** Instant de reference fixe pour tous les tests: pas d'horloge reelle. */
+/** Fixed reference instant for every test: no real clock. */
 export const NOW = Date.parse('2026-08-17T12:00:00Z')
 
-/** Un instant `minutes` avant NOW, au format ISO attendu dans `event.time`. */
+/** An instant `minutes` before NOW, in the ISO format expected in `event.time`. */
 export function minutesAgo(minutes: number): string {
   return new Date(NOW - minutes * 60_000).toISOString()
 }
@@ -57,8 +57,8 @@ export function makeStats(overrides: Partial<Stats> = {}): Stats {
   }
 }
 
-/** Remet le store Zustand (singleton de module) a son etat initial entre deux
- * tests. `replace: true` pour ne rien laisser trainer d'un test precedent. */
+/** Resets the Zustand store (module singleton) to its initial state between
+ * two tests. `replace: true` so nothing lingers from a previous test. */
 export function resetStore(): void {
   useStore.setState(useStore.getInitialState(), true)
 }

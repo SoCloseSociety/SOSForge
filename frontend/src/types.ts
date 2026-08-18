@@ -54,7 +54,7 @@ export interface SourceHealth {
   last_ok: string | null
   last_error: string | null
   events_seen: number
-  /** ce qui est reellement entre dans le store (events_seen compte les lectures) */
+  /** what actually made it into the store (events_seen counts reads) */
   ingested?: number
   errors: number
 }
@@ -71,8 +71,8 @@ export type ServerMessage =
       type: 'event' | 'update'
       event: SosEvent
       primary: boolean
-      /** l'evenement vient reellement de se produire (et non: vient d'arriver
-       * dans le buffer). Seul ce cas merite halo, clignotement et son. */
+      /** the event actually just happened (as opposed to: just arrived in
+       * the buffer). Only this case deserves a halo, flash, and sound. */
       breaking: boolean
     }
   | {

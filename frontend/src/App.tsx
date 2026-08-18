@@ -17,9 +17,9 @@ import {
 } from './format'
 import type { SosEvent } from './types'
 
-/** Horloge serveur, rafraichie chaque seconde. Tout ce qui s'affiche en "il y a
- * N s" est calcule dessus, pas sur l'horloge du navigateur: une machine mal
- * reglee afficherait sinon des ages faux, voire negatifs. */
+/** Server clock, refreshed every second. Everything displayed as "N s ago"
+ * is computed from it, not from the browser clock: a misconfigured machine
+ * would otherwise show wrong, even negative, ages. */
 function useServerNow(): number {
   const skew = useStore((s) => s.clockSkew)
   const [tick, setTick] = useState(() => Date.now())
@@ -126,13 +126,13 @@ function Filters({ events }: { events: SosEvent[] }) {
 
   return (
     <div className="filters">
-      {/* La recherche en tout premier: c'est le raccourci vers "que se passe-t-il
-          LA-BAS", la question qu'on se pose quand on ouvre un tracker apres
-          avoir entendu parler de quelque chose. */}
+      {/* Search comes first: it's the shortcut to "what's happening OVER
+          THERE", the question people ask when they open a tracker after
+          hearing about something. */}
       <SearchBar />
 
-      {/* Puis la fenetre: c'est elle qui separe le direct de l'historique,
-          et donc la question que l'utilisateur se pose en arrivant. */}
+      {/* Then the window: it's what separates live from historical, and
+          therefore the question the user is asking when they arrive. */}
       <div className="segmented" role="group" aria-label={t('filters.window')}>
         {WINDOWS.map((minutes) => (
           <button
@@ -146,20 +146,28 @@ function Filters({ events }: { events: SosEvent[] }) {
         ))}
       </div>
 
+      {/* ALL covered types are shown, even at zero. Showing only the types
+          currently active would suggest the product doesn't cover tsunamis
+          on days when there aren't any -- on an emergency tracker,
+          "0 tsunami alerts" is information, not an absence of information. */}
       <div className="chips">
-        {ALL_KINDS.filter((kind) => counts.get(kind)).map((kind) => (
-          <button
-            type="button"
-            key={kind}
-            className="chip"
-            aria-pressed={filters.kinds.has(kind)}
-            onClick={() => toggleKind(kind)}
-          >
-            <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
-            {kindLabel(t, kind)}
-            <span className="count">{counts.get(kind)}</span>
-          </button>
-        ))}
+        {ALL_KINDS.map((kind) => {
+          const n = counts.get(kind) ?? 0
+          return (
+            <button
+              type="button"
+              key={kind}
+              className={`chip${n === 0 ? ' empty' : ''}`}
+              aria-pressed={filters.kinds.has(kind)}
+              onClick={() => toggleKind(kind)}
+              title={n === 0 ? t('filters.none', { kind: kindLabel(t, kind) }) : undefined}
+            >
+              <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
+              {kindLabel(t, kind)}
+              <span className="count">{n}</span>
+            </button>
+          )
+        })}
       </div>
 
       <label className="slider">
@@ -230,10 +238,10 @@ export default function App() {
   const lang = useStore((s) => s.lang)
   const t = useStore((s) => s.t)
 
-  // La fenetre glisse avec le temps, donc la liste doit etre recalculee... mais
-  // pas 60 fois par minute: on la recalcule par tranches de 10 s, ce qui suffit
-  // largement pour une coupure a 15 minutes et evite de repousser la source
-  // GeoJSON de la carte a chaque seconde.
+  // The window slides with time, so the list must be recomputed... but not
+  // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
+  // a 15-minute cutoff and avoids re-pushing the map's GeoJSON source every
+  // second.
   const bucket = Math.floor(now / 10_000)
   const visible = useMemo(
     () => filterEvents(events, filters, bucket * 10_000),
@@ -273,8 +281,8 @@ export default function App() {
           <span aria-hidden="true">{soundOn ? '🔔' : '🔕'}</span>
           {soundOn ? t('app.sound.on') : t('app.sound.off')}
         </button>
-        {/* aria-live: l'etat de la connexion est LA chose qu'un lecteur d'ecran
-            doit apprendre sans avoir a la chercher */}
+        {/* aria-live: connection status is THE thing a screen reader user
+            needs to learn without having to go looking for it */}
         <span className={`live ${connected ? 'on' : 'off'}`} role="status" aria-live="polite">
           <span className="dot" aria-hidden="true" />
           {connected ? t('app.live') : t('app.reconnecting')}

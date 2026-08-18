@@ -1,275 +1,275 @@
 # SOSForge
 
 [![CI](https://github.com/SoCloseSociety/SOSForge/actions/workflows/ci.yml/badge.svg)](https://github.com/SoCloseSociety/SOSForge/actions/workflows/ci.yml)
-[![Live](https://img.shields.io/badge/demo-live-0ca30c)](https://sosforge.185.246.86.143.nip.io)
-[![Licence MIT](https://img.shields.io/badge/licence-MIT-3987e5)](LICENSE)
+[![Live](https://img.shields.io/badge/live-sosforge.soclose.co-0ca30c)](https://sosforge.soclose.co)
+[![License MIT](https://img.shields.io/badge/license-MIT-3987e5)](LICENSE)
 
-**En ligne: <https://sosforge.185.246.86.143.nip.io>**
+**Live at <https://sosforge.soclose.co>**
 
-Suivi **temps reel** des seismes, tsunamis, volcans, cyclones et alertes
-catastrophes. Un flux unique, agrege depuis **dix-neuf sources officielles**,
-diffuse a la seconde vers le navigateur par websocket. Interface en cinq langues.
+Real-time tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster
+alerts. **Nineteen official sources** merged into a single normalized feed and
+pushed to the browser over a websocket with a one-second heartbeat. Interface in
+five languages.
 
-Aucune cle d'API n'est necessaire: les dix-neuf sources sont publiques et ouvertes.
+No API key is required: all nineteen sources are public and open.
 
-![capture](docs/screenshot.png)
+![screenshot](docs/screenshot.png)
 
-<sub>Sur telephone, le flux passe devant et la carte dessous: on lit d'abord, on
-explore ensuite. [Capture mobile](docs/screenshot-mobile.png).</sub>
+<sub>On a phone the feed comes first and the map sits below: you read first, you
+explore second. [Mobile screenshot](docs/screenshot-mobile.png).</sub>
 
-## Le principe
+## The idea
 
-Le "live a la seconde" ne vient pas d'un polling agressif d'une seule API. Il
-vient d'un **fan-in** de sources heterogenes, normalisees dans un seul modele
-d'evenement, puis d'un **fan-out** websocket vers les clients.
+"Live to the second" does not come from hammering one API. It comes from a
+**fan-in** of heterogeneous sources, normalized into one event model, and a
+**fan-out** over websocket to every client.
 
 ```
 EMSC websocket (push)      \
 USGS GeoJSON (5 s)          \
-JMA / BMKG / GeoNet          \
-INGV / AFAD (45-60 s)         >--> normalize --> horizon --> dedupe --> ring --> hub --> /ws --> UI
-NOAA tsunami.gov (30 s)      /
-NWS api.weather.gov (20 s)  /
-NHC cyclones (300 s)       /
-SIGMET cendres (180 s)    /
-GDACS RSS (120 s)        /
-USGS HANS volcans (300 s)
+JMA early warning (5 s)      \
+JMA / BMKG / GeoNet           \
+INGV / AFAD / GEOFON / CENC    >-- normalize -- horizon -- dedupe -- ring -- hub -- /ws -- UI
+NOAA tsunami.gov (30 s)       /
+NWS + Meteoalarm + WMO CAP   /
+NHC cyclones (300 s)        /
+Volcanic-ash SIGMETs       /
+GDACS / NASA EONET        /
 
-                                                          + tick serveur chaque seconde
+                                              + one server tick every second
 ```
 
-L'EMSC est la seule source **push**: elle pousse le seisme des qu'il est
-localise, sans attendre un cycle. Les autres sont des sources polling dont la
-cadence est calee sur leur frequence reelle de publication -- poller USGS plus
-vite que sa regeneration ne rendrait rien de plus.
+EMSC is the only **push** source: it emits an earthquake the moment it is
+located, without waiting for a cycle. The others are polled at a rate matched to
+how often they actually publish -- polling USGS faster than it regenerates would
+return nothing new.
 
-## Les dix-neuf sources (aucune cle API requise)
+## The nineteen sources (no API key required)
 
-**Mondiales**
+**Worldwide**
 
-| Source | Endpoint | Mode | Apporte |
+| Source | Endpoint | Mode | What it adds |
 |---|---|---|---|
-| EMSC seismicportal | `wss://www.seismicportal.eu/standing_order/websocket` | push | seismes monde, en quelques secondes |
-| USGS | `earthquake.usgs.gov/.../all_hour.geojson` | poll 5 s | seismes + drapeau tsunami + niveau PAGER |
-| NOAA NTWC / PTWC | `tsunami.gov/events/xml/PAAQAtom.xml`, `PHEBAtom.xml` | poll 30 s | bulletins tsunami (Information / Watch / Advisory / Warning) |
-| GDACS | `gdacs.org/xml/rss.xml` | poll 120 s | cyclones, inondations, feux, volcans, secheresses, avec niveau vert/orange/rouge |
-| SIGMET cendres (AWC) | `aviationweather.gov/api/data/isigmet?hazard=VA` | poll 180 s | **cendres volcaniques structurees, monde entier** -- le seul flux machine-lisible equivalent aux VAAC |
-| NHC | `nhc.noaa.gov/CurrentStorms.json` | poll 300 s | cyclones tropicaux Atlantique et Pacifique: position, vents, categorie, advisory |
-| GEOFON (GFZ) | `geofon.gfz.de/eqinfo/list.php?fmt=geojson` | poll 60 s | troisieme catalogue mondial: le dedup passe d'un accord a deux a un **vote a trois** |
-| NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events` | poll 600 s | evenements naturels en cours vus de l'espace: **feux de forets suivis comme des evenements**, second avis sur les tempetes |
-| OMM (agregat CAP) | `severeweather.wmo.int/json/wmo_all.json` | poll 300 s | alertes officielles du reste du monde (Inde, Chine, Indonesie, Amerique du Sud) en un appel |
+| EMSC seismicportal | `wss://www.seismicportal.eu/standing_order/websocket` | push | worldwide earthquakes, within seconds |
+| USGS | `earthquake.usgs.gov/.../all_hour.geojson` | poll 5 s | earthquakes + tsunami flag + PAGER alert level |
+| GEOFON (GFZ) | `geofon.gfz.de/eqinfo/list.php?fmt=geojson` | poll 60 s | third global catalogue: dedup becomes a **three-way vote** |
+| NOAA NTWC / PTWC | `tsunami.gov/events/xml/PAAQAtom.xml`, `PHEBAtom.xml` | poll 30 s | tsunami bulletins (Information / Watch / Advisory / Warning) |
+| GDACS | `gdacs.org/xml/rss.xml` | poll 120 s | cyclones, floods, fires, volcanoes, droughts, with a green/orange/red level |
+| Volcanic-ash SIGMETs | `aviationweather.gov/api/data/isigmet?hazard=VA` | poll 180 s | **structured volcanic ash, worldwide** -- the only machine-readable equivalent to the VAACs |
+| NHC | `nhc.noaa.gov/CurrentStorms.json` | poll 300 s | Atlantic and Pacific tropical cyclones: position, winds, category, advisory |
+| NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events` | poll 600 s | ongoing natural events seen from space: **wildfires tracked as events** |
+| WMO CAP aggregate | `severeweather.wmo.int/json/wmo_all.json` | poll 300 s | official alerts for the rest of the world in a single call |
 
-**Nationales et regionales** -- elles ne sont pas la pour la redondance: chacune apporte ce que l'EMSC n'a pas.
+**National and regional** -- they are not here for redundancy. Each one adds
+something EMSC does not have.
 
-| Source | Endpoint | Mode | Apporte |
+| Source | Endpoint | Mode | What it adds |
 |---|---|---|---|
-| NWS (USA) | `api.weather.gov/alerts/active` | poll 20 s | crues, tornades, chaleur, tsunami cote americain |
-| USGS HANS + Smithsonian | `volcanoes.usgs.gov/hans-public/api/...` | poll 300 s | volcans US en alerte (code couleur aviation), positionnes via le catalogue GVP |
-| JMA (Japon) | `jma.go.jp/bosai/quake/data/list.json` | poll 45 s | le **shindo**, l'intensite ressentie au sol -- ce qui compte au Japon, et qui n'existe nulle part ailleurs |
-| BMKG (Indonesie) | `data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json` | poll 60 s | le **potentiel tsunami officiel indonesien**, publie avant les bulletins du PTWC |
-| GeoNet (Nouvelle-Zelande) | `api.geonet.org.nz/quake?MMI=3` | poll 60 s | seuil de detection local tres bas sur une zone tres active |
-| INGV (Italie) | `webservices.ingv.it/fdsnws/event/1/query` | poll 60 s | idem, et au format FDSN standard (le meme contrat que l'USGS) |
-| AFAD (Turquie) | `deprem.afad.gov.tr/apiv2/event/filter` | poll 60 s | couverture fine de la faille nord-anatolienne |
-| Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{pays}` | poll 300 s | vigilances des services meteo nationaux de dix pays europeens |
-| JMA alerte precoce | `api.wolfx.jp/jma_eew.json` | poll 5 s | **la seule source emise PENDANT la propagation des ondes**, avant l'arrivee des secousses |
-| CENC (Chine) | `api.wolfx.jp/cenc_eqlist.json` | poll 120 s | Chine continentale, sans autre couverture ici |
+| JMA early warning | `api.wolfx.jp/jma_eew.json` | poll 5 s | **the only feed issued WHILE the waves are still travelling** |
+| JMA (Japan) | `jma.go.jp/bosai/quake/data/list.json` | poll 45 s | **shindo**, the intensity felt at ground level -- what matters in Japan, and it exists nowhere else |
+| BMKG (Indonesia) | `data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json` | poll 60 s | the **official Indonesian tsunami-potential flag**, published before the PTWC bulletins |
+| CENC (China) | `api.wolfx.jp/cenc_eqlist.json` | poll 120 s | mainland China, with no other coverage here |
+| GeoNet (New Zealand) | `api.geonet.org.nz/quake?MMI=3` | poll 60 s | very low local detection threshold on a very active zone |
+| INGV (Italy) | `webservices.ingv.it/fdsnws/event/1/query` | poll 60 s | same, in the standard FDSN format (the same contract as USGS) |
+| AFAD (Turkey) | `deprem.afad.gov.tr/apiv2/event/filter` | poll 60 s | fine coverage of the North Anatolian fault |
+| NWS (USA) | `api.weather.gov/alerts/active` | poll 20 s | floods, tornadoes, heat, tsunami on the American side |
+| USGS HANS + Smithsonian | `volcanoes.usgs.gov/hans-public/api/...` | poll 300 s | US volcanoes on alert (aviation colour code), located via the GVP catalogue |
+| Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{country}` | poll 300 s | national weather warnings across ten European countries |
 
-## Deploiement
+### One source is of a different nature: early warning
 
-Le service tourne sur le VPS SoClose derriere le nginx de l'hote, qui porte le
-TLS et le nom de domaine; le conteneur, lui, n'ecoute que sur la loopback.
+The other eighteen publish **after** the fact: an earthquake happened, an agency
+located it, we display it. Japan's earthquake early warning is emitted **while
+the waves are propagating**, seconds after the nearest stations detect them. It
+is the only information in this product that can still be used to take cover.
+
+**Stated reserve.** JMA and CENC do not expose an open API, so we go through the
+**unofficial third-party relay** Wolfx. It is a best-effort source: it enriches,
+it is authoritative over nothing, and its failure breaks nothing. Its websockets
+reject non-browser clients (403 Cloudflare), hence the polling. Turn it off with
+`SOS_ENABLE_JMA_EEW=false`.
+
+## Getting started
 
 ```bash
-ssh hub
-cd /root/SAAS/sosforge && git pull && docker compose up -d --build
+cp .env.example .env      # nothing to fill in: everything is public
+make install              # backend venv + npm install
+make dev-api              # terminal 1 -- API on :8300
+make dev-web              # terminal 2 -- UI on :5273
+```
+
+With Docker: `make up`, then <http://localhost:8380>.
+
+## Deployment
+
+The service runs on the SoClose helper VPS behind the host nginx, which carries
+TLS and the domain name; the container itself only listens on the loopback.
+
+```bash
+ssh helper-vps
+cd /root/SAAS/SuiteForge/SOSForge && git pull && docker compose up -d --build
 ```
 
 | | |
 |---|---|
-| Chemin sur le serveur | `/root/SAAS/sosforge` |
-| Port interne | `127.0.0.1:8380` (nginx de l'hote proxifie dessus) |
+| Path on the server | `/root/SAAS/SuiteForge/SOSForge` |
+| Internal port | `127.0.0.1:8380` (host nginx proxies to it) |
 | Vhost | `/etc/nginx/sites-available/sosforge.soclose.co` |
-| Certificat | `certbot certonly --webroot -w /var/www/certbot -d <nom>` |
-| Donnees | volume docker `sos-data` (journal JSONL, purge a 7 jours) |
+| Certificate | `certbot certonly --webroot -w /var/www/html -d sosforge.soclose.co` |
+| Data | docker volume `sos-data` (JSONL journal, purged after 7 days) |
 
-L'entete de securite est posee cote hote: CSP restrictive (le site ne charge que
-son propre code, les tuiles CARTO et le websocket), `nosniff`, HSTS, et une
-redirection permanente de HTTP vers HTTPS.
-
-## Demarrage
-
-```bash
-cp .env.example .env      # rien a remplir: tout est public
-make install              # venv backend + npm install
-make dev-api              # terminal 1 -- API sur :8300
-make dev-web              # terminal 2 -- UI sur :5273
-```
-
-En docker: `make up` puis <http://localhost:8380>.
+Security headers live on the host: a restrictive CSP (the site loads only its own
+code, CARTO tiles and its websocket), `nosniff`, HSTS, and a permanent redirect
+from HTTP to HTTPS.
 
 ## API
 
-| Route | Ce qu'elle rend |
+| Route | What it returns |
 |---|---|
-| `GET /healthz` | etat du service, nombre de clients, evenements ingeres |
-| `GET /api/events` | flux recent. Filtres: `limit`, `kind`, `min_magnitude`, `hours`, `primary_only` |
-| `GET /api/events/{id}` | un evenement avec son payload source brut |
-| `GET /api/events/{id}/nearby` | vues en direct de la zone: liens profonds + webcams |
-| `GET /api/geocode?q=` | recherche de zone (proxy Nominatim, cadence et cache) |
-| `GET /api/stats` | compteurs de la derniere heure |
-| `GET /api/sources` | sante de chaque source (connectee, evenements vus, derniere erreur) |
-| `WS /ws` | snapshot a la connexion, puis `event` / `update` / `tick` (1/s) |
+| `GET /healthz` | service state, connected clients, ingested events |
+| `GET /api/events` | recent feed. Filters: `limit`, `kind`, `min_magnitude`, `hours`, `primary_only` |
+| `GET /api/events/{id}` | one event with its raw source payload |
+| `GET /api/events/{id}/nearby` | live views of the area: deep links + webcams |
+| `GET /api/geocode?q=` | area search (Nominatim proxy, rate-limited and cached) |
+| `GET /api/stats` | counters for the last hour |
+| `GET /api/sources` | health of every source (connected, events seen, last error) |
+| `WS /ws` | snapshot on connect, then `event` / `update` / `tick` (1/s) |
 
-Messages websocket:
+Websocket messages:
 
 ```jsonc
 {"type": "snapshot", "events": [...], "stats": {...}, "sources": [...]}
-{"type": "event",    "event": {...}, "primary": true, "breaking": true}   // nouvel evenement
-{"type": "update",   "event": {...}, "primary": true, "breaking": false}  // revision d'un evenement connu
-{"type": "tick",     "server_time": "...", "stats": {...}}  // battement, chaque seconde
+{"type": "event",    "event": {...}, "primary": true, "breaking": true}   // new event
+{"type": "update",   "event": {...}, "primary": true, "breaking": false}  // revision of a known event
+{"type": "tick",     "server_time": "...", "stats": {...}}                // heartbeat, every second
 ```
 
-### Une source d'une autre nature: l'alerte precoce
+## The interface
 
-Les dix-huit autres sources publient **apres** coup: un seisme a eu lieu, une
-agence le localise, on l'affiche. L'alerte precoce japonaise (EEW) est emise
-**pendant** la propagation des ondes, quelques secondes apres la detection par
-les stations les plus proches. C'est la seule information de ce produit qui
-puisse encore servir a se mettre a l'abri.
+- **Time window**: Live (15 min), 1 h, 6 h, 24 h, All. It is the first question
+  anyone asks in front of a tracker, so it is the first control on the page.
+- **Five languages** (English, French, Spanish, Japanese, Indonesian), detected
+  from the browser. The last two are not decorative: they are the populations
+  most exposed to earthquakes and tsunamis, and exactly the ones the JMA and
+  BMKG sources serve.
+- **Every hazard type is always listed**, even at zero. Showing only the types
+  with current events made it look like the product did not cover tsunamis on
+  the days there were none -- on an emergency tracker, "0 tsunami alerts" is
+  information, not an absence of information.
+- **Country flag** on every event, resolved server-side. No identifiable country
+  (open sea)? A globe, never an approximate flag.
+- **Area search**: typing a name filters the feed instantly (place, title,
+  country) *and* offers to fly the map to that area even if nothing is happening
+  there -- the most useful case in practice. Geocoding goes through the backend,
+  which honours the one-request-per-second rate Nominatim requires.
+- **Shareable link**: every event has its own URL (`#e/<id>`). Without it you
+  could not say "look at THIS earthquake" -- the recipient landed on a feed that
+  had already moved on.
+- **Filters are remembered**: window, types and magnitude survive a reload. The
+  text search is not: finding an invisible filter hiding the whole feed would be
+  disorienting.
+- **Click an event**: the map dives close to the area, and a card opens **live
+  views** -- Windy webcams, YouTube live search, today's NASA Worldview imagery,
+  satellite view. Those links work with no key at all; with a Windy key
+  (`SOS_WINDY_API_KEY`), the real list of nearby public webcams appears with
+  thumbnails.
 
-**Reserve assumee.** La JMA et le CENC n'exposent pas d'API ouverte: on passe par
-le relais **tiers non officiel** Wolfx. C'est une source "au mieux": elle
-enrichit, elle ne fait autorite sur rien, et sa panne ne casse rien. Ses
-websockets refusent les clients non navigateur (403 Cloudflare), d'ou le polling.
-Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
+## What the system handles explicitly
 
-## L'interface
-
-- **Fenetre temporelle**: Direct (15 min), 1 h, 6 h, 24 h, Tout. C'est la premiere
-  question qu'on se pose devant un tracker, donc le premier controle de la page.
-- **Cinq langues** (francais, anglais, espagnol, japonais, indonesien), detectees
-  sur le navigateur. Les deux dernieres ne sont pas decoratives: ce sont les
-  populations les plus exposees aux seismes et aux tsunamis, et justement celles
-  que les sources JMA et BMKG servent.
-- **Drapeau du pays** sur chaque evenement, resolu cote serveur. Pas de pays
-  identifiable (haute mer)? Un globe, jamais un drapeau approximatif.
-- **Recherche de zone**: taper un nom filtre le flux instantanement (lieu, titre,
-  pays) *et* propose d'aller a cette zone sur la carte, meme si rien ne s'y passe
-  -- c'est le cas le plus utile en situation reelle. Le geocodage passe par le
-  backend, qui tient la cadence d'une requete par seconde imposee par Nominatim.
-- **Lien partageable**: chaque evenement a son URL (`#e/<id>`). Sans elle, on ne
-  pouvait pas dire "regarde CE seisme" -- le destinataire tombait sur un flux qui
-  avait deja bouge. Le bouton de la fiche copie le lien.
-- **Filtres memorises**: fenetre, types et magnitude survivent au rechargement.
-  La recherche texte, non: retrouver un filtre invisible qui masque tout le flux
-  serait deroutant.
-- **Clic sur un evenement**: la carte plonge au plus pres de la zone, et une fiche
-  ouvre les **vues en direct** -- webcams Windy, recherche YouTube live, imagerie
-  satellite NASA Worldview du jour, vue satellite. Ces liens marchent sans aucune
-  cle; avec une cle Windy (`SOS_WINDY_API_KEY`), la liste reelle des webcams
-  publiques a proximite s'affiche avec vignettes.
-
-## Ce que le systeme gere explicitement
-
-- **Revisions.** EMSC et USGS revisent leurs solutions dans les minutes qui
-  suivent. Un evenement deja connu dont l'empreinte change devient une `update`,
-  pas un doublon. L'UI marque la ligne "revise".
-- **Dedup inter-sources.** Le meme seisme arrive sous deux identifiants (EMSC et
-  USGS). Il est regroupe en cluster: 90 s, 250 km et 1.2 point de magnitude
-  d'ecart maximum. Rien n'est supprime, un seul representant est affiche.
-- **Volume des agregats d'alertes.** Meteoalarm et l'OMM deversent ~4300
-  bulletins par cycle, essentiellement de la pluie et de la chaleur de routine:
-  ils enterreraient seismes et tsunamis. Seuils obligatoires -- orange et rouge
-  pour Meteoalarm (92 vigilances francaises ramenees a 7), tiers superieur pour
-  l'OMM (2258 ramenees a 221). Reserve mesuree: l'echelle de gravite de l'OMM
-  n'est pas homogene d'un pays a l'autre, des "Small Craft Advisory" americains
-  arrivent au meme rang que des cyclones.
-- **Alertes sans position.** Meteoalarm et l'OMM decrivent leurs zones par des
-  codes administratifs (NUTS3), sans coordonnees. Ces alertes vivent dans le
-  flux, pas sur la carte -- et c'est dit plutot que masque.
-- **Bruit GDACS.** Le flux complet, c'est ~400 entrees dont ~344 feux verts et des
-  secheresses ouvertes depuis un an. Filtre: orange et rouge toujours, vert
-  seulement s'il vient d'etre publie (`SOS_GDACS_MAX_AGE_DAYS`).
-- **Bulletins "pas de danger".** Un bulletin tsunami de categorie Information dit
-  en general "there is NO tsunami danger": il est affiche, mais ne leve pas
-  l'alerte tsunami et ne declenche pas le son.
-- **Connexion morte.** Un websocket peut rester "open" sans plus rien livrer. Le
-  tick serveur d'une seconde sert de preuve de vie: 15 s de silence et le client
-  reconnecte au lieu d'afficher un flux fige en pretendant qu'il est live.
-- **Client lent.** Sa file est bornee; s'il ne suit pas, il est ejecte plutot que
-  de ralentir l'ingestion.
-- **Pas de WebGL.** La carte se desactive proprement, le flux d'alertes continue.
-- **Archives contre actualite.** Plusieurs sources servent un catalogue et non un
-  flux: la liste JMA remonte a plus de neuf mois. Un horizon d'ingestion
-  (`SOS_MAX_EVENT_AGE_DAYS`) les ecarte, avec une nuance qui compte: une alerte
-  grave **et en cours** (cyclone rouge) survit, un seisme passe non -- un seisme
-  est instantane, il ne "dure" pas.
-- **Ondes en propagation.** Pour un seisme de magnitude 4 ou plus survenu il y a
-  moins de six minutes, la carte trace les deux fronts d'onde en direct: **P** a
-  6 km/s (premiere secousse) et **S** a 3,5 km/s (celle qui fait les degats). Ce
-  n'est pas decoratif: c'est la seule chose de l'interface qui montre **ou les
-  secousses arrivent maintenant**. Vitesses crustales moyennes, donc justes pres
-  de l'epicentre et approximatives loin -- les cercles s'arretent a 1200 km,
-  avant de devenir mensongers.
-- **Alerte terminee.** Une alerte "en cours" (feu EONET, cyclone NHC, alerte
-  GDACS courante) echappe a l'horizon tant que sa source la publie. Mais un
-  balayage retire celles qu'aucune source ne mentionne plus depuis six heures:
-  une source qui se tait a implicitement dit que c'etait fini.
-- **Preavis d'une vigilance.** Une alerte meteo est publiee AVANT son debut --
-  c'est tout son interet. Son horodatage est donc legitimement dans le futur, et
-  le filtre anti-futur l'exempte quand elle est declaree en cours. Un seisme, lui,
-  ne peut pas etre date en avance.
-- **Horodatage dans le futur.** Une source dont l'horloge derive produisait un
-  evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
-  cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
-- **Retention du journal.** Le journal JSONL grossit d'environ 5 Mo par jour.
-  Un balayage supprime ceux de plus de `SOS_JOURNAL_KEEP_DAYS` jours: sur un
-  service qui tourne en continu, personne ne surveille un disque qui se remplit.
-- **Taches de fond qui meurent.** Le battement d'une seconde et le balayage
-  attrapent leurs exceptions. Une seule erreur non rattrapee tuait la tache pour
-  de bon: plus aucun tick, tous les clients en reconnexion, et `/healthz` qui
-  repondait "ok" pendant ce temps.
-- **Panne d'une source.** Une source dont tous les flux echouent ne peut pas
-  s'afficher verte. Le pied de page montre l'etat reel des dix-neuf.
+- **Revisions.** EMSC and USGS revise their solutions within minutes. A known
+  event whose fingerprint changes becomes an `update`, not a duplicate. The UI
+  marks the row "revised".
+- **Cross-source dedup.** The same earthquake arrives under several identifiers
+  (EMSC, USGS, GEOFON...). They are grouped into a cluster: 90 s, 250 km and 1.2
+  magnitude points apart at most. Nothing is deleted, one representative is shown.
+- **Wave propagation.** For a magnitude 4+ earthquake less than six minutes old,
+  the map draws both wave fronts live: **P** at 6 km/s (first shaking) and **S**
+  at 3.5 km/s (the damaging one). This is the only thing in the interface that
+  shows **where the shaking is arriving right now**. Average crustal speeds, so
+  accurate near the epicenter and approximate far away -- the circles stop at
+  1200 km, before they would start lying.
+- **GDACS noise.** The full feed is ~400 entries, of which ~344 are green
+  wildfires and droughts open for a year. Filter: orange and red always, green
+  only if freshly published (`SOS_GDACS_MAX_AGE_DAYS`).
+- **Alert volume.** Meteoalarm and the WMO aggregate together emit ~4300
+  bulletins per cycle, mostly routine rain and heat. Severity thresholds keep
+  orange-and-above for Europe and the top tier for the WMO. Measured reserve: the
+  WMO scale is **not** consistent between countries.
+- **"No danger" bulletins.** A tsunami bulletin of category Information usually
+  says "there is NO tsunami danger": it is displayed, but it does not raise the
+  tsunami flag and does not trigger the sound.
+- **A warning's advance notice.** A weather warning is published BEFORE it
+  starts -- that is its whole point. Its timestamp is legitimately in the future,
+  so the future-timestamp filter exempts it when the source declares it ongoing.
+  An earthquake cannot be dated in advance.
+- **Timestamps in the future.** A source with a drifting clock produced events of
+  negative age: past the horizon, permanently announced as "live", and pinned at
+  the top of a date-sorted feed. Beyond two minutes of lead, rejected.
+- **Archives versus current events.** Several sources serve a catalogue, not a
+  feed: the JMA list goes back more than nine months. An ingestion horizon
+  (`SOS_MAX_EVENT_AGE_DAYS`) discards them, with one nuance that matters: a
+  severe **and ongoing** alert (a red cyclone) survives, a past earthquake does
+  not -- an earthquake is instantaneous, it does not "last".
+- **Finished alerts.** An ongoing alert (EONET fire, NHC cyclone, current GDACS
+  alert) escapes the horizon as long as its source publishes it. A sweep removes
+  the ones no source has mentioned for six hours: a source going silent has
+  implicitly said it is over.
+- **Journal retention.** The JSONL journal grows by about 5 MB per day. A sweep
+  deletes those older than `SOS_JOURNAL_KEEP_DAYS`: on a service that runs
+  continuously, nobody watches a disk filling up.
+- **Background tasks that die.** The one-second heartbeat and the sweep catch
+  their exceptions. A single uncaught error killed the task for good: no more
+  ticks, every client reconnecting, and `/healthz` answering "ok" throughout.
+- **A dead connection.** A websocket can stay "open" and deliver nothing. The
+  one-second server tick is the proof of life: 15 s of silence and the client
+  reconnects instead of showing a frozen feed while claiming it is live. A server
+  that accepts the connection and then says nothing is closed too -- otherwise
+  the very first connection could hang forever, announcing "LIVE".
+- **A slow client.** Its queue is bounded; if it cannot keep up it is dropped
+  rather than slowing down ingestion, and its socket is closed rather than left
+  silently open.
+- **A failing source.** A source whose every feed fails cannot show as green. The
+  footer shows the real state of all nineteen.
+- **No WebGL.** The map degrades cleanly and the alert feed keeps running.
 
 ## Verification
 
 ```bash
-make test        # 95 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
-cd frontend && npx vitest run   # 77 tests frontend: filtres, ingestion, i18n, rendu
+make test        # 95 backend tests + 77 frontend tests
 make lint
 make typecheck   # tsc + mypy
-make smoke       # etat live des dix-neuf sources
+make smoke       # live state of the nineteen sources
 ```
 
-## Choix d'architecture
+Backend fixtures are **verbatim** excerpts of real responses. A unit test on an
+invented payload proves nothing here: this project has been bitten by
+hand-written fixtures that made a working parser look broken.
 
-**Pas de base de donnees en v1.** Un tracker live a besoin de la derniere heure,
-pas d'un entrepot: ring buffer en memoire (5000 evenements) plus un journal JSONL
-par jour pour l'audit et le rejeu. `EventStore` est l'unique point de stockage --
-Postgres se branche derriere la meme interface le jour ou l'historique devient un
-besoin produit.
+## Design decisions
 
-**Ecartes volontairement, apres verification.** FIRMS et EFFIS (feux): latence
-NRT d'environ 3 h et aucun identifiant d'evenement -- le "feu a la seconde"
-n'existe chez personne. SeedLink et Raspberry Shake: des formes d'onde, pas des
-evenements. GloFAS et Copernicus EMS: cle obligatoire, et GDACS republie deja
-l'essentiel. L'API BOM (Australie) fonctionne mais son propre payload interdit
-la reutilisation. Meteoalarm (Europe) et l'agregat CAP de l'OMM sont verifies et
-en attente: ils valent une integration a eux seuls.
+**No database in v1.** A live tracker needs the last hour, not a warehouse: an
+in-memory ring buffer (5000 events) plus a daily JSONL journal for audit and
+replay. `EventStore` is the single storage point -- Postgres can be plugged in
+behind the same interface the day history becomes a product requirement.
 
-**La gravite est une palette "status", pas une palette de series.** Cinq niveaux,
-couleurs reservees, et **jamais la couleur seule**: chaque niveau porte aussi un
-glyphe et un libelle, pour rester lisible en vision des couleurs deficiente comme
-en impression noir et blanc.
+**Severity is a "status" palette, not a series palette.** Five levels, reserved
+colours, and **never colour alone**: every level also carries a glyph and a
+label, so it stays readable with colour-vision deficiency and in black and white.
 
-## Sources et attributions
+**Deliberately left out, after checking.** FIRMS and EFFIS (fires): about 3 h of
+NRT latency and no event identifier -- "fire to the second" does not exist
+anywhere. SeedLink and Raspberry Shake: waveforms, not events. GloFAS and
+Copernicus EMS: key required, and GDACS already republishes the essentials. The
+BOM (Australia) API works but its own payload forbids reuse.
 
-Donnees: EMSC/CSEM, USGS, NOAA (NWS, NTWC, PTWC, NHC, Aviation Weather Center),
-GDACS (Commission europeenne et ONU), Smithsonian Institution Global Volcanism
-Program, JMA (Japon), BMKG (Indonesie), GNS Science / GeoNet (Nouvelle-Zelande),
-INGV (Italie), AFAD (Turquie). Fonds de carte
-OpenStreetMap et CARTO. Ces flux sont publics; ils reviennent a leurs producteurs.
+## Sources and attribution
 
-**SOSForge n'est pas un service d'alerte officiel.** En cas d'alerte reelle,
-la reference est l'autorite de securite civile locale.
+Data: EMSC/CSEM, USGS, NOAA (NWS, NTWC, PTWC, NHC, Aviation Weather Center),
+GDACS (European Commission and UN), Smithsonian Institution Global Volcanism
+Program, JMA (Japan), BMKG (Indonesia), CENC (China), GNS Science / GeoNet (New
+Zealand), INGV (Italy), AFAD (Turkey), GFZ GEOFON, NASA EONET, Meteoalarm, WMO.
+Basemap by OpenStreetMap and CARTO. These feeds are public; they belong to their
+producers.
+
+**SOSForge is not an official warning service.** In a real emergency, your local
+civil protection authority is the reference.

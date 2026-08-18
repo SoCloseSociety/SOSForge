@@ -1,10 +1,10 @@
-"""Volcans -- USGS HANS (niveaux d'alerte) + catalogue Smithsonian (coordonnees).
+"""Volcanoes -- USGS HANS (alert levels) + Smithsonian catalog (coordinates).
 
-HANS `getElevatedVolcanoes` liste les volcans US actuellement en alerte avec leur
-code couleur aviation et leur niveau, mais **sans coordonnees**. Le catalogue
-Holocene du Smithsonian (GVP) fournit lat/lon par `Volcano_Number`, qui est la
-meme cle que le `vnum` de HANS. On charge le catalogue une fois au demarrage et
-on joint dessus.
+HANS `getElevatedVolcanoes` lists the US volcanoes currently on alert with
+their aviation color code and level, but **without coordinates**. The
+Smithsonian (GVP) Holocene catalog provides lat/lon by `Volcano_Number`, which
+is the same key as HANS's `vnum`. The catalog is loaded once at startup and
+joined on.
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ GVP_URL = (
     "&propertyName=Volcano_Number,Volcano_Name,Latitude,Longitude,Country"
 )
 
-# code couleur aviation: GREEN normal, YELLOW agitation, ORANGE eruption probable
-# ou mineure, RED eruption majeure en cours ou imminente
+# aviation color code: GREEN normal, YELLOW unrest, ORANGE likely or minor
+# eruption, RED major eruption ongoing or imminent
 COLOR_SEVERITY = {
     "GREEN": Severity.INFO,
     "YELLOW": Severity.MODERATE,
@@ -71,10 +71,10 @@ class VolcanoSource(Source):
                 if vnum is None or lat is None or lon is None:
                     continue
                 self._catalog[str(vnum)] = (float(lat), float(lon), props.get("Country"))
-            log.info("catalogue volcans charge: %d entrees", len(self._catalog))
+            log.info("volcano catalog loaded: %d entries", len(self._catalog))
         except Exception as exc:
-            # sans le catalogue on perd les coordonnees, pas l'alerte elle-meme
-            log.warning("catalogue volcans indisponible (%s), alertes sans position", exc)
+            # without the catalog we lose the coordinates, not the alert itself
+            log.warning("volcano catalog unavailable (%s), alerts without position", exc)
 
     def parse(self, row: dict) -> Event | None:
         vnum = str(row.get("vnum") or "")
@@ -84,15 +84,15 @@ class VolcanoSource(Source):
 
         color = (row.get("color_code") or "UNASSIGNED").upper()
         level = (row.get("alert_level") or "").upper()
-        name = row.get("volcano_name") or "volcan inconnu"
+        name = row.get("volcano_name") or "unknown volcano"
         lat, lon, country = self._catalog.get(vnum, (None, None, None))
 
         return Event(
-            # Cle = le VOLCAN, pas le bulletin. Chaque nouveau bulletin pour le
-            # meme volcan doit mettre a jour l'entree existante: sinon les
-            # bulletins s'empilaient en marqueurs superposes, et comme une alerte
-            # volcanique est "en cours" (jamais coupee par l'horizon), les
-            # anciens ne partaient jamais.
+            # Key = the VOLCANO, not the bulletin. Each new bulletin for the
+            # same volcano must update the existing entry: otherwise bulletins
+            # piled up as stacked markers, and since a volcanic alert is
+            # "ongoing" (never cut off by the horizon), the old ones never
+            # left.
             id=f"volcano:{vnum or identifier}",
             source="volcano",
             source_id=vnum or identifier,
@@ -103,10 +103,10 @@ class VolcanoSource(Source):
             place=name,
             country=country,
             severity=COLOR_SEVERITY.get(color, Severity.INFO),
-            # getElevatedVolcanoes ne rend que les volcans actuellement en alerte
+            # getElevatedVolcanoes only returns volcanoes currently on alert
             ongoing=True,
             alert=color.lower(),
-            title=f"{name} -- alerte {level or color} ({row.get('obs_abbr', '').upper()})",
+            title=f"{name} -- alert {level or color} ({row.get('obs_abbr', '').upper()})",
             url=row.get("notice_url"),
             raw={
                 "notice": identifier,
@@ -135,5 +135,5 @@ class VolcanoSource(Source):
                     self.health.ok(len(rows))
                 except Exception as exc:
                     self.health.fail(exc)
-                    log.warning("volcans: %s", exc)
+                    log.warning("volcanoes: %s", exc)
                 await asyncio.sleep(self.poll_seconds)

@@ -1,4 +1,4 @@
-"""Tests du store: revisions, tri du flux, representant de cluster."""
+"""Store tests: revisions, feed ordering, cluster representative."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def make_event(event_id: str, minutes_ago: float, magnitude: float | None = 3.0)
         lat=10.0,
         lon=20.0,
         magnitude=magnitude,
-        place="quelque part",
+        place="somewhere",
         severity=Severity.MINOR,
     )
 
@@ -33,8 +33,8 @@ def store() -> EventStore:
 
 
 def test_insert_then_identical_reinsert_is_a_noop(store: EventStore):
-    """Chaque poll renvoie les memes evenements: sans cette regle, le flux
-    rediffuserait tout le feed toutes les 5 secondes."""
+    """Every poll returns the same events: without this rule, the stream would
+    rebroadcast the whole feed every 5 seconds."""
     event = make_event("usgs:a", 1)
     _, action = store.upsert(event)
     assert action == "new"
@@ -50,13 +50,13 @@ def test_changed_magnitude_is_a_revision(store: EventStore):
     assert revised.revision == 1
     assert revised.magnitude == 4.2
     assert revised.updated_at is not None
-    # une revision ne cree pas une deuxieme entree
+    # a revision does not create a second entry
     assert len(store.recent(limit=100)) == 1
 
 
 def test_recent_is_sorted_by_event_time_not_arrival(store: EventStore):
-    """Un bulletin vieux de trois jours re-poll a l'instant ne doit pas squatter
-    la tete du flux."""
+    """A three-day-old bulletin re-polled just now must not squat at the head
+    of the feed."""
     store.upsert(make_event("usgs:recent", 1))
     store.upsert(make_event("usgs:old", 4000))
     store.upsert(make_event("usgs:middle", 30))
@@ -68,7 +68,7 @@ def test_recent_is_sorted_by_event_time_not_arrival(store: EventStore):
 def test_primary_only_keeps_one_event_per_cluster(store: EventStore):
     deduper = Deduper()
     first = make_event("emsc:1", 0.2)
-    second = make_event("usgs:2", 0.3)  # meme lieu, meme instant, autre source
+    second = make_event("usgs:2", 0.3)  # same place, same instant, another source
     deduper.assign(first)
     deduper.assign(second)
     store.upsert(first)
@@ -84,16 +84,16 @@ def test_ring_eviction_purges_the_index():
     for i in range(6):
         small.upsert(make_event(f"usgs:{i}", i))
     assert len(small.recent(limit=50)) == 3
-    # les evenements evinces ne doivent plus etre adressables
+    # evicted events must no longer be addressable
     assert small.get("usgs:0") is None
     assert small.get("usgs:5") is not None
 
 
 @pytest.mark.asyncio
 async def test_only_a_genuinely_recent_event_is_announced_as_breaking(monkeypatch, store):
-    """GDACS garde ses alertes des jours: au premier cycle, une centaine
-    d'evenements anciens entrent d'un coup. Ils doivent apparaitre sur la carte,
-    jamais clignoter ni sonner comme s'ils venaient de tomber."""
+    """GDACS keeps its alerts for days: on the first cycle, a hundred old
+    events come in at once. They must appear on the map, never blink nor ring
+    as if they had just landed."""
     from app import pipeline as pipeline_module
 
     sent: list[dict] = []
@@ -105,34 +105,34 @@ async def test_only_a_genuinely_recent_event_is_announced_as_breaking(monkeypatc
     pipeline = Pipeline(store, Deduper())
 
     await pipeline.emit(make_event("usgs:just-now", 0.5))
-    await pipeline.emit(make_event("gdacs:EQ42", 60 * 26))  # publie il y a 26 h
+    await pipeline.emit(make_event("gdacs:EQ42", 60 * 26))  # published 26 h ago
 
     assert [m["breaking"] for m in sent] == [True, False]
 
 
 @pytest.mark.asyncio
 async def test_an_archive_entry_is_dropped_but_never_a_severe_alert(monkeypatch, store):
-    """La liste JMA remonte a plus de neuf mois et GDACS garde ses alertes des
-    semaines: sans horizon, ces archives evincent du ring les evenements du
-    moment. Mais un cyclone rouge en cours ne devient pas caduc a trois jours."""
+    """The JMA list goes back more than nine months and GDACS keeps its alerts
+    for weeks: without a horizon, these archives evict the current events from
+    the ring. But an ongoing red cyclone does not lapse at three days."""
     from app.core import config
 
     monkeypatch.setattr(config.settings, "max_event_age_days", 3.0)
     pipeline = Pipeline(store, Deduper())
 
-    await pipeline.emit(make_event("jma:vieux", 60 * 24 * 200))  # 200 jours
+    await pipeline.emit(make_event("jma:old", 60 * 24 * 200))  # 200 days
     await pipeline.emit(make_event("usgs:recent", 30))
 
-    grave = make_event("gdacs:cyclone", 60 * 24 * 9)  # 9 jours, mais rouge
-    grave.severity = Severity.EXTREME
-    grave.kind = Kind.CYCLONE  # un cyclone est EN COURS, il dure
-    await pipeline.emit(grave)
+    cyclone = make_event("gdacs:cyclone", 60 * 24 * 9)  # 9 days, but red
+    cyclone.severity = Severity.EXTREME
+    cyclone.kind = Kind.CYCLONE  # a cyclone is ONGOING, it lasts
+    await pipeline.emit(cyclone)
 
-    # ... alors qu'un seisme est instantane: passe l'horizon c'est de l'histoire,
-    # meme a magnitude 8
-    vieux_gros = make_event("jma:vieux-gros", 60 * 24 * 200, magnitude=8.0)
-    vieux_gros.severity = Severity.EXTREME
-    await pipeline.emit(vieux_gros)
+    # ... whereas an earthquake is instantaneous: past the horizon it is
+    # history, even at magnitude 8
+    old_giant = make_event("jma:old-big", 60 * 24 * 200, magnitude=8.0)
+    old_giant.severity = Severity.EXTREME
+    await pipeline.emit(old_giant)
 
     assert sorted(e.id for e in store.recent(limit=10)) == ["gdacs:cyclone", "usgs:recent"]
     assert pipeline.dropped == 2

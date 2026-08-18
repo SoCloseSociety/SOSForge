@@ -1,5 +1,5 @@
-/** `filterEvents` est la fonction qui decide de ce que l'utilisateur voit.
- * Chaque test protege une regle produit, pas une ligne de code. */
+/** `filterEvents` is the function that decides what the user sees.
+ * Each test protects a product rule, not a line of code. */
 import { describe, expect, it } from 'vitest'
 import { ALL_KINDS, filterEvents, type Filters } from '../store'
 import { NOW, makeEvent, minutesAgo } from './helpers'
@@ -15,8 +15,8 @@ function makeFilters(overrides: Partial<Filters> = {}): Filters {
   }
 }
 
-describe('fenetre temporelle', () => {
-  it('Direct (15 min) ne montre que ce qui vient de tomber', () => {
+describe('time window', () => {
+  it('Live (15 min) shows only what just landed', () => {
     const inside = makeEvent({ id: 'a', time: minutesAgo(10) })
     const outside = makeEvent({ id: 'b', time: minutesAgo(20) })
     const result = filterEvents([inside, outside], makeFilters({ windowMinutes: 15 }), NOW)
@@ -27,22 +27,22 @@ describe('fenetre temporelle', () => {
     { label: '1 h', minutes: 60 },
     { label: '6 h', minutes: 360 },
     { label: '24 h', minutes: 1440 },
-  ])('$label garde un evenement juste dedans et ecarte un juste dehors', ({ minutes }) => {
+  ])('$label keeps an event just inside and drops one just outside', ({ minutes }) => {
     const inside = makeEvent({ id: 'in', time: minutesAgo(minutes - 1) })
     const outside = makeEvent({ id: 'out', time: minutesAgo(minutes + 1) })
     const result = filterEvents([inside, outside], makeFilters({ windowMinutes: minutes }), NOW)
     expect(result.map((e) => e.id)).toEqual(['in'])
   })
 
-  it('Tout (0) montre tout l historique, meme vieux de plusieurs mois', () => {
+  it('All (0) shows the whole history, even months old', () => {
     const ancient = makeEvent({ id: 'old', time: minutesAgo(60 * 24 * 200) })
     const result = filterEvents([ancient], makeFilters({ windowMinutes: 0 }), NOW)
     expect(result).toHaveLength(1)
   })
 })
 
-describe('filtre par type', () => {
-  it('un type decoche disparait du flux, les autres restent', () => {
+describe('kind filter', () => {
+  it('an unchecked kind disappears from the feed, the others stay', () => {
     const quake = makeEvent({ id: 'q', kind: 'earthquake' })
     const flood = makeEvent({ id: 'f', kind: 'flood', magnitude: null, mag_type: null })
     const kinds = new Set(ALL_KINDS)
@@ -52,18 +52,18 @@ describe('filtre par type', () => {
   })
 })
 
-describe('curseur de magnitude', () => {
-  it('ecarte les seismes sous le seuil et garde ceux au-dessus', () => {
+describe('magnitude slider', () => {
+  it('drops earthquakes below the threshold and keeps those above', () => {
     const small = makeEvent({ id: 'small', magnitude: 4.2 })
     const big = makeEvent({ id: 'big', magnitude: 6.1 })
     const result = filterEvents([small, big], makeFilters({ minMagnitude: 5 }), NOW)
     expect(result.map((e) => e.id)).toEqual(['big'])
   })
 
-  it('ne filtre QUE les seismes: une alerte sans magnitude ne disparait jamais a cause du curseur', () => {
-    // La regle qui a failli casser: une inondation ou un volcan n'a pas de
-    // magnitude. Le curseur mesure une dimension que ces evenements n'ont pas,
-    // il ne doit donc jamais les toucher.
+  it('filters ONLY earthquakes: an alert without a magnitude never disappears because of the slider', () => {
+    // The rule that almost broke: a flood or a volcano has no magnitude. The
+    // slider measures a dimension these events do not have, so it must never
+    // touch them.
     const flood = makeEvent({ id: 'flood', kind: 'flood', magnitude: null, mag_type: null })
     const volcano = makeEvent({ id: 'volcano', kind: 'volcano', magnitude: null, mag_type: null })
     const cyclone = makeEvent({ id: 'cyclone', kind: 'cyclone', magnitude: null, mag_type: null })
@@ -75,15 +75,16 @@ describe('curseur de magnitude', () => {
     expect(result.map((e) => e.id)).toEqual(['flood', 'volcano', 'cyclone'])
   })
 
-  // Constat (non corrige ici, voir le rapport): un SEISME dont la magnitude est
-  // null est traite comme magnitude 0 (`event.magnitude ?? 0`) et disparait des
-  // que le curseur depasse zero. C'est un choix discutable mais present dans le
-  // code: ce commentaire le documente sans le graver comme une regle.
+  // Observation (not fixed here, see the report): an EARTHQUAKE whose
+  // magnitude is null is treated as magnitude 0 (`event.magnitude ?? 0`) and
+  // disappears as soon as the slider goes past zero. A debatable choice, but
+  // present in the code: this comment documents it without carving it in as
+  // a rule.
 })
 
 
-describe('recherche texte', () => {
-  it('filtre sur le lieu, le titre et le pays', () => {
+describe('text search', () => {
+  it('filters on place, title and country', () => {
     const tokyo = makeEvent({ id: 'a', place: 'Tokyo Bay', country: 'Japan' })
     const chili = makeEvent({ id: 'b', place: 'Offshore Coquimbo', country: 'Chile' })
 
@@ -94,12 +95,12 @@ describe('recherche texte', () => {
     expect(byCountry.map((e) => e.id)).toEqual(['b'])
   })
 
-  it('ignore la casse et les espaces autour', () => {
+  it('ignores case and surrounding whitespace', () => {
     const event = makeEvent({ id: 'a', place: 'FLORES REGION, INDONESIA' })
     expect(filterEvents([event], makeFilters({ query: '  flores  ' }), NOW)).toHaveLength(1)
   })
 
-  it('une recherche vide ne filtre rien', () => {
+  it('an empty search filters nothing', () => {
     const events = [makeEvent({ id: 'a' }), makeEvent({ id: 'b' })]
     expect(filterEvents(events, makeFilters({ query: '   ' }), NOW)).toHaveLength(2)
   })

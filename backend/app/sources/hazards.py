@@ -1,10 +1,10 @@
-"""Aleas non sismiques a forte valeur: cyclones tropicaux et cendres volcaniques.
+"""High-value non-seismic hazards: tropical cyclones and volcanic ash.
 
-GDACS voit les cyclones, mais grossierement et avec du retard. Le NHC publie la
-position, les vents et la categorie de chaque tempete active a chaque advisory.
-Et pour les cendres volcaniques, les VAAC ne publient que du texte heterogene:
-les SIGMET de l'aviation en sont la traduction operationnelle structuree, et
-c'est le seul flux mondial machine-lisible qui existe pour cet alea.
+GDACS sees cyclones, but coarsely and with delay. The NHC publishes the
+position, winds and category of every active storm at each advisory. And for
+volcanic ash, the VAACs only publish heterogeneous text: aviation SIGMETs are
+its structured operational translation, and the only machine-readable
+worldwide feed that exists for this hazard.
 """
 
 from __future__ import annotations
@@ -21,11 +21,11 @@ log = logging.getLogger(__name__)
 # --------------------------------------------------------------------------- NHC
 
 
-# Echelle de Saffir-Simpson, en noeuds. Une tempete tropicale n'est pas un
-# ouragan majeur: la gravite doit suivre le vent, pas le fait qu'elle soit nommee.
+# Saffir-Simpson scale, in knots. A tropical storm is not a major hurricane:
+# severity must follow the wind, not the fact that the storm has a name.
 def cyclone_severity(wind_kt: float | None, classification: str) -> Severity:
     if classification in ("HU", "MH", "TY", "STY"):
-        if wind_kt is not None and wind_kt >= 96:  # categorie 3+
+        if wind_kt is not None and wind_kt >= 96:  # category 3+
             return Severity.EXTREME
         return Severity.SEVERE
     if classification in ("TS", "STS"):
@@ -34,7 +34,7 @@ def cyclone_severity(wind_kt: float | None, classification: str) -> Severity:
 
 
 class NhcSource(JsonPollSource):
-    """National Hurricane Center: bassins Atlantique, Pacifique Est et Central."""
+    """National Hurricane Center: Atlantic, East and Central Pacific basins."""
 
     name = "nhc"
     kind = "poll"
@@ -47,7 +47,7 @@ class NhcSource(JsonPollSource):
             if not storm_id:
                 continue
 
-            # tout est en string dans ce flux, y compris les nombres
+            # everything is a string in this feed, including the numbers
             def number(value) -> float | None:
                 try:
                     return float(value)
@@ -58,7 +58,7 @@ class NhcSource(JsonPollSource):
             pressure = number(storm.get("pressure"))
             classification = (storm.get("classification") or "").upper()
 
-            # latitude "20.4N" est un string: les champs *Numeric sont les bons
+            # latitude "20.4N" is a string: the *Numeric fields are the right ones
             lat = storm.get("latitudeNumeric")
             lon = storm.get("longitudeNumeric")
 
@@ -66,13 +66,13 @@ class NhcSource(JsonPollSource):
             if time is None:
                 continue
 
-            name = storm.get("name") or "sans nom"
+            name = storm.get("name") or "unnamed"
             advisory = (storm.get("publicAdvisory") or {}).get("url")
 
             events.append(
                 Event(
-                    # `id` est stable toute la saison; `binNumber` (CP2) est recycle
-                    # d'une tempete a l'autre et ne doit surtout pas servir de cle
+                    # `id` is stable for the whole season; `binNumber` (CP2) is
+                    # recycled from one storm to the next and must never be a key
                     id=f"nhc:{storm_id}",
                     source="nhc",
                     source_id=str(storm_id),
@@ -84,7 +84,7 @@ class NhcSource(JsonPollSource):
                     mag_type="kt",
                     place=name,
                     severity=cyclone_severity(wind_kt, classification),
-                    # CurrentStorms ne liste QUE les tempetes actives
+                    # CurrentStorms lists ONLY active storms
                     ongoing=True,
                     alert=classification.lower() or None,
                     title=f"{classification} {name} -- {wind_kt or '?'} kt",
@@ -101,16 +101,15 @@ class NhcSource(JsonPollSource):
         return events
 
 
-# ------------------------------------------------------------------ cendres (VA)
+# ---------------------------------------------------------------------- ash (VA)
 
 
 class AshSource(JsonPollSource):
-    """SIGMET internationaux de cendres volcaniques (Aviation Weather Center).
+    """International volcanic ash SIGMETs (Aviation Weather Center).
 
-    Un SIGMET n'a pas d'identifiant d'evenement: il est reemis toutes les six
-    heures avec un nouveau numero de serie. La cle est donc composite
-    (FIR + serie + debut de validite), sinon chaque reemission creerait un
-    doublon sur la carte.
+    A SIGMET has no event identifier: it is re-issued every six hours with a
+    new serial number. The key is therefore composite (FIR + serial + start of
+    validity), otherwise each re-issue would create a duplicate on the map.
     """
 
     name = "ash"
@@ -127,12 +126,12 @@ class AshSource(JsonPollSource):
                 continue
 
             try:
-                # ce flux melange epoch SECONDES (validTime*) et ISO Z (receiptTime)
+                # this feed mixes epoch SECONDS (validTime*) and ISO Z (receiptTime)
                 time = datetime.fromtimestamp(float(valid_from), tz=UTC)
             except (TypeError, ValueError, OSError):
                 continue
 
-            # le polygone donne l'emprise du nuage; on pose le point en son centre
+            # the polygon gives the cloud's extent; we place the point at its center
             coords = sigmet.get("coords") or []
             lat = lon = None
             if coords:
@@ -142,9 +141,9 @@ class AshSource(JsonPollSource):
                     lat = sum(lats) / len(lats)
                     lon = sum(lons) / len(lons)
 
-            volcano = sigmet.get("qualifier") or "volcan non nomme"
+            volcano = sigmet.get("qualifier") or "unnamed volcano"
             top_ft = sigmet.get("top")
-            # un panache qui monte haut est un panache dangereux
+            # a plume that rises high is a dangerous plume
             severity = Severity.SEVERE if (top_ft or 0) >= 25000 else Severity.MODERATE
 
             events.append(
@@ -158,12 +157,12 @@ class AshSource(JsonPollSource):
                     lon=lon,
                     place=volcano.title(),
                     severity=severity,
-                    alert="cendres",
-                    title=f"Cendres volcaniques -- {volcano.title()}",
+                    alert="ash",
+                    title=f"Volcanic ash -- {volcano.title()}",
                     url="https://aviationweather.gov/gfa/#sigmet",
                     raw={
                         "fir": sigmet.get("firName"),
-                        # `top` est en pieds, pas en metres
+                        # `top` is in feet, not meters
                         "top_ft": top_ft,
                         "base_ft": sigmet.get("base"),
                         "direction": sigmet.get("dir"),
@@ -178,7 +177,7 @@ class AshSource(JsonPollSource):
 
 
 def centroid(coords) -> tuple[float | None, float | None]:
-    """Barycentre d'une geometrie GeoJSON de profondeur quelconque."""
+    """Centroid of a GeoJSON geometry of arbitrary nesting depth."""
     points: list[tuple[float, float]] = []
 
     def walk(node) -> None:
@@ -201,7 +200,7 @@ def centroid(coords) -> tuple[float | None, float | None]:
     )
 
 
-# EONET classe par categorie; on retombe sur nos propres types d'alea.
+# EONET classifies by category; we map back to our own hazard types.
 EONET_KIND = {
     "wildfires": Kind.WILDFIRE,
     "severeStorms": Kind.CYCLONE,
@@ -220,23 +219,23 @@ EONET_KIND = {
 
 
 class EonetSource(JsonPollSource):
-    """NASA EONET -- evenements naturels en cours, observes depuis l'espace.
+    """NASA EONET -- ongoing natural events, observed from space.
 
-    Ce qu'il apporte que rien d'autre n'a ici: les **feux de forets** suivis
-    comme des evenements (avec un identifiant stable et une trajectoire), la ou
-    FIRMS ne donne que des pixels chauds a clusteriser soi-meme et GDACS ne voit
-    que les plus gros. C'est aussi un second avis mondial sur les tempetes.
+    What it brings that nothing else here has: **wildfires** tracked as events
+    (with a stable identifier and a trajectory), where FIRMS only gives hot
+    pixels to cluster yourself and GDACS only sees the biggest ones. It is
+    also a worldwide second opinion on storms.
 
-    Latence: EONET agrege des sources qui vont de la minute a quelques heures.
-    Ce n'est donc pas du "direct" au sens de l'EMSC, et le drapeau `breaking` du
-    pipeline s'en charge tout seul en regardant l'age reel de l'evenement.
+    Latency: EONET aggregates sources ranging from a minute to a few hours.
+    So it is not "live" in the EMSC sense, and the pipeline's `breaking` flag
+    handles that by itself by looking at the event's real age.
     """
 
     name = "eonet"
     kind = "poll"
-    # `days=14`: EONET garde des evenements "open" tres longtemps (un feu non
-    # clos reste ouvert des semaines apres sa derniere observation). Sans cette
-    # borne, 250 feux dont beaucoup dorment depuis un mois noyaient la carte.
+    # `days=14`: EONET keeps events "open" for a very long time (an unclosed
+    # fire stays open for weeks after its last observation). Without this
+    # bound, 250 fires, many dormant for a month, drowned the map.
     url = "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14&limit=200"
 
     def parse_payload(self, data) -> list[Event]:
@@ -247,9 +246,9 @@ class EonetSource(JsonPollSource):
             if not event_id or not geometry:
                 continue
 
-            # `geometry` est une TRAJECTOIRE: la derniere entree est la position
-            # courante. Prendre la premiere afficherait un cyclone la ou il etait
-            # il y a trois jours.
+            # `geometry` is a TRAJECTORY: the last entry is the current
+            # position. Taking the first would display a cyclone where it was
+            # three days ago.
             last = geometry[-1]
             time = to_utc(last.get("date"))
             if time is None:
@@ -260,7 +259,7 @@ class EonetSource(JsonPollSource):
             if last.get("type") == "Point" and len(coords) >= 2:
                 lon, lat = coords[0], coords[1]
             elif coords:
-                # emprise (Polygon): on pose le point en son centre
+                # extent (Polygon): we place the point at its center
                 lat, lon = centroid(coords)
 
             categories = row.get("categories") or []
@@ -273,7 +272,7 @@ class EonetSource(JsonPollSource):
             if kind is Kind.CYCLONE and isinstance(magnitude, (int, float)):
                 severity = cyclone_severity(float(magnitude), "HU" if magnitude >= 64 else "TS")
 
-            title = row.get("title") or "evenement EONET"
+            title = row.get("title") or "EONET event"
             events.append(
                 Event(
                     id=f"eonet:{event_id}",
@@ -287,7 +286,7 @@ class EonetSource(JsonPollSource):
                     mag_type=unit,
                     place=title,
                     severity=severity,
-                    # on interroge EONET avec status=open: par definition en cours
+                    # we query EONET with status=open: ongoing by definition
                     ongoing=True,
                     title=title,
                     url=row.get("link"),

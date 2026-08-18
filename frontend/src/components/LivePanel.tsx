@@ -36,11 +36,11 @@ interface Nearby {
   cameras_configured?: boolean
 }
 
-/** Fiche de l'evenement selectionne + acces aux vues en direct de la zone.
+/** Card for the selected event + access to live views of the area.
  *
- * Les liens sont calcules cote serveur et marchent sans aucune cle. Les webcams
- * ne remontent que si une cle Windy est configuree: l'absence de cle ne doit pas
- * donner l'impression que la zone n'a rien a montrer, d'ou le message explicite.
+ * Links are computed server-side and work without any key. Webcams only
+ * show up if a Windy key is configured: the absence of a key must not give
+ * the impression the area has nothing to show, hence the explicit message.
  */
 export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
   const t = useStore((s) => s.t)

@@ -1,6 +1,6 @@
-/** `ingest` est le point d'entree unique de tout ce qui arrive du websocket.
- * Chaque test protege un comportement qui a une histoire (voir README:
- * revisions, GDACS, horloge serveur). */
+/** `ingest` is the single entry point for everything arriving from the
+ * websocket. Each test protects a behaviour that has a history (see README:
+ * revisions, GDACS, server clock). */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStore } from '../store'
 import type { ServerMessage, SourceHealth } from '../types'
@@ -18,7 +18,7 @@ function eventMessage(
 }
 
 beforeEach(() => {
-  // Horloge figee: clockSkew et le halo de 30 s se testent sans attendre.
+  // Frozen clock: clockSkew and the 30 s halo can be tested without waiting.
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
   resetStore()
@@ -29,7 +29,7 @@ afterEach(() => {
 })
 
 describe('snapshot', () => {
-  it('remplace entierement la liste au lieu de fusionner', () => {
+  it('replaces the list entirely instead of merging', () => {
     useStore.setState({ events: [makeEvent({ id: 'stale-1' }), makeEvent({ id: 'stale-2' })] })
     const fresh = [makeEvent({ id: 'snap-1' }), makeEvent({ id: 'snap-2' })]
     useStore.getState().ingest({
@@ -43,10 +43,10 @@ describe('snapshot', () => {
     expect(useStore.getState().connected).toBe(true)
   })
 
-  it('cale clockSkew sur l horloge serveur, pas sur celle du navigateur', () => {
-    // Le serveur est 5 s "dans le futur" du navigateur: tous les ages affiches
-    // doivent etre calcules avec ce decalage (regle produit: jamais l'horloge
-    // du navigateur).
+  it('pins clockSkew to the server clock, not the browser one', () => {
+    // The server is 5 s "in the future" of the browser: every displayed age
+    // must be computed with this offset (product rule: never the browser
+    // clock).
     useStore.getState().ingest({
       type: 'snapshot',
       server_time: new Date(NOW + 5000).toISOString(),
@@ -59,7 +59,7 @@ describe('snapshot', () => {
 })
 
 describe('tick', () => {
-  it('rafraichit stats, sources, clients et le clockSkew a chaque battement', () => {
+  it('refreshes stats, sources, clients and the clockSkew on every beat', () => {
     useStore.getState().ingest({
       type: 'tick',
       server_time: new Date(NOW - 2000).toISOString(),
@@ -75,8 +75,8 @@ describe('tick', () => {
   })
 })
 
-describe('events et updates', () => {
-  it('une revision d un evenement connu le met a jour sans le dupliquer', () => {
+describe('events and updates', () => {
+  it('a revision of a known event updates it without duplicating it', () => {
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'q1', magnitude: 5.8 })))
     useStore
       .getState()
@@ -87,23 +87,23 @@ describe('events et updates', () => {
     expect(events[0].revision).toBe(1)
   })
 
-  it('le flux reste trie par date d evenement decroissante, quel que soit l ordre d arrivee', () => {
+  it('the feed stays sorted by descending event time, whatever the arrival order', () => {
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'mid', time: minutesAgo(30) })))
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'old', time: minutesAgo(90) })))
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'new', time: minutesAgo(1) })))
     expect(useStore.getState().events.map((e) => e.id)).toEqual(['new', 'mid', 'old'])
   })
 
-  it('breaking: false ne marque PAS l evenement comme frais (96 alertes GDACS ne clignotent pas)', () => {
-    // L'incident d'origine: au premier cycle GDACS, ~96 alertes vieilles de
-    // plusieurs jours arrivaient comme messages `event` et clignotaient toutes
-    // en breaking news. Seul le serveur sait distinguer "vient de se produire"
-    // de "vient d'entrer dans le buffer": le client doit respecter son verdict.
+  it('breaking: false does NOT mark the event as fresh (96 GDACS alerts do not blink)', () => {
+    // The original incident: on the first GDACS cycle, ~96 alerts several
+    // days old arrived as `event` messages and all blinked as breaking news.
+    // Only the server can tell "just happened" from "just entered the
+    // buffer": the client must respect its verdict.
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'gdacs-old' }), { breaking: false }))
     expect(useStore.getState().fresh.has('gdacs-old')).toBe(false)
   })
 
-  it('breaking: true marque l evenement frais, et le halo s eteint seul apres 30 s', () => {
+  it('breaking: true marks the event fresh, and the halo dies out on its own after 30 s', () => {
     useStore.getState().ingest(eventMessage(makeEvent({ id: 'hot' }), { breaking: true }))
     expect(useStore.getState().fresh.has('hot')).toBe(true)
     vi.advanceTimersByTime(30_000)
@@ -111,8 +111,8 @@ describe('events et updates', () => {
   })
 })
 
-describe('doublons inter-sources', () => {
-  it("ignore une solution secondaire: le serveur a deja designe un representant", () => {
+describe('cross-source duplicates', () => {
+  it('ignores a secondary solution: the server has already picked a representative', () => {
     const store = useStore.getState()
     store.ingest({
       type: 'event',
@@ -122,7 +122,7 @@ describe('doublons inter-sources', () => {
     })
     store.ingest({
       type: 'event',
-      // meme seisme vu par une autre agence: le serveur l'a marque non primaire
+      // same quake seen by another agency: the server marked it non-primary
       event: makeEvent({ id: 'usgs:1', time: minutesAgo(1) }),
       primary: false,
       breaking: true,

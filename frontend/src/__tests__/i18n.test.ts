@@ -1,34 +1,34 @@
-/** i18n: la regle est qu'une chaine manquante ne rend JAMAIS du vide, et
- * qu'aucune des cinq langues ne peut prendre du retard sur les autres sans
- * qu'un test le crie. */
+/** i18n: the rule is that a missing string NEVER renders as emptiness, and
+ * that none of the five languages can fall behind the others without a test
+ * shouting about it. */
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { detectLang, translate, type Lang } from '../i18n'
-// La source brute du module i18n, servie par Vite: c'est le meme fichier que
-// celui qui est compile, il ne peut pas mentir.
+// The raw source of the i18n module, served by Vite: it is the same file as
+// the one that gets compiled, it cannot lie.
 import source from '../i18n.ts?raw'
 
 const STORAGE_KEY = 'sosforge.lang'
 
 describe('interpolation', () => {
-  it('remplace {n} par la valeur fournie', () => {
+  it('replaces {n} with the provided value', () => {
     expect(translate('fr', 'kpi.tracked.sub', { n: 42 })).toBe('42 sur la dernière heure')
   })
 
-  it('laisse le placeholder intact si la variable n est pas fournie', () => {
+  it('leaves the placeholder intact if the variable is not provided', () => {
     expect(translate('en', 'footer.clients', {})).toBe('{n} client(s) connected')
   })
 })
 
-describe('replis', () => {
-  it('retombe sur l anglais quand la langue demandee n a pas la cle', () => {
-    // Aucun dictionnaire reel n'a de trou (le test de parite plus bas le
-    // garantit), donc on force le trou avec une langue inconnue: le chemin de
-    // repli DICTS[lang] -> DICTS.en est exactement le meme.
+describe('fallbacks', () => {
+  it('falls back to English when the requested language lacks the key', () => {
+    // No real dictionary has a hole (the parity test below guarantees it), so
+    // we force the hole with an unknown language: the fallback path
+    // DICTS[lang] -> DICTS.en is exactly the same.
     expect(translate('xx' as Lang, 'app.live')).toBe('LIVE')
   })
 
-  it('retombe sur la cle elle-meme quand elle n existe nulle part: jamais du vide', () => {
-    expect(translate('fr', 'cle.inexistante')).toBe('cle.inexistante')
+  it('falls back to the key itself when it exists nowhere: never emptiness', () => {
+    expect(translate('fr', 'nonexistent.key')).toBe('nonexistent.key')
   })
 })
 
@@ -48,66 +48,67 @@ describe('detectLang', () => {
 
   afterEach(() => {
     localStorage.removeItem(STORAGE_KEY)
-    // Retire le stub pose sur l'instance pour retrouver le comportement jsdom
+    // Remove the stub set on the instance to restore jsdom behaviour
     delete (navigator as unknown as Record<string, unknown>).languages
     if (originalLanguages) {
       Object.defineProperty(Object.getPrototypeOf(navigator), 'languages', originalLanguages)
     }
   })
 
-  it('la langue memorisee prime sur celle du navigateur', () => {
+  it('the remembered language wins over the browser one', () => {
     localStorage.setItem(STORAGE_KEY, 'ja')
     stubLanguages(['fr-FR', 'en-US'])
     expect(detectLang()).toBe('ja')
   })
 
-  it('une langue memorisee invalide est ignoree au profit du navigateur', () => {
+  it('an invalid remembered language is ignored in favour of the browser', () => {
     localStorage.setItem(STORAGE_KEY, 'de')
     stubLanguages(['id-ID', 'en-US'])
     expect(detectLang()).toBe('id')
   })
 
-  it('sans langue memorisee, la premiere langue supportee du navigateur gagne', () => {
+  it('without a remembered language, the first supported browser language wins', () => {
     stubLanguages(['pt-BR', 'es-419', 'en-US'])
     expect(detectLang()).toBe('es')
   })
 
-  it('sans aucune langue supportee, l anglais: un tracker de catastrophes est lu par n importe qui', () => {
+  it('with no supported language at all, English: a disaster tracker is read by anyone', () => {
     stubLanguages(['de-DE', 'pt-BR'])
     expect(detectLang()).toBe('en')
   })
 })
 
-describe('parite des cinq dictionnaires', () => {
-  // Les dictionnaires sont prives au module (choix assume: pas d'API publique
-  // pour iterer les cles). On analyse donc la source elle-meme (import ?raw).
+describe('parity of the five dictionaries', () => {
+  // The dictionaries are private to the module (a deliberate choice: no
+  // public API to iterate the keys). So we analyse the source itself
+  // (?raw import).
   function dictKeys(name: string): string[] {
     const block = source.match(new RegExp(`const ${name}: Dict = \\{([\\s\\S]*?)\\n\\}`))
-    if (!block) throw new Error(`dictionnaire ${name} introuvable dans i18n.ts`)
+    if (!block) throw new Error(`dictionary ${name} not found in i18n.ts`)
     return [...block[1].matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1])
   }
 
   const reference = dictKeys('en')
 
-  it('le dictionnaire anglais de reference est bien extrait (garde-fou du parseur)', () => {
+  it('the English reference dictionary is properly extracted (parser guard-rail)', () => {
     expect(reference.length).toBeGreaterThan(40)
     expect(reference).toContain('app.live')
     expect(reference).toContain('footer.basemap')
   })
 
   it.each(['fr', 'es', 'ja', 'id'])(
-    'le dictionnaire %s a exactement les memes cles que l anglais: aucune traduction oubliee',
+    'the %s dictionary has exactly the same keys as English: no translation forgotten',
     (name) => {
-      // C'est CE test qui sonnera quand une fonctionnalite ajoutera une chaine
-      // dans une langue et pas dans les quatre autres.
+      // THIS is the test that will ring when a feature adds a string in one
+      // language and not in the four others.
       expect(dictKeys(name).sort()).toEqual([...reference].sort())
     },
   )
 
-  it('aucun dictionnaire ne contient de cle dupliquee', () => {
+  it('no dictionary contains a duplicated key', () => {
     for (const name of ['fr', 'en', 'es', 'ja', 'id']) {
       const keys = dictKeys(name)
-      expect(new Set(keys).size, `doublon dans ${name}`).toBe(keys.length)
+      expect(new Set(keys).size, `duplicate in ${name}`).toBe(keys.length)
     }
   })
 })

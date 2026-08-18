@@ -1,7 +1,7 @@
-"""Hub de diffusion: fan-out des evenements normalises vers les navigateurs.
+"""Broadcast hub: fans normalized events out to the browsers.
 
-Chaque client a sa propre queue bornee. Un client lent est deconnecte plutot que
-de faire refluer la pression sur les ingesteurs -- le temps reel prime.
+Each client gets its own bounded queue. A slow client is disconnected rather
+than letting backpressure reach the ingesters -- real time comes first.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ class Client:
         self.id = client_id
         self.queue: asyncio.Queue[str] = asyncio.Queue(maxsize=QUEUE_MAX)
         self.filters: dict[str, Any] = {}
-        # arme a l'ejection: sans ce signal, la tache d'envoi restait bloquee a
-        # jamais sur queue.get() et la websocket restait ouverte cote client,
-        # silencieuse -- une connexion "live" qui ne livre plus rien.
+        # set on eviction: without this signal, the send task stayed blocked
+        # forever on queue.get() and the websocket stayed open on the client
+        # side, silent -- a "live" connection that no longer delivers anything.
         self.evicted = asyncio.Event()
 
 
@@ -42,12 +42,12 @@ class Hub:
     async def register(self, client: Client) -> None:
         async with self._lock:
             self._clients.add(client)
-        log.info("client %s connecte (%d actifs)", client.id, self.client_count)
+        log.info("client %s connected (%d active)", client.id, self.client_count)
 
     async def unregister(self, client: Client) -> None:
         async with self._lock:
             self._clients.discard(client)
-        log.info("client %s deconnecte (%d actifs)", client.id, self.client_count)
+        log.info("client %s disconnected (%d active)", client.id, self.client_count)
 
     async def broadcast(self, message: dict) -> None:
         payload = json.dumps(message, default=str)
@@ -57,7 +57,7 @@ class Hub:
                 client.queue.put_nowait(payload)
                 self.sent += 1
             except asyncio.QueueFull:
-                log.warning("client %s trop lent, ejecte", client.id)
+                log.warning("client %s too slow, evicted", client.id)
                 dropped.append(client)
         for client in dropped:
             client.evicted.set()

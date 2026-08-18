@@ -1,19 +1,20 @@
 import { useStore } from './store'
 import type { ServerMessage } from './types'
 
-/** Client websocket: reconnexion exponentielle, et watchdog sur le heartbeat.
+/** Websocket client: exponential reconnection, and a watchdog on the
+ * heartbeat.
  *
- * Ce fichier porte la promesse centrale du produit: **le flux ne doit jamais
- * mentir sur sa propre fraicheur**. Trois pieges y ont ete trouves par les tests
- * et fermes ici, tous les trois du meme genre -- une connexion qui parait vivante
- * sans l'etre.
+ * This file carries the product's central promise: **the feed must never
+ * lie about its own freshness**. Three traps were found here by the tests
+ * and closed here, all three of the same kind -- a connection that looks
+ * alive without being alive.
  */
 
-/** Silence tolere avant de considerer le lien mort. Le serveur emet un tick par
- * seconde: quinze secondes sans rien est deja enorme. */
+/** Silence tolerated before considering the link dead. The server emits a
+ * tick every second: fifteen seconds with nothing is already huge. */
 const SILENCE_LIMIT_MS = 15_000
-/** Pas du watchdog. A 2 s, la detection tombe entre 15 et 17 s de silence;
- * a 5 s elle pouvait atteindre 20 s, soit un tiers de plus que le contrat. */
+/** Watchdog step. At 2 s, detection lands between 15 and 17 s of silence;
+ * at 5 s it could reach 20 s, a third more than the contract. */
 const WATCHDOG_STEP_MS = 2_000
 
 export function connectLive(): () => void {
@@ -30,8 +31,8 @@ export function connectLive(): () => void {
   }
 
   const scheduleReconnect = () => {
-    // l'etat doit tomber a "deconnecte" MEME quand on s'arrete pour de bon:
-    // sinon l'interface reste sur "EN DIRECT" apres un demontage
+    // state must fall to "disconnected" EVEN when we're stopping for good:
+    // otherwise the interface stays on "LIVE" after an unmount
     useStore.getState().setConnected(false)
     if (closed) return
     attempt += 1
@@ -44,11 +45,12 @@ export function connectLive(): () => void {
     socket = new WebSocket(url())
 
     socket.onopen = () => {
-      // On NE remet PAS le compteur de backoff a zero ici. Une socket ouverte ne
-      // prouve rien: un proxy qui accepte le TCP sans rien acheminer ouvrait la
-      // connexion, on repartait a 1 s, le watchdog refermait cinq secondes plus
-      // tard -- et on martelait le serveur toutes les six secondes sans jamais
-      // monter vers le plafond. Le succes, c'est un MESSAGE recu.
+      // We do NOT reset the backoff counter here. An open socket proves
+      // nothing: a proxy that accepts the TCP connection without forwarding
+      // anything would open the connection, we'd restart at 1 s, the
+      // watchdog would close it again five seconds later -- and we'd hammer
+      // the server every six seconds without ever climbing toward the
+      // ceiling. Success is a MESSAGE received.
       openedAt = Date.now()
       useStore.getState().setConnected(true)
     }
@@ -58,7 +60,7 @@ export function connectLive(): () => void {
       try {
         useStore.getState().ingest(JSON.parse(message.data) as ServerMessage)
       } catch {
-        /* message illisible: on ignore plutot que de tuer la connexion */
+        /* unreadable message: we ignore it rather than kill the connection */
       }
     }
 
@@ -73,12 +75,12 @@ export function connectLive(): () => void {
   watchdog = window.setInterval(() => {
     const { lastMessageAt, connected } = useStore.getState()
     if (!connected) return
-    // Le point de reference est le dernier message SI on en a recu un, sinon
-    // l'ouverture de la socket. Sans ce repli, une premiere connexion qui
-    // s'ouvre et reste muette n'etait jamais fermee: `lastMessageAt` valant 0,
-    // la garde le laissait passer et l'interface affichait un flux fige en
-    // annoncant "EN DIRECT", indefiniment. C'etait exactement le mensonge que
-    // ce fichier existe pour interdire.
+    // The reference point is the last message IF we've received one,
+    // otherwise the socket's opening. Without this fallback, a first
+    // connection that opens and stays silent was never closed:
+    // `lastMessageAt` being 0, the guard let it through and the interface
+    // showed a frozen feed while announcing "LIVE", indefinitely. That was
+    // exactly the lie this file exists to forbid.
     const reference = lastMessageAt || openedAt
     if (reference && Date.now() - reference > SILENCE_LIMIT_MS) {
       socket?.close()

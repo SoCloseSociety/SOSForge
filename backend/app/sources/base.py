@@ -1,4 +1,4 @@
-"""Contrat commun a toutes les sources d'ingestion."""
+"""Contract shared by every ingestion source."""
 
 from __future__ import annotations
 
@@ -55,10 +55,10 @@ class Source(abc.ABC):
 
     @abc.abstractmethod
     async def run(self, emit: Emit) -> None:
-        """Boucle infinie: lit la source et appelle `emit` pour chaque evenement."""
+        """Infinite loop: reads the source and calls `emit` for each event."""
 
     async def supervise(self, emit: Emit) -> None:
-        """Relance la source indefiniment, avec backoff exponentiel plafonne."""
+        """Restarts the source forever, with capped exponential backoff."""
         delay = 1.0
         while True:
             try:
@@ -68,6 +68,6 @@ class Source(abc.ABC):
                 raise
             except Exception as exc:
                 self.health.fail(exc)
-                log.warning("source %s en erreur (%s), retry dans %.0fs", self.name, exc, delay)
+                log.warning("source %s failed (%s), retrying in %.0fs", self.name, exc, delay)
                 await asyncio.sleep(delay)
                 delay = min(delay * 2, 60.0)

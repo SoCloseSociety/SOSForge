@@ -1,14 +1,14 @@
 import { useStore } from './store'
 
-/** Lien profond vers un evenement.
+/** Deep link to an event.
  *
- * Sans ca, on ne peut pas dire "regarde CE seisme": partager l'URL renvoyait
- * l'autre sur la page d'accueil, sur un flux qui a deja bouge. Le fragment
- * (`#e/usgs:ci40674530`) suffit -- il ne part pas au serveur, ne casse aucun
- * cache, et survit au rechargement.
+ * Without this, there's no way to say "look at THIS earthquake": sharing the
+ * URL would send the other person to the home page, to a feed that has
+ * already moved on. The fragment (`#e/usgs:ci40674530`) is enough -- it
+ * never goes to the server, doesn't break any cache, and survives a reload.
  *
- * L'identifiant contient des `:` et parfois des `+` (`bmkg:2026-08-17T18:10:06+00:00`),
- * d'ou l'encodage.
+ * The id contains `:` and sometimes `+` (`bmkg:2026-08-17T18:10:06+00:00`),
+ * hence the encoding.
  */
 const PREFIX = '#e/'
 
@@ -25,21 +25,21 @@ function idFromHash(): string | null {
   }
 }
 
-/** Synchronise la selection et l'URL, dans les deux sens. Rend la fonction de
- * desabonnement. */
+/** Syncs the selection and the URL, both ways. Returns the unsubscribe
+ * function. */
 export function syncDeepLink(): () => void {
-  // 1. l'URL d'arrivee decide de la selection initiale
+  // 1. the URL on arrival decides the initial selection
   const initial = idFromHash()
   if (initial) useStore.getState().select(initial)
 
-  // 2. le bouton retour du navigateur doit ramener a l'evenement precedent
+  // 2. the browser's back button must bring back the previous event
   const onHashChange = () => {
     const id = idFromHash()
     if (id !== useStore.getState().selected) useStore.getState().select(id)
   }
   window.addEventListener('hashchange', onHashChange)
 
-  // 3. selectionner ecrit l'URL, sans empiler une entree d'historique par clic
+  // 3. selecting writes the URL, without stacking a history entry per click
   const unsubscribe = useStore.subscribe((state, previous) => {
     if (state.selected === previous.selected) return
     const target = state.selected ? PREFIX + encodeURIComponent(state.selected) : ' '

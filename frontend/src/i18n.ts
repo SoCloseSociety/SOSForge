@@ -1,14 +1,13 @@
-/** Internationalisation.
+/** Internationalization.
  *
- * Pas de bibliotheque: une soixantaine de chaines ne justifie pas 40 ko de
- * dependance dans un produit dont la promesse est la reactivite. La langue est
- * detectee sur le navigateur, memorisee, et surchargeable a la main.
+ * No library: about sixty strings doesn't justify a 40 KB dependency in a
+ * product whose whole promise is responsiveness. The language is detected
+ * from the browser, remembered, and overridable by hand.
  *
- * Le choix des langues n'est pas arbitraire: anglais et espagnol pour la
- * couverture mondiale, francais pour l'equipe, et **japonais + indonesien**
- * parce que ce sont les deux populations les plus exposees aux seismes et aux
- * tsunamis de la planete -- et justement celles que les sources JMA et BMKG
- * servent.
+ * The choice of languages isn't arbitrary: English and Spanish for global
+ * coverage, French for the team, and **Japanese + Indonesian** because
+ * those are the two populations most exposed to earthquakes and tsunamis on
+ * the planet -- and precisely the ones the JMA and BMKG sources serve.
  */
 
 export type Lang = 'fr' | 'en' | 'es' | 'ja' | 'id'
@@ -52,6 +51,7 @@ const fr: Dict = {
   'filters.empty.search': 'Aucun événement ne correspond à cette recherche.',
   'filters.window': 'Fenêtre',
   'filters.minmag': 'Magnitude min',
+  'filters.none': 'Aucun evenement de ce type dans la fenetre choisie',
   'filters.empty': 'Aucun événement ne correspond aux filtres.',
   'filters.empty.window': 'Rien dans cette fenêtre. Élargissez la période.',
 
@@ -140,6 +140,7 @@ const en: Dict = {
   'filters.empty.search': 'No event matches this search.',
   'filters.window': 'Window',
   'filters.minmag': 'Min magnitude',
+  'filters.none': 'No event of this kind in the selected window',
   'filters.empty': 'No event matches the filters.',
   'filters.empty.window': 'Nothing in this window. Widen the period.',
 
@@ -227,6 +228,7 @@ const es: Dict = {
   'filters.empty.search': 'Ningún evento coincide con esta búsqueda.',
   'filters.window': 'Ventana',
   'filters.minmag': 'Magnitud mín.',
+  'filters.none': 'Ningun evento de este tipo en la ventana elegida',
   'filters.empty': 'Ningún evento coincide con los filtros.',
   'filters.empty.window': 'Nada en esta ventana. Amplíe el periodo.',
 
@@ -314,6 +316,7 @@ const ja: Dict = {
   'filters.empty.search': 'この検索に一致する事象はありません。',
   'filters.window': '期間',
   'filters.minmag': '最小マグニチュード',
+  'filters.none': '選択した期間にこの種類の事象はありません',
   'filters.empty': '条件に一致する事象はありません。',
   'filters.empty.window': 'この期間には何もありません。期間を広げてください。',
 
@@ -401,6 +404,7 @@ const id: Dict = {
   'filters.empty.search': 'Tidak ada kejadian yang cocok dengan pencarian ini.',
   'filters.window': 'Rentang',
   'filters.minmag': 'Magnitudo min.',
+  'filters.none': 'Tidak ada kejadian jenis ini pada rentang terpilih',
   'filters.empty': 'Tidak ada kejadian yang cocok dengan filter.',
   'filters.empty.window': 'Tidak ada apa pun pada rentang ini. Perlebar periodenya.',
 
@@ -464,10 +468,10 @@ const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id }
 const STORAGE_KEY = 'sosforge.lang'
 
 export function detectLang(): Lang {
-  // `detectLang` s'execute a la creation du store, donc au chargement du module.
-  // Un acces localStorage qui jette (iframe aux cookies bloques, certains modes
-  // prives) provoquerait exactement ce que ce produit redoute le plus: une page
-  // blanche au demarrage.
+  // `detectLang` runs when the store is created, so at module load time. A
+  // localStorage access that throws (iframe with blocked cookies, certain
+  // private modes) would cause exactly what this product dreads the most: a
+  // blank page on startup.
   let stored: Lang | null = null
   try {
     stored = localStorage.getItem(STORAGE_KEY) as Lang | null
@@ -479,7 +483,7 @@ export function detectLang(): Lang {
     const code = candidate.slice(0, 2).toLowerCase() as Lang
     if (code in DICTS) return code
   }
-  // l'anglais par defaut: un tracker de catastrophes est lu par n'importe qui
+  // English by default: a disaster tracker is read by anyone
   return 'en'
 }
 
@@ -487,12 +491,12 @@ export function persistLang(lang: Lang): void {
   try {
     localStorage.setItem(STORAGE_KEY, lang)
   } catch {
-    /* mode prive: la langue ne survivra pas au rechargement, sans plus */
+    /* private mode: the language won't survive a reload, that's all */
   }
 }
 
-/** Traduit, avec interpolation `{cle}`. Une chaine manquante retombe sur
- * l'anglais puis sur sa propre cle -- jamais sur du vide. */
+/** Translates, with `{key}` interpolation. A missing string falls back to
+ * English, then to its own key -- never to blank. */
 export function translate(lang: Lang, key: string, vars?: Record<string, string | number>): string {
   const value = DICTS[lang]?.[key] ?? DICTS.en[key] ?? key
   if (!vars) return value

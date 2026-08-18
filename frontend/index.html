@@ -1,32 +1,103 @@
 <!doctype html>
-<html lang="fr">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SOSForge -- seismes, tsunamis et alertes en direct</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <title>SOSForge -- live earthquake, tsunami and disaster tracker</title>
     <meta
       name="description"
-      content="Suivi temps reel des seismes, tsunamis, volcans et alertes catastrophes, a la seconde. Treize sources officielles agregees."
+      content="Live worldwide earthquakes, tsunamis, volcanoes, cyclones and disaster alerts. Nineteen official sources -- EMSC, USGS, NOAA, GDACS, JMA, BMKG and more -- in one real-time feed, updated every second. Free, no account, no API key."
     />
+    <link rel="canonical" href="https://sosforge.soclose.co/" />
     <meta name="theme-color" content="#111214" />
     <meta name="color-scheme" content="dark" />
 
-    <!-- Favicon en SVG inline: aucun fichier a charger, donc aucune requete de
-         plus au demarrage d'une page qui doit s'afficher vite. -->
+    <!-- Inline SVG favicon: no extra request on a page whose whole promise is
+         to come up fast. -->
     <link
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='15' fill='%23111214'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23d03b3b'/%3E%3Ccircle cx='16' cy='16' r='8.5' fill='none' stroke='%23d03b3b' stroke-opacity='.6' stroke-width='1.6'/%3E%3Ccircle cx='16' cy='16' r='13' fill='none' stroke='%23d03b3b' stroke-opacity='.28' stroke-width='1.4'/%3E%3C/svg%3E"
     />
 
-    <meta property="og:title" content="SOSForge" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SOSForge" />
+    <meta property="og:url" content="https://sosforge.soclose.co/" />
+    <meta property="og:title" content="SOSForge -- live earthquake, tsunami and disaster tracker" />
     <meta
       property="og:description"
-      content="Seismes, tsunamis, volcans et alertes catastrophes en direct, a la seconde."
+      content="Nineteen official feeds in one live stream: earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, pushed to your browser every second."
     />
-    <meta property="og:type" content="website" />
+    <meta property="og:image" content="https://sosforge.soclose.co/preview.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="SOSForge -- live earthquake and tsunami tracker" />
+    <meta
+      name="twitter:description"
+      content="Nineteen official feeds in one live stream, updated every second. Free, no account, no API key."
+    />
+    <meta name="twitter:image" content="https://sosforge.soclose.co/preview.png" />
+
+    <!-- Structured data: this is an application, and it is free. Both facts are
+         what a search engine can actually show in a result. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "SOSForge",
+        "url": "https://sosforge.soclose.co/",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript and WebGL for the map",
+        "description": "Live worldwide tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, aggregating nineteen official sources into a single real-time feed.",
+        "inLanguage": ["en", "fr", "es", "ja", "id"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": { "@type": "Organization", "name": "SoClose", "url": "https://soclose.co" },
+        "license": "https://opensource.org/licenses/MIT",
+        "codeRepository": "https://github.com/SoCloseSociety/SOSForge"
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
+
+    <!-- A crawler, a text browser and anyone with JavaScript off all land on an
+         empty div otherwise. This is the only description of the product they
+         will ever see, so it says what it is and where the data comes from. -->
+    <noscript>
+      <main style="max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem; font-family: system-ui, sans-serif; color: #fff; background: #0d0d0d;">
+        <h1>SOSForge -- live earthquake, tsunami and disaster tracker</h1>
+        <p>
+          SOSForge aggregates nineteen official public feeds into a single live stream of
+          earthquakes, tsunamis, volcanic activity, tropical cyclones and disaster alerts,
+          pushed to the browser over a websocket with a one-second heartbeat.
+          <strong>This page needs JavaScript to display the live map and feed.</strong>
+        </p>
+        <h2>Where the data comes from</h2>
+        <ul>
+          <li>Earthquakes: EMSC (websocket push), USGS, GEOFON, JMA, BMKG, GeoNet, INGV, AFAD, CENC</li>
+          <li>Earthquake early warning: JMA, issued while the seismic waves are still travelling</li>
+          <li>Tsunamis: NOAA NTWC and PTWC bulletins</li>
+          <li>Volcanoes: USGS HANS with the Smithsonian catalogue, and volcanic-ash SIGMETs</li>
+          <li>Cyclones, floods, wildfires and other hazards: NOAA NHC, GDACS, NASA EONET, NWS, Meteoalarm, WMO</li>
+        </ul>
+        <p>
+          The raw feed is available without JavaScript:
+          <a href="/api/events" style="color: #3987e5">/api/events</a> returns the recent events as
+          JSON, and <a href="/api/sources" style="color: #3987e5">/api/sources</a> reports the live
+          health of every source.
+        </p>
+        <p>
+          Free software under the MIT licence --
+          <a href="https://github.com/SoCloseSociety/SOSForge" style="color: #3987e5">source code on GitHub</a>.
+        </p>
+        <p>
+          <em>SOSForge is not an official warning service. In a real emergency, your local civil
+          protection authority is the reference.</em>
+        </p>
+      </main>
+    </noscript>
+
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -13,7 +13,7 @@ import type { SosEvent } from '../types'
 
 interface Props {
   events: SosEvent[]
-  /** horodatage serveur courant, rafraichi chaque seconde */
+  /** current server timestamp, refreshed every second */
   now: number
   emptyKey: string
 }
@@ -72,8 +72,8 @@ export function Feed({ events, now, emptyKey }: Props) {
     return <div className="feed-empty">{t(emptyKey)}</div>
   }
   return (
-    // aria-live="polite": un nouvel evenement est annonce sans interrompre la
-    // lecture en cours. "assertive" serait insupportable a 20 evenements/minute.
+    // aria-live="polite": a new event is announced without interrupting
+    // ongoing reading. "assertive" would be unbearable at 20 events/minute.
     <div className="feed" role="feed" aria-live="polite" aria-busy={false}>
       {events.map((event) => (
         <Row key={event.id} event={event} now={now} />

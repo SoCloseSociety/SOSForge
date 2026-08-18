@@ -1,4 +1,4 @@
-"""Modele d'evenement normalise, commun a toutes les sources."""
+"""Normalized event model, shared by all sources."""
 
 from __future__ import annotations
 
@@ -36,14 +36,14 @@ def utcnow() -> datetime:
 
 
 def to_utc(value: str | None) -> datetime | None:
-    """Parse un horodatage ISO et le ramene en UTC.
+    """Parses an ISO timestamp and brings it back to UTC.
 
-    Le piege que ce helper existe pour fermer: `fromisoformat("2026-08-17T10:00")`
-    rend un datetime NAIF, et `.astimezone(UTC)` l'interprete alors comme l'heure
-    LOCALE DU SERVEUR. Un backend a Paris decalerait silencieusement de deux
-    heures tous les evenements d'une source qui omet son fuseau -- pas de crash,
-    juste des heures fausses sur un produit d'urgence. Ici, un horodatage sans
-    fuseau est declare UTC, ce que font toutes nos sources.
+    The trap this helper exists to close: `fromisoformat("2026-08-17T10:00")`
+    returns a NAIVE datetime, and `.astimezone(UTC)` then interprets it as the
+    SERVER'S LOCAL time. A backend in Paris would silently shift every event
+    of a source that omits its timezone by two hours -- no crash, just wrong
+    times on an emergency product. Here, a timestamp without a timezone is
+    declared UTC, which is what all our sources do.
     """
     if not value:
         return None
@@ -55,21 +55,21 @@ def to_utc(value: str | None) -> datetime | None:
 
 
 class Event(BaseModel):
-    """Un evenement, quelle que soit sa source."""
+    """An event, whatever its source."""
 
-    id: str = Field(description="identifiant stable: <source>:<source_id>")
+    id: str = Field(description="stable identifier: <source>:<source_id>")
     source: str
     source_id: str
     kind: Kind = Kind.OTHER
 
-    # temps de l'evenement lui-meme, et temps ou SOSForge l'a vu passer
+    # time of the event itself, and time when SOSForge saw it go by
     time: datetime
     received_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime | None = None
-    # derniere fois qu'une source a mentionne cet evenement. Sert a purger les
-    # alertes "en cours" que leur source a cesse de publier: sans ca, un cyclone
-    # dissipe ou un vieux bulletin volcanique restait affiche indefiniment,
-    # puisque l'horizon d'ingestion exempte justement les alertes en cours.
+    # last time a source mentioned this event. Used to purge "ongoing" alerts
+    # whose source has stopped publishing them: without it, a dissipated
+    # cyclone or an old volcanic bulletin stayed displayed indefinitely, since
+    # the ingestion horizon precisely exempts ongoing alerts.
     last_seen: datetime = Field(default_factory=utcnow)
 
     lat: float | None = None
@@ -82,23 +82,23 @@ class Event(BaseModel):
     place: str = ""
     region: str | None = None
     country: str | None = None
-    # code ISO 3166-1 alpha-2, resolu dans le pipeline. None quand on ne peut pas
-    # conclure honnetement (haute mer): l'interface affiche alors un globe.
+    # ISO 3166-1 alpha-2 code, resolved in the pipeline. None when we cannot
+    # honestly conclude (high seas): the UI then shows a globe.
     country_code: str | None = None
 
     severity: Severity = Severity.INFO
-    # Evenement declare EN COURS par sa source (feu actif EONET, tempete NHC
-    # active, alerte GDACS courante). Il echappe a l'horizon d'ingestion tant
-    # que sa source continue de le publier -- c'est le balayage des alertes
-    # devenues muettes qui le fera partir, pas son age.
+    # Event declared ONGOING by its source (active EONET fire, active NHC
+    # storm, current GDACS alert). It escapes the ingestion horizon as long as
+    # its source keeps publishing it -- the sweep of alerts gone silent is
+    # what will remove it, not its age.
     ongoing: bool = False
     tsunami: bool = False
-    alert: str | None = Field(default=None, description="PAGER USGS: green/yellow/orange/red")
+    alert: str | None = Field(default=None, description="USGS PAGER: green/yellow/orange/red")
 
     title: str = ""
     url: str | None = None
 
-    # rempli par le deduplicateur: plusieurs sources decrivent le meme evenement
+    # filled by the deduplicator: several sources describe the same event
     cluster_id: str | None = None
     revision: int = 0
 
@@ -109,7 +109,7 @@ class Event(BaseModel):
         return (utcnow() - self.time).total_seconds()
 
     def fingerprint(self) -> str:
-        """Empreinte du contenu: sert a detecter une revision d'un evenement deja vu."""
+        """Content fingerprint: used to detect a revision of an event already seen."""
         parts = [
             f"{self.magnitude}",
             f"{round(self.lat, 3) if self.lat is not None else None}",
@@ -122,12 +122,12 @@ class Event(BaseModel):
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
 
     def public(self) -> dict[str, Any]:
-        """Payload envoye au navigateur (sans le `raw`, qui est lourd)."""
+        """Payload sent to the browser (without `raw`, which is heavy)."""
         return self.model_dump(mode="json", exclude={"raw"})
 
 
 def severity_from_magnitude(mag: float | None, tsunami: bool = False) -> Severity:
-    """Echelle de gravite maison, calee sur le ressenti/degats typiques."""
+    """In-house severity scale, calibrated on typical felt intensity/damage."""
     if tsunami:
         return Severity.EXTREME
     if mag is None:

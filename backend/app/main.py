@@ -1,4 +1,4 @@
-"""SOSForge -- API + hub temps reel."""
+"""SOSForge -- API + real-time hub."""
 
 from __future__ import annotations
 
@@ -111,14 +111,14 @@ def build_sources() -> list[Source]:
 
 
 async def heartbeat() -> None:
-    """Un tick par seconde: prouve au client que le flux est vivant et resynchronise
-    les horloges (l'UI affiche un age "il y a N s" calcule sur l'heure serveur)."""
+    """One tick per second: proves to the client that the feed is alive and
+    resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
     while True:
         await asyncio.sleep(settings.heartbeat_seconds)
-        # Une seule exception non rattrapee ici tuait la tache pour de bon: plus
-        # aucun tick, donc tous les clients se declarent deconnectes au bout de
-        # 15 s et bouclent en reconnexion -- pendant que /healthz repond "ok".
-        # C'est la promesse de fraicheur qui tombe en silence.
+        # A single uncaught exception here killed the task for good: no more
+        # ticks, so every client declared itself disconnected after 15 s and
+        # looped on reconnection -- while /healthz answered "ok". That is the
+        # freshness promise failing silently.
         try:
             if not hub.client_count:
                 continue
@@ -139,24 +139,24 @@ async def heartbeat() -> None:
 
 
 async def sweep_stale() -> None:
-    """Balaye les alertes que plus aucune source ne mentionne."""
+    """Sweeps out the alerts no source mentions anymore."""
     while True:
         await asyncio.sleep(settings.sweep_seconds)
-        # meme raison que le heartbeat: cette tache doit survivre a ses erreurs
+        # same reason as the heartbeat: this task must survive its errors
         try:
             removed = store.prune_stale(settings.stale_after_hours)
             if removed:
                 log.info(
-                    "purge: %d alertes sans nouvelle depuis %.0f h (%s)",
+                    "purge: %d alerts with no news for %.0f h (%s)",
                     len(removed),
                     settings.stale_after_hours,
                     ", ".join(sorted({e.source for e in removed})),
                 )
             journals = store.purge_journals(settings.journal_keep_days)
             if journals:
-                log.info("journaux supprimes: %s", ", ".join(j.name for j in journals))
+                log.info("journals deleted: %s", ", ".join(j.name for j in journals))
         except Exception as exc:
-            log.warning("balayage: %s", exc)
+            log.warning("sweep: %s", exc)
 
 
 @asynccontextmanager
@@ -164,52 +164,50 @@ async def lifespan(app: FastAPI):
     global sources
     sources = build_sources()
 
-    # 1. remplir la carte avant d'ouvrir les vannes: d'abord le journal local
-    # (il contient les push EMSC et les bulletins, que le backfill USGS ignore),
-    # puis le rattrapage reseau.
+    # 1. fill the map before opening the floodgates: first the local journal
+    # (it contains the EMSC pushes and the bulletins, which the USGS backfill
+    # ignores), then the network catch-up.
     pipeline.quiet = True
     try:
-        # La veille AUSSI: un redemarrage a 00h15 ne rejouait qu'un quart
-        # d'heure de journal, et tout ce qui n'est pas un seisme (cyclones,
-        # bulletins tsunami, volcans, feux) disparaissait -- alors que
-        # l'interface propose 24 h et "tout".
+        # The previous day TOO: a restart at 00:15 only replayed a quarter
+        # hour of journal, and everything that is not a quake (cyclones,
+        # tsunami bulletins, volcanoes, fires) disappeared -- while the UI
+        # offers 24 h and "all".
         today = utcnow()
         restored = sum(
             store.load_backlog(settings.data_dir / f"events-{day:%Y-%m-%d}.jsonl")
             for day in (today - timedelta(days=1), today)
         )
         if restored:
-            log.info("journal local: %d evenements restaures", restored)
+            log.info("local journal: %d events restored", restored)
     except Exception as exc:
-        log.warning("journal local illisible (%s)", exc)
+        log.warning("local journal unreadable (%s)", exc)
     try:
         count = await backfill(settings.backfill_url, pipeline.emit)
-        log.info("backfill: %d evenements charges", count)
+        log.info("backfill: %d events loaded", count)
     except Exception as exc:
-        log.warning("backfill impossible (%s), demarrage a froid", exc)
+        log.warning("backfill failed (%s), cold start", exc)
     finally:
         pipeline.quiet = False
 
-    # 2. lancer les ingesteurs + le heartbeat
+    # 2. start the ingesters + the heartbeat
     tasks = [asyncio.create_task(s.supervise(pipeline.emit), name=f"src:{s.name}") for s in sources]
     tasks.append(asyncio.create_task(heartbeat(), name="heartbeat"))
     tasks.append(asyncio.create_task(sweep_stale(), name="sweep"))
-    log.info(
-        "SOSForge en ligne -- %d sources: %s", len(sources), ", ".join(s.name for s in sources)
-    )
+    log.info("SOSForge online -- %d sources: %s", len(sources), ", ".join(s.name for s in sources))
 
     yield
 
     for task in tasks:
         task.cancel()
     await asyncio.gather(*tasks, return_exceptions=True)
-    log.info("SOSForge arrete")
+    log.info("SOSForge stopped")
 
 
 app = FastAPI(
     title="SOSForge",
     version="1.0.0",
-    description="Suivi temps reel des seismes, tsunamis et catastrophes naturelles",
+    description="Real-time tracking of earthquakes, tsunamis and natural disasters",
     lifespan=lifespan,
 )
 app.add_middleware(
@@ -258,13 +256,13 @@ async def api_events(
     }
 
 
-# ATTENTION a l'ordre: le converter `:path` avale les slashs, donc la route
-# generique `/api/events/{event_id:path}` matcherait aussi ".../nearby" si elle
-# etait declaree avant. La plus specifique passe en premier.
+# MIND the order: the `:path` converter swallows slashes, so the generic
+# route `/api/events/{event_id:path}` would also match ".../nearby" if it were
+# declared first. The most specific one goes first.
 @app.get("/api/events/{event_id:path}/nearby")
 async def api_nearby(event_id: str) -> dict:
-    """Vues en direct autour d'un evenement: liens profonds toujours disponibles,
-    plus les webcams publiques si une cle Windy est configuree."""
+    """Live views around an event: deep links always available, plus the
+    public webcams if a Windy key is configured."""
     event = store.get(event_id)
     if event is None or event.lat is None or event.lon is None:
         return {"found": False, "links": [], "cameras": []}
@@ -289,8 +287,8 @@ async def api_event(event_id: str) -> dict:
 
 @app.get("/api/geocode")
 async def api_geocode(q: str = Query(min_length=2, max_length=120)) -> dict:
-    """Recherche d'une zone par son nom. Proxifie pour tenir la cadence
-    imposee par Nominatim (1 req/s) que des appels navigateur violeraient."""
+    """Area search by name. Proxied to hold the rate Nominatim imposes
+    (1 req/s), which browser calls would violate."""
     return {"query": q, "results": await geocode_search(q)}
 
 
@@ -301,9 +299,9 @@ async def api_stats() -> dict:
 
 @app.get("/api/sources")
 async def api_sources() -> dict:
-    # `events_seen` compte ce que la source a LU a chaque cycle (la liste JMA en
-    # rend 763 a chaque poll), `ingested` ce qui est reellement entre dans le
-    # store. Afficher le premier seul donnait une observabilite trompeuse.
+    # `events_seen` counts what the source READ each cycle (the JMA list
+    # returns 763 every poll), `ingested` what actually entered the store.
+    # Showing only the former gave misleading observability.
     ingested = store.counters
     return {
         "server_time": utcnow().isoformat(),
@@ -350,8 +348,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                         [getter, evicted], return_when=asyncio.FIRST_COMPLETED
                     )
                     if evicted in done:
-                        # le hub nous a ejecte (client trop lent): on ferme
-                        # franchement au lieu de laisser une connexion muette
+                        # the hub evicted us (client too slow): close cleanly
+                        # instead of leaving a silent connection
                         await ws.close(code=1013)
                         return
                     payload = getter.result()
@@ -362,8 +360,8 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 evicted.cancel()
 
         async def drain() -> None:
-            # on ne fait rien des messages entrants, mais les lire est ce qui
-            # detecte la deconnexion du navigateur
+            # incoming messages are unused, but reading them is what detects
+            # the browser's disconnection
             while True:
                 await ws.receive_text()
 
@@ -379,7 +377,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     except WebSocketDisconnect:
         pass
     except Exception as exc:
-        log.debug("websocket %s termine: %s", client.id, exc)
+        log.debug("websocket %s ended: %s", client.id, exc)
     finally:
         await hub.unregister(client)
 

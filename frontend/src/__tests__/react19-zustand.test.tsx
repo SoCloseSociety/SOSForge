@@ -1,12 +1,12 @@
-/** Le piege React 19 / Zustand qui a mis le projet a genoux: un selecteur qui
- * construit un nouveau tableau a chaque appel fait boucler
- * `useSyncExternalStore` et le composant ne monte JAMAIS -- page blanche,
- * build vert, aucune erreur visible dans l'UI.
+/** The React 19 / Zustand trap that brought the project to its knees: a
+ * selector that builds a new array on every call makes
+ * `useSyncExternalStore` loop and the component NEVER mounts -- blank page,
+ * green build, no visible error in the UI.
  *
- * Ces tests protegent les deux faces de la regle:
- * 1. le motif correct (tranches stables + `useMemo`, comme dans App.tsx) monte;
- * 2. le motif fautif (filterEvents directement dans le selecteur) explose de
- *    facon detectable en test, au lieu de passer inapercu.
+ * These tests protect both sides of the rule:
+ * 1. the correct pattern (stable slices + `useMemo`, as in App.tsx) mounts;
+ * 2. the faulty pattern (filterEvents directly in the selector) blows up
+ *    detectably in a test, instead of slipping through unnoticed.
  */
 import { useMemo } from 'react'
 import { render, screen } from '@testing-library/react'
@@ -14,8 +14,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { filterEvents, useStore } from '../store'
 import { NOW, makeEvent, minutesAgo, resetStore } from './helpers'
 
-/** Le motif correct, calque sur App.tsx: selecteurs sur des tranches stables
- * (`s.events`, `s.filters`), derivation memoisee cote composant. */
+/** The correct pattern, modeled on App.tsx: selectors on stable slices
+ * (`s.events`, `s.filters`), memoized derivation on the component side. */
 function GoodFeedCount() {
   const events = useStore((s) => s.events)
   const filters = useStore((s) => s.filters)
@@ -23,7 +23,7 @@ function GoodFeedCount() {
   return <div data-testid="count">{visible.length}</div>
 }
 
-/** Le motif fautif: le selecteur renvoie un tableau NEUF a chaque appel. */
+/** The faulty pattern: the selector returns a FRESH array on every call. */
 function FaultyFeedCount() {
   const visible = useStore((s) => filterEvents(s.events, s.filters, NOW))
   return <div data-testid="count">{visible.length}</div>
@@ -43,18 +43,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('derivations Zustand sous React 19', () => {
-  it('un composant qui derive via useMemo sur des tranches stables monte et rend', () => {
+describe('Zustand derivations under React 19', () => {
+  it('a component deriving via useMemo on stable slices mounts and renders', () => {
     render(<GoodFeedCount />)
     expect(screen.getByTestId('count')).toHaveTextContent('2')
   })
 
-  it('un selecteur qui fabrique un nouveau tableau a chaque appel ne monte jamais', () => {
-    // React detecte le snapshot instable et jette (boucle infinie coupee par
-    // le garde-fou "Maximum update depth" ou l'erreur getSnapshot). C'est
-    // exactement le symptome page-blanche: le rendu n'aboutit pas.
-    // On coupe console.error: React log abondamment avant de jeter, et ce
-    // bruit attendu noierait la sortie du test.
+  it('a selector that builds a new array on every call never mounts', () => {
+    // React detects the unstable snapshot and throws (infinite loop cut short
+    // by the "Maximum update depth" guard or the getSnapshot error). This is
+    // exactly the blank-page symptom: the render never completes.
+    // console.error is silenced: React logs profusely before throwing, and
+    // that expected noise would drown the test output.
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => render(<FaultyFeedCount />)).toThrow(
       /getSnapshot|Maximum update depth/i,
