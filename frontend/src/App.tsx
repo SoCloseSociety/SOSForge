@@ -7,6 +7,7 @@ import { MapView } from './components/MapView'
 import { LivePanel } from './components/LivePanel'
 import { SearchBar } from './components/SearchBar'
 import { ArrivalAlert } from './components/ArrivalAlert'
+import { WatchPanel } from './components/WatchPanel'
 import { LANGS } from './i18n'
 import {
   KIND_GLYPH,
@@ -112,7 +113,7 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
   )
 }
 
-function Filters({ events }: { events: SosEvent[] }) {
+function Filters({ events, now }: { events: SosEvent[]; now: number }) {
   const filters = useStore((s) => s.filters)
   const toggleKind = useStore((s) => s.toggleKind)
   const setMinMagnitude = useStore((s) => s.setMinMagnitude)
@@ -131,6 +132,10 @@ function Filters({ events }: { events: SosEvent[] }) {
           THERE", the question people ask when they open a tracker after
           hearing about something. */}
       <SearchBar />
+
+      {/* Location watch sits right under the search: both answer the same
+          question, "what is happening where I care about". */}
+      <WatchPanel events={events} now={now} />
 
       {/* Then the window: it's what separates live from historical, and
           therefore the question the user is asking when they arrive. */}
@@ -297,7 +302,7 @@ export default function App() {
 
       <div className="body">
         <section className="panel">
-          <Filters events={events} />
+          <Filters events={events} now={now} />
           <Feed
             events={visible}
             now={now}

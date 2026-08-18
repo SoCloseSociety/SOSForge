@@ -30,10 +30,15 @@ export interface SosEvent {
   country: string | null
   country_code: string | null
   severity: Severity
+  /** declared ONGOING by its source (active fire, live storm, running warning).
+   * It stays relevant while it runs, unlike a past earthquake. */
+  ongoing: boolean
   tsunami: boolean
   alert: string | null
   title: string
   url: string | null
+  /** forecast positions, when the source publishes them (NHC cyclone tracks) */
+  forecast_track: { tau?: number; valid?: string; lat?: number; lon?: number; wind_kt?: number; category?: number }[] | null
   cluster_id: string | null
   revision: number
 }

@@ -5,6 +5,7 @@ import { useStore } from '../store'
 import { SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
 import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
+import { forecastTracks } from '../tracks'
 
 /** Dark CARTO basemap: no API key needed, OSM + CARTO attribution required. */
 const STYLE: maplibregl.StyleSpecification = {
@@ -140,6 +141,25 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     instance.on('load', () => {
+      // Tectonic plate boundaries, at the very bottom of the stack.
+      //
+      // This is the only static layer in the product, and it earns its place:
+      // almost every earthquake on the map sits on one of these lines, and
+      // seeing that turns a scatter of dots into a readable planet. Subduction
+      // zones are drawn thicker -- that is where the biggest quakes and nearly
+      // every tsunami come from.
+      instance.addSource('plates', { type: 'geojson', data: '/plate-boundaries.json' })
+      instance.addLayer({
+        id: 'plates',
+        type: 'line',
+        source: 'plates',
+        paint: {
+          'line-color': ['case', ['==', ['get', 'type'], 'subduction'], '#8a6a3a', '#4a4a46'],
+          'line-width': ['case', ['==', ['get', 'type'], 'subduction'], 1.6, 0.9],
+          'line-opacity': 0.75,
+        },
+      })
+
       instance.addSource('events', { type: 'geojson', data: toFeatureCollection([], new Set()) })
 
       // P and S wave fronts, BELOW the markers: they provide context, they
@@ -168,6 +188,38 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
           'line-color': SEVERITY_META.severe.color,
           'line-width': 2,
           'line-opacity': ['*', ['get', 'opacity'], 0.8],
+        },
+      })
+
+      // Forecast cyclone tracks: the only line on this map that shows the
+      // FUTURE. Dashed on purpose -- a solid line would read as observed.
+      instance.addSource('tracks', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      instance.addLayer({
+        id: 'tracks-line',
+        type: 'line',
+        source: 'tracks',
+        filter: ['==', ['geometry-type'], 'LineString'],
+        paint: {
+          'line-color': SEVERITY_META.severe.color,
+          'line-width': 2,
+          'line-dasharray': [2, 2],
+          'line-opacity': 0.85,
+        },
+      })
+      instance.addLayer({
+        id: 'tracks-point',
+        type: 'circle',
+        source: 'tracks',
+        filter: ['==', ['geometry-type'], 'Point'],
+        paint: {
+          'circle-radius': 3.5,
+          'circle-color': SEVERITY_META.severe.color,
+          'circle-opacity': 0.9,
+          'circle-stroke-width': 1,
+          'circle-stroke-color': 'rgba(0,0,0,0.5)',
         },
       })
 
@@ -231,6 +283,13 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     const source = map.current.getSource('events') as maplibregl.GeoJSONSource | undefined
     source?.setData(toFeatureCollection(events, fresh))
   }, [events, fresh])
+
+  // --- forecast tracks: fed from the storms' raw payload
+  useEffect(() => {
+    if (!map.current || !ready.current) return
+    const source = map.current.getSource('tracks') as maplibregl.GeoJSONSource | undefined
+    source?.setData(forecastTracks(events))
+  }, [events])
 
   // --- wave fronts: a loop that runs ONLY when there's an earthquake recent
   // enough for its waves to still be propagating. The rest of the time, no

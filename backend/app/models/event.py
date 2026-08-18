@@ -98,6 +98,12 @@ class Event(BaseModel):
     title: str = ""
     url: str | None = None
 
+    # Forecast positions, when the source publishes them (NHC cyclone tracks).
+    # A first-class field rather than a corner of `raw`, because `public()`
+    # strips `raw` before sending to the browser -- and a forecast the client
+    # never receives is a forecast that does not exist.
+    forecast_track: list[dict[str, Any]] | None = None
+
     # filled by the deduplicator: several sources describe the same event
     cluster_id: str | None = None
     revision: int = 0

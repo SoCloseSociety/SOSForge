@@ -189,7 +189,13 @@ class NhcSource(JsonPollSource):
         if not bins_needed:
             return
 
-        await self._ensure_layer_cache(client, bins_needed)
+        try:
+            await self._ensure_layer_cache(client, bins_needed)
+        except Exception as exc:
+            # this whole method is a supplementary detail: a failure to even
+            # resolve the layer directory must not propagate any further
+            log.warning("%s: layer directory fetch failed: %s", self.name, exc)
+            return
         if not self._layer_ids:
             return
 
@@ -219,6 +225,12 @@ class NhcSource(JsonPollSource):
 
             if track:
                 event.raw["forecast_track"] = track
+                # also as a first-class field: `public()` strips `raw`, so this
+                # is the only copy the browser will ever see
+                event.forecast_track = track
+            # also as a first-class field: `public()` strips `raw`, so this is
+            # the only copy the browser will ever see
+            event.forecast_track = track
 
     def _layer_cache_stale(self, bins_needed: set[str]) -> bool:
         if self._layer_ids is None or self._layer_cache_time is None:

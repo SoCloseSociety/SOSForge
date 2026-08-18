@@ -10,7 +10,7 @@
 const SW_URL = '/sw.js'
 
 export function registerServiceWorker(): void {
-  if (!('serviceWorker' in navigator)) return
+  if (!navigator.serviceWorker) return
 
   // A new worker just took control mid-session (sw.js calls skipWaiting +
   // clients.claim on activate): the page already loaded is running JS/CSS

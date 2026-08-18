@@ -1148,3 +1148,103 @@ button {
 .arrival-phase {
   font-variant-numeric: tabular-nums;
 }
+
+/* --------------------------------------------------- location watch */
+
+.watch {
+  display: grid;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+}
+
+.watch-cta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 4px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.watch-cta:hover {
+  color: var(--accent);
+}
+
+.watch-note {
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+.watch-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.watch-place {
+  font-size: 12.5px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watch-actions {
+  margin-left: auto;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.watch-actions button {
+  color: var(--ink-muted);
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 5px;
+}
+
+.watch-actions button:hover {
+  color: var(--ink);
+  background: var(--surface-3);
+}
+
+.watch-quiet {
+  margin: 0;
+  font-size: 11.5px;
+  color: var(--ink-muted);
+}
+
+.watch-alarms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.watch-alarms button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  padding: 4px 2px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+}
+
+.watch-alarms button:hover {
+  color: var(--ink);
+}
+
+.watch-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
