@@ -46,6 +46,7 @@ export const SOURCE_LABEL: Record<string, string> = {
   afad: 'AFAD',
   jma_eew: 'JMA alerte precoce',
   cenc: 'CENC',
+  swarm: 'Swarm detection',
 }
 
 /** The flag is computed from the ISO2 code (two Unicode regional indicator

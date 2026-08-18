@@ -9,11 +9,16 @@ worldwide feed that exists for this hazard.
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from app.models.event import Event, Kind, Severity, to_utc
-from app.sources.regional import JsonPollSource
+import httpx
+
+from app.models.event import Event, Kind, Severity, to_utc, utcnow
+from app.sources.base import Emit
+from app.sources.regional import USER_AGENT, JsonPollSource
 
 log = logging.getLogger(__name__)
 
@@ -33,12 +38,210 @@ def cyclone_severity(wind_kt: float | None, classification: str) -> Severity:
     return Severity.MINOR
 
 
+# --------------------------------------------------------------- forecast track
+#
+# CurrentStorms.json says WHERE a storm IS. The forecast track -- where the
+# NHC expects it to GO, up to 5 days out -- lives in a separate ArcGIS
+# service, one feature layer per storm bin (binNumber, e.g. "CP2"). Layer ids
+# are not stable across the season (they shift as storms form and dissipate),
+# so they must be resolved by NAME against the layer directory, not hardcoded.
+NHC_ARCGIS_ROOT = (
+    "https://mapservices.weather.noaa.gov/tropical/rest/services/"
+    "tropical/NHC_tropical_weather/MapServer"
+)
+
+# Storm bins are reused within a season but not created/destroyed every poll:
+# refreshing the layer directory this often is already generous, and it
+# still gets a forced refresh whenever a bin we need is missing from it.
+LAYER_CACHE_TTL = timedelta(hours=6)
+
+
+def _epoch_ms_to_utc(value: Any) -> datetime | None:
+    try:
+        return datetime.fromtimestamp(float(value) / 1000.0, tz=UTC)
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def _resolve_valid_time(validtime: str | None, anchor: datetime | None) -> datetime | None:
+    """`validtime` is "DD/HHMM" in UTC with no month or year of its own.
+
+    `anchor` (the forecast package's own `idp_filedate`) supplies them. A
+    forecast point never trails its package by more than a few hours, so a
+    candidate that lands far in the past means the day number wrapped past
+    the end of the month (a day-31 point anchored in an August package
+    belongs to September) -- roll forward one month and retry.
+    """
+    if not validtime or anchor is None or "/" not in validtime:
+        return None
+    day_str, _, hm_str = validtime.partition("/")
+    try:
+        day = int(day_str)
+        hour = int(hm_str[:2])
+        minute = int(hm_str[2:4])
+    except (ValueError, IndexError):
+        return None
+
+    def build(year: int, month: int) -> datetime | None:
+        try:
+            return datetime(year, month, day, hour, minute, tzinfo=UTC)
+        except ValueError:
+            return None
+
+    candidate = build(anchor.year, anchor.month)
+    if candidate is not None and candidate < anchor - timedelta(days=5):
+        month = anchor.month + 1 if anchor.month < 12 else 1
+        year = anchor.year if anchor.month < 12 else anchor.year + 1
+        candidate = build(year, month) or candidate
+    return candidate
+
+
+def parse_forecast_track(data: Any) -> list[dict]:
+    """Forecast points GeoJSON -> compact track, sorted by lead time.
+
+    TRAP verified on the live feed: `properties.lat`/`lon` are truncated to
+    whole degrees (rounding a 20.4N fix down to 20) -- the real precision is
+    only in `geometry.coordinates`. Never read position off the properties.
+    """
+    points: list[dict] = []
+    for feature in (data or {}).get("features") or []:
+        props = feature.get("properties") or {}
+        tau = props.get("tau")
+        geometry = feature.get("geometry") or {}
+        coords = geometry.get("coordinates") or []
+        if tau is None or len(coords) < 2:
+            continue
+        lon, lat = coords[0], coords[1]
+
+        try:
+            wind_kt = float(props["maxwind"]) if props.get("maxwind") is not None else None
+        except (TypeError, ValueError):
+            wind_kt = None
+
+        anchor = _epoch_ms_to_utc(props.get("idp_filedate"))
+        valid = _resolve_valid_time(props.get("validtime"), anchor)
+
+        points.append(
+            {
+                "tau": tau,
+                # falls back to the raw "DD/HHMM" string if the anchor is
+                # unusable -- still informative, never a hard failure
+                "valid": valid.isoformat() if valid else props.get("validtime"),
+                "lat": lat,
+                "lon": lon,
+                "wind_kt": wind_kt,
+                # Saffir-Simpson category; 0 == tropical storm, per NHC
+                "category": props.get("ssnum"),
+            }
+        )
+    points.sort(key=lambda p: p["tau"])
+    return points
+
+
 class NhcSource(JsonPollSource):
     """National Hurricane Center: Atlantic, East and Central Pacific basins."""
 
     name = "nhc"
     kind = "poll"
     url = "https://www.nhc.noaa.gov/CurrentStorms.json"
+
+    def __init__(self, poll_seconds: float = 300.0, url: str | None = None) -> None:
+        super().__init__(poll_seconds=poll_seconds, url=url)
+        # layer name ("CP2 Forecast Points") -> layer id, resolved once and
+        # reused across polls; see LAYER_CACHE_TTL
+        self._layer_ids: dict[str, int] | None = None
+        self._layer_cache_time: datetime | None = None
+
+    async def run(self, emit: Emit) -> None:
+        headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        async with httpx.AsyncClient(
+            timeout=30.0, headers=headers, follow_redirects=True
+        ) as client:
+            while True:
+                try:
+                    resp = await client.get(self.build_url())
+                    resp.raise_for_status()
+                    data = resp.json()
+                    events = self.parse_payload(data)
+                    # forecast tracks are a supplementary detail on top of
+                    # each storm's current position: a fetch failure here
+                    # must never cost us the position itself, so it is
+                    # isolated in its own try -- the storm event above is
+                    # already built and will be emitted regardless.
+                    try:
+                        await self._attach_forecast_tracks(client, events, data)
+                    except Exception as exc:
+                        log.warning("%s: forecast tracks failed: %s", self.name, exc)
+                    for event in events:
+                        await emit(event)
+                    self.health.ok(len(events))
+                except Exception as exc:
+                    self.health.fail(exc)
+                    log.warning("%s: %s", self.name, exc)
+                await asyncio.sleep(self.poll_seconds)
+
+    async def _attach_forecast_tracks(
+        self, client: httpx.AsyncClient, events: list[Event], data: Any
+    ) -> None:
+        storms = (data or {}).get("activeStorms") or []
+        events_by_id = {e.source_id: e for e in events}
+        bins_needed = {s.get("binNumber") for s in storms if s.get("binNumber")}
+        if not bins_needed:
+            return
+
+        await self._ensure_layer_cache(client, bins_needed)
+        if not self._layer_ids:
+            return
+
+        for storm in storms:
+            storm_id = storm.get("id")
+            bin_number = storm.get("binNumber")
+            event = events_by_id.get(str(storm_id)) if storm_id else None
+            if event is None or not bin_number:
+                continue
+
+            layer_id = self._layer_ids.get(f"{bin_number} Forecast Points")
+            if layer_id is None:
+                # the bin has no forecast layer right now (storm just
+                # formed, or it is a remnant with no active advisory)
+                continue
+
+            try:
+                resp = await client.get(
+                    f"{NHC_ARCGIS_ROOT}/{layer_id}/query",
+                    params={"where": "1=1", "outFields": "*", "f": "geojson"},
+                )
+                resp.raise_for_status()
+                track = parse_forecast_track(resp.json())
+            except Exception as exc:
+                log.warning("%s: forecast points for %s failed: %s", self.name, bin_number, exc)
+                continue
+
+            if track:
+                event.raw["forecast_track"] = track
+
+    def _layer_cache_stale(self, bins_needed: set[str]) -> bool:
+        if self._layer_ids is None or self._layer_cache_time is None:
+            return True
+        if utcnow() - self._layer_cache_time > LAYER_CACHE_TTL:
+            return True
+        # a bin that just started publishing forecasts won't be in a cache
+        # built before it existed -- force one refresh rather than wait
+        # up to LAYER_CACHE_TTL to notice it
+        return any(f"{b} Forecast Points" not in self._layer_ids for b in bins_needed)
+
+    async def _ensure_layer_cache(self, client: httpx.AsyncClient, bins_needed: set[str]) -> None:
+        if not self._layer_cache_stale(bins_needed):
+            return
+        resp = await client.get(f"{NHC_ARCGIS_ROOT}/layers", params={"f": "json"})
+        resp.raise_for_status()
+        data = resp.json()
+        self._layer_ids = {
+            layer["name"]: layer["id"]
+            for layer in data.get("layers") or []
+            if layer.get("name") and layer.get("id") is not None
+        }
+        self._layer_cache_time = utcnow()
 
     def parse_payload(self, data) -> list[Event]:
         events: list[Event] = []

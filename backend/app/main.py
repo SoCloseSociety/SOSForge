@@ -38,6 +38,8 @@ from app.sources.tsunami import TsunamiSource
 from app.sources.usgs import UsgsSource, backfill
 from app.sources.volcano import VolcanoSource
 from app.store.ring import EventStore
+from app.swarm import as_event as swarm_event
+from app.swarm import detect as detect_swarms
 
 logging.basicConfig(
     level=settings.log_level,
@@ -152,6 +154,18 @@ async def sweep_stale() -> None:
                     settings.stale_after_hours,
                     ", ".join(sorted({e.source for e in removed})),
                 )
+            # Swarm detection runs on the store, not on a source: it is a
+            # pattern across events, so it can only be seen once they are all
+            # in one place.
+            if settings.enable_swarm_detection:
+                for swarm in detect_swarms(
+                    store.recent(limit=settings.ring_size, primary_only=True),
+                    radius_km=settings.swarm_radius_km,
+                    window_hours=settings.swarm_window_hours,
+                    min_count=settings.swarm_min_count,
+                ):
+                    await pipeline.emit(swarm_event(swarm))
+
             journals = store.purge_journals(settings.journal_keep_days)
             if journals:
                 log.info("journals deleted: %s", ", ".join(j.name for j in journals))

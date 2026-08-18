@@ -121,6 +121,14 @@ class Settings(BaseSettings):
     # products of the suite
     journal_keep_days: int = 7
 
+    # --- swarm detection (computed on our own feed, no extra source) ---
+    # Conservative on purpose: a tracker that cries "swarm" over five ordinary
+    # aftershocks teaches its readers to ignore it.
+    enable_swarm_detection: bool = True
+    swarm_radius_km: float = 30.0
+    swarm_window_hours: float = 24.0
+    swarm_min_count: int = 8
+
     # --- cross-source dedup ---
     dedupe_window_seconds: float = 90.0
     dedupe_radius_km: float = 250.0
