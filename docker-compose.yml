@@ -20,7 +20,10 @@ services:
     depends_on:
       - api
     ports:
-      - '8380:80'
+      # Loopback uniquement: en production, seul le nginx de l'hote parle a ce
+      # conteneur (il porte le TLS et le nom de domaine). L'exposer sur toutes
+      # les interfaces publierait le site en HTTP clair sur un port de la machine.
+      - '127.0.0.1:8380:80'
     restart: unless-stopped
 
 volumes:
