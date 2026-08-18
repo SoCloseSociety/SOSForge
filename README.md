@@ -1,5 +1,11 @@
 # SOSForge
 
+[![CI](https://github.com/SoCloseSociety/SOSForge/actions/workflows/ci.yml/badge.svg)](https://github.com/SoCloseSociety/SOSForge/actions/workflows/ci.yml)
+[![Live](https://img.shields.io/badge/demo-live-0ca30c)](https://sosforge.185.246.86.143.nip.io)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-3987e5)](LICENSE)
+
+**En ligne: <https://sosforge.185.246.86.143.nip.io>**
+
 Suivi **temps reel** des seismes, tsunamis, volcans, cyclones et alertes
 catastrophes. Un flux unique, agrege depuis **dix-neuf sources officielles**,
 diffuse a la seconde vers le navigateur par websocket. Interface en cinq langues.
@@ -67,6 +73,28 @@ vite que sa regeneration ne rendrait rien de plus.
 | Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{pays}` | poll 300 s | vigilances des services meteo nationaux de dix pays europeens |
 | JMA alerte precoce | `api.wolfx.jp/jma_eew.json` | poll 5 s | **la seule source emise PENDANT la propagation des ondes**, avant l'arrivee des secousses |
 | CENC (Chine) | `api.wolfx.jp/cenc_eqlist.json` | poll 120 s | Chine continentale, sans autre couverture ici |
+
+## Deploiement
+
+Le service tourne sur le VPS SoClose derriere le nginx de l'hote, qui porte le
+TLS et le nom de domaine; le conteneur, lui, n'ecoute que sur la loopback.
+
+```bash
+ssh hub
+cd /root/SAAS/sosforge && git pull && docker compose up -d --build
+```
+
+| | |
+|---|---|
+| Chemin sur le serveur | `/root/SAAS/sosforge` |
+| Port interne | `127.0.0.1:8380` (nginx de l'hote proxifie dessus) |
+| Vhost | `/etc/nginx/sites-available/sosforge.soclose.co` |
+| Certificat | `certbot certonly --webroot -w /var/www/certbot -d <nom>` |
+| Donnees | volume docker `sos-data` (journal JSONL, purge a 7 jours) |
+
+L'entete de securite est posee cote hote: CSP restrictive (le site ne charge que
+son propre code, les tuiles CARTO et le websocket), `nosniff`, HSTS, et une
+redirection permanente de HTTP vers HTTPS.
 
 ## Demarrage
 
