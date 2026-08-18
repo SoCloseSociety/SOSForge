@@ -9,14 +9,14 @@ import uuid
 from contextlib import asynccontextmanager
 from datetime import timedelta
 
-from fastapi import FastAPI, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.dedupe import Deduper
 from app.geocode import search as geocode_search
 from app.hub import Client, hub
-from app.models.event import utcnow
+from app.models.event import Kind, utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
 from app.sources.aftershock import AftershockSource
@@ -232,7 +232,10 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_list or ["*"],
+    # No wildcard fallback: an empty CORS_ORIGINS means "no cross-origin
+    # access", not "everyone". The wildcard was a footgun waiting for the day
+    # someone adds authentication.
+    allow_origins=settings.cors_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -253,18 +256,44 @@ async def healthz() -> dict:
     }
 
 
+@app.get("/readyz")
+async def readyz(response: Response) -> dict:
+    """Readiness, as opposed to liveness.
+
+    `/healthz` answers "ok" as long as the process is alive, which says nothing
+    about whether it is doing its job. An orchestrator that restarts on liveness
+    alone will happily keep a container that has not ingested anything in an
+    hour. This one answers on the sources.
+    """
+    up = [s for s in sources if s.health.connected]
+    # A tracker with a third of its sources down is degraded, not ready. The
+    # threshold is deliberate: one flaky feed must not take the service out.
+    ready = bool(sources) and len(up) >= max(1, int(len(sources) * 0.6))
+    if not ready:
+        response.status_code = 503
+    return {
+        "ready": ready,
+        "sources_up": len(up),
+        "sources_total": len(sources),
+        "down": sorted(s.name for s in sources if not s.health.connected),
+        "buffered": store.stats()["total_buffered"],
+    }
+
+
 @app.get("/api/events")
 async def api_events(
     limit: int = Query(300, ge=1, le=2000),
-    kind: str | None = None,
-    min_magnitude: float | None = None,
+    # A typo in `kind` used to return an empty list, which on this product reads
+    # as "nothing is happening" -- the worst possible answer to a bad question.
+    kind: Kind | None = None,
+    min_magnitude: float | None = Query(None, ge=0, le=12),
     hours: float | None = Query(None, ge=0.01, le=720),
     primary_only: bool = True,
 ) -> dict:
     since = utcnow() - timedelta(hours=hours) if hours else None
     events = store.recent(
         limit=limit,
-        kind=kind,
+        kind=kind.value if kind else None,
         min_magnitude=min_magnitude,
         since=since,
         primary_only=primary_only,
@@ -301,7 +330,9 @@ async def api_nearby(event_id: str) -> dict:
 async def api_event(event_id: str) -> dict:
     event = store.get(event_id)
     if event is None:
-        return {"found": False, "id": event_id}
+        # A 200 with "found: false" makes every machine client treat a missing
+        # event as a successful read.
+        raise HTTPException(status_code=404, detail=f"unknown event: {event_id}")
     return {"found": True, "event": event.public(), "raw": event.raw}
 
 

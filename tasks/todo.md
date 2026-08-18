@@ -94,26 +94,50 @@ silently skipped.
 
 Ordered by what breaks without it.
 
-- [ ] `models/event.py`: validators forcing aware datetimes and bounding
+- [x] `models/event.py`: validators forcing aware datetimes and bounding
       coordinates. Lesson 15 says a wrong position is worse than none, and today
       only `parse_iso6709` bounds anything -- every other source can inject an
       out-of-globe point.
-- [ ] `main.py`: real `/readyz` reporting sources up, 404 on unknown events,
+- [x] `main.py`: real `/readyz` reporting sources up, 404 on unknown events,
       `kind`/`min_magnitude` validated, CORS wildcard fallback removed.
-- [ ] `frontend/src/main.tsx`: `ErrorBoundary`. One render error currently blanks
+- [x] `frontend/src/main.tsx`: `ErrorBoundary`. One render error currently blanks
       the whole product, which is exactly the failure mode lesson 1 and 3 are
       about.
-- [ ] `App.tsx`: MapView behind `React.lazy`. The entry chunk is 1277 kB on a
+- [x] `App.tsx`: MapView behind `React.lazy`. The entry chunk is 1277 kB on a
       product whose promise is to come up fast under a bad network.
-- [ ] `dedupe.py`: remove the early `break` that assumes the deque is sorted by
+      **Measured: entry chunk 1277 kB -> 235 kB**, MapLibre in its own 1038 kB
+      chunk fetched only once the map mounts.
+- [x] `dedupe.py`: remove the early `break` that assumes the deque is sorted by
       event time when it is sorted by arrival. **Measure the before/after on the
       live feed** -- this is a dedup change, rule 5 applies.
-- [ ] `usgs.py`: 2-element GeoJSON positions, cursor advanced after the batch,
+      **Measured on 1504 live events: 16 -> 53 multi-source clusters.** The
+      early `break` was silently discarding 70% of the cross-source matches.
+- [x] `usgs.py`: 2-element GeoJSON positions, cursor advanced after the batch,
       per-feature isolation.
-- [ ] `.dockerignore`, `npm ci` with the lockfile, backend deps from
+- [x] `.dockerignore`, `npm ci` with the lockfile, backend deps from
       `pyproject.toml`.
-- [ ] `styles.css`: `prefers-reduced-motion`, at the END of the sheet (lesson:
+- [x] `styles.css`: `prefers-reduced-motion`, at the END of the sheet (lesson:
       a media query before the rules it overrides does nothing).
+
+### Phase 0 verification
+
+| Gate | Result |
+|---|---|
+| `pytest` | 214 passed |
+| `vitest` | 109 passed |
+| `ruff check` + `ruff format --check` | clean |
+| `mypy app` | no issues, 29 files |
+| `tsc --noEmit` | clean |
+| `docker build` backend + frontend | both build |
+| dedup on live data | 16 -> 53 clusters |
+| entry chunk | 1277 kB -> 235 kB |
+
+Every fix in this phase ships with a test that fails without it, in
+`backend/tests/test_audit4_phase0.py`. The dedup test in particular had to be
+rewritten once: my first version passed against the buggy code because the
+arrival order it built never triggered the early `break`. The bug only shows
+when an old-dated event arrives *last*, which is exactly the catalog-bulletin
+case the comment now describes.
 
 ## Phase 1 -- the store lies to open tabs
 

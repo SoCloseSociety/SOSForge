@@ -56,10 +56,14 @@ class Deduper:
             if other.id == event.id:
                 event.cluster_id = other.cluster_id
                 return event
-            # the deque is chronological: past the window, nothing can match
-            # anymore, so stop scanning it
+            # NO early break here, and no ordering assumption at all. The deque
+            # is ordered by ARRIVAL, not by event time: a catalog bulletin dated
+            # twenty hours ago can arrive after a push dated one second ago.
+            # Breaking on the first old entry stopped the scan right in front of
+            # the match sitting behind it -- and finding that match is the
+            # deduper's entire job.
             if other.time.timestamp() < cutoff - self.window:
-                break
+                continue
             if other.source == event.source:
                 continue
             if other.lat is None or other.lon is None:

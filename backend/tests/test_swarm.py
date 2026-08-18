@@ -49,7 +49,12 @@ def test_a_tight_cluster_is_detected():
 def test_ordinary_background_seismicity_is_not_a_swarm():
     """Quakes scattered across the world must never be grouped: crying swarm
     over routine activity teaches readers to ignore the signal."""
-    events = [quake(f"q{i}", minutes_ago=i * 30, lat=i * 12.0, lon=i * 20.0) for i in range(12)]
+    # scattered across the globe, and within real coordinate bounds -- the
+    # model rejects anything else, as it should
+    events = [
+        quake(f"q{i}", minutes_ago=i * 30, lat=-40 + i * 7.0, lon=-170 + i * 28.0)
+        for i in range(12)
+    ]
     assert detect(events) == []
 
 

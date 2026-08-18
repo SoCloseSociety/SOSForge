@@ -1,0 +1,20 @@
+# Everything the build does not need. Without this the whole working tree --
+# node_modules, the venv, the event journal, the git history -- is sent to the
+# daemon as build context on every build.
+.git
+.github
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/.ruff_cache
+**/.mypy_cache
+backend/data
+frontend/dist
+docs
+tasks
+*.md
+!README.md
+.env
+*.jsonl

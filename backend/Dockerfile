@@ -6,12 +6,12 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /srv
 
+# Dependencies come from pyproject.toml, not from a list copied by hand into
+# this file: a second list is a second thing to forget to update, and it had
+# already drifted.
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir \
-    "fastapi>=0.115" "uvicorn[standard]>=0.32" "pydantic>=2.9" \
-    "pydantic-settings>=2.6" "httpx>=0.27" "websockets>=13.0"
-
 COPY app ./app
+RUN pip install --no-cache-dir .
 
 RUN useradd --create-home --uid 10001 sos && mkdir -p /srv/data && chown -R sos /srv
 USER sos

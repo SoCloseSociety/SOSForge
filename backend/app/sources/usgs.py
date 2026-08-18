@@ -29,7 +29,11 @@ def _ts(ms: int | float | None) -> datetime | None:
 def parse_feature(feature: dict) -> Event | None:
     props = feature.get("properties") or {}
     geom = feature.get("geometry") or {}
-    coords = geom.get("coordinates") or [None, None, None]
+    # A GeoJSON position is [lon, lat] with an OPTIONAL third element. Assuming
+    # three would put the depth at None on any feed that omits it, and indexing
+    # blindly would raise.
+    coords = list(geom.get("coordinates") or [])
+    coords += [None] * (3 - len(coords))
     time = _ts(props.get("time"))
     if time is None:
         return None
@@ -80,13 +84,24 @@ class UsgsSource(Source):
                     data = resp.json()
                     generated = (data.get("metadata") or {}).get("generated")
                     if generated != self._last_generated:
-                        self._last_generated = generated
                         features = data.get("features") or []
+                        kept = 0
                         for feature in features:
-                            event = parse_feature(feature)
+                            # per-feature isolation: one malformed record must
+                            # never cost the rest of the batch
+                            try:
+                                event = parse_feature(feature)
+                            except Exception as exc:
+                                log.warning("usgs: unusable feature skipped (%s)", exc)
+                                continue
                             if event:
+                                kept += 1
                                 await emit(event)
-                        self.health.ok(len(features))
+                        # the cursor moves only once the batch is through: a
+                        # crash mid-batch used to skip everything after it,
+                        # permanently
+                        self._last_generated = generated
+                        self.health.ok(kept)
                     else:
                         self.health.ok()
                 except Exception as exc:

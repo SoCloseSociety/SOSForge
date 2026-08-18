@@ -1248,3 +1248,60 @@ button {
   border-radius: 50%;
   flex: 0 0 auto;
 }
+
+/* --------------------------------------------------------------- crash page */
+
+.crash {
+  max-width: 34rem;
+  margin: 4rem auto;
+  padding: 0 1.5rem;
+  color: var(--ink);
+}
+
+.crash h1 {
+  font-size: 18px;
+}
+
+.crash p,
+.crash li {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.crash a {
+  color: var(--accent);
+}
+
+.crash button {
+  margin-top: 12px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--hairline);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+
+.crash pre {
+  margin-top: 18px;
+  padding: 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--ink-muted);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+/* Motion is decoration here, never information: the halo, the pulse and the
+   wave animation all have a static equivalent. Someone who asked their system
+   for less motion must not have to endure a counter that throbs. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

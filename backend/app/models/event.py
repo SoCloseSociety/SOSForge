@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Kind(str, Enum):
@@ -112,6 +112,34 @@ class Event(BaseModel):
     revision: int = 0
 
     raw: dict[str, Any] = Field(default_factory=dict, repr=False)
+
+    @field_validator("time", "received_at", "updated_at", "last_seen")
+    @classmethod
+    def _must_be_aware(cls, value: datetime | None) -> datetime | None:
+        """A naive datetime compared to an aware one raises TypeError and kills
+        the source that produced it. Every normalizer is careful about this;
+        the model is where the guarantee belongs, so a future one cannot forget.
+        Naive means UTC here, which is what all our sources publish."""
+        if value is None or value.tzinfo is not None:
+            return value
+        return value.replace(tzinfo=UTC)
+
+    @field_validator("lat")
+    @classmethod
+    def _valid_latitude(cls, value: float | None) -> float | None:
+        if value is not None and not -90 <= value <= 90:
+            # Lesson 15: a wrong position is far worse than a missing one. Only
+            # parse_iso6709 bounded anything, so any other source could inject a
+            # point off the globe and nothing downstream would notice.
+            raise ValueError(f"latitude out of range: {value}")
+        return value
+
+    @field_validator("lon")
+    @classmethod
+    def _valid_longitude(cls, value: float | None) -> float | None:
+        if value is not None and not -180 <= value <= 180:
+            raise ValueError(f"longitude out of range: {value}")
+        return value
 
     @property
     def age_seconds(self) -> float:

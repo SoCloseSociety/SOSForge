@@ -3,7 +3,13 @@ import { ALL_KINDS, WINDOWS, filterEvents, useStore } from './store'
 import { connectLive } from './live'
 import { syncDeepLink } from './deeplink'
 import { Feed } from './components/Feed'
-import { MapView } from './components/MapView'
+import { Suspense, lazy } from 'react'
+
+/** MapLibre is over a megabyte, and the feed is readable without it. Loading it
+ * lazily takes the entry bundle from 1277 kB to a fraction of that, which is
+ * what decides whether this page opens at all on a saturated network -- the
+ * exact condition it exists for. */
+const MapView = lazy(() => import('./components/MapView').then((m) => ({ default: m.MapView })))
 import { LivePanel } from './components/LivePanel'
 import { SearchBar } from './components/SearchBar'
 import { ArrivalAlert } from './components/ArrivalAlert'
@@ -316,7 +322,9 @@ export default function App() {
           />
         </section>
         <div className="map-column">
-          <MapView events={visible} now={now} />
+          <Suspense fallback={<div className="map-wrap map-fallback" />}>
+            <MapView events={visible} now={now} />
+          </Suspense>
           {selectedEvent ? <LivePanel event={selectedEvent} now={now} /> : null}
         </div>
       </div>

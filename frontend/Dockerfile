@@ -2,8 +2,11 @@
 # embarquer deploy/nginx.conf -- un COPY ne peut pas remonter hors du contexte.
 FROM node:22-alpine AS build
 WORKDIR /app
-COPY frontend/package.json ./
-RUN npm install
+# The lockfile, and `npm ci`: `npm install` resolves fresh versions at build
+# time, so two builds of the same commit can ship different code. On a product
+# whose whole claim is that it behaves as tested, that is not acceptable.
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
