@@ -1,90 +1,113 @@
 export type Kind =
-  | 'earthquake'
-  | 'tsunami'
-  | 'volcano'
-  | 'cyclone'
-  | 'flood'
-  | 'wildfire'
-  | 'drought'
-  | 'storm'
-  | 'heat'
-  | 'space_weather'
-  | 'other'
+  | "earthquake"
+  | "tsunami"
+  | "volcano"
+  | "cyclone"
+  | "flood"
+  | "wildfire"
+  | "drought"
+  | "storm"
+  | "heat"
+  | "space_weather"
+  | "other";
 
-export type Severity = 'info' | 'minor' | 'moderate' | 'severe' | 'extreme'
+export type Severity = "info" | "minor" | "moderate" | "severe" | "extreme";
 
 export interface SosEvent {
-  id: string
-  source: string
-  source_id: string
-  kind: Kind
-  time: string
-  received_at: string
-  updated_at: string | null
-  lat: number | null
-  lon: number | null
-  depth_km: number | null
-  magnitude: number | null
-  mag_type: string | null
-  place: string
-  region: string | null
-  country: string | null
-  country_code: string | null
-  severity: Severity
+  id: string;
+  source: string;
+  source_id: string;
+  kind: Kind;
+  time: string;
+  received_at: string;
+  updated_at: string | null;
+  lat: number | null;
+  lon: number | null;
+  depth_km: number | null;
+  magnitude: number | null;
+  mag_type: string | null;
+  place: string;
+  region: string | null;
+  country: string | null;
+  country_code: string | null;
+  severity: Severity;
   /** declared ONGOING by its source (active fire, live storm, running warning).
    * It stays relevant while it runs, unlike a past earthquake. */
-  ongoing: boolean
-  tsunami: boolean
-  alert: string | null
-  title: string
-  url: string | null
+  ongoing: boolean;
+  /** when the source states an end (NWS and the CAP feeds do). The server
+   * purges on it; the UI can show the remaining time. */
+  expires: string | null;
+  tsunami: boolean;
+  alert: string | null;
+  title: string;
+  url: string | null;
   /** forecast positions, when the source publishes them (NHC cyclone tracks) */
-  forecast_track: { tau?: number; valid?: string; lat?: number; lon?: number; wind_kt?: number; category?: number }[] | null
-  cluster_id: string | null
-  revision: number
+  forecast_track:
+    | {
+        tau?: number;
+        valid?: string;
+        lat?: number;
+        lon?: number;
+        wind_kt?: number;
+        category?: number;
+      }[]
+    | null;
+  cluster_id: string | null;
+  revision: number;
 }
 
 export interface Stats {
-  total_buffered: number
-  last_hour: number
-  earthquakes_last_hour: number
-  max_magnitude_last_hour: number | null
-  tsunami_active: number
-  by_source: Record<string, number>
-  server_time: string
+  total_buffered: number;
+  last_hour: number;
+  earthquakes_last_hour: number;
+  max_magnitude_last_hour: number | null;
+  tsunami_active: number;
+  by_source: Record<string, number>;
+  server_time: string;
 }
 
 export interface SourceHealth {
-  name: string
-  connected: boolean
-  last_ok: string | null
-  last_error: string | null
-  events_seen: number
+  name: string;
+  connected: boolean;
+  last_ok: string | null;
+  last_error: string | null;
+  events_seen: number;
   /** what actually made it into the store (events_seen counts reads) */
-  ingested?: number
-  errors: number
+  ingested?: number;
+  errors: number;
 }
 
 export type ServerMessage =
   | {
-      type: 'snapshot'
-      server_time: string
-      events: SosEvent[]
-      stats: Stats
-      sources: SourceHealth[]
+      type: "snapshot";
+      server_time: string;
+      events: SosEvent[];
+      stats: Stats;
+      sources: SourceHealth[];
     }
   | {
-      type: 'event' | 'update'
-      event: SosEvent
-      primary: boolean
+      type: "event" | "update";
+      event: SosEvent;
+      primary: boolean;
       /** the event actually just happened (as opposed to: just arrived in
        * the buffer). Only this case deserves a halo, flash, and sound. */
-      breaking: boolean
+      breaking: boolean;
     }
   | {
-      type: 'tick'
-      server_time: string
-      stats: Stats
-      sources: SourceHealth[]
-      clients: number
+      /** the server removed events: a lifted warning, a cancelled early
+       * warning, an alert whose source went silent. Without this message the
+       * protocol could only add and update, so a tab left open since the
+       * morning kept a dissipated cyclone on screen indefinitely -- dead data
+       * shown as live, which is the one direction of the freshness rule that
+       * is easy to miss. */
+      type: "purge";
+      ids: string[];
+      reason: "stale" | "cancelled" | "lifted";
     }
+  | {
+      type: "tick";
+      server_time: string;
+      stats: Stats;
+      sources: SourceHealth[];
+      clients: number;
+    };

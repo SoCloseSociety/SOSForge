@@ -137,6 +137,11 @@ def parse_entry(entry: ET.Element, center: str) -> Event | None:
         magnitude=magnitude,
         place=place,
         severity=severity,
+        # A warning/advisory/watch runs until a centre supersedes or lifts it:
+        # it is an ongoing alert, and the sweep must be able to reach it. An
+        # "Information" bulletin states a fact ("no tsunami danger") -- it is
+        # not in force, it has nothing to expire.
+        ongoing=is_alert,
         tsunami=is_alert,
         alert=category,
         title=f"Tsunami {category.upper()} -- {place}",

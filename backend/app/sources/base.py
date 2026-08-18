@@ -7,12 +7,16 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime
+from typing import Any
 
 from app.models.event import Event, utcnow
 
 log = logging.getLogger(__name__)
 
 Emit = Callable[[Event], Awaitable[None]]
+# (event_id, reason) -> whatever was actually removed. The return value is the
+# caller's business; a source only needs the withdrawal to happen.
+Retract = Callable[[str, str], Awaitable[Any]]
 
 
 class SourceHealth:
@@ -52,6 +56,20 @@ class Source(abc.ABC):
 
     def __init__(self) -> None:
         self.health = SourceHealth(self.name)
+        # Ids this source has WITHDRAWN. A parser is synchronous and returns
+        # events; withdrawing one needs a second channel, because "returning
+        # nothing" is indistinguishable from "nothing new" to a store that can
+        # only add. Filled by the parser, drained by the run loop.
+        self.retractions: list[str] = []
+        self.retract: Retract | None = None
+
+    async def flush_retractions(self) -> None:
+        if not self.retractions or self.retract is None:
+            self.retractions.clear()
+            return
+        pending, self.retractions = self.retractions, []
+        for event_id in pending:
+            await self.retract(event_id, "cancelled")
 
     @abc.abstractmethod
     async def run(self, emit: Emit) -> None:

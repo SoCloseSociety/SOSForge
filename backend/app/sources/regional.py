@@ -69,6 +69,7 @@ class JsonPollSource(Source):
                     events = self.parse_payload(resp.json())
                     for event in events:
                         await emit(event)
+                    await self.flush_retractions()
                     self.health.ok(len(events))
                 except Exception as exc:
                     self.health.fail(exc)

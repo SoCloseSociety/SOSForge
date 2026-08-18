@@ -95,6 +95,11 @@ class Event(BaseModel):
     # its source keeps publishing it -- the sweep of alerts gone silent is
     # what will remove it, not its age.
     ongoing: bool = False
+    # When the SOURCE states an expiry (NWS, Meteoalarm and the CAP feeds all
+    # do). An explicit end beats every heuristic we could apply: waiting for
+    # six hours of silence to drop a tornado warning that expired at 15:00
+    # keeps a red polygon over a quiet county all afternoon.
+    expires: datetime | None = None
     tsunami: bool = False
     alert: str | None = Field(default=None, description="USGS PAGER: green/yellow/orange/red")
 
@@ -113,7 +118,7 @@ class Event(BaseModel):
 
     raw: dict[str, Any] = Field(default_factory=dict, repr=False)
 
-    @field_validator("time", "received_at", "updated_at", "last_seen")
+    @field_validator("time", "received_at", "updated_at", "last_seen", "expires")
     @classmethod
     def _must_be_aware(cls, value: datetime | None) -> datetime | None:
         """A naive datetime compared to an aware one raises TypeError and kills
@@ -155,6 +160,13 @@ class Event(BaseModel):
             self.place,
             self.severity.value,
             str(self.tsunami),
+            # The END of the alert belongs here. Without it, a warning
+            # re-issued with a later `ends` -- how NWS extends a tornado
+            # warning, several times an hour -- looked identical to the one
+            # already stored, and kept the old end: purged while still in
+            # force, or left standing after being cut short.
+            str(self.ongoing),
+            self.expires.isoformat() if self.expires else "None",
         ]
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
 

@@ -223,3 +223,48 @@ the dedup before/after numbers where rule 5 applies.
 Kept as written in the master prompt, to be re-verified item by item against this
 tree before being fixed -- several were written against code this repository does
 not have.
+
+### Phase 1 verification
+
+The protocol now has a fifth message: `purge {ids, reason}`. Everything in this
+phase hangs off it.
+
+| Gate | Result |
+|---|---|
+| `pytest` | 237 passed |
+| `vitest` | 114 passed |
+| ruff / mypy / tsc | clean |
+| live websocket | purge of **531 ids** received at t+299 s, reason `stale` |
+| heartbeat during that run | 339 ticks in 340 s |
+
+Measured on real data, as required for anything that filters:
+
+| Change | Before | After |
+|---|---|---|
+| NWS alerts carrying `ongoing` | 0 / 295 | 295 / 295 |
+| NWS alerts carrying an end time | 0 | 295 |
+| Stale sweep on the real journal | 418 removed | **717** removed |
+| Seismic history kept by that sweep | -- | 23.9 h over 965 quakes |
+| Spurious revisions from the new fingerprint | -- | **0** over 590 alert-transitions |
+
+Two defects were found while verifying, not in the audit:
+
+1. **`expires` is not the end of the alert.** CAP `expires` is the validity of
+   the MESSAGE; NWS `ends` is the end of the event. On the live feed of
+   2026-08-18, 82 of 295 active alerts had `expires` already in the past and
+   `ends` still hours ahead. Purging on `expires` would have wiped 28% of the
+   running US warnings off the map. Fixed to `ends` first, `expires` only for
+   the 23 that publish none. Fixture captured verbatim from that feed.
+2. **The content fingerprint ignored the end of the alert**, so a warning
+   re-issued with a later `ends` -- how NWS extends a tornado warning -- was
+   taken for a repeat and kept the old end. Purged while in force, or left
+   standing after being cut short.
+
+And one defect the fix for 1.3 exposed: keying the sweep on the `ongoing` flag
+was not enough. The running instance held **210 severe thunderstorm warnings,
+none of them still in `/alerts/active`** -- over for hours, displayed as
+current, invisible to the sweep because they predated the flag. The sweep now
+keys on the NATURE of the event: an earthquake is a point in time and going
+quiet says nothing about it; everything else here is an interval, and a source
+that stops publishing an interval has said it ended.
+

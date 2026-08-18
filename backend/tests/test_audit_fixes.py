@@ -160,16 +160,23 @@ def test_evicting_a_cluster_primary_promotes_a_survivor():
     assert "usgs:1" in ids, "the survivor must be promoted, not erased from the feed"
 
 
-def test_replaying_the_journal_does_not_rewrite_it(tmp_path):
+async def test_replaying_the_journal_does_not_rewrite_it(tmp_path):
     """Defect 5. Every restart rewrote the whole day's journal: 747 lines
-    including 368 duplicates after two restarts."""
+    including 368 duplicates after two restarts.
+
+    The replay now goes through the pipeline (phase 1) so that restored events
+    are seen by the deduper; the guarantee tested here has to survive that
+    move, which is why the test follows the new path rather than the store."""
+    from app.dedupe import Deduper
+    from app.pipeline import Pipeline
+
     store = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
     store.upsert(quake("usgs:a", 1))
     journal = next(tmp_path.glob("events-*.jsonl"))
     before = journal.read_text().count("\n")
 
     reloaded = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
-    assert reloaded.load_backlog(journal) == 1
+    assert await Pipeline(reloaded, Deduper()).replay(journal) == 1
     assert journal.read_text().count("\n") == before, "replaying must not rewrite"
 
 
@@ -220,7 +227,7 @@ def test_the_sweep_only_removes_ongoing_alerts():
     assert store.get("usgs:old") is not None
 
 
-def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
+async def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
     """Defect 10. The replay refreshed `last_seen`, which handed six more
     hours of reprieve to every dead alert on EVERY restart -- and masked the
     sweep entirely in production."""
@@ -232,10 +239,14 @@ def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
     old_alert.last_seen = datetime.now(UTC) - _td(hours=20)
     store.upsert(old_alert)
 
+    from app.dedupe import Deduper
+    from app.pipeline import Pipeline
+
     journal = next(tmp_path.glob("events-*.jsonl"))
     reloaded = EventStore(maxlen=50, data_dir=tmp_path, persist=True)
-    reloaded.load_backlog(journal)
-    reloaded.load_backlog(journal)  # second pass: the noop path
+    pipeline = Pipeline(reloaded, Deduper())
+    await pipeline.replay(journal)
+    await pipeline.replay(journal)  # second pass: the noop path
 
     restored = reloaded.get("gdacs:x")
     assert restored is not None

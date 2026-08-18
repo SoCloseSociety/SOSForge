@@ -8,7 +8,9 @@ where to look.
 
 from __future__ import annotations
 
+import asyncio
 import logging
+from pathlib import Path
 
 from app.core.config import settings
 from app.countries import resolve as resolve_country
@@ -26,9 +28,28 @@ class Pipeline:
         self.deduper = deduper
         self.ingested = 0
         self.dropped = 0
+        self.failed = 0
         self.quiet = False  # during backfill: fill up without waking anyone
 
     async def emit(self, event: Event) -> None:
+        """Ingests one event. NEVER raises for that one event's sake.
+
+        Sources loop `for event in batch: await emit(event)`. A single
+        exception used to abort the loop, drop every remaining event of the
+        cycle, count as a source failure and start the backoff: one malformed
+        row silenced a whole source for a minute. Failures are isolated to the
+        event that caused them.
+        """
+        try:
+            await self._ingest(event)
+        except asyncio.CancelledError:
+            # shutdown, not a failure: it must stay instant
+            raise
+        except Exception as exc:
+            self.failed += 1
+            log.warning("%s: event %s rejected by the pipeline (%s)", event.source, event.id, exc)
+
+    async def _ingest(self, event: Event) -> None:
         if event.magnitude is not None and event.magnitude < settings.min_magnitude:
             self.dropped += 1
             return
@@ -104,6 +125,12 @@ class Pipeline:
                 "breaking": breaking,
             }
         )
+        # A cluster whose representative was just evicted promoted a survivor.
+        # Broadcasting it is not cosmetic: every tab was told that survivor was
+        # a duplicate, and `primary_only` hides it, so the quake had silently
+        # left the feed on every open map.
+        await self._flush_promotions()
+
         if action == "new" and (stored.severity.value in ("severe", "extreme") or stored.tsunami):
             log.info(
                 "ALERT %s %s M%s %s",
@@ -112,3 +139,68 @@ class Pipeline:
                 stored.magnitude,
                 stored.place,
             )
+
+    async def _flush_promotions(self) -> None:
+        for promoted in self.store.drain_promotions():
+            if self.quiet:
+                continue
+            await hub.broadcast(
+                {
+                    "type": "update",
+                    "event": promoted.public(),
+                    "primary": True,
+                    # a promotion is bookkeeping, not news: no halo, no sound
+                    "breaking": False,
+                }
+            )
+
+    async def _announce_purge(self, events: list[Event], reason: str) -> None:
+        """Tells the open tabs that events are gone.
+
+        The protocol could add and update, never remove. Everything the sweep
+        removed stayed on screen on every tab already open -- dead data
+        displayed as live, which is the product's cardinal rule broken in the
+        one direction nobody thinks to check.
+        """
+        if not events:
+            return
+        await hub.broadcast({"type": "purge", "ids": [e.id for e in events], "reason": reason})
+        await self._flush_promotions()
+
+    async def sweep(self, max_silence_hours: float) -> list[Event]:
+        """Removes what is over, and says so."""
+        removed = self.store.prune_stale(max_silence_hours)
+        await self._announce_purge(removed, "stale")
+        return removed
+
+    async def retract(self, event_id: str, reason: str) -> list[Event]:
+        """A source withdrew an event. The most critical case is a cancelled
+        Japanese early warning: the source simply stops publishing it, and a
+        store that can only add keeps the withdrawn alert on the map, red."""
+        removed = self.store.remove([event_id])
+        await self._announce_purge(removed, reason)
+        if removed:
+            log.info("retracted %s (%s)", event_id, reason)
+        return removed
+
+    async def replay(self, path: Path) -> int:
+        """Replays a journal THROUGH the pipeline.
+
+        It used to be written straight into the store, so restored events
+        skipped dedup: the deduper's window started empty at every restart,
+        and the EMSC solution restored from the journal no longer matched the
+        USGS solution arriving two minutes later. Every restart injected a
+        fresh crop of duplicates.
+        """
+        events = self.store.read_journal(path)
+        if not events:
+            return 0
+        was_quiet, self.quiet = self.quiet, True
+        before = self.ingested
+        try:
+            with self.store.replaying():
+                for event in events:
+                    await self.emit(event)
+        finally:
+            self.quiet = was_quiet
+        return self.ingested - before

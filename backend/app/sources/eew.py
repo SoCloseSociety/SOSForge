@@ -80,7 +80,12 @@ class JmaEewSource(JsonPollSource):
 
         status = ((data.get("Issue") or {}).get("Status")) or ""
         if JMA_CANCELLED in status:
+            # Returning [] is how the store hears "nothing new", not "this
+            # never happened": the withdrawn warning stayed on the map, red,
+            # forever. A cancelled EEW is the one alert that MUST disappear --
+            # it is the only category here that asks people to take cover.
             log.info("JMA EEW %s cancelled by the source", event_id)
+            self.retractions.append(f"jma_eew:{event_id}")
             return []
 
         time = _parse_local(data.get("OriginTime"), JST) or _parse_local(

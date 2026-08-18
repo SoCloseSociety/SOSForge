@@ -140,6 +140,20 @@ def parse_feature(feature: dict) -> Event | None:
     lat, lon = _centroid(feature.get("geometry"))
     severity = NWS_SEVERITY.get(props.get("severity") or "", Severity.INFO)
 
+    # `/alerts/active` returns, by construction, only alerts in force: every
+    # feature it serves is ongoing. Saying so is what lets the horizon keep it
+    # and, above all, what puts it in reach of the sweep -- which only ever
+    # looks at ongoing events. Left at its default False, a tornado warning was
+    # treated exactly like a three-day-old quake.
+    # `ends` is when the ALERT stops; `expires` is when the MESSAGE announcing
+    # it stops being valid. They are not the same thing and the difference is
+    # not academic: measured on the live feed of 2026-08-18, 82 of 295 active
+    # alerts had `expires` already in the past while `ends` was still hours
+    # ahead. Purging on `expires` would have erased 28% of the running US
+    # warnings. `ends` first, `expires` only for the 23 that publish no `ends`.
+    end_of_alert = props.get("ends") or props.get("expires")
+    expires = _parse_time(end_of_alert) if end_of_alert else None
+
     return Event(
         id=f"nws:{str(alert_id).rsplit(':', 1)[-1]}",
         source="nws",
@@ -151,6 +165,8 @@ def parse_feature(feature: dict) -> Event | None:
         place=props.get("areaDesc") or "unspecified area",
         country="United States",
         severity=severity,
+        ongoing=True,
+        expires=expires,
         tsunami=kind is Kind.TSUNAMI,
         alert=(props.get("urgency") or "").lower() or None,
         title=props.get("headline") or event_name,

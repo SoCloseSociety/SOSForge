@@ -152,7 +152,8 @@ async def sweep_stale() -> None:
         await asyncio.sleep(settings.sweep_seconds)
         # same reason as the heartbeat: this task must survive its errors
         try:
-            removed = store.prune_stale(settings.stale_after_hours)
+            # through the pipeline: it removes AND tells the open tabs
+            removed = await pipeline.sweep(settings.stale_after_hours)
             if removed:
                 log.info(
                     "purge: %d alerts with no news for %.0f h (%s)",
@@ -195,8 +196,10 @@ async def lifespan(app: FastAPI):
         # offers 24 h and "all".
         today = utcnow()
         restored = sum(
-            store.load_backlog(settings.data_dir / f"events-{day:%Y-%m-%d}.jsonl")
-            for day in (today - timedelta(days=1), today)
+            [
+                await pipeline.replay(settings.data_dir / f"events-{day:%Y-%m-%d}.jsonl")
+                for day in (today - timedelta(days=1), today)
+            ]
         )
         if restored:
             log.info("local journal: %d events restored", restored)
@@ -211,6 +214,10 @@ async def lifespan(app: FastAPI):
         pipeline.quiet = False
 
     # 2. start the ingesters + the heartbeat
+    # a source must be able to WITHDRAW an event, not only publish one: a
+    # cancelled early warning is the case that matters
+    for source in sources:
+        source.retract = pipeline.retract
     tasks = [asyncio.create_task(s.supervise(pipeline.emit), name=f"src:{s.name}") for s in sources]
     tasks.append(asyncio.create_task(heartbeat(), name="heartbeat"))
     tasks.append(asyncio.create_task(sweep_stale(), name="sweep"))

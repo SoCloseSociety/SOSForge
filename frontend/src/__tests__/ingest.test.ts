@@ -130,3 +130,66 @@ describe('cross-source duplicates', () => {
     expect(useStore.getState().events.map((e) => e.id)).toEqual(['emsc:1'])
   })
 })
+
+describe('purge -- the message that lets things disappear', () => {
+  /* Until phase 1 the protocol could add and update, never remove. A tab open
+   * since the morning kept every lifted warning and every dissipated cyclone
+   * on screen, because the only way the server had to say "this is over" was
+   * to stop talking about it -- which is indistinguishable from "nothing new".
+   */
+  const snapshot = (events = [] as ReturnType<typeof makeEvent>[]): ServerMessage => ({
+    type: 'snapshot',
+    server_time: new Date(NOW).toISOString(),
+    events,
+    stats: makeStats(),
+    sources: SOURCES,
+  })
+
+  it('removes the purged events and leaves the others alone', () => {
+    const { ingest } = useStore.getState()
+    ingest(snapshot([makeEvent({ id: 'a' }), makeEvent({ id: 'b' }), makeEvent({ id: 'c' })]))
+
+    ingest({ type: 'purge', ids: ['a', 'c'], reason: 'stale' })
+
+    expect(useStore.getState().events.map((e) => e.id)).toEqual(['b'])
+  })
+
+  it('closes the detail panel when the selected event is the one that goes', () => {
+    const { ingest } = useStore.getState()
+    ingest(snapshot([makeEvent({ id: 'cancelled-eew' })]))
+    useStore.setState({ selected: 'cancelled-eew' })
+
+    ingest({ type: 'purge', ids: ['cancelled-eew'], reason: 'cancelled' })
+
+    expect(useStore.getState().selected).toBeNull()
+    expect(useStore.getState().events).toEqual([])
+  })
+
+  it('keeps the selection when something else is purged', () => {
+    const { ingest } = useStore.getState()
+    ingest(snapshot([makeEvent({ id: 'keep' }), makeEvent({ id: 'drop' })]))
+    useStore.setState({ selected: 'keep' })
+
+    ingest({ type: 'purge', ids: ['drop'], reason: 'stale' })
+
+    expect(useStore.getState().selected).toBe('keep')
+  })
+
+  it('drops the purged id from the halo set', () => {
+    const { ingest } = useStore.getState()
+    ingest(snapshot([]))
+    ingest({ type: 'event', event: makeEvent({ id: 'flash' }), primary: true, breaking: true })
+    expect(useStore.getState().fresh.has('flash')).toBe(true)
+
+    ingest({ type: 'purge', ids: ['flash'], reason: 'lifted' })
+
+    expect(useStore.getState().fresh.has('flash')).toBe(false)
+  })
+
+  it('counts as live traffic: a purge is a sign of life, not silence', () => {
+    const { ingest } = useStore.getState()
+    useStore.setState({ lastMessageAt: 0 })
+    ingest({ type: 'purge', ids: [], reason: 'stale' })
+    expect(useStore.getState().lastMessageAt).toBeGreaterThan(0)
+  })
+})
