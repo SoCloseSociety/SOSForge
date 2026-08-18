@@ -23,6 +23,7 @@ export const KIND_GLYPH: Record<Kind, string> = {
   storm: '⛈️',
   heat: '🌡️',
   drought: '🏜️',
+  space_weather: '🛰️',
   other: '⚠️',
 }
 

@@ -20,6 +20,9 @@ class Kind(str, Enum):
     DROUGHT = "drought"
     STORM = "storm"
     HEAT = "heat"
+    # No position, forecast-oriented by nature, and its own iconography:
+    # it does not belong in the OTHER catch-all with landslides and dust.
+    SPACE_WEATHER = "space_weather"
     OTHER = "other"
 
 

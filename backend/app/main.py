@@ -19,6 +19,7 @@ from app.hub import Client, hub
 from app.models.event import utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
+from app.sources.aftershock import AftershockSource
 from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
 from app.sources.eew import CencSource, JmaEewSource
@@ -34,6 +35,7 @@ from app.sources.regional import (
     IngvSource,
     JmaSource,
 )
+from app.sources.space import SpaceWeatherSource
 from app.sources.tsunami import TsunamiSource
 from app.sources.usgs import UsgsSource, backfill
 from app.sources.volcano import VolcanoSource
@@ -107,6 +109,10 @@ def build_sources() -> list[Source]:
         built.append(JmaEewSource(settings.jma_eew_poll_seconds))
     if settings.enable_cenc:
         built.append(CencSource(settings.cenc_poll_seconds))
+    if settings.enable_aftershock:
+        built.append(AftershockSource(settings.aftershock_poll_seconds))
+    if settings.enable_space:
+        built.append(SpaceWeatherSource(settings.space_poll_seconds))
     if settings.enable_wmo:
         built.append(WmoCapSource(settings.wmo_poll_seconds, settings.wmo_max_severity_rank))
     return built

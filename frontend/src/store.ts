@@ -69,6 +69,7 @@ const ALL_KINDS: Kind[] = [
   'storm',
   'heat',
   'drought',
+  'space_weather',
   'other',
 ]
 

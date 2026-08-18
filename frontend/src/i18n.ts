@@ -91,6 +91,7 @@ const fr: Dict = {
   'kind.storm': 'Tempêtes',
   'kind.heat': 'Chaleur',
   'kind.drought': 'Sécheresses',
+  'kind.space_weather': 'Météo spatiale',
   'kind.other': 'Autres',
 
   'age.now': "à l'instant",
@@ -198,6 +199,7 @@ const en: Dict = {
   'kind.storm': 'Storms',
   'kind.heat': 'Heat',
   'kind.drought': 'Droughts',
+  'kind.space_weather': 'Space weather',
   'kind.other': 'Other',
 
   'age.now': 'just now',
@@ -304,6 +306,7 @@ const es: Dict = {
   'kind.storm': 'Tormentas',
   'kind.heat': 'Calor',
   'kind.drought': 'Sequías',
+  'kind.space_weather': 'Clima espacial',
   'kind.other': 'Otros',
 
   'age.now': 'ahora mismo',
@@ -410,6 +413,7 @@ const ja: Dict = {
   'kind.storm': '暴風',
   'kind.heat': '高温',
   'kind.drought': '干ばつ',
+  'kind.space_weather': '宇宙天気',
   'kind.other': 'その他',
 
   'age.now': 'たった今',
@@ -516,6 +520,7 @@ const id: Dict = {
   'kind.storm': 'Badai',
   'kind.heat': 'Panas ekstrem',
   'kind.drought': 'Kekeringan',
+  'kind.space_weather': 'Cuaca antariksa',
   'kind.other': 'Lainnya',
 
   'age.now': 'baru saja',

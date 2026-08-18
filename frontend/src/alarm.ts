@@ -31,6 +31,10 @@ export const REACH_KM: Record<Kind, number> = {
   wildfire: 80,
   heat: 200, // heat waves are regional by nature
   drought: 300,
+  // A geomagnetic storm has no epicentre: it concerns a latitude band, and the
+  // events carry no position at all. Proximity cannot decide anything here, so
+  // it never raises a location alarm.
+  space_weather: 0,
   other: 100,
 }
 
@@ -50,6 +54,7 @@ const MIN_SEVERITY: Record<Kind, Severity> = {
   wildfire: 'severe',
   heat: 'extreme',
   drought: 'extreme',
+  space_weather: 'extreme',
   other: 'severe',
 }
 

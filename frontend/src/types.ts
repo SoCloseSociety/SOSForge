@@ -8,6 +8,7 @@ export type Kind =
   | 'drought'
   | 'storm'
   | 'heat'
+  | 'space_weather'
   | 'other'
 
 export type Severity = 'info' | 'minor' | 'moderate' | 'severe' | 'extreme'

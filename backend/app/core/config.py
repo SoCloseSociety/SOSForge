@@ -52,6 +52,10 @@ class Settings(BaseSettings):
     # product that can still be used to take cover.
     enable_jma_eew: bool = True
     enable_cenc: bool = True
+    # anticipation: official aftershock probabilities, and the only hazard with
+    # a genuine 1-3 day operational forecast
+    enable_aftershock: bool = True
+    enable_space: bool = True
 
     emsc_ws_url: str = "wss://www.seismicportal.eu/standing_order/websocket"
     usgs_feed_url: str = (
@@ -79,6 +83,8 @@ class Settings(BaseSettings):
     # an EEW is measured in seconds; stay reasonable with a third-party service
     jma_eew_poll_seconds: float = 5.0
     cenc_poll_seconds: float = 120.0
+    aftershock_poll_seconds: float = 600.0
+    space_poll_seconds: float = 600.0
     # Meteoalarm: 1 green, 2 yellow, 3 orange, 4 red. Below orange it is
     # weather-bulletin material, and there are over 2000 per cycle across ten
     # countries.
