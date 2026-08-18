@@ -189,6 +189,28 @@ class EventStore:
             "server_time": now.isoformat(),
         }
 
+    def purge_journals(self, keep_days: int) -> list[Path]:
+        """Supprime les journaux plus vieux que `keep_days`.
+
+        Le journal grossit d'environ 5 Mo par jour et n'etait jamais purge: sur
+        un service qui tourne en continu, le volume finit par saturer le disque
+        de l'hote -- partage avec les autres produits de la suite.
+        """
+        if not self._data_dir or not self._data_dir.exists():
+            return []
+        cutoff = (utcnow() - timedelta(days=keep_days)).strftime("%Y-%m-%d")
+        removed = []
+        for journal in sorted(self._data_dir.glob("events-*.jsonl")):
+            day = journal.stem.removeprefix("events-")
+            # comparaison de chaines: le format ISO du nom de fichier est trie
+            if len(day) == 10 and day < cutoff:
+                try:
+                    journal.unlink()
+                    removed.append(journal)
+                except OSError as exc:
+                    log.warning("purge du journal %s impossible: %s", journal.name, exc)
+        return removed
+
     def load_backlog(self, path: Path) -> int:
         """Recharge un JSONL au demarrage (redemarrage sans trou dans la carte)."""
         if not path.exists():

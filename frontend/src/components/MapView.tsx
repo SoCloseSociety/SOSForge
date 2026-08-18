@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useStore } from '../store'
 import { SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
 import type { SosEvent } from '../types'
+import { isWaveCandidate, waveFronts } from '../waves'
 
 /** Fond de carte sombre CARTO: pas de cle API, attribution OSM + CARTO obligatoire. */
 const STYLE: maplibregl.StyleSpecification = {
@@ -74,16 +75,22 @@ function toFeatureCollection(events: SosEvent[], fresh: Set<string>): GeoJSON.Fe
 function popupHtml(event: SosEvent, now: number): string {
   const t = useStore.getState().t
   const severity = SEVERITY_META[event.severity]
+
+  // TOUT champ venant d'une source passe par `escape`. `mag_type` etait le seul
+  // oubli: il vient bien d'un flux externe (AFAD `type`, USGS/INGV `magType`) et
+  // partait tel quel dans le HTML de la popup.
+  const escape = (value: string) =>
+    value.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+
   const rows: string[] = []
   if (event.magnitude !== null)
-    rows.push(`<dt>${t('detail.magnitude')}</dt><dd>${event.magnitude} ${event.mag_type ?? ''}</dd>`)
+    rows.push(
+      `<dt>${t('detail.magnitude')}</dt><dd>${event.magnitude} ${escape(event.mag_type ?? '')}</dd>`,
+    )
   if (event.depth_km !== null)
     rows.push(`<dt>${t('detail.depth')}</dt><dd>${Math.round(event.depth_km)} km</dd>`)
   rows.push(`<dt>${t('detail.time')}</dt><dd>${event.time.slice(11, 19)}</dd>`)
-  rows.push(`<dt>${t('detail.source')}</dt><dd>${event.source}</dd>`)
-
-  const escape = (value: string) =>
-    value.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!)
+  rows.push(`<dt>${t('detail.source')}</dt><dd>${escape(event.source)}</dd>`)
 
   return `<div class="popup">
     <h3>${escape(event.place || event.title)}</h3>
@@ -134,6 +141,35 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
 
     instance.on('load', () => {
       instance.addSource('events', { type: 'geojson', data: toFeatureCollection([], new Set()) })
+
+      // Fronts d'onde P et S, SOUS les marqueurs: ils donnent le contexte, ils
+      // ne doivent jamais cacher l'evenement lui-meme.
+      instance.addSource('waves', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      })
+      instance.addLayer({
+        id: 'waves-p',
+        type: 'line',
+        source: 'waves',
+        filter: ['==', ['get', 'phase'], 'p'],
+        paint: {
+          'line-color': '#9ec5f4',
+          'line-width': 1.2,
+          'line-opacity': ['*', ['get', 'opacity'], 0.55],
+        },
+      })
+      instance.addLayer({
+        id: 'waves-s',
+        type: 'line',
+        source: 'waves',
+        filter: ['==', ['get', 'phase'], 's'],
+        paint: {
+          'line-color': SEVERITY_META.severe.color,
+          'line-width': 2,
+          'line-opacity': ['*', ['get', 'opacity'], 0.8],
+        },
+      })
 
       // halo des evenements tout juste arrives: c'est le signal "ca vient de
       // tomber", anime par la boucle plus bas
@@ -195,6 +231,39 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     const source = map.current.getSource('events') as maplibregl.GeoJSONSource | undefined
     source?.setData(toFeatureCollection(events, fresh))
   }, [events, fresh])
+
+  // --- fronts d'onde: une boucle qui ne tourne QUE s'il y a un seisme assez
+  // recent pour que ses ondes soient encore en train de se propager. Le reste du
+  // temps, aucune frame n'est calculee.
+  const waveCandidates = useMemo(
+    () => events.filter((e) => isWaveCandidate(e, now)).map((e) => e.id).join(','),
+    // `now` avance chaque seconde: on ne redemarre la boucle que si la LISTE
+    // des seismes concernes change, pas a chaque tick
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [events, Math.floor(now / 30_000)],
+  )
+
+  useEffect(() => {
+    if (!waveCandidates) return
+    let frame = 0
+    const animate = () => {
+      const instance = map.current
+      const source = instance?.getSource('waves') as maplibregl.GeoJSONSource | undefined
+      if (source) {
+        // l'horloge serveur, pas celle du navigateur: un front dessine sur une
+        // horloge fausse serait au mauvais endroit
+        const serverNow = Date.now() + useStore.getState().clockSkew
+        source.setData(waveFronts(latest.current.events, serverNow))
+      }
+      frame = requestAnimationFrame(animate)
+    }
+    frame = requestAnimationFrame(animate)
+    return () => {
+      cancelAnimationFrame(frame)
+      const source = map.current?.getSource('waves') as maplibregl.GeoJSONSource | undefined
+      source?.setData({ type: 'FeatureCollection', features: [] })
+    }
+  }, [waveCandidates])
 
   // --- pulsation du halo, uniquement quand il y a quelque chose de frais
   useEffect(() => {
@@ -291,6 +360,16 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
             </li>
           ))}
         </ul>
+        {events.some((e) => isWaveCandidate(e, now)) ? (
+          <ul className="legend-waves">
+            <li>
+              <span className="wave-line p" /> {t('wave.p')}
+            </li>
+            <li>
+              <span className="wave-line s" /> {t('wave.s')}
+            </li>
+          </ul>
+        ) : null}
       </div>
     </div>
   )

@@ -24,3 +24,6 @@ __pycache__/
 .DS_Store
 .vscode/
 .idea/
+
+# dumps de payload captures pour analyse, jamais du code
+/backend/*.json

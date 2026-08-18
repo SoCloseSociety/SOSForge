@@ -115,7 +115,13 @@ async def heartbeat() -> None:
     les horloges (l'UI affiche un age "il y a N s" calcule sur l'heure serveur)."""
     while True:
         await asyncio.sleep(settings.heartbeat_seconds)
-        if hub.client_count:
+        # Une seule exception non rattrapee ici tuait la tache pour de bon: plus
+        # aucun tick, donc tous les clients se declarent deconnectes au bout de
+        # 15 s et bouclent en reconnexion -- pendant que /healthz repond "ok".
+        # C'est la promesse de fraicheur qui tombe en silence.
+        try:
+            if not hub.client_count:
+                continue
             await hub.broadcast(
                 {
                     "type": "tick",
@@ -128,20 +134,29 @@ async def heartbeat() -> None:
                     "clients": hub.client_count,
                 }
             )
+        except Exception as exc:
+            log.warning("heartbeat: %s", exc)
 
 
 async def sweep_stale() -> None:
     """Balaye les alertes que plus aucune source ne mentionne."""
     while True:
         await asyncio.sleep(settings.sweep_seconds)
-        removed = store.prune_stale(settings.stale_after_hours)
-        if removed:
-            log.info(
-                "purge: %d alertes sans nouvelle depuis %.0f h (%s)",
-                len(removed),
-                settings.stale_after_hours,
-                ", ".join(sorted({e.source for e in removed})),
-            )
+        # meme raison que le heartbeat: cette tache doit survivre a ses erreurs
+        try:
+            removed = store.prune_stale(settings.stale_after_hours)
+            if removed:
+                log.info(
+                    "purge: %d alertes sans nouvelle depuis %.0f h (%s)",
+                    len(removed),
+                    settings.stale_after_hours,
+                    ", ".join(sorted({e.source for e in removed})),
+                )
+            journals = store.purge_journals(settings.journal_keep_days)
+            if journals:
+                log.info("journaux supprimes: %s", ", ".join(j.name for j in journals))
+        except Exception as exc:
+            log.warning("balayage: %s", exc)
 
 
 @asynccontextmanager
@@ -154,7 +169,15 @@ async def lifespan(app: FastAPI):
     # puis le rattrapage reseau.
     pipeline.quiet = True
     try:
-        restored = store.load_backlog(settings.data_dir / f"events-{utcnow():%Y-%m-%d}.jsonl")
+        # La veille AUSSI: un redemarrage a 00h15 ne rejouait qu'un quart
+        # d'heure de journal, et tout ce qui n'est pas un seisme (cyclones,
+        # bulletins tsunami, volcans, feux) disparaissait -- alors que
+        # l'interface propose 24 h et "tout".
+        today = utcnow()
+        restored = sum(
+            store.load_backlog(settings.data_dir / f"events-{day:%Y-%m-%d}.jsonl")
+            for day in (today - timedelta(days=1), today)
+        )
         if restored:
             log.info("journal local: %d evenements restaures", restored)
     except Exception as exc:

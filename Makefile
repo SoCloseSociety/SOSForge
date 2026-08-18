@@ -48,8 +48,9 @@ lint: ## ruff
 fmt: ## formatage ruff
 	cd backend && .venv/bin/ruff format app tests
 
-typecheck: ## typescript
+typecheck: ## types: TypeScript ET Python
 	cd frontend && npx tsc --noEmit
+	cd backend && .venv/bin/python -m mypy app
 
 build: ## build de production du frontend
 	cd frontend && npm run build

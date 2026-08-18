@@ -19,10 +19,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install "fastapi>=0.115" "uvicorn[standard]>=0.32" "pydantic>=2.9" \
                       "pydantic-settings>=2.6" "httpx>=0.27" "websockets>=13.0" \
-                      pytest pytest-asyncio ruff
+                      pytest pytest-asyncio ruff mypy
       - name: Lint
         working-directory: backend
         run: ruff check app tests
+
+      - name: Types
+        working-directory: backend
+        run: mypy app
       - name: Tests
         # Aucun appel reseau: les fixtures sont des payloads reels captures.
         working-directory: backend

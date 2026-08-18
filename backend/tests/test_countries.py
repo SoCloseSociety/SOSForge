@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.countries import flag_emoji, resolve
+from app.countries import resolve
 
 
 @pytest.mark.parametrize(
@@ -76,11 +76,3 @@ def test_the_open_sea_gets_no_flag(place):
 def test_no_input_no_guess():
     assert resolve(None, None) is None
     assert resolve("", "") is None
-
-
-def test_flag_emoji():
-    assert flag_emoji("FR") == "🇫🇷"
-    assert flag_emoji("id") == "🇮🇩"  # insensible a la casse
-    assert flag_emoji(None) is None
-    assert flag_emoji("XYZ") is None
-    assert flag_emoji("1A") is None

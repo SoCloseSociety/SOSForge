@@ -115,6 +115,9 @@ class Settings(BaseSettings):
     future_tolerance_seconds: float = 120.0
     stale_after_hours: float = 6.0
     sweep_seconds: float = 300.0
+    # retention du journal: environ 5 Mo par jour, sur un disque partage avec les
+    # autres produits de la suite
+    journal_keep_days: int = 7
 
     # --- dedup inter-sources ---
     dedupe_window_seconds: float = 90.0

@@ -10,7 +10,8 @@ inverse approximatif.
 Regle de conduite: en cas de doute, PAS de drapeau. Un seisme en pleine mer
 ("South Sandwich Islands region", "Banda Sea") n'appartient a aucun pays, et
 coller un drapeau au hasard serait une information fausse sur un produit
-d'urgence. `resolve` rend `None` et l'interface affiche un globe.
+d'urgence. `resolve` rend `None` et l'interface affiche un globe (le drapeau lui-meme
+est calcule cote navigateur a partir du code, il n'a rien a faire ici).
 """
 
 from __future__ import annotations
@@ -385,15 +386,24 @@ def _lookup(candidate: str) -> str | None:
     return None
 
 
-def _is_ambiguous(text: str) -> str | None | bool:
+# Sentinel: distingue "pas une phrase ambigue" de "phrase ambigue, aucun pays".
+# Un booleen melange a un code pays rendait la signature intenable (mypy le
+# signalait), et surtout illisible a la lecture.
+NOT_AMBIGUOUS = "?"
+
+
+def _is_ambiguous(text: str) -> str | None:
     """Une phrase ambigue est tranchee AVANT tout matching par suffixe: sinon
     "GULF OF CALIFORNIA" retombe sur "california" et devient americain.
-    Rend False si le texte n'est pas ambigu, sinon le code (ou None)."""
+
+    Rend `NOT_AMBIGUOUS` si le texte n'est pas ambigu, sinon le code pays (ou
+    None quand la phrase est ambigue au point qu'on refuse de trancher).
+    """
     lowered = _normalize(text)
     for phrase, iso2 in AMBIGUOUS_PHRASES.items():
         if phrase in lowered:
             return iso2
-    return False
+    return NOT_AMBIGUOUS
 
 
 def resolve(country: str | None, place: str | None = None) -> str | None:
@@ -411,7 +421,7 @@ def resolve(country: str | None, place: str | None = None) -> str | None:
         return None
 
     verdict = _is_ambiguous(place)
-    if verdict is not False:
+    if verdict != NOT_AMBIGUOUS:
         return verdict
 
     # Les libelles USGS et EMSC finissent par la region: "..., CA",
@@ -434,10 +444,3 @@ def resolve(country: str | None, place: str | None = None) -> str | None:
         if found:
             return found
     return None
-
-
-def flag_emoji(iso2: str | None) -> str | None:
-    """Le drapeau est calcule, pas stocke: deux indicateurs regionaux Unicode."""
-    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
-        return None
-    return "".join(chr(0x1F1E6 + ord(c) - ord("A")) for c in iso2.upper())

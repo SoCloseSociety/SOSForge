@@ -176,6 +176,13 @@ Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
   (`SOS_MAX_EVENT_AGE_DAYS`) les ecarte, avec une nuance qui compte: une alerte
   grave **et en cours** (cyclone rouge) survit, un seisme passe non -- un seisme
   est instantane, il ne "dure" pas.
+- **Ondes en propagation.** Pour un seisme de magnitude 4 ou plus survenu il y a
+  moins de six minutes, la carte trace les deux fronts d'onde en direct: **P** a
+  6 km/s (premiere secousse) et **S** a 3,5 km/s (celle qui fait les degats). Ce
+  n'est pas decoratif: c'est la seule chose de l'interface qui montre **ou les
+  secousses arrivent maintenant**. Vitesses crustales moyennes, donc justes pres
+  de l'epicentre et approximatives loin -- les cercles s'arretent a 1200 km,
+  avant de devenir mensongers.
 - **Alerte terminee.** Une alerte "en cours" (feu EONET, cyclone NHC, alerte
   GDACS courante) echappe a l'horizon tant que sa source la publie. Mais un
   balayage retire celles qu'aucune source ne mentionne plus depuis six heures:
@@ -187,16 +194,23 @@ Elle se coupe avec `SOS_ENABLE_JMA_EEW=false`.
 - **Horodatage dans le futur.** Une source dont l'horloge derive produisait un
   evenement d'age negatif: horizon franchi, annonce "en direct" en permanence, et
   cloue en tete du flux trie par date. Au-dela de deux minutes d'avance, rejete.
+- **Retention du journal.** Le journal JSONL grossit d'environ 5 Mo par jour.
+  Un balayage supprime ceux de plus de `SOS_JOURNAL_KEEP_DAYS` jours: sur un
+  service qui tourne en continu, personne ne surveille un disque qui se remplit.
+- **Taches de fond qui meurent.** Le battement d'une seconde et le balayage
+  attrapent leurs exceptions. Une seule erreur non rattrapee tuait la tache pour
+  de bon: plus aucun tick, tous les clients en reconnexion, et `/healthz` qui
+  repondait "ok" pendant ce temps.
 - **Panne d'une source.** Une source dont tous les flux echouent ne peut pas
   s'afficher verte. Le pied de page montre l'etat reel des dix-neuf.
 
 ## Verification
 
 ```bash
-make test        # 94 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
-cd frontend && npx vitest run   # 56 tests frontend: filtres, ingestion, i18n, rendu
+make test        # 95 tests backend: normalizers sur payloads reels, store, pipeline, non-regressions d'audit
+cd frontend && npx vitest run   # 77 tests frontend: filtres, ingestion, i18n, rendu
 make lint
-make typecheck
+make typecheck   # tsc + mypy
 make smoke       # etat live des dix-neuf sources
 ```
 

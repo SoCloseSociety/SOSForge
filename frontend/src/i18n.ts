@@ -85,6 +85,8 @@ const fr: Dict = {
   'age.d': 'il y a {n} j',
 
   'map.legend': 'Gravité',
+  'wave.p': 'onde P (premiere secousse)',
+  'wave.s': 'onde S (secousse destructrice)',
   'map.unavailable': 'Carte indisponible sur cet appareil',
   'map.unavailable.detail':
     "WebGL n'a pas pu démarrer. Le flux temps réel, lui, continue de tourner.",
@@ -171,6 +173,8 @@ const en: Dict = {
   'age.d': '{n} d ago',
 
   'map.legend': 'Severity',
+  'wave.p': 'P wave (first shaking)',
+  'wave.s': 'S wave (damaging shaking)',
   'map.unavailable': 'Map unavailable on this device',
   'map.unavailable.detail': 'WebGL could not start. The live feed keeps running.',
   'map.revised': 'revised',
@@ -256,6 +260,8 @@ const es: Dict = {
   'age.d': 'hace {n} d',
 
   'map.legend': 'Gravedad',
+  'wave.p': 'onda P (primera sacudida)',
+  'wave.s': 'onda S (sacudida destructiva)',
   'map.unavailable': 'Mapa no disponible en este dispositivo',
   'map.unavailable.detail': 'WebGL no pudo iniciarse. El flujo en directo sigue funcionando.',
   'map.revised': 'revisado',
@@ -341,6 +347,8 @@ const ja: Dict = {
   'age.d': '{n} 日前',
 
   'map.legend': '深刻度',
+  'wave.p': 'P波（初期微動）',
+  'wave.s': 'S波（主要動）',
   'map.unavailable': 'この端末では地図を利用できません',
   'map.unavailable.detail': 'WebGL を起動できませんでした。ライブ配信は継続しています。',
   'map.revised': '更新',
@@ -426,6 +434,8 @@ const id: Dict = {
   'age.d': '{n} hari lalu',
 
   'map.legend': 'Tingkat bahaya',
+  'wave.p': 'gelombang P (guncangan awal)',
+  'wave.s': 'gelombang S (guncangan merusak)',
   'map.unavailable': 'Peta tidak tersedia di perangkat ini',
   'map.unavailable.detail': 'WebGL gagal dijalankan. Aliran langsung tetap berjalan.',
   'map.revised': 'direvisi',

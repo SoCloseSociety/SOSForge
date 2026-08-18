@@ -242,3 +242,26 @@ def test_replaying_the_journal_does_not_reset_the_silence_clock(tmp_path):
     silence_h = (datetime.now(UTC) - restaure.last_seen).total_seconds() / 3600
     assert silence_h > 19, "le silence doit survivre au replay"
     assert rechargee.prune_stale(max_silence_hours=6)
+
+
+def test_old_journals_are_purged(tmp_path):
+    """Defaut 11. Le journal grossit d'environ 5 Mo par jour et n'etait jamais
+    purge: sur un service qui tourne en continu, le volume finit par saturer un
+    disque partage avec les autres produits de la suite."""
+    from datetime import timedelta as _td
+
+    store = EventStore(maxlen=10, data_dir=tmp_path, persist=True)
+    today = datetime.now(UTC)
+    for age in (0, 1, 9, 30):
+        (tmp_path / f"events-{(today - _td(days=age)):%Y-%m-%d}.jsonl").write_text("{}\n")
+    # un fichier qui ne suit pas la convention ne doit pas etre touche
+    (tmp_path / "notes.txt").write_text("garder")
+
+    removed = store.purge_journals(keep_days=7)
+
+    assert {p.name for p in removed} == {
+        f"events-{(today - _td(days=9)):%Y-%m-%d}.jsonl",
+        f"events-{(today - _td(days=30)):%Y-%m-%d}.jsonl",
+    }
+    assert (tmp_path / "notes.txt").exists()
+    assert (tmp_path / f"events-{today:%Y-%m-%d}.jsonl").exists()

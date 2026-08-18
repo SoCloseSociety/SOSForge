@@ -50,14 +50,20 @@ class JsonPollSource(Source):
     def parse_payload(self, data: Any) -> list[Event]:  # pragma: no cover - abstrait
         raise NotImplementedError
 
+    def build_url(self) -> str:
+        """URL a interroger a ce cycle. Redefinie par les sources dont l'URL
+        depend de l'instant (AFAD demande une fenetre temporelle glissante)."""
+        return self.url
+
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        # follow_redirects: AFAD repond 302 avant son JSON
         async with httpx.AsyncClient(
             timeout=30.0, headers=headers, follow_redirects=True
         ) as client:
             while True:
                 try:
-                    resp = await client.get(self.url)
+                    resp = await client.get(self.build_url())
                     resp.raise_for_status()
                     events = self.parse_payload(resp.json())
                     for event in events:
@@ -386,25 +392,6 @@ class AfadSource(JsonPollSource):
             "limit": "500",
         }
         return f"{self.base_url}?{urlencode(params)}"
-
-    async def run(self, emit: Emit) -> None:
-        headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
-        # follow_redirects est indispensable: l'API repond 302 (BigFIP) avant JSON
-        async with httpx.AsyncClient(
-            timeout=30.0, headers=headers, follow_redirects=True
-        ) as client:
-            while True:
-                try:
-                    resp = await client.get(self.build_url())
-                    resp.raise_for_status()
-                    events = self.parse_payload(resp.json())
-                    for event in events:
-                        await emit(event)
-                    self.health.ok(len(events))
-                except Exception as exc:
-                    self.health.fail(exc)
-                    log.warning("%s: %s", self.name, exc)
-                await asyncio.sleep(self.poll_seconds)
 
     def parse_payload(self, data: Any) -> list[Event]:
         events: list[Event] = []
