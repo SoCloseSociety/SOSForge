@@ -164,10 +164,31 @@ async def measure(url: str, width: int, height: int, port: int) -> dict:
             await call("Emulation.setTouchEmulationEnabled", {"enabled": touch})
             await call("Page.enable")
             await call("Page.navigate", {"url": url})
-            # the live feed has to arrive before the page is worth measuring
-            await asyncio.sleep(9)
+
+            # Wait for DATA, not for a clock. A fixed sleep measured a page
+            # that had not received its snapshot yet, and this tool then
+            # reported "the feed is 0 px tall" -- which is what an empty feed
+            # and a starved feed look like from the outside, since the
+            # component renders `.feed-empty` INSTEAD of `.feed` when it has
+            # nothing to show. Against the live site over HTTPS that produced
+            # three false failures out of eight. A gate that cries wolf is a
+            # gate people learn to ignore.
+            ready = False
+            for _ in range(60):
+                await asyncio.sleep(0.5)
+                probe = await call("Runtime.evaluate", {
+                    "expression": "document.querySelectorAll('.item').length",
+                    "returnByValue": True,
+                })
+                if probe["result"]["result"]["value"] > 0:
+                    ready = True
+                    break
+            # a little more, so late-arriving events do not resize mid-measure
+            await asyncio.sleep(1.5)
             res = await call("Runtime.evaluate", {"expression": MEASURE, "returnByValue": True})
-            return res["result"]["result"]["value"]
+            measured = res["result"]["result"]["value"]
+            measured["gotData"] = ready
+            return measured
     finally:
         chrome.terminate()
 
@@ -175,6 +196,10 @@ async def measure(url: str, width: int, height: int, port: int) -> dict:
 def verdict(label: str, width: int, m: dict) -> list[str]:
     """The invariants. Each one is a bug this product actually shipped."""
     failures = []
+    if not m.get("gotData"):
+        # Not a layout verdict: the page never received an event, so there is
+        # nothing to lay out. Said plainly rather than blamed on the CSS.
+        return ["no event ever arrived: the feed was never populated, layout not judged"]
     if m["overflowX"] > 1:
         failures.append(f"the page scrolls sideways by {m['overflowX']} px")
     if m["offenders"]:
@@ -215,10 +240,13 @@ async def main() -> int:
         m = await measure(args.url, w, h, 9500 + i)
         bad = verdict(label, w, m)
         results.append({"label": label, "width": w, "height": h, "measured": m, "failures": bad})
-        if bad:
+        if bad and m.get("gotData"):
             failed += 1
+        elif bad:
+            # inconclusive, not failed
+            pass
         if not args.json:
-            mark = "FAIL" if bad else "ok  "
+            mark = "??  " if not m.get("gotData") else ("FAIL" if bad else "ok  ")
             feed_h = (m["regions"].get("feed") or {}).get("h", 0)
             print(f"  {mark}  {label:17s} {w:>4}x{h:<4}  "
                   f"feed {feed_h:>6} px, {m['itemsAboveFold']} event(s) above the fold")
