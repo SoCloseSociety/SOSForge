@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '../store'
 import {
   SEVERITY_META,
@@ -33,10 +34,13 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
     <button
       type="button"
       className={`item${fresh ? ' fresh' : ''}`}
-      aria-selected={selected}
+      // `aria-selected` is only valid on option/tab/row/gridcell: on a button
+      // screen readers ignore it, so opening an event announced no state at
+      // all. `aria-pressed` is the toggle that this actually is.
+      aria-pressed={selected}
       onClick={() => select(selected ? null : event.id)}
     >
-      <span className="mag" style={{ color: severity.color }}>
+      <span className="mag" style={{ color: severity.text }}>
         {chip.value}
         {chip.unit ? <small>{chip.unit}</small> : null}
       </span>
@@ -66,18 +70,61 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
   )
 }
 
+/** Says ONE sentence when an event arrives, and is otherwise silent.
+ *
+ * Separated from the list on purpose: the list's rows carry ages that change
+ * every second, and a live region wrapping them kept the polite queue
+ * permanently saturated with "14 s ago... 15 s ago", drowning the very
+ * announcements it existed for.
+ */
+function NewEventAnnouncer({ events }: { events: SosEvent[] }): JSX.Element {
+  const t = useStore((s) => s.t)
+  const newest = events[0]
+  const [announced, setAnnounced] = useState<string | null>(null)
+  const spoken = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (!newest || spoken.current === newest.id) return
+    spoken.current = newest.id
+    setAnnounced(
+      t('a11y.newevent', {
+        kind: t(`kind.${newest.kind}`),
+        place: newest.place,
+        severity: t(`sev.${newest.severity}`),
+      }),
+    )
+  }, [newest, t])
+
+  return (
+    <p className="sr-only" role="status" aria-live="polite">
+      {announced}
+    </p>
+  )
+}
+
 export function Feed({ events, now, emptyKey }: Props) {
   const t = useStore((s) => s.t)
   if (events.length === 0) {
     return <div className="feed-empty">{t(emptyKey)}</div>
   }
   return (
-    // aria-live="polite": a new event is announced without interrupting
-    // ongoing reading. "assertive" would be unbearable at 20 events/minute.
-    <div className="feed" role="feed" aria-live="polite" aria-busy={false}>
-      {events.map((event) => (
-        <Row key={event.id} event={event} now={now} />
-      ))}
-    </div>
+    // NO aria-live here, and no role="feed".
+    //
+    // Every row carries an age that re-renders on the one-second tick, so a
+    // live region wrapping the list kept the polite queue permanently full of
+    // "14 s ago... 15 s ago" -- and the actual new-event announcements it was
+    // built for drowned in it. `role="feed"` also requires `article`
+    // children, and these are buttons, which broke feed navigation outright.
+    //
+    // The announcement lives in <NewEventAnnouncer>, which says one sentence
+    // when something arrives and is otherwise silent.
+    <>
+      <NewEventAnnouncer events={events} />
+      <div className="feed">
+        {events.map((event) => (
+          <Row key={event.id} event={event} now={now} />
+        ))}
+      </div>
+    </>
   )
 }

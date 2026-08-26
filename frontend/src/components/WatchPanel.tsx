@@ -120,6 +120,7 @@ export function WatchPanel({ events, now }: { events: SosEvent[]; now: number })
                     <span
                       className="watch-dot"
                       style={{ background: SEVERITY_META[alarm.event.severity].color }}
+                      aria-hidden="true"
                     />
                     <span>
                       <strong>{kindLabel(t, alarm.event.kind)}</strong> {alarmText(alarm)}

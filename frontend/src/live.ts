@@ -81,7 +81,13 @@ export function connectLive(): () => void {
     // `lastMessageAt` being 0, the guard let it through and the interface
     // showed a frozen feed while announcing "LIVE", indefinitely. That was
     // exactly the lie this file exists to forbid.
-    const reference = lastMessageAt || openedAt
+    // The most RECENT of the two, not "the message if there is one". After a
+    // reconnect, `lastMessageAt` is a real but STALE timestamp from before the
+    // outage: preferring it made the watchdog measure the silence of the dead
+    // connection against the brand-new one, and close it two seconds after
+    // opening -- before its snapshot could arrive. On a slow link that loop
+    // never converged and the tab never came back without a reload.
+    const reference = Math.max(lastMessageAt, openedAt)
     if (reference && Date.now() - reference > SILENCE_LIMIT_MS) {
       socket?.close()
     }

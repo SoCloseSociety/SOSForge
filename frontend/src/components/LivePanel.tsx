@@ -78,7 +78,7 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
             {event.place || event.title}
           </h3>
           <p className="live-meta">
-            <span style={{ color: severity.color }}>
+            <span style={{ color: severity.text }}>
               <span aria-hidden="true">{severity.glyph}</span> {severityLabel(t, event.severity)}
             </span>
             {' · '}

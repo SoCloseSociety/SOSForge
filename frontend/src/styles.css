@@ -19,12 +19,19 @@
 
   /* status palette, fixed */
   --sev-info: #6f7379;
+  /* Text variants: the fills measured 3.9:1 as words on the panel, below the
+     4.5:1 the smallest labels need. See format.ts for the measurements. */
+  --sev-info-text: #8b9098;
   --sev-minor: #0ca30c;
   --sev-moderate: #fab219;
   --sev-severe: #ec835a;
   --sev-extreme: #d03b3b;
+  --sev-extreme-text: #f0605f;
 
   --accent: #3987e5;
+  /* White on --accent measures 3.64:1; the filter badge is small bold text and
+     needs 4.5. This darker shade measures 5.06:1. */
+  --accent-deep: #2f6fbf;
 
   --radius: 10px;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -468,7 +475,7 @@ button {
 }
 
 .sev-info {
-  color: var(--sev-info);
+  color: var(--sev-info-text);
 }
 .sev-minor {
   color: var(--sev-minor);
@@ -480,7 +487,7 @@ button {
   color: var(--sev-severe);
 }
 .sev-extreme {
-  color: var(--sev-extreme);
+  color: var(--sev-extreme-text);
 }
 
 .tag {
@@ -867,15 +874,6 @@ button {
   line-height: 1.45;
 }
 
-@media (max-width: 900px) {
-  .live-panel {
-    right: 12px;
-    top: 12px;
-    width: calc(100% - 24px);
-    max-height: 55%;
-  }
-}
-
 .flag {
   font-size: 13px;
   line-height: 1;
@@ -1006,216 +1004,6 @@ button {
    enough for the desktop grid, far too short for it, and the feed came out at
    zero pixels there exactly as it did on a portrait phone. The breakpoint has
    to watch both axes. */
-@media (max-width: 820px), (max-height: 560px) {
-  html,
-  body,
-  #root {
-    height: auto;
-    min-height: 100%;
-  }
-
-  .app {
-    height: auto;
-    min-height: 100dvh;
-  }
-
-  /* The one thing that must never scroll away: whether the feed is live.
-     Everything else on this page is worthless if that lies. */
-  .header {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    flex-wrap: wrap;
-    gap: 6px 10px;
-    padding: 8px 12px;
-  }
-
-  .brand strong {
-    font-size: 16px;
-  }
-
-  /* the tagline took four lines on its own */
-  .brand span,
-  .header .spacer,
-  .header .clock {
-    display: none;
-  }
-
-  /* Five counters at two per row cost 200 px before the reader saw a single
-     event. One scrolling row costs 68. */
-  .kpis {
-    display: flex;
-    grid-template-columns: none;
-    overflow-x: auto;
-    scrollbar-width: none;
-    gap: 0;
-  }
-
-  .kpis::-webkit-scrollbar {
-    display: none;
-  }
-
-  /* A strip that scrolls with no edge treatment reads as a strip that is
-     BROKEN -- the last counter looks chopped off rather than continued. The
-     fade says "there is more this way" without adding a control. */
-  .kpis {
-    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
-    mask-image: linear-gradient(to right, #000 88%, transparent);
-  }
-
-  .kpi {
-    flex: 0 0 auto;
-    min-width: 132px;
-    padding: 7px 14px;
-    border-right: 1px solid var(--hairline);
-  }
-
-  .kpi .value {
-    font-size: 19px;
-  }
-
-  .kpi .sub {
-    font-size: 11px;
-  }
-
-  .body {
-    display: flex;
-    flex-direction: column;
-    /* no fr rows: they are what starved the feed */
-    grid-template-columns: none;
-    grid-template-rows: none;
-  }
-
-  .panel {
-    border-right: none;
-    /* here the PAGE is the scroller: on touch, an inner scroller steals the
-       swipe that should move the page */
-    overflow: visible;
-    min-height: 0;
-  }
-
-  /* The map comes FIRST on a phone, and this was measured the hard way: with
-     the feed above it, the map sat at y=20968 -- three hundred events and
-     twenty thousand pixels below the fold. Nobody scrolls to that. Bounded to
-     a third of the screen so it cannot eat the feed, always one flick away. */
-  .map-column {
-    order: 1;
-    height: 36dvh;
-    /* No fixed floor. A 240 px floor on a 390 px landscape screen pushed the
-       first event below the fold on its own -- the map was taller than the
-       room left for it. `dvh` already scales; a floor in px does not. */
-    min-height: 140px;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .panel {
-    order: 2;
-  }
-
-  /* Three hundred rows is twenty thousand pixels of layout on a device that
-     has neither the memory nor the CPU for it. `content-visibility` lets the
-     browser skip what is off screen; the intrinsic size keeps the scrollbar
-     honest so the page does not jump while scrolling. */
-  .item {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 72px;
-  }
-
-  /* One row, not two: a sticky header is paid for on every screen, and it was
-     costing 102 px of 844. The sound label and the spelled-out language name
-     go first -- the icon and the flag say the same thing in a quarter of the
-     width.
-
-     The <select> is NOT hidden, it is made transparent on top of the flag:
-     hiding it would leave a phone with no way to change language at all, and
-     this product ships in five. It stays a native select, so it stays
-     keyboard- and screen-reader-operable. */
-  .toggle .label {
-    display: none;
-  }
-
-  .lang {
-    position: relative;
-    padding: 0 2px;
-    /* the select sits on top of the flag and is out of flow, so the label has
-       to hold the tap target open by itself */
-    min-width: 44px;
-    justify-content: center;
-  }
-
-  .lang select {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    opacity: 0;
-  }
-
-  /* Filters collapse behind one line. Open, they are a sheet over the feed
-     rather than 266 px pushing it off screen. */
-  .filters-collapsed {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .filters {
-    padding: 10px 12px;
-    gap: 8px;
-  }
-
-  .chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-
-  .chips::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chip {
-    flex: 0 0 auto;
-  }
-
-  .item {
-    padding: 11px 12px;
-  }
-
-  /* it was eating a third of an already tiny map */
-  .legend {
-    display: none;
-  }
-
-  /* A card floating over a 46vh map covers the map. On a phone it becomes
-     what it always was in intent: a sheet, at the bottom, thumb-reachable. */
-  .live-panel {
-    position: fixed;
-    inset: auto 0 0 0;
-    width: 100%;
-    max-height: 62dvh;
-    border-radius: 14px 14px 0 0;
-    border-left: none;
-    border-right: none;
-    border-bottom: none;
-    z-index: 30;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
-  }
-
-  .footer {
-    font-size: 11px;
-    gap: 6px 10px;
-    padding: 7px 12px;
-    padding-bottom: max(7px, env(safe-area-inset-bottom));
-  }
-
-  .footer .spacer {
-    display: none;
-  }
-
-  .footer-compact .spacer {
-    display: block;
-  }
-}
 
 /* -------------------------------------------------- collapsed filter bar */
 
@@ -1242,7 +1030,7 @@ button {
   min-width: 18px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--accent-deep);
   color: #fff;
   font-size: 11px;
   font-weight: 650;
@@ -1257,27 +1045,6 @@ button {
    for 44 pt, Material for 48 dp; 44 is the floor here. Keyed on the POINTER,
    not on the width -- a touchscreen laptop is not a phone but the thumb is
    still a thumb. */
-@media (pointer: coarse) {
-  button,
-  select,
-  input,
-  [role="button"],
-  .chip,
-  .segmented button {
-    min-height: 44px;
-  }
-
-  .search input {
-    padding: 12px 0;
-  }
-
-  .live-actions button,
-  .search-clear,
-  .sources-toggle {
-    min-height: 36px;
-    min-width: 36px;
-  }
-}
 
 .live-actions {
   margin-left: auto;
@@ -1334,8 +1101,12 @@ button {
 
 /* A covered type with no event stays visible, dimmed: it's information
    ("no tsunami in progress"), not an absence of information. */
+/* Was 0.45, which measured 1.96:1 -- the comment in App.tsx says a zero count
+   is information ("no tsunami in progress"), and at that ratio the information
+   was simply not there in daylight. 0.8 keeps it clearly secondary while
+   staying readable. */
 .chip.empty {
-  opacity: 0.45;
+  opacity: 0.8;
 }
 
 .chip.empty:hover {
@@ -1561,6 +1332,311 @@ button {
 /* Motion is decoration here, never information: the halo, the pulse and the
    wave animation all have a static equivalent. Someone who asked their system
    for less motion must not have to endure a counter that throbs. */
+
+/* ------------------------------------------------- accessibility helpers */
+
+/* Visible to a screen reader, invisible on screen. Used where a glyph or a
+   colour carries meaning that must also exist as words. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* A green dot and a red dot measure 1.43:1 against each other: for a
+   deuteranopic reader the source list said nothing at all. The cross does the
+   work; the colour reinforces it. */
+.source-mark {
+  color: var(--sev-extreme-text);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.source-down {
+  color: var(--sev-extreme-text);
+}
+
+/* Severity in the watch list was a bare coloured dot -- the same violation,
+   in the panel that speaks about the reader's OWN location. */
+.watch-sev {
+  font-size: 11px;
+  line-height: 1;
+  margin-right: 4px;
+}
+
+/* The brand is the document's h1 now; it must keep looking like the brand. */
+.brand h1 {
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  font-weight: 650;
+  margin: 0;
+}
+
+/* Watch actions had min-height but no min-width: about 22 px wide, on the
+   controls that arm and disarm an alarm for your own position. */
+.watch-actions button {
+  min-width: 44px;
+}
+
+/* =========================================================================
+   MEDIA QUERIES -- ALWAYS LAST IN THIS FILE.
+   ------------------------------------------------------------------------
+   At equal specificity the LAST rule wins, so a media block placed before the
+   rules it overrides does nothing at all. That mistake once broke the entire
+   mobile layout, and it is invisible: the build stays green, the selector
+   looks right, and the page is simply wrong on a phone.
+   Anything added below a media block is a rule that phone users will not get.
+   Add new base rules ABOVE this banner.
+   ========================================================================= */
+
+@media (max-width: 820px) {
+  .live-panel {
+    right: 12px;
+    top: 12px;
+    width: calc(100% - 24px);
+    max-height: 55%;
+  }
+}
+
+@media (max-width: 820px), (max-height: 560px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+
+  .app {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* The one thing that must never scroll away: whether the feed is live.
+     Everything else on this page is worthless if that lies. */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    padding: 8px 12px;
+  }
+
+  .brand strong {
+    font-size: 16px;
+  }
+
+  /* the tagline took four lines on its own */
+  .brand span,
+  .header .spacer,
+  .header .clock {
+    display: none;
+  }
+
+  /* Five counters at two per row cost 200 px before the reader saw a single
+     event. One scrolling row costs 68. */
+  .kpis {
+    display: flex;
+    grid-template-columns: none;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 0;
+  }
+
+  .kpis::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* A strip that scrolls with no edge treatment reads as a strip that is
+     BROKEN -- the last counter looks chopped off rather than continued. The
+     fade says "there is more this way" without adding a control. */
+  .kpis {
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+    mask-image: linear-gradient(to right, #000 88%, transparent);
+  }
+
+  .kpi {
+    flex: 0 0 auto;
+    min-width: 132px;
+    padding: 7px 14px;
+    border-right: 1px solid var(--hairline);
+  }
+
+  .kpi .value {
+    font-size: 19px;
+  }
+
+  .kpi .sub {
+    font-size: 11px;
+  }
+
+  .body {
+    display: flex;
+    flex-direction: column;
+    /* no fr rows: they are what starved the feed */
+    grid-template-columns: none;
+    grid-template-rows: none;
+  }
+
+  .panel {
+    border-right: none;
+    /* here the PAGE is the scroller: on touch, an inner scroller steals the
+       swipe that should move the page */
+    overflow: visible;
+    min-height: 0;
+  }
+
+  /* The map comes FIRST on a phone, and this was measured the hard way: with
+     the feed above it, the map sat at y=20968 -- three hundred events and
+     twenty thousand pixels below the fold. Nobody scrolls to that. Bounded to
+     a third of the screen so it cannot eat the feed, always one flick away. */
+  .map-column {
+    order: 1;
+    height: 36dvh;
+    /* No fixed floor. A 240 px floor on a 390 px landscape screen pushed the
+       first event below the fold on its own -- the map was taller than the
+       room left for it. `dvh` already scales; a floor in px does not. */
+    min-height: 140px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .panel {
+    order: 2;
+  }
+
+  /* Three hundred rows is twenty thousand pixels of layout on a device that
+     has neither the memory nor the CPU for it. `content-visibility` lets the
+     browser skip what is off screen; the intrinsic size keeps the scrollbar
+     honest so the page does not jump while scrolling. */
+  .item {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 72px;
+  }
+
+  /* One row, not two: a sticky header is paid for on every screen, and it was
+     costing 102 px of 844. The sound label and the spelled-out language name
+     go first -- the icon and the flag say the same thing in a quarter of the
+     width.
+
+     The <select> is NOT hidden, it is made transparent on top of the flag:
+     hiding it would leave a phone with no way to change language at all, and
+     this product ships in five. It stays a native select, so it stays
+     keyboard- and screen-reader-operable. */
+  .toggle .label {
+    display: none;
+  }
+
+  .lang {
+    position: relative;
+    padding: 0 2px;
+    /* the select sits on top of the flag and is out of flow, so the label has
+       to hold the tap target open by itself */
+    min-width: 44px;
+    justify-content: center;
+  }
+
+  .lang select {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    opacity: 0;
+  }
+
+  /* Filters collapse behind one line. Open, they are a sheet over the feed
+     rather than 266 px pushing it off screen. */
+  .filters-collapsed {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--hairline);
+  }
+
+  .filters {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .chips {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .chip {
+    flex: 0 0 auto;
+  }
+
+  .item {
+    padding: 11px 12px;
+  }
+
+  /* it was eating a third of an already tiny map */
+  .legend {
+    display: none;
+  }
+
+  /* A card floating over a 46vh map covers the map. On a phone it becomes
+     what it always was in intent: a sheet, at the bottom, thumb-reachable. */
+  .live-panel {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    max-height: 62dvh;
+    border-radius: 14px 14px 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    z-index: 30;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .footer {
+    font-size: 11px;
+    gap: 6px 10px;
+    padding: 7px 12px;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
+  }
+
+  .footer .spacer {
+    display: none;
+  }
+
+  .footer-compact .spacer {
+    display: block;
+  }
+}
+
+@media (pointer: coarse) {
+  button,
+  select,
+  input,
+  [role="button"],
+  .chip,
+  .segmented button {
+    min-height: 44px;
+  }
+
+  .search input {
+    padding: 12px 0;
+  }
+
+  .live-actions button,
+  .search-clear,
+  .sources-toggle {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

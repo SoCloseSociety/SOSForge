@@ -35,11 +35,17 @@ export function ArrivalAlert({ events, now }: { events: SosEvent[]; now: number 
       type="button"
       className="arrival"
       onClick={() => select(arrival.event.id)}
-      // assertive on purpose: this is the one message worth interrupting for
-      role="alert"
-      aria-live="assertive"
     >
-      <span className="arrival-count">
+      {/* The countdown ticks every second. `role="alert"` is implicitly
+          atomic, so putting it on this button made a screen reader re-read
+          the ENTIRE alert -- "45 s, seismic waves inbound to Tokyo, M6.8,
+          120 km away" -- once per second for the whole countdown,
+          interrupting itself and everything else. It also overrode the
+          button role, so the user was never told it could be activated.
+
+          So: the button stays a button, and a separate one-shot region
+          below announces the arrival once. */}
+      <span className="arrival-count" aria-hidden="true">
         {seconds}
         <small>s</small>
       </span>

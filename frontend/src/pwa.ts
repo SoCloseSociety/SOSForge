@@ -17,11 +17,17 @@ export function registerServiceWorker(): void {
   // from the OLD build while a new worker is now serving requests. On a
   // live tracker, pinning an old build is a trap -- reload once to land on
   // the new one. `reloading` guards against a loop if the event fires twice.
+  // Only when a worker was ALREADY in control. On a first visit the page
+  // starts uncontrolled and sw.js claims it seconds later (skipWaiting +
+  // clients.claim), which fired this event and reloaded the page mid-read --
+  // re-fetching everything, on exactly the emergency first visit this product
+  // exists for. A first claim is not a new build; it is the worker arriving.
+  const hadController = !!navigator.serviceWorker.controller
   let reloading = false
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return
+    if (!hadController || reloading) return
     reloading = true
-    window.location.reload()
+    location.reload()
   })
 
   // Registered after `load` so it never competes with the page's own

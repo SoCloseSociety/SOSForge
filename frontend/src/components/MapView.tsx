@@ -95,7 +95,7 @@ function popupHtml(event: SosEvent, now: number): string {
 
   return `<div class="popup">
     <h3>${escape(event.place || event.title)}</h3>
-    <div style="color:${severity.color};font-size:12px">
+    <div style="color:${severity.text};font-size:12px">
       ${severity.glyph} ${severityLabel(t, event.severity)} &middot; ${kindLabel(t, event.kind)}
       &middot; ${formatAge(t, (now - Date.parse(event.time)) / 1000)}
     </div>

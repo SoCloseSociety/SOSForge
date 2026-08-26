@@ -5,12 +5,23 @@ export type T = (key: string, vars?: Record<string, string | number>) => string
 /** Severity: color from the status palette + glyph. The LABEL comes from
  * i18n -- all three always travel together on display, the color alone must
  * never carry the information. */
-export const SEVERITY_META: Record<Severity, { glyph: string; color: string }> = {
-  info: { glyph: 'i', color: '#6f7379' },
-  minor: { glyph: '▪', color: '#0ca30c' },
-  moderate: { glyph: '▲', color: '#fab219' },
-  severe: { glyph: '⚠', color: '#ec835a' },
-  extreme: { glyph: '⛔', color: '#d03b3b' },
+/** Two colours per rank, and the difference is not cosmetic.
+ *
+ * `color` is the FILL: a map marker, the banner background, a dot. It is
+ * judged against 3:1 for non-text, and it is the colour people recognise.
+ *
+ * `text` is the same rank rendered as WORDS on a dark surface, where the bar
+ * is 4.5:1. Measured, the fills fell short of that: `info` at 3.93:1 and
+ * `extreme` at 3.90:1 on the panel background, 3.5:1 on a selected row. The
+ * most severe label in the product was the one a sunlit phone could not read.
+ * Every `text` value below now measures 5.2:1 or better on both surfaces.
+ */
+export const SEVERITY_META: Record<Severity, { glyph: string; color: string; text: string }> = {
+  info: { glyph: 'i', color: '#6f7379', text: '#8b9098' },
+  minor: { glyph: '▪', color: '#0ca30c', text: '#3fc23f' },
+  moderate: { glyph: '▲', color: '#fab219', text: '#fab219' },
+  severe: { glyph: '⚠', color: '#ec835a', text: '#f0a07d' },
+  extreme: { glyph: '⛔', color: '#d03b3b', text: '#f0605f' },
 }
 
 export const KIND_GLYPH: Record<Kind, string> = {

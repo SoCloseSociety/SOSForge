@@ -9,9 +9,13 @@ import { registerServiceWorker } from '../pwa'
 
 /** Minimal fake of ServiceWorkerContainer: enough to drive `register()` and
  * the `controllerchange` event without a real browser. */
-function makeContainer(registerImpl: () => Promise<unknown> = () => Promise.resolve({})) {
+function makeContainer(
+  registerImpl: () => Promise<unknown> = () => Promise.resolve({}),
+  { controller = {} as object | null } = {},
+) {
   const listeners = new Map<string, Array<() => void>>()
   return {
+    controller,
     register: vi.fn(registerImpl),
     addEventListener: vi.fn((type: string, handler: () => void) => {
       const list = listeners.get(type) ?? []
@@ -95,7 +99,7 @@ describe('registration', () => {
 })
 
 describe('update flow', () => {
-  it('reloads the page once a new worker takes control', () => {
+  it('reloads when a NEW worker replaces one already in control', () => {
     const container = makeContainer()
     defineServiceWorker(container)
 
@@ -103,6 +107,22 @@ describe('update flow', () => {
     container.fire('controllerchange')
 
     expect(reload).toHaveBeenCalledTimes(1)
+  })
+
+  it('does NOT reload when the first worker takes control', () => {
+    // This test used to assert the opposite, and the opposite was wrong.
+    // sw.js calls skipWaiting + clients.claim, so on a first visit the page
+    // starts uncontrolled and is claimed seconds later -- which reloaded the
+    // page mid-read, re-fetching everything, on exactly the emergency first
+    // visit this product exists for. A first claim is the worker arriving,
+    // not a new build.
+    const container = makeContainer(() => Promise.resolve({}), { controller: null })
+    defineServiceWorker(container)
+
+    registerServiceWorker()
+    container.fire('controllerchange')
+
+    expect(reload).not.toHaveBeenCalled()
   })
 
   it('never reloads twice, even if the event fires more than once', () => {

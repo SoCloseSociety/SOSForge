@@ -131,6 +131,13 @@ const fr: Dict = {
   'filters.open': 'Filtres et recherche',
   'filters.close': 'Fermer les filtres',
   'footer.sources': '{up}/{total} sources en ligne',
+  'filters.empty.kinds': 'Aucun evenement de ces types. Reactivez des categories.',
+  'filters.empty.magnitude': 'Rien au-dessus de cette magnitude. Baissez le seuil.',
+  'app.title': 'SOSForge -- seismes, tsunamis et catastrophes en direct',
+  'lang.picker': 'Choix de la langue',
+  'footer.source.up': 'en ligne',
+  'footer.source.down': 'hors ligne',
+  'a11y.newevent': 'Nouvel evenement : {kind} {severity} a {place}',
 }
 
 const en: Dict = {
@@ -241,6 +248,13 @@ const en: Dict = {
   'filters.open': 'Filters and search',
   'filters.close': 'Close filters',
   'footer.sources': '{up}/{total} sources online',
+  'filters.empty.kinds': 'No event of these kinds. Turn some categories back on.',
+  'filters.empty.magnitude': 'Nothing above that magnitude. Lower the threshold.',
+  'app.title': 'SOSForge -- live earthquake, tsunami and disaster tracker',
+  'lang.picker': 'Language',
+  'footer.source.up': 'online',
+  'footer.source.down': 'offline',
+  'a11y.newevent': 'New event: {severity} {kind} at {place}',
 }
 
 const es: Dict = {
@@ -351,6 +365,13 @@ const es: Dict = {
   'filters.open': 'Filtros y busqueda',
   'filters.close': 'Cerrar filtros',
   'footer.sources': '{up}/{total} fuentes en linea',
+  'filters.empty.kinds': 'Ningun evento de estos tipos. Reactive algunas categorias.',
+  'filters.empty.magnitude': 'Nada por encima de esa magnitud. Baje el umbral.',
+  'app.title': 'SOSForge -- terremotos, tsunamis y desastres en directo',
+  'lang.picker': 'Idioma',
+  'footer.source.up': 'en linea',
+  'footer.source.down': 'sin conexion',
+  'a11y.newevent': 'Nuevo evento: {kind} {severity} en {place}',
 }
 
 const ja: Dict = {
@@ -461,6 +482,13 @@ const ja: Dict = {
   'filters.open': '絞り込みと検索',
   'filters.close': '絞り込みを閉じる',
   'footer.sources': '稼働中のソース {up}/{total}',
+  'filters.empty.kinds': 'この種類の事象はありません。カテゴリを戻してください。',
+  'filters.empty.magnitude': 'そのマグニチュード以上はありません。しきい値を下げてください。',
+  'app.title': 'SOSForge -- 地震・津波・災害のリアルタイム追跡',
+  'lang.picker': '言語',
+  'footer.source.up': '稼働中',
+  'footer.source.down': '停止中',
+  'a11y.newevent': '新しい事象: {place} で {severity} の {kind}',
 }
 
 const id: Dict = {
@@ -571,6 +599,13 @@ const id: Dict = {
   'filters.open': 'Filter dan pencarian',
   'filters.close': 'Tutup filter',
   'footer.sources': '{up}/{total} sumber aktif',
+  'filters.empty.kinds': 'Tidak ada kejadian jenis ini. Aktifkan lagi beberapa kategori.',
+  'filters.empty.magnitude': 'Tidak ada di atas magnitudo itu. Turunkan ambangnya.',
+  'app.title': 'SOSForge -- pelacak gempa, tsunami, dan bencana langsung',
+  'lang.picker': 'Bahasa',
+  'footer.source.up': 'aktif',
+  'footer.source.down': 'mati',
+  'a11y.newevent': 'Kejadian baru: {kind} {severity} di {place}',
 }
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id }

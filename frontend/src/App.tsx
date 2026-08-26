@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
 import { ALL_KINDS, WINDOWS, filterEvents, useStore } from './store'
+import { emptyReason } from './emptyReason'
 import { connectLive } from './live'
 import { syncDeepLink } from './deeplink'
 import { Feed } from './components/Feed'
@@ -69,7 +70,7 @@ function Kpis({ now }: { now: number }) {
         <div className="label">{t('kpi.tsunami')}</div>
         <div
           className="value"
-          style={{ color: stats?.tsunami_active ? SEVERITY_META.extreme.color : undefined }}
+          style={{ color: stats?.tsunami_active ? SEVERITY_META.extreme.text : undefined }}
         >
           {stats?.tsunami_active ?? '--'}
         </div>
@@ -233,13 +234,14 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
 function LangPicker() {
   const lang = useStore((s) => s.lang)
   const setLang = useStore((s) => s.setLang)
+  const t = useStore((s) => s.t)
   return (
     <label className="lang">
       <span aria-hidden="true">{LANGS.find((l) => l.code === lang)?.flag}</span>
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value as typeof lang)}
-        aria-label="Langue / Language"
+        aria-label={t('lang.picker')}
       >
         {LANGS.map((l) => (
           <option key={l.code} value={l.code}>
@@ -279,13 +281,33 @@ function Footer() {
   return (
     <footer className="footer">
       {isPhone ? (
-        <button type="button" className="sources-toggle" onClick={() => setOpen(false)}>
-          ✕
+        <button
+          type="button"
+          className="sources-toggle"
+          aria-label={t('detail.close')}
+          onClick={() => setOpen(false)}
+        >
+          <span aria-hidden="true">✕</span>
         </button>
       ) : null}
       {sources.map((source) => (
-        <span className="source" key={source.name} title={source.last_error ?? 'OK'}>
-          <span className={`dot ${source.connected ? 'up' : 'down'}`} />
+        <span
+          className={`source${source.connected ? '' : ' source-down'}`}
+          key={source.name}
+          title={source.last_error ?? 'OK'}
+        >
+          {/* A green dot and a red dot, 7 px wide, measure 1.43:1 against
+              each other: for a deuteranopic reader the footer said nothing at
+              all -- and telling you WHICH source is dead is the only reason
+              this footer exists. The glyph carries it now; the colour only
+              reinforces it. */}
+          <span className={`dot ${source.connected ? 'up' : 'down'}`} aria-hidden="true" />
+          <span className="sr-only">
+            {source.connected ? t('footer.source.up') : t('footer.source.down')}
+          </span>
+          <span aria-hidden="true" className="source-mark">
+            {source.connected ? '' : '\u00d7'}
+          </span>
           {SOURCE_LABEL[source.name] ?? source.name}
           <span className="count">{source.ingested ?? source.events_seen}</span>
         </span>
@@ -327,13 +349,20 @@ export default function App() {
   useEffect(() => syncDeepLink(), [])
   useEffect(() => {
     document.documentElement.lang = lang
-  }, [lang])
+    // The tab title, the bookmark and what a screen reader announces on page
+    // load all come from here. Leaving it English meant a Japanese reader's
+    // tab said "SOSForge -- live earthquake, tsunami and disaster tracker"
+    // forever, whatever the interface said.
+    document.title = t('app.title')
+  }, [lang, t])
 
   return (
     <div className="app">
       <header className="header">
         <div className="brand">
-          <strong>SOSForge</strong>
+          {/* The only heading present at all times. Without it a screen-reader
+              user pressing H landed on the map legend, or on nothing. */}
+          <h1>SOSForge</h1>
           <span>{t('app.tagline')}</span>
         </div>
         <span className="spacer" />
@@ -372,13 +401,7 @@ export default function App() {
           <Feed
             events={visible}
             now={now}
-            emptyKey={
-              filters.query.trim()
-                ? 'filters.empty.search'
-                : filters.windowMinutes > 0 && events.length > 0
-                  ? 'filters.empty.window'
-                  : 'filters.empty'
-            }
+            emptyKey={emptyReason({ events, visible, filters })}
           />
         </section>
         <div className="map-column">

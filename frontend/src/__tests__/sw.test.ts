@@ -81,7 +81,8 @@ async function loadWorker() {
   }
   vi.stubGlobal('Request', ScopedRequest)
   vi.resetModules()
-  await import('../../public/sw.js?raw-import')
+  // @ts-expect-error -- a plain worker script, not a typed module
+  await import('../../public/sw.js')
 }
 
 /** Drives one fetch event and returns what the worker answered, or the string
@@ -120,7 +121,7 @@ describe('the app shell must never be served stale to an online user', () => {
     const response = await fetchThrough('/')
 
     expect(response).not.toBe('passthrough')
-    expect(await (response as Response).text()).toBe('FRESH shell from the network')
+    expect(await (response as unknown as Response).text()).toBe('FRESH shell from the network')
     expect(network).toHaveBeenCalled()
   })
 
@@ -135,7 +136,7 @@ describe('the app shell must never be served stale to an online user', () => {
 
     const response = await fetchThrough('/')
 
-    expect(await (response as Response).text()).toBe('precached shell')
+    expect(await (response as unknown as Response).text()).toBe('precached shell')
   })
 
   it('still serves hashed assets from cache without touching the network', async () => {
@@ -151,7 +152,7 @@ describe('the app shell must never be served stale to an online user', () => {
 
     const response = await fetchThrough('/assets/index-abc123.js', 'no-cors')
 
-    expect(await (response as Response).text()).toBe('cached bundle')
+    expect(await (response as unknown as Response).text()).toBe('cached bundle')
     expect(network).not.toHaveBeenCalled()
   })
 
