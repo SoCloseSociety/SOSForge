@@ -81,9 +81,21 @@ off. Concretely:
   302 before its JSON.
 - **Meteoalarm**: `awareness_level` is a composite string ("1; green; Minor");
   `responseType: AllClear` means the warning is LIFTED; every warning carries its
-  content twice (local language + English) and must yield ONE event.
-- **WMO**: `s`/`u`/`c` are CAP ranks (1 = most severe), and the scale is **not**
-  homogeneous between countries.
+  content twice (local language + English) and must yield ONE event. It
+  publishes **no geometry**: 28896 of 28898 area blocks carry an `EMMA_ID`
+  (`NUTS3` for France, `WARNCELLID` for Germany) and no shape, and no public
+  endpoint turns those codes into one. The UK Met Office is the single
+  exception -- it fills `area[].polygon`, a LIST of CAP rings.
+- **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
+  against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
+  2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
+  once as "1 = most severe", which made the source keep the Minor alerts,
+  publish them as EXTREME and drop every Extreme one. Verified against the
+  `<severity>` element of 100 CAP documents. The scale is still **not**
+  homogeneous between countries. The aggregate carries **no coordinates at
+  all**; the CAP document it links does, for about half the Severe/Extreme
+  alerts, and it is named `url` on some items and **`capURL` on the other
+  977** -- read both.
 
 ## Pattern matching on natural language
 

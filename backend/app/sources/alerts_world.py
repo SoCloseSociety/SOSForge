@@ -9,9 +9,23 @@ which only sees major disasters.
 - **the WMO CAP aggregate** covers the rest (India, China, Indonesia, South
   America...) in a single call.
 
-Neither carries coordinates: areas are described by administrative codes
-(NUTS3 in Europe). Events therefore come out without a position, which the
-model accepts -- they show up in the feed, not on the map.
+Positions, measured on the payloads of 2026-08-26:
+
+- **Meteoalarm** publishes no geometry, with one exception: the UK Met Office
+  fills `area[].polygon` inside the JSON itself. Everything else -- 28896 area
+  blocks out of 28898 -- names an `EMMA_ID` (`NUTS3` for France, `WARNCELLID`
+  for Germany) and an administrative area, and Meteoalarm publishes no table
+  that turns either into a shape: `api.meteoalarm.org/metadata/v1/regions`
+  answers 401, every other candidate endpoint 404, and the only geometry its
+  own map has is inside MVT tiles. So those warnings stay unplaced.
+- **the WMO aggregate** publishes no geometry either, but it links a CAP
+  document that often does: about one Severe-or-Extreme alert in two. That is
+  what `cap_area.py` goes and gets.
+
+Resolving the remaining codes would mean sending administrative names to a
+third-party gazetteer. Refused: a same-name collision puts a warning in the
+wrong province, and lesson 15 is that a wrong position is far worse than a
+missing one. An event with no position still shows in the feed.
 """
 
 from __future__ import annotations
@@ -19,12 +33,14 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+from pathlib import Path
 from typing import Any
 
 import httpx
 
 from app.models.event import Event, Kind, Severity, to_utc
 from app.sources.base import Emit, Source
+from app.sources.cap_area import WMO_CAP_BASE, CapAreaCache, parse_polygon
 from app.sources.nws import _matches
 from app.sources.regional import USER_AGENT, JsonPollSource
 
@@ -94,6 +110,28 @@ def _level_of(event: Event) -> int:
         return 0
 
 
+def _meteoalarm_position(areas: list[dict]) -> tuple[float | None, float | None]:
+    """The UK Met Office is the one Meteoalarm producer that draws its
+    warnings: `area[].polygon` holds a LIST of CAP rings (`lat,lon` pairs,
+    latitude first). Everyone else names an EMMA_ID and nothing else, and
+    there is no public table from that code to a shape -- so no position,
+    rather than a guessed one."""
+    lats: list[float] = []
+    lons: list[float] = []
+    for area in areas:
+        rings = area.get("polygon")
+        if isinstance(rings, str):  # CAP allows a single ring, not only a list
+            rings = [rings]
+        for ring in rings or []:
+            point = parse_polygon(ring)
+            if point:
+                lats.append(point[0])
+                lons.append(point[1])
+    if not lats:
+        return None, None
+    return sum(lats) / len(lats), sum(lons) / len(lons)
+
+
 def _pick_info(blocks: list[dict]) -> dict | None:
     """A Meteoalarm alert carries the same content twice: local language and
     English. Without this choice, each warning produced two events."""
@@ -131,6 +169,7 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
 
     areas = info.get("area") or []
     place = ", ".join(a.get("areaDesc", "") for a in areas[:3] if a.get("areaDesc"))
+    lat, lon = _meteoalarm_position(areas)
     time = to_utc(info.get("onset")) or to_utc(info.get("effective"))
     if time is None:
         return None
@@ -141,6 +180,8 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         source_id=identifier,
         kind=kind,
         time=time,
+        lat=lat,
+        lon=lon,
         place=place or country.replace("-", " ").title(),
         country=country.replace("-", " "),
         severity=severity,
@@ -220,14 +261,35 @@ class MeteoalarmSource(Source):
 
 # ------------------------------------------------------------------------- WMO
 
-# `s`, `u`, `c` encode CAP severity / urgency / certainty by their rank
-# (1 = most severe), 0 when the country did not fill it in.
+# `s`, `u`, `c` encode CAP severity / urgency / certainty as a rank that grows
+# WITH the severity, and 0 when the producer left the field Unknown.
+#
+# This was read the other way round -- "1 = most severe" -- and the mistake was
+# not academic. Cross-checked against the `<severity>` element of 100 CAP
+# documents sampled across every rank of the 2026-08-26 aggregate:
+#
+#     s=0 Unknown (19/20)  s=1 Minor (20/20)  s=2 Moderate (20/20)
+#     s=3 Severe  (20/20)  s=4 Extreme (20/20)
+#
+# So the source was keeping the 246 *Minor* alerts, publishing them as EXTREME,
+# and dropping the 91 Extreme and 353 Severe ones. See `WmoCapSource` for how
+# the kept set is expressed now.
 WMO_SEVERITY = {
-    1: Severity.EXTREME,
-    2: Severity.SEVERE,
-    3: Severity.MODERATE,
-    4: Severity.MINOR,
+    1: Severity.MINOR,
+    2: Severity.MODERATE,
+    3: Severity.SEVERE,
+    4: Severity.EXTREME,
 }
+
+# Same reading, same sample: `u` 1=Past 2=Future 3=Expected 4=Immediate,
+# `c` 2=Possible 3=Likely 4=Observed. Kept as text in `raw` because a bare
+# rank is unreadable and was already being misread once.
+WMO_URGENCY = {1: "past", 2: "future", 3: "expected", 4: "immediate"}
+WMO_CERTAINTY = {1: "unlikely", 2: "possible", 3: "likely", 4: "observed"}
+
+# CAP severity has four tiers; the settings express how many of them to keep,
+# counting down from Extreme.
+WMO_TIERS = 4
 
 # Same matching rule as in `nws.py`, measured on the real feeds.
 WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
@@ -252,7 +314,19 @@ def classify_wmo(event_name: str) -> Kind:
     return Kind.OTHER
 
 
-def parse_wmo(item: dict) -> Event | None:
+def wmo_cap_path(item: dict) -> str | None:
+    """Where the CAP document of this alert lives, relative to
+    `severeweather.wmo.int/v2/cap-alerts/`.
+
+    The aggregate names that path **`url` on 1247 items and `capURL` on the
+    other 977**, and only `url` was ever read. So 44% of the alerts also lost
+    their link back to the authoritative document, on top of their position.
+    """
+    path = item.get("url") or item.get("capURL")
+    return str(path) if path else None
+
+
+def parse_wmo(item: dict, position: tuple[float, float] | None = None) -> Event | None:
     item_id = item.get("id")
     if not item_id:
         return None
@@ -279,6 +353,8 @@ def parse_wmo(item: dict) -> Event | None:
     country_code = prefix.upper() if len(prefix) == 2 and prefix.isalpha() else None
     event_name = item.get("event") or "alert"
     place = item.get("areaDesc") or ""
+    cap_path = wmo_cap_path(item)
+    lat, lon = position if position else (None, None)
 
     return Event(
         id=f"wmo:{item_id}",
@@ -286,6 +362,10 @@ def parse_wmo(item: dict) -> Event | None:
         source_id=str(item_id),
         kind=classify_wmo(event_name),
         time=time,
+        # The aggregate carries no coordinates whatsoever. What there is comes
+        # from the CAP document, fetched and cached by `cap_area.py`.
+        lat=lat,
+        lon=lon,
         place=place[:120] or event_name,
         country_code=country_code,
         severity=severity,
@@ -294,14 +374,12 @@ def parse_wmo(item: dict) -> Event | None:
         title=item.get("headline") or event_name,
         # the aggregated JSON has shown times inconsistent with the source
         # CAP: for any critical time, the CAP is authoritative
-        url=f"https://severeweather.wmo.int/v2/cap-alerts/{item.get('url')}"
-        if item.get("url")
-        else None,
+        url=f"{WMO_CAP_BASE}{cap_path}" if cap_path else None,
         raw={
             "event": event_name,
             "expires": item.get("expires"),
-            "urgency_rank": rank(item.get("u")),
-            "certainty_rank": rank(item.get("c")),
+            "urgency": WMO_URGENCY.get(rank(item.get("u")) or 0),
+            "certainty": WMO_CERTAINTY.get(rank(item.get("c")) or 0),
             "member": item.get("mid"),
         },
     )
@@ -312,35 +390,64 @@ class WmoCapSource(JsonPollSource):
 
     One megabyte per call: we send `If-Modified-Since` to get a 304 as long
     as the file has not moved, rather than re-downloading 2200 alerts every
-    five minutes.
+    five minutes. We still re-emit on a 304 -- the alerts are `ongoing`, and
+    the sweep removes an ongoing event a source has stopped mentioning
+    (lesson 17), so silence for an unchanged file would eventually erase them.
+    Re-emitting is also how a position learned on a later cycle reaches open
+    tabs: it changes the fingerprint, so the store publishes a revision.
     """
 
     name = "wmo"
     kind = "poll"
     url = "https://severeweather.wmo.int/json/wmo_all.json"
 
-    def __init__(self, poll_seconds: float = 300.0, max_severity_rank: int = 1):
+    def __init__(
+        self,
+        poll_seconds: float = 300.0,
+        max_severity_rank: int = 1,
+        cap_cache: Path | None = None,
+    ):
         super().__init__(poll_seconds)
         self._last_modified: str | None = None
-        # `s` is a CAP rank: 1 = Extreme, 2 = Severe. Beyond that we enter
-        # everyday weather-bulletin territory, and the aggregate holds 2250 of
-        # those per cycle -- enough to fill the buffer by itself and bury
+        self._items: list[dict] = []
+        # How many CAP severity TIERS to keep, counting down from Extreme:
+        # 1 = Extreme only, 2 = Severe and above. Beyond that we enter everyday
+        # weather-bulletin territory, and the aggregate holds 1500 Moderate
+        # alerts per cycle -- enough to fill the buffer by itself and bury
         # everything else.
+        #
+        # The setting is read as a number of tiers and NOT as the value of `s`,
+        # because `s` grows with the severity (measured, see WMO_SEVERITY) while
+        # this setting was written believing the opposite. Reading it as tiers
+        # keeps `wmo_max_severity_rank = 1` meaning what its author meant --
+        # "the top tier only" -- instead of the bottom one.
         self.max_severity_rank = max_severity_rank
+        self.min_rank = max(1, WMO_TIERS + 1 - max(1, max_severity_rank))
+        self.areas = CapAreaCache(cap_cache)
 
-    def parse_payload(self, data: Any) -> list[Event]:
-        events = []
+    def select(self, data: Any) -> list[dict]:
+        """The raw items this source publishes, severity filter applied."""
+        kept = []
         for item in (data or {}).get("items") or []:
             try:
                 rank = int(item.get("s"))
             except (TypeError, ValueError):
                 continue
-            if not 1 <= rank <= self.max_severity_rank:
-                continue
-            event = parse_wmo(item)
+            if rank >= self.min_rank:
+                kept.append(item)
+        return kept
+
+    def build_events(self, items: list[dict]) -> list[Event]:
+        events = []
+        for item in items:
+            path = wmo_cap_path(item)
+            event = parse_wmo(item, self.areas.known(path) if path else None)
             if event:
                 events.append(event)
         return events
+
+    def parse_payload(self, data: Any) -> list[Event]:
+        return self.build_events(self.select(data))
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
@@ -354,15 +461,29 @@ class WmoCapSource(JsonPollSource):
                         conditional["If-Modified-Since"] = self._last_modified
 
                     resp = await client.get(self.url, headers=conditional)
-                    if resp.status_code == 304:
-                        self.health.ok()
-                    else:
+                    fresh = 0
+                    if resp.status_code != 304:
                         resp.raise_for_status()
                         self._last_modified = resp.headers.get("last-modified")
-                        events = self.parse_payload(resp.json())
-                        for event in events:
-                            await emit(event)
-                        self.health.ok(len(events))
+                        self._items = self.select(resp.json())
+                        fresh = len(self._items)
+
+                    # Learn a few CAP documents per cycle, starting with the
+                    # alerts still unplaced. The aggregate republishes the whole
+                    # list every cycle, so an alert that misses its turn is
+                    # placed on the next one instead of costing the agency a
+                    # burst of a thousand requests.
+                    wanted = [
+                        path
+                        for item in self._items
+                        if (path := wmo_cap_path(item)) and not self.areas.has(path)
+                    ]
+                    if wanted:
+                        await self.areas.resolve(client, wanted)
+
+                    for event in self.build_events(self._items):
+                        await emit(event)
+                    self.health.ok(fresh)
                 except Exception as exc:
                     self.health.fail(exc)
                     log.warning("wmo: %s", exc)

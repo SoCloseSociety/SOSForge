@@ -268,3 +268,129 @@ keys on the NATURE of the event: an earthquake is a point in time and going
 quiet says nothing about it; everything else here is an interval, and a source
 that stops publishing an interval has said it ended.
 
+
+---
+
+## Positioning the WMO and Meteoalarm alerts (2026-08-26)
+
+**The hole.** `/api/events` on the live site returns 287 events with `lat: null`
+out of 900: **256 from `wmo`, 30 from `meteoalarm`**. An event with no position
+is off the map, out of every distance ranking, and cannot answer "is that near
+me". The same hole was closed for NWS by `sources/nws_zones.py` (11% -> 100%).
+
+### What today's real bytes say
+
+Measured on `https://severeweather.wmo.int/json/wmo_all.json` of 2026-08-26
+(2224 items) and on the 10 Meteoalarm country feeds of the same morning.
+
+1. The WMO aggregate carries **no geometry at all**. Its only positional lead
+   is the CAP document it links: `url` for 1247 items, **`capURL` for the other
+   977 -- a field the parser never read**, so those 977 also lost their `url`.
+2. Fetching those CAP documents (771 of them, all `cap:1.2`) shows the real
+   split. For the 444 alerts ranked Severe or Extreme: **194 publish an
+   `<area><polygon>`** (Kazakhstan, Russia, Algeria, Saudi Arabia, Argentina,
+   Spain, part of NWS...), 191 publish only a `<geocode>`, 45 publish nothing.
+3. **`s`/`u`/`c` are ranked the OTHER way round from what the parser assumes.**
+   Cross-checked against the `<severity>` of 100 CAP documents sampled across
+   every rank: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme (100/100),
+   `u` 1=Past 2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely
+   4=Observed. So `WMO_SEVERITY = {1: EXTREME ... 4: MINOR}` is inverted, and
+   `max_severity_rank=1` keeps **only the Minor alerts and labels them
+   EXTREME**, while dropping the 91 Extreme and 353 Severe ones. That is also
+   why the positioning looked hopeless: the kept set is 158/246 Chinese county
+   blue warnings, the one producer that publishes no geometry.
+4. **Meteoalarm publishes no geometry either**, with one exception: the UK Met
+   Office fills `area[].polygon` (a list of CAP `lat,lon` strings) inside the
+   JSON itself. Everything else is an `EMMA_ID` (or `NUTS3` for France,
+   `WARNCELLID` for Germany) and an area name.
+
+### Plan
+
+- [x] New `backend/app/sources/cap_area.py`: parse a CAP `<area>` into one
+      bounded point, and a disk-cached, per-cycle-bounded fetcher for the WMO
+      CAP documents, on the shape of `nws_zones.py`.
+- [x] `alerts_world.py`: read `capURL` as well as `url`; resolve a bounded
+      batch of CAP documents per cycle and emit the positions; re-emit on a 304
+      so a position learned late reaches open tabs as a revision.
+- [x] `alerts_world.py`: fix `WMO_SEVERITY` / `urgency` / `certainty` to the
+      measured ranks, and make the filter keep the top N tiers, so the existing
+      `settings.wmo_max_severity_rank=1` keeps Extreme instead of Minor. No
+      wiring change needed, but the setting deserves a rename.
+- [x] `parse_meteoalarm`: read `area[].polygon` when the producer publishes it.
+- [x] Tests first, fixtures verbatim from the payloads captured above.
+- [x] Measure before/after against the live feed.
+
+### Deliberately not done
+
+- **Chinese `CPEAS Geographic Code`, `EMMA_ID`, `WARNCELLID`, `AMOC-AreaCode`,
+  `KZSTD`**: these are code -> polygon tables that neither WMO nor Meteoalarm
+  publishes (`api.meteoalarm.org/metadata/v1/regions` answers 401, every other
+  candidate 404; the only geometry Meteoalarm serves is inside its map's MVT
+  tiles). Resolving them means a third-party gazetteer, and a same-name
+  collision would put an alert in the wrong province -- lesson 15.
+- **`<circle>`**: CAP defines it, **0 of 771 real documents used it**. No real
+  fixture, so no parser: untested speculative parsing is worse than a missing
+  position.
+
+### Review -- measured on the real feeds, 2026-08-26
+
+**Baseline, taken from the live site** (`/api/events?limit=2000`, 1596 events):
+744 without a position, and the two sources own all of them --
+**wmo 293/293 unplaced (0%)**, **meteoalarm 450/450 unplaced (0%)**.
+
+**WMO, after.** Same aggregate, same code path, positions read from the CAP
+documents:
+
+| kept set | before | after |
+|---|---|---|
+| `wmo_max_severity_rank = 1` (Extreme only, the current wiring) | 0 / 91 | **72 / 91 (79%)** |
+| `wmo_max_severity_rank = 2` (Severe and above) | 0 / 443 | **218 / 443 (49%)** |
+
+Producers that draw their warnings are placed whole: Kazakhstan 77/77, Russia
+48/48, Argentina 21/21, Algeria 19/19, Saudi Arabia 17/17, Ecuador 7/7. The
+gap is one producer: China, 0/144, and India 0/34 -- see below.
+
+**Meteoalarm, after: 0 / 454. Unchanged, and that is the honest answer.** Of
+the 2564 warnings served by the ten country feeds this morning, **2 carry a
+geometry** -- both from the UK Met Office, both level 2, so both below the
+alerting threshold. The parser now reads them; today they do not exist.
+
+**Verified live**, on an isolated instance (`:8317`, wmo + meteoalarm only, so
+the running `:8300` was left alone): `/api/sources` shows both `up`, and
+`/api/events` shows the WMO alerts arriving with coordinates and filling up
+cycle after cycle as the CAP cache learns -- **24/91, then 62/91, then 72/91**,
+which is the 40-document budget doing exactly its job and landing on the number
+the offline measurement predicted. The 19 that stay unplaced are precisely the
+producers that publish no shape: China 14, India 3, Italy 2. And **48 of those
+events came back with `revision > 0`**: a position learned ten minutes late
+reaches an open tab as a revision instead of waiting for the alert to be
+re-issued. Spot-checked against the payload: "Nauyrzym district (Kostanay
+Region)" lands at 51.41 N, 64.42 E, in Kostanay, Kazakhstan.
+
+**Suite: 357 backend tests green (13 + 9 new), `ruff check`,
+`ruff format --check`, `mypy` all clean.**
+
+**No wiring change is required**: `WmoCapSource(poll, rank)` keeps its
+signature, and the CAP cache defaults to memory. Two optional follow-ups for
+whoever owns `main.py` and `config.py`:
+
+- pass `cap_cache=settings.data_dir / "wmo-cap.json"` so the positions survive
+  a restart (the cache is bounded to 20000 entries and evicts the oldest --
+  unlike an NWS zone, there is a new CAP document per alert issued);
+- `wmo_max_severity_rank = 2` would take the feed from 91 Extreme alerts to 443
+  Severe-and-above, of which 218 placed. The setting also deserves a rename:
+  it counts tiers down from Extreme, and its current name says otherwise.
+
+### Not done, on purpose
+
+- **China (144 alerts) and India (34)**: CMA publishes a `CPEAS Geographic
+  Code` and a county name; NDMA publishes neither geometry nor geocode. There
+  is no public table from a GB/T 2260 code to a shape, so placing them means
+  sending county names to a third-party gazetteer -- which is bulk geocoding
+  against Nominatim's policy, and one same-name collision puts a flood warning
+  in the wrong province. Lesson 15.
+- **The 31 US alerts relayed by WMO with a UGC geocode**: resolvable through
+  `api.weather.gov/zones`, but they are duplicates of alerts the `nws` source
+  already places, and it would cost two extra hops per zone at another agency.
+- **CAP `<circle>`**: 0 of 771 real documents used it, so there is no real
+  fixture and therefore no parser.
