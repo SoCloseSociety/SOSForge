@@ -138,6 +138,13 @@ class Settings(BaseSettings):
     # Japan's own tsunami advisories, which the two US centres do not cover.
     # Canada and Greece: 87% and 96% of their events exist nowhere else in
     # this feed.
+    # PHIVOLCS bulletins appear about ten minutes after the event, so polling
+    # faster buys nothing and costs 138 KB a go.
+    enable_phivolcs: bool = True
+    phivolcs_poll_seconds: float = 120.0
+    enable_igp: bool = True
+    igp_poll_seconds: float = 60.0
+
     enable_nrcan: bool = True
     nrcan_poll_seconds: float = 60.0
     enable_noa: bool = True

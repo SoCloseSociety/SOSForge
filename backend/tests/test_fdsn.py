@@ -311,3 +311,41 @@ def test_the_nrcan_window_clears_its_measured_publication_lag():
     assert NrcanSource().window_hours >= 72.0
     # NOA is genuinely real-time and does not need the margin
     assert NoaSource().window_hours == 24.0
+
+
+class TestDepthCountsOnASubductionMargin:
+    """Peru and Canada both produce deep events, and depth is what decides
+    whether a magnitude means anything at the surface.
+
+    These two sources were written before `severity_for_quake` existed and
+    kept ranking on magnitude alone. Peru is the one that matters: the Nazca
+    plate dives under it, and IGP routinely reports events at 100 to 600 km
+    where a M6 is felt as a long sway and breaks nothing.
+    """
+
+    def test_a_deep_peruvian_quake_is_not_ranked_like_a_shallow_one(self):
+        from app.models.event import severity_for_quake
+
+        shallow = severity_for_quake(6.2, depth_km=15.0)
+        deep = severity_for_quake(6.2, depth_km=550.0)
+        assert shallow is not deep
+        assert deep is Severity.MODERATE
+        assert shallow is Severity.SEVERE
+
+    def test_igp_uses_the_depth_aware_ladder(self):
+        import inspect
+
+        from app.sources import igp
+
+        source = inspect.getsource(igp)
+        assert "severity_for_quake" in source
+        assert "severity_from_magnitude" not in source
+
+    def test_fdsn_uses_it_too(self):
+        import inspect
+
+        from app.sources import fdsn
+
+        source = inspect.getsource(fdsn)
+        assert "severity_for_quake" in source
+        assert "severity_from_magnitude" not in source

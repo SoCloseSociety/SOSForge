@@ -106,7 +106,7 @@ from urllib.parse import urlencode
 
 import httpx
 
-from app.models.event import Event, Kind, severity_from_magnitude, to_utc
+from app.models.event import Event, Kind, severity_for_quake, to_utc
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -371,6 +371,7 @@ class NrcanSource(FdsnTextSource):
         event_kind = Kind.OTHER if explosion else Kind.EARTHQUAKE
 
         badge = "felt" if felt else ("induced" if induced else None)
+        depth = _rounded(_number(row.get("Depth/km")))
         return Event(
             id=f"nrcan:{event_id}",
             source="nrcan",
@@ -379,12 +380,12 @@ class NrcanSource(FdsnTextSource):
             time=time,
             lat=lat,
             lon=lon,
-            depth_km=_rounded(_number(row.get("Depth/km"))),
+            depth_km=depth,
             magnitude=magnitude,
             mag_type=(row.get("MagType") or "").strip() or None,
             place=place,
             country=_canadian_country(place),
-            severity=severity_from_magnitude(magnitude),
+            severity=severity_for_quake(magnitude, depth),
             alert=badge,
             title=f"M {magnitude} -- {place}" if magnitude is not None else place,
             url=NRCAN_PAGE_URL,
@@ -445,6 +446,7 @@ class NoaSource(FdsnTextSource):
         magnitude = _rounded(_number(row.get("Magnitude")))
         event_type = (row.get("EventType") or "").strip().lower()
 
+        depth = _rounded(_number(row.get("Depth/km")))
         return Event(
             id=f"noa:{event_id}",
             source="noa",
@@ -455,12 +457,12 @@ class NoaSource(FdsnTextSource):
             time=time,
             lat=lat,
             lon=lon,
-            depth_km=_rounded(_number(row.get("Depth/km"))),
+            depth_km=depth,
             magnitude=magnitude,
             mag_type=(row.get("MagType") or "").strip() or None,
             place=place,
             country=_greek_country(place),
-            severity=severity_from_magnitude(magnitude),
+            severity=severity_for_quake(magnitude, depth),
             title=f"M {magnitude} -- {place}" if magnitude is not None else place,
             url=NOA_PAGE_URL,
             raw={"analyst": (row.get("Author") or "").strip() or None, "event_type": event_type},

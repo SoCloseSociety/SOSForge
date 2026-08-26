@@ -65,7 +65,7 @@ from typing import Any
 
 import httpx
 
-from app.models.event import Event, Kind, severity_from_magnitude
+from app.models.event import Event, Kind, severity_for_quake
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -200,6 +200,7 @@ def parse_row(row: dict[str, Any]) -> Event | None:
         lon = None
 
     magnitude = _number(row.get("magnitud"))
+    depth = _number(row.get("profundidad"))
     place = re.sub(r"\s+", " ", str(row.get("referencia") or "")).strip()
     felt = parse_intensity(row.get("intensidad"))
     intensity, intensity_label = felt if felt else (None, None)
@@ -212,14 +213,17 @@ def parse_row(row: dict[str, Any]) -> Event | None:
         time=time,
         lat=lat,
         lon=lon,
-        depth_km=_number(row.get("profundidad")),
+        depth_km=depth,
         magnitude=magnitude,
         # `tipomagnitud` is empty on every row measured, so claiming a scale
         # we were not told would be inventing one.
         mag_type=str(row.get("tipomagnitud") or "").strip() or "M",
         place=place,
         country=_country(place),
-        severity=severity_from_magnitude(magnitude),
+        # Depth, not magnitude alone: Peru sits on a subduction margin and IGP
+        # routinely reports events between 100 and 600 km, where a M6 is a long
+        # sway that breaks nothing.
+        severity=severity_for_quake(magnitude, depth),
         intensity_mmi=intensity,
         alert=f"MMI {intensity_label}" if intensity_label else None,
         title=f"M {magnitude} -- {place}" if magnitude is not None else place,
