@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 
 import httpx
 
-from app.models.event import Event, Kind, severity_from_magnitude
+from app.models.event import Event, Kind, severity_for_quake
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -39,7 +39,18 @@ def parse_feature(feature: dict) -> Event | None:
         return None
 
     mag = props.get("mag")
-    tsunami = bool(props.get("tsunami"))
+    # USGS documents this field as: "set to 1 for large events in oceanic
+    # regions... The existence or value of this flag does not indicate if a
+    # tsunami actually did or will exist."
+    #
+    # We read it as a tsunami. It forced the severity to EXTREME, lit the
+    # full-width TSUNAMI ALERT banner in five languages, sounded the alarm and
+    # counted into the tsunami KPI -- for any large oceanic quake, sometimes
+    # while PTWC was publishing "no tsunami danger" about the same event. Only
+    # a warning centre declares a tsunami, and `sources/tsunami.py` already
+    # ingests them properly. The flag stays as what it is: a hint that a
+    # bulletin may follow.
+    tsunami_flag = bool(props.get("tsunami"))
     place = props.get("place") or "unknown location"
 
     return Event(
@@ -55,13 +66,37 @@ def parse_feature(feature: dict) -> Event | None:
         magnitude=mag,
         mag_type=props.get("magType"),
         place=place,
-        severity=severity_from_magnitude(mag, tsunami),
-        tsunami=tsunami,
+        severity=severity_for_quake(mag, coords[2], props.get("alert")),
+        # NOT the USGS flag: see above. Only a warning centre declares one.
+        tsunami=False,
+        # "automatic" until a geophysicist has looked at it.
+        preliminary=(props.get("status") or "").strip().lower() != "reviewed",
+        intensity_mmi=_number(props.get("mmi")),
+        felt_reports=_int(props.get("felt")),
         alert=props.get("alert"),
         title=props.get("title") or f"M {mag} -- {place}",
         url=props.get("url"),
-        raw=feature,
+        raw={
+            **feature,
+            # kept, because it IS information -- an oceanic event large enough
+            # that a centre may speak. It is simply not a tsunami.
+            "tsunami_flag": tsunami_flag,
+        },
     )
+
+
+def _number(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _int(value: object) -> int | None:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
 
 
 class UsgsSource(Source):

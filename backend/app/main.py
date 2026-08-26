@@ -78,7 +78,11 @@ def build_sources() -> list[Source]:
             )
         )
     if settings.enable_nws:
-        built.append(NwsSource(settings.nws_poll_seconds))
+        # The zone cache lives next to the journal: 511 distinct zones in one
+        # live snapshot, and boundaries that never move.
+        built.append(
+            NwsSource(settings.nws_poll_seconds, zone_cache=settings.data_dir / "nws-zones.json")
+        )
     if settings.enable_volcano:
         built.append(VolcanoSource(settings.volcano_poll_seconds))
     if settings.enable_jma:
@@ -340,7 +344,11 @@ async def api_event(event_id: str) -> dict:
         # A 200 with "found: false" makes every machine client treat a missing
         # event as a successful read.
         raise HTTPException(status_code=404, detail=f"unknown event: {event_id}")
-    return {"found": True, "event": event.public(), "raw": event.raw}
+    # NOT `event.raw`. That is the verbatim object the source sent: the one
+    # place where feed-controlled data would reach a client without passing
+    # through normalisation, and unbounded besides (a GDACS event carries
+    # every episode, a JMA list every entry).
+    return {"found": True, "event": event.public()}
 
 
 @app.get("/api/geocode")

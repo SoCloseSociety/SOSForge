@@ -343,6 +343,7 @@ NAME_TO_ISO2: dict[str, str] = {
     "indonesia": "ID",
     "philippines": "PH",
     "timor-leste": "TL",
+    "timor leste": "TL",  # USGS writes it without the hyphen
     # Oceania
     "australia": "AU",
     "new zealand": "NZ",
@@ -392,6 +393,18 @@ def _lookup(candidate: str) -> str | None:
 # (mypy flagged it), and above all unreadable.
 NOT_AMBIGUOUS = "?"
 
+# Ambiguous ONLY when read off a place label. A source that states the country
+# outright ("country": "Georgia") is telling us something it knows, and must
+# still resolve -- these words are undecidable as a suffix, not as a fact.
+#
+# USGS writes ", Georgia" for the US state (Trion, Resaca) AND for the
+# Caucasus country (T'q'ibuli); both shapes are live in the same feed today,
+# so the bare suffix decides nothing. Rule 12: when in doubt, no flag -- a
+# wrong flag is read as a fact, an absent one is read as an absence.
+PLACE_ONLY_AMBIGUOUS: dict[str, str | None] = {
+    "georgia": None,
+}
+
 
 def _is_ambiguous(text: str) -> str | None:
     """An ambiguous phrase is settled BEFORE any suffix matching: otherwise
@@ -402,9 +415,15 @@ def _is_ambiguous(text: str) -> str | None:
     decide).
     """
     lowered = _normalize(text)
-    for phrase, iso2 in AMBIGUOUS_PHRASES.items():
+    # LONGEST PHRASE FIRST. These are substring matches, and the shorter
+    # phrases are substrings of the longer ones: "new guinea" (deliberately
+    # undecidable) sits inside every "papua new guinea" label, so in insertion
+    # order it answered first and the unambiguous PG entry below it was
+    # unreachable. Six live Papua New Guinea quakes were flying no flag at all.
+    both = {**AMBIGUOUS_PHRASES, **PLACE_ONLY_AMBIGUOUS}
+    for phrase in sorted(both, key=len, reverse=True):
         if phrase in lowered:
-            return iso2
+            return both[phrase]
     return NOT_AMBIGUOUS
 
 

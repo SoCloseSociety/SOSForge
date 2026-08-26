@@ -114,13 +114,26 @@ def test_usgs_feature():
     assert event.severity is Severity.INFO
 
 
-def test_usgs_tsunami_flag_raises_severity():
+def test_the_usgs_tsunami_flag_does_not_declare_a_tsunami():
+    """This test used to assert the opposite, and the opposite was wrong.
+
+    USGS documents the field as: "set to 1 for large events in oceanic
+    regions... The existence or value of this flag does not indicate if a
+    tsunami actually did or will exist." Reading it as a tsunami lit the
+    full-width TSUNAMI ALERT banner and sounded the alarm on any large oceanic
+    quake -- sometimes while PTWC was publishing "no tsunami danger" about the
+    same event. Only a warning centre declares one; sources/tsunami.py already
+    ingests them, correctly.
+    """
     feature = {**USGS_FEATURE, "id": "us1", "properties": {**USGS_FEATURE["properties"]}}
     feature["properties"]["tsunami"] = 1
     feature["properties"]["mag"] = 7.8
     event = parse_usgs(feature)
     assert event is not None
-    assert event.tsunami is True
+    assert event.tsunami is False
+    # the flag is kept as what it is -- a hint that a bulletin may follow
+    assert event.raw.get("tsunami_flag") is True
+    # a shallow M7.8 is extreme on its own merits, not because of the flag
     assert event.severity is Severity.EXTREME
 
 

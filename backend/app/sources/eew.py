@@ -147,6 +147,48 @@ class JmaEewSource(JsonPollSource):
         ]
 
 
+# Mainland China, generously bounded. CENC relays FOREIGN earthquakes in the
+# same list as its own -- twelve of the fifty entries on the day this was
+# found, including a M7.7 off Indonesia that the product was flying a Chinese
+# flag on. That is the JMA trap (see CLAUDE.md) arriving through another door.
+CHINA_BBOX = (17.5, 54.5, 73.0, 135.5)  # lat_min, lat_max, lon_min, lon_max
+
+# The box alone catches every distant relay, but a neighbour's quake can fall
+# inside it. CENC names foreign places by COUNTRY in Chinese, while its own
+# bulletins name a province -- so a bounded list of neighbours closes the gap
+# the box cannot. Anything else inside the box we accept as Chinese: being
+# occasionally generous inside the border is a much smaller error than
+# stamping the whole planet.
+CENC_FOREIGN_MARKERS = (
+    "蒙古",  # Mongolia
+    "缅甸",  # Myanmar
+    "尼泊尔",  # Nepal
+    "印度",  # India
+    "朝鲜",  # North Korea
+    "韩国",  # South Korea
+    "俄罗斯",  # Russia
+    "哈萨克斯坦",  # Kazakhstan
+    "吉尔吉斯斯坦",  # Kyrgyzstan
+    "塔吉克斯坦",  # Tajikistan
+    "巴基斯坦",  # Pakistan
+    "阿富汗",  # Afghanistan
+    "不丹",  # Bhutan
+    "老挝",  # Laos
+    "越南",  # Vietnam
+    "日本",  # Japan
+    "菲律宾",  # Philippines
+)
+
+
+def _is_chinese_mainland(lat: float | None, lon: float | None, place: str) -> bool:
+    if lat is None or lon is None:
+        return False
+    lat_min, lat_max, lon_min, lon_max = CHINA_BBOX
+    if not (lat_min <= lat <= lat_max and lon_min <= lon <= lon_max):
+        return False
+    return not any(marker in place for marker in CENC_FOREIGN_MARKERS)
+
+
 class CencSource(JsonPollSource):
     """CENC (China) -- mainland China has no other coverage here.
 
@@ -183,6 +225,7 @@ class CencSource(JsonPollSource):
             magnitude = number(row.get("magnitude"))
             lat, lon = number(row.get("latitude")), number(row.get("longitude"))
             place = row.get("placeName") or row.get("location") or "China"
+            domestic = _is_chinese_mainland(lat, lon, place)
 
             events.append(
                 Event(
@@ -197,8 +240,9 @@ class CencSource(JsonPollSource):
                     magnitude=magnitude,
                     mag_type="M",
                     place=place,
-                    country="China",
-                    country_code="CN",
+                    # Only when it really is in China: see above.
+                    country="China" if domestic else None,
+                    country_code="CN" if domestic else None,
                     severity=severity_from_magnitude(magnitude),
                     # "reviewed" (checked by an analyst) vs "automatic"
                     alert=row.get("type"),

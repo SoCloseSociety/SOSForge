@@ -273,6 +273,15 @@ class GeonetSource(JsonPollSource):
             if time is None:
                 continue
 
+            # GeoNet withdraws solutions, and says so in `quality`. A fifth of
+            # the live feed is marked "deleted" -- including, the day this was
+            # found, a phantom M5.2 at MMI 5 next to Wellington. Publishing
+            # those is bad enough; re-publishing them at every 60 s poll with
+            # no way out is the version we shipped.
+            if str(props.get("quality") or "").strip().lower() == "deleted":
+                self.retractions.append(f"geonet:{public_id}")
+                continue
+
             # careful: GeoNet only puts [lon, lat] in the geometry, the depth
             # is a separate property
             coords = (feature.get("geometry") or {}).get("coordinates") or []
@@ -452,6 +461,14 @@ class AfadSource(JsonPollSource):
 # ------------------------------------------------------------------------ GEOFON
 
 
+def _geofon_status(status: str | None) -> str | None:
+    """ "A:automatic. Disclaimer: ... may be erroneous!" -> "automatic"."""
+    if not status:
+        return None
+    label = status.partition(":")[2].partition(".")[0].strip().lower()
+    return label or None
+
+
 class GeofonSource(JsonPollSource):
     """GEOFON (GFZ Potsdam) -- third worldwide catalog, next to EMSC and USGS.
 
@@ -503,9 +520,14 @@ class GeofonSource(JsonPollSource):
                     mag_type=props.get("magType"),
                     place=place,
                     severity=severity_from_magnitude(magnitude),
-                    # "C:confirmed" vs "A:automatic": a solution reviewed by an
-                    # analyst is not the same thing as an automatic detection
-                    alert=(props.get("status") or "").split(":")[-1] or None,
+                    # "C:confirmed" vs "A:automatic": a solution reviewed by
+                    # an analyst is not the same thing as an automatic
+                    # detection. Careful with the real value -- it is
+                    # "A:automatic. Disclaimer: Unless revised by a
+                    # geophysicist, ... may be erroneous!". Splitting on the
+                    # LAST colon rendered that whole sentence as the badge.
+                    alert=_geofon_status(props.get("status")),
+                    preliminary=_geofon_status(props.get("status")) != "confirmed",
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url=props.get("url"),
                     raw={"status": props.get("status"), "has_moment_tensor": props.get("hasMT")},

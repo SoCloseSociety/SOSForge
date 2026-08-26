@@ -14,11 +14,13 @@ import asyncio
 import logging
 import re
 from datetime import UTC, datetime
+from pathlib import Path
 
 import httpx
 
 from app.models.event import Event, Kind, Severity, to_utc
 from app.sources.base import Emit, Source
+from app.sources.nws_zones import ZoneResolver
 
 log = logging.getLogger(__name__)
 
@@ -129,7 +131,7 @@ def _parse_time(value: str | None) -> datetime:
     return to_utc(value) or datetime.now(UTC)
 
 
-def parse_feature(feature: dict) -> Event | None:
+def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | None:
     props = feature.get("properties") or {}
     alert_id = props.get("id") or feature.get("id")
     if not alert_id:
@@ -138,6 +140,13 @@ def parse_feature(feature: dict) -> Event | None:
     event_name = props.get("event") or "alert"
     kind = classify(event_name)
     lat, lon = _centroid(feature.get("geometry"))
+    if (lat is None or lon is None) and zones is not None:
+        # The alert did not draw itself, but it said which zones it covers.
+        for zone in props.get("affectedZones") or []:
+            known = zones.known(zone)
+            if known:
+                lat, lon = known
+                break
     severity = NWS_SEVERITY.get(props.get("severity") or "", Severity.INFO)
 
     # `/alerts/active` returns, by construction, only alerts in force: every
@@ -185,10 +194,14 @@ class NwsSource(Source):
     name = "nws"
     kind = "poll"
 
-    def __init__(self, poll_seconds: float = 20.0, url: str = URL):
+    def __init__(self, poll_seconds: float = 20.0, url: str = URL, zone_cache: Path | None = None):
         super().__init__()
         self.poll_seconds = poll_seconds
         self.url = url
+        # 89% of live alerts arrive with no geometry, and every one of them
+        # names zones that have one. Without this they cannot be mapped, cannot
+        # be ranked by distance, and cannot answer "is that near me".
+        self.zones = ZoneResolver(zone_cache)
 
     async def run(self, emit: Emit) -> None:
         headers = {
@@ -203,8 +216,23 @@ class NwsSource(Source):
                     resp = await client.get(self.url)
                     resp.raise_for_status()
                     features = (resp.json() or {}).get("features") or []
+
+                    # Learn a few unknown zones per cycle, starting with the
+                    # alerts that need them. NWS republishes its active list
+                    # every cycle, so anything not placed this time is placed
+                    # on the next -- and the fingerprint now includes the
+                    # position, so the fix reaches open tabs as a revision.
+                    wanted = [
+                        zone
+                        for feature in features
+                        if not feature.get("geometry")
+                        for zone in ((feature.get("properties") or {}).get("affectedZones") or [])
+                    ]
+                    if wanted:
+                        await self.zones.resolve(client, wanted)
+
                     for feature in features:
-                        event = parse_feature(feature)
+                        event = parse_feature(feature, self.zones)
                         if event:
                             await emit(event)
                     self.health.ok(len(features))

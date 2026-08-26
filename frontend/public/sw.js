@@ -30,6 +30,11 @@ const CURRENT_CACHES = new Set([SHELL_CACHE, RUNTIME_CACHE])
 // they are cached at runtime instead (see ASSET_PREFIX below).
 const PRECACHE_URLS = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
 
+// The subset of the above whose CONTENT changes at every build while its URL
+// stays the same. These can never be served cache-first: see the fetch
+// handler. The rest of PRECACHE_URLS are stable bytes at a stable URL.
+const SHELL_PATHS = ['/', '/index.html']
+
 // Vite's default build output directory. Filenames under it are content
 // hashed, so a cached entry can never go stale: the same URL always means
 // the same bytes, and a changed file is simply a different URL.
@@ -98,13 +103,31 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  if (url.pathname.startsWith(ASSET_PREFIX) || PRECACHE_URLS.includes(url.pathname)) {
-    event.respondWith(cacheFirst(request))
+  // ORDER MATTERS, and it was wrong here for a while. A page load has
+  // mode 'navigate' and pathname '/', which is also in PRECACHE_URLS -- so
+  // when the precache branch came first, every navigation was answered
+  // cache-first and `networkFirstShell` below was unreachable code that
+  // described, in its own comment, a behaviour the worker did not have.
+  //
+  // The consequence was the product's cardinal rule broken at its root: a
+  // returning visitor kept the shell cached on their first visit FOREVER,
+  // online, because a new deploy does not change these bytes and so never
+  // fires an update. They would keep an old bundle, an old event schema and
+  // every bug already fixed -- on a page announcing itself as live. Worse,
+  // an old shell references hashed asset URLs that a later deploy has
+  // removed: the map 404s and never comes back.
+  //
+  // So the shell is network-first, always, and falls back to the cache only
+  // when the network is genuinely gone.
+  if (request.mode === 'navigate' || SHELL_PATHS.includes(url.pathname)) {
+    event.respondWith(networkFirstShell(request))
     return
   }
 
-  if (request.mode === 'navigate') {
-    event.respondWith(networkFirstShell(request))
+  // Cache-first is reserved for URLs where a hit CANNOT be stale: the
+  // content-hashed bundles, and the fixed icons/manifest.
+  if (url.pathname.startsWith(ASSET_PREFIX) || PRECACHE_URLS.includes(url.pathname)) {
+    event.respondWith(cacheFirst(request))
     return
   }
 

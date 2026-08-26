@@ -1,4 +1,4 @@
-.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean
+.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean agent-setup agent-test agent-check agent-run agent-install
 
 VENV := backend/.venv
 PY := $(VENV)/bin/python
@@ -73,3 +73,20 @@ smoke: ## check the API is up and the sources respond
 
 clean:
 	rm -rf backend/data backend/.venv frontend/node_modules frontend/dist
+
+# ---------------------------------------------------------------- local agent
+
+agent-setup: ## configure the local background agent (position + thresholds)
+	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent setup
+
+agent-test: ## send one test notification (also triggers the macOS permission prompt)
+	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent test
+
+agent-check: ## replay the last 24 h and show what the agent WOULD have said
+	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent check
+
+agent-run: ## run the agent in the foreground
+	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent run
+
+agent-install: ## install it as a background service that starts at login (macOS)
+	cd agent && ./install-macos.sh
