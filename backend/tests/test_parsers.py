@@ -464,3 +464,43 @@ def test_distant_quakes_are_not_merged():
     deduper.assign(emsc)
     deduper.assign(far)
     assert emsc.cluster_id != far.cluster_id
+
+
+# The real Atom entry offers TWO documents, and lists the CAP XML first.
+# Verbatim shape from a live tsunami.gov entry.
+TSUNAMI_BOTH_LINKS = TSUNAMI_ATOM.replace(
+    '''    <link rel="related" title="CapXML document"
+          href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/PAAQCAP.xml"
+          type="application/cap+xml"/>''',
+    '''    <link rel="related" title="CapXML document"
+          href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/PAAQCAP.xml"
+          type="application/cap+xml"/>
+    <link rel="alternate" title="Bulletin"
+          href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/WEAK53.txt"
+          type="text/plain"/>''',
+)
+
+
+def test_the_official_link_is_the_readable_bulletin_not_the_xml():
+    """A reader clicking "official bulletin" must land on something a person
+    can read.
+
+    The entry carries both, and lists the CAP XML FIRST -- so a loop that
+    accepted either and stopped at the first match sent everyone to raw XML,
+    while the plain-text bulletin sitting next to it is the one the warning
+    centre writes for people. It is also the only one carrying the arrival
+    table and the gauge readings.
+    """
+    event = parse_entry(_first_entry(TSUNAMI_BOTH_LINKS), "PAAQ")
+    assert event is not None
+    assert event.url is not None
+    assert event.url.endswith(".txt"), f"sent the reader to {event.url}"
+
+
+def test_the_xml_is_still_better_than_nothing():
+    """Some entries offer only the CAP document. A link to something is worth
+    more than no link at all -- it is still the authoritative record."""
+    event = parse_entry(_first_entry(TSUNAMI_ATOM), "PAAQ")
+    assert event is not None
+    assert event.url is not None
+    assert event.url.endswith(".xml")

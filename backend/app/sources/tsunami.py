@@ -159,12 +159,18 @@ def parse_entry(entry: ET.Element, center: str) -> Event | None:
     # a tsunami alert, and the UI must not scream over it.
     is_alert = category in ("warning", "advisory", "watch")
 
-    link = None
-    for node in entry.findall("atom:link", NS):
-        href = node.get("href") or ""
-        if node.get("type") == "application/cap+xml" or href.endswith(".txt"):
-            link = href
-            break
+    # The entry offers both documents and lists the CAP XML FIRST, so a loop
+    # that accepted either and stopped at the first match sent every reader to
+    # raw XML. The plain-text bulletin next to it is the one the warning centre
+    # writes FOR PEOPLE -- and the only one carrying the arrival table and the
+    # gauge readings. Prefer it; fall back to the XML, which is still the
+    # authoritative record and better than no link at all.
+    link = text_bulletin_link(entry)
+    if link is None:
+        for node in entry.findall("atom:link", NS):
+            if node.get("type") == "application/cap+xml":
+                link = node.get("href")
+                break
 
     return Event(
         id=f"tsunami:{center}:{entry_id.rsplit(':', 1)[-1]}",
