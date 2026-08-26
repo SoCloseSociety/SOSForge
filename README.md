@@ -7,11 +7,11 @@
 **Live at <https://sosforge.soclose.co>**
 
 Real-time tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster
-alerts. **Nineteen official sources** merged into a single normalized feed and
+alerts. **Twenty-six official sources** merged into a single normalized feed and
 pushed to the browser over a websocket with a one-second heartbeat. Interface in
 five languages.
 
-No API key is required: all nineteen sources are public and open.
+No API key is required: all twenty-six sources are public and open.
 
 ![screenshot](docs/screenshot.png)
 
@@ -44,7 +44,7 @@ located, without waiting for a cycle. The others are polled at a rate matched to
 how often they actually publish -- polling USGS faster than it regenerates would
 return nothing new.
 
-## The nineteen sources (no API key required)
+## The twenty-six sources (no API key required)
 
 **Worldwide**
 
@@ -75,6 +75,12 @@ something EMSC does not have.
 | NWS (USA) | `api.weather.gov/alerts/active` | poll 20 s | floods, tornadoes, heat, tsunami on the American side |
 | USGS HANS + Smithsonian | `volcanoes.usgs.gov/hans-public/api/...` | poll 300 s | US volcanoes on alert (aviation colour code), located via the GVP catalogue |
 | Meteoalarm (Europe) | `feeds.meteoalarm.org/api/v1/warnings/feeds-{country}` | poll 300 s | national weather warnings across ten European countries |
+| JMA tsunami (Japan) | `jma.go.jp/bosai/tsunami/data/list.json` | poll 30 s | Japan's OWN tsunami advisories -- the two US centres do not cover its coasts |
+| SSN UNAM (Mexico) | `ssn.unam.mx/rss/ultimos-sismos.xml` | poll 60 s | the only national coverage for Mexico. Measured over three days on the whole Mexican box: **USGS returned zero events**, EMSC 52 above M3, SSN goes down to M1.4 |
+| NRCan (Canada) | `earthquakescanada.nrcan.gc.ca/fdsnws/event/1/query` | poll 60 s | **87% of its events exist nowhere else in this feed** (measured against USGS-week + EMSC) |
+| NOA (Greece) | `eida.gein.noa.gr/fdsnws/event/1/query` | poll 60 s | **96% exist nowhere else.** The most seismically active country in Europe |
+| GeoNet volcanoes (NZ) | `api.geonet.org.nz/volcano/val` | poll 300 s | volcanic alert levels outside the US. Whakaari killed tourists in 2019 at level 2 |
+| EMSC felt reports | `seismicportal.eu/testimonies-ws/api/search` | poll 120 s | how many people reported feeling it -- applied as a revision, not as a new event |
 
 ### One source is of a different nature: early warning
 
@@ -229,7 +235,7 @@ Websocket messages:
   rather than slowing down ingestion, and its socket is closed rather than left
   silently open.
 - **A failing source.** A source whose every feed fails cannot show as green. The
-  footer shows the real state of all nineteen.
+  footer shows the real state of all twenty-six.
 - **No WebGL.** The map degrades cleanly and the alert feed keeps running.
 
 ## Verification
@@ -238,7 +244,7 @@ Websocket messages:
 make test        # 95 backend tests + 77 frontend tests
 make lint
 make typecheck   # tsc + mypy
-make smoke       # live state of the nineteen sources
+make smoke       # live state of the twenty-six sources
 ```
 
 Backend fixtures are **verbatim** excerpts of real responses. A unit test on an
