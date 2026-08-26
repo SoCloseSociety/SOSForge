@@ -1,21 +1,23 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
-import { ALL_KINDS, WINDOWS, filterEvents, useStore } from './store'
-import { emptyReason } from './emptyReason'
-import { connectLive } from './live'
-import { syncDeepLink } from './deeplink'
-import { Feed } from './components/Feed'
-import { useIsPhone } from './useMediaQuery'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { ALL_KINDS, WINDOWS, filterEvents, useStore } from "./store";
+import { emptyReason } from "./emptyReason";
+import { connectLive } from "./live";
+import { syncDeepLink } from "./deeplink";
+import { Feed } from "./components/Feed";
+import { useIsPhone } from "./useMediaQuery";
 
 /** MapLibre is over a megabyte, and the feed is readable without it. Loading it
  * lazily takes the entry bundle from 1277 kB to a fraction of that, which is
  * what decides whether this page opens at all on a saturated network -- the
  * exact condition it exists for. */
-const MapView = lazy(() => import('./components/MapView').then((m) => ({ default: m.MapView })))
-import { LivePanel } from './components/LivePanel'
-import { SearchBar } from './components/SearchBar'
-import { ArrivalAlert } from './components/ArrivalAlert'
-import { WatchPanel } from './components/WatchPanel'
-import { LANGS } from './i18n'
+const MapView = lazy(() =>
+  import("./components/MapView").then((m) => ({ default: m.MapView })),
+);
+import { LivePanel } from "./components/LivePanel";
+import { SearchBar } from "./components/SearchBar";
+import { ArrivalAlert } from "./components/ArrivalAlert";
+import { WatchPanel } from "./components/WatchPanel";
+import { LANGS } from "./i18n";
 import {
   KIND_GLYPH,
   SEVERITY_META,
@@ -23,148 +25,187 @@ import {
   formatAge,
   formatClock,
   kindLabel,
-} from './format'
-import type { SosEvent } from './types'
+} from "./format";
+import type { SosEvent } from "./types";
 
 /** Server clock, refreshed every second. Everything displayed as "N s ago"
  * is computed from it, not from the browser clock: a misconfigured machine
  * would otherwise show wrong, even negative, ages. */
 function useServerNow(): number {
-  const skew = useStore((s) => s.clockSkew)
-  const [tick, setTick] = useState(() => Date.now())
+  const skew = useStore((s) => s.clockSkew);
+  const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
-    const id = window.setInterval(() => setTick(Date.now()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
-  return tick + skew
+    const id = window.setInterval(() => setTick(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, []);
+  return tick + skew;
 }
 
 function Kpis({ now }: { now: number }) {
-  const stats = useStore((s) => s.stats)
-  const sources = useStore((s) => s.sources)
-  const events = useStore((s) => s.events)
-  const t = useStore((s) => s.t)
+  const stats = useStore((s) => s.stats);
+  const sources = useStore((s) => s.sources);
+  const events = useStore((s) => s.events);
+  const t = useStore((s) => s.t);
 
-  const lastQuake = useMemo(() => events.find((e) => e.kind === 'earthquake'), [events])
-  const online = sources.filter((s) => s.connected).length
+  const lastQuake = useMemo(
+    () => events.find((e) => e.kind === "earthquake"),
+    [events],
+  );
+  const online = sources.filter((s) => s.connected).length;
 
   return (
     <div className="kpis">
       <div className="kpi">
-        <div className="label">{t('kpi.quakes')}</div>
-        <div className="value">{stats?.earthquakes_last_hour ?? '--'}</div>
+        <div className="label">{t("kpi.quakes")}</div>
+        <div className="value">{stats?.earthquakes_last_hour ?? "--"}</div>
         <div className="sub">
           {lastQuake
-            ? t('kpi.quakes.last', {
+            ? t("kpi.quakes.last", {
                 age: formatAge(t, (now - Date.parse(lastQuake.time)) / 1000),
               })
-            : '--'}
+            : "--"}
         </div>
       </div>
       <div className="kpi">
-        <div className="label">{t('kpi.maxmag')}</div>
-        <div className="value">{stats?.max_magnitude_last_hour?.toFixed(1) ?? '--'}</div>
-        <div className="sub">{t('kpi.maxmag.sub')}</div>
+        <div className="label">{t("kpi.maxmag")}</div>
+        <div className="value">
+          {stats?.max_magnitude_last_hour?.toFixed(1) ?? "--"}
+        </div>
+        <div className="sub">{t("kpi.maxmag.sub")}</div>
       </div>
       <div className="kpi">
-        <div className="label">{t('kpi.tsunami')}</div>
+        <div className="label">{t("kpi.tsunami")}</div>
         <div
           className="value"
-          style={{ color: stats?.tsunami_active ? SEVERITY_META.extreme.text : undefined }}
+          style={{
+            color: stats?.tsunami_active
+              ? SEVERITY_META.extreme.text
+              : undefined,
+          }}
         >
-          {stats?.tsunami_active ?? '--'}
+          {stats?.tsunami_active ?? "--"}
         </div>
-        <div className="sub">{t('kpi.tsunami.sub')}</div>
+        <div className="sub">{t("kpi.tsunami.sub")}</div>
       </div>
       <div className="kpi">
-        <div className="label">{t('kpi.tracked')}</div>
-        <div className="value">{stats?.total_buffered ?? '--'}</div>
-        <div className="sub">{t('kpi.tracked.sub', { n: stats?.last_hour ?? 0 })}</div>
+        <div className="label">{t("kpi.tracked")}</div>
+        <div className="value">{stats?.total_buffered ?? "--"}</div>
+        <div className="sub">
+          {t("kpi.tracked.sub", { n: stats?.last_hour ?? 0 })}
+        </div>
       </div>
       <div className="kpi">
-        <div className="label">{t('kpi.sources')}</div>
+        <div className="label">{t("kpi.sources")}</div>
         <div className="value">
-          {online}/{sources.length || '--'}
+          {online}/{sources.length || "--"}
         </div>
-        <div className="sub">{t('kpi.sources.sub')}</div>
+        <div className="sub">{t("kpi.sources.sub")}</div>
       </div>
     </div>
-  )
+  );
 }
 
 function Banner({ events, now }: { events: SosEvent[]; now: number }) {
-  const t = useStore((s) => s.t)
+  const t = useStore((s) => s.t);
   const critical = useMemo(() => {
-    const cutoff = now - 6 * 3600 * 1000
+    const cutoff = now - 6 * 3600 * 1000;
     return events.filter(
-      (e) => Date.parse(e.time) > cutoff && (e.tsunami || e.severity === 'extreme'),
-    )
-  }, [events, now])
+      (e) =>
+        Date.parse(e.time) > cutoff && (e.tsunami || e.severity === "extreme"),
+    );
+  }, [events, now]);
 
-  if (critical.length === 0) return null
-  const top = critical[0]
+  if (critical.length === 0) return null;
+  const top = critical[0];
   return (
     <div className="banner" role="alert">
       <span className="icon" aria-hidden="true">
-        {top.tsunami ? '🌊' : SEVERITY_META.extreme.glyph}
+        {top.tsunami ? "🌊" : SEVERITY_META.extreme.glyph}
       </span>
       <span>
-        {top.tsunami ? t('banner.tsunami') : t('banner.major')} : {top.place || top.title}
+        {top.tsunami ? t("banner.tsunami") : t("banner.major")} :{" "}
+        {top.place || top.title}
         <br />
         <small>
           {formatAge(t, (now - Date.parse(top.time)) / 1000)}
-          {critical.length > 1 ? ` · ${t('banner.others', { n: critical.length - 1 })}` : ''}
+          {critical.length > 1
+            ? ` · ${t("banner.others", { n: critical.length - 1 })}`
+            : ""}
         </small>
       </span>
     </div>
-  )
+  );
 }
 
 function Filters({ events, now }: { events: SosEvent[]; now: number }) {
-  const filters = useStore((s) => s.filters)
-  const toggleKind = useStore((s) => s.toggleKind)
-  const setMinMagnitude = useStore((s) => s.setMinMagnitude)
-  const setWindow = useStore((s) => s.setWindow)
-  const t = useStore((s) => s.t)
+  const filters = useStore((s) => s.filters);
+  const toggleKind = useStore((s) => s.toggleKind);
+  const setMinMagnitude = useStore((s) => s.setMinMagnitude);
+  const setWindow = useStore((s) => s.setWindow);
+  const t = useStore((s) => s.t);
 
   const counts = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const event of events) map.set(event.kind, (map.get(event.kind) ?? 0) + 1)
-    return map
-  }, [events])
+    const map = new Map<string, number>();
+    for (const event of events)
+      map.set(event.kind, (map.get(event.kind) ?? 0) + 1);
+    return map;
+  }, [events]);
 
   // On a phone the filter stack measured 266 px on a 844 px screen that also
   // has to hold a header, five counters, a banner, a map and the feed. It won
   // that fight and the FEED came out 0 px tall: the product showed no events at
   // all. Here it collapses to one line, and that line says what it is hiding.
-  const isPhone = useIsPhone()
-  const [open, setOpen] = useState(false)
+  const isPhone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  // Opening or closing this sheet REPLACES the focused button with a different
+  // one. Without carrying focus across, a keyboard or switch user is silently
+  // dropped on <body> and has to tab through the whole header again -- every
+  // single time they open the filters.
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (open === wasOpen.current) return;
+    wasOpen.current = open;
+    (open ? closeRef : toggleRef).current?.focus();
+  }, [open]);
+
   // "active" means narrowed from the default, not merely set: every kind
   // selected over 24 h is the resting state, and badging that would cry wolf.
   const active =
     (filters.query.trim() ? 1 : 0) +
     (filters.minMagnitude > 0 ? 1 : 0) +
     (filters.kinds.size < ALL_KINDS.length ? 1 : 0) +
-    (filters.windowMinutes !== 1440 ? 1 : 0)
+    (filters.windowMinutes !== 1440 ? 1 : 0);
 
   if (isPhone && !open) {
     return (
       <div className="filters-collapsed">
-        <button type="button" className="filters-toggle" onClick={() => setOpen(true)}>
+        <button
+          type="button"
+          className="filters-toggle"
+          ref={toggleRef}
+          onClick={() => setOpen(true)}
+        >
           <span aria-hidden="true">☰</span>
-          {t('filters.open')}
+          {t("filters.open")}
           {active > 0 ? <span className="badge">{active}</span> : null}
         </button>
       </div>
-    )
+    );
   }
 
   return (
     <div className="filters">
       {isPhone ? (
-        <button type="button" className="filters-toggle open" onClick={() => setOpen(false)}>
+        <button
+          type="button"
+          className="filters-toggle open"
+          ref={closeRef}
+          onClick={() => setOpen(false)}
+        >
           <span aria-hidden="true">✕</span>
-          {t('filters.close')}
+          {t("filters.close")}
         </button>
       ) : null}
       {/* Search comes first: it's the shortcut to "what's happening OVER
@@ -178,7 +219,7 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
 
       {/* Then the window: it's what separates live from historical, and
           therefore the question the user is asking when they arrive. */}
-      <div className="segmented" role="group" aria-label={t('filters.window')}>
+      <div className="segmented" role="group" aria-label={t("filters.window")}>
         {WINDOWS.map((minutes) => (
           <button
             type="button"
@@ -197,26 +238,30 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
           "0 tsunami alerts" is information, not an absence of information. */}
       <div className="chips">
         {ALL_KINDS.map((kind) => {
-          const n = counts.get(kind) ?? 0
+          const n = counts.get(kind) ?? 0;
           return (
             <button
               type="button"
               key={kind}
-              className={`chip${n === 0 ? ' empty' : ''}`}
+              className={`chip${n === 0 ? " empty" : ""}`}
               aria-pressed={filters.kinds.has(kind)}
               onClick={() => toggleKind(kind)}
-              title={n === 0 ? t('filters.none', { kind: kindLabel(t, kind) }) : undefined}
+              title={
+                n === 0
+                  ? t("filters.none", { kind: kindLabel(t, kind) })
+                  : undefined
+              }
             >
               <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
               {kindLabel(t, kind)}
               <span className="count">{n}</span>
             </button>
-          )
+          );
         })}
       </div>
 
       <label className="slider">
-        {t('filters.minmag')}
+        {t("filters.minmag")}
         <input
           type="range"
           min={0}
@@ -228,20 +273,20 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
         <output>{filters.minMagnitude.toFixed(1)}</output>
       </label>
     </div>
-  )
+  );
 }
 
 function LangPicker() {
-  const lang = useStore((s) => s.lang)
-  const setLang = useStore((s) => s.setLang)
-  const t = useStore((s) => s.t)
+  const lang = useStore((s) => s.lang);
+  const setLang = useStore((s) => s.setLang);
+  const t = useStore((s) => s.t);
   return (
     <label className="lang">
       <span aria-hidden="true">{LANGS.find((l) => l.code === lang)?.flag}</span>
       <select
         value={lang}
         onChange={(e) => setLang(e.target.value as typeof lang)}
-        aria-label={t('lang.picker')}
+        aria-label={t("lang.picker")}
       >
         {LANGS.map((l) => (
           <option key={l.code} value={l.code}>
@@ -250,16 +295,24 @@ function LangPicker() {
         ))}
       </select>
     </label>
-  )
+  );
 }
 
 function Footer() {
-  const sources = useStore((s) => s.sources)
-  const clients = useStore((s) => s.clients)
-  const t = useStore((s) => s.t)
-  const isPhone = useIsPhone()
-  const [open, setOpen] = useState(false)
-  const up = sources.filter((s) => s.connected).length
+  const sources = useStore((s) => s.sources);
+  const clients = useStore((s) => s.clients);
+  const t = useStore((s) => s.t);
+  const isPhone = useIsPhone();
+  const [open, setOpen] = useState(false);
+  const openRef = useRef<HTMLButtonElement>(null);
+  const shutRef = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(open);
+  useEffect(() => {
+    if (open === wasOpen.current) return;
+    wasOpen.current = open;
+    (open ? shutRef : openRef).current?.focus();
+  }, [open]);
+  const up = sources.filter((s) => s.connected).length;
 
   // The source list is this product's honesty made visible, and it is also
   // 139 px of a 844 px phone screen. On a phone it collapses to the one line
@@ -268,14 +321,19 @@ function Footer() {
   if (isPhone && !open) {
     return (
       <footer className="footer footer-compact">
-        <button type="button" className="sources-toggle" onClick={() => setOpen(true)}>
-          <span className={`dot ${up === sources.length ? 'up' : 'down'}`} />
-          {t('footer.sources', { up, total: sources.length })}
+        <button
+          type="button"
+          className="sources-toggle"
+          ref={openRef}
+          onClick={() => setOpen(true)}
+        >
+          <span className={`dot ${up === sources.length ? "up" : "down"}`} />
+          {t("footer.sources", { up, total: sources.length })}
         </button>
         <span className="spacer" />
-        <span>{t('footer.clients', { n: clients })}</span>
+        <span>{t("footer.clients", { n: clients })}</span>
       </footer>
-    )
+    );
   }
 
   return (
@@ -284,7 +342,8 @@ function Footer() {
         <button
           type="button"
           className="sources-toggle"
-          aria-label={t('detail.close')}
+          ref={shutRef}
+          aria-label={t("detail.close")}
           onClick={() => setOpen(false)}
         >
           <span aria-hidden="true">✕</span>
@@ -292,69 +351,72 @@ function Footer() {
       ) : null}
       {sources.map((source) => (
         <span
-          className={`source${source.connected ? '' : ' source-down'}`}
+          className={`source${source.connected ? "" : " source-down"}`}
           key={source.name}
-          title={source.last_error ?? 'OK'}
+          title={source.last_error ?? "OK"}
         >
           {/* A green dot and a red dot, 7 px wide, measure 1.43:1 against
               each other: for a deuteranopic reader the footer said nothing at
               all -- and telling you WHICH source is dead is the only reason
               this footer exists. The glyph carries it now; the colour only
               reinforces it. */}
-          <span className={`dot ${source.connected ? 'up' : 'down'}`} aria-hidden="true" />
+          <span
+            className={`dot ${source.connected ? "up" : "down"}`}
+            aria-hidden="true"
+          />
           <span className="sr-only">
-            {source.connected ? t('footer.source.up') : t('footer.source.down')}
+            {source.connected ? t("footer.source.up") : t("footer.source.down")}
           </span>
           <span aria-hidden="true" className="source-mark">
-            {source.connected ? '' : '\u00d7'}
+            {source.connected ? "" : "\u00d7"}
           </span>
           {SOURCE_LABEL[source.name] ?? source.name}
           <span className="count">{source.ingested ?? source.events_seen}</span>
         </span>
       ))}
       <span className="spacer" />
-      <span>{t('footer.clients', { n: clients })}</span>
-      <span>{t('footer.basemap')}</span>
+      <span>{t("footer.clients", { n: clients })}</span>
+      <span>{t("footer.basemap")}</span>
     </footer>
-  )
+  );
 }
 
 export default function App() {
-  const now = useServerNow()
-  const connected = useStore((s) => s.connected)
-  const soundOn = useStore((s) => s.soundOn)
-  const toggleSound = useStore((s) => s.toggleSound)
-  const events = useStore((s) => s.events)
-  const filters = useStore((s) => s.filters)
-  const selected = useStore((s) => s.selected)
-  const lang = useStore((s) => s.lang)
-  const t = useStore((s) => s.t)
+  const now = useServerNow();
+  const connected = useStore((s) => s.connected);
+  const soundOn = useStore((s) => s.soundOn);
+  const toggleSound = useStore((s) => s.toggleSound);
+  const events = useStore((s) => s.events);
+  const filters = useStore((s) => s.filters);
+  const selected = useStore((s) => s.selected);
+  const lang = useStore((s) => s.lang);
+  const t = useStore((s) => s.t);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
   // a 15-minute cutoff and avoids re-pushing the map's GeoJSON source every
   // second.
-  const bucket = Math.floor(now / 10_000)
+  const bucket = Math.floor(now / 10_000);
   const visible = useMemo(
     () => filterEvents(events, filters, bucket * 10_000),
     [events, filters, bucket],
-  )
+  );
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selected) ?? null,
     [events, selected],
-  )
+  );
 
-  useEffect(() => connectLive(), [])
-  useEffect(() => syncDeepLink(), [])
+  useEffect(() => connectLive(), []);
+  useEffect(() => syncDeepLink(), []);
   useEffect(() => {
-    document.documentElement.lang = lang
+    document.documentElement.lang = lang;
     // The tab title, the bookmark and what a screen reader announces on page
     // load all come from here. Leaving it English meant a Japanese reader's
     // tab said "SOSForge -- live earthquake, tsunami and disaster tracker"
     // forever, whatever the interface said.
-    document.title = t('app.title')
-  }, [lang, t])
+    document.title = t("app.title");
+  }, [lang, t]);
 
   return (
     <div className="app">
@@ -363,11 +425,14 @@ export default function App() {
           {/* The only heading present at all times. Without it a screen-reader
               user pressing H landed on the map legend, or on nothing. */}
           <h1>SOSForge</h1>
-          <span>{t('app.tagline')}</span>
+          <span>{t("app.tagline")}</span>
         </div>
         <span className="spacer" />
         <LangPicker />
-        <span className="clock" aria-label={`${formatClock(new Date(now))} UTC`}>
+        <span
+          className="clock"
+          aria-label={`${formatClock(new Date(now))} UTC`}
+        >
           {formatClock(new Date(now))} UTC
         </span>
         <button
@@ -375,18 +440,24 @@ export default function App() {
           className="toggle"
           aria-pressed={soundOn}
           onClick={toggleSound}
-          title={t('app.sound.title')}
+          title={t("app.sound.title")}
         >
-          <span aria-hidden="true">{soundOn ? '🔔' : '🔕'}</span>
+          <span aria-hidden="true">{soundOn ? "🔔" : "🔕"}</span>
           {/* wrapped so the phone layout can drop the word and keep the icon:
               a bare text node cannot be targeted by CSS */}
-          <span className="label">{soundOn ? t('app.sound.on') : t('app.sound.off')}</span>
+          <span className="label">
+            {soundOn ? t("app.sound.on") : t("app.sound.off")}
+          </span>
         </button>
         {/* aria-live: connection status is THE thing a screen reader user
             needs to learn without having to go looking for it */}
-        <span className={`live ${connected ? 'on' : 'off'}`} role="status" aria-live="polite">
+        <span
+          className={`live ${connected ? "on" : "off"}`}
+          role="status"
+          aria-live="polite"
+        >
           <span className="dot" aria-hidden="true" />
-          {connected ? t('app.live') : t('app.reconnecting')}
+          {connected ? t("app.live") : t("app.reconnecting")}
         </span>
       </header>
 
@@ -414,5 +485,5 @@ export default function App() {
 
       <Footer />
     </div>
-  )
+  );
 }

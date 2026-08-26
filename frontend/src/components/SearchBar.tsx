@@ -1,12 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
-import { useStore } from '../store'
+import { useEffect, useRef, useState } from "react";
+import { useStore } from "../store";
 
 interface Place {
-  name: string
-  lat: number
-  lon: number
-  type: string | null
-  bbox: number[] | null
+  name: string;
+  lat: number;
+  lon: number;
+  type: string | null;
+  bbox: number[] | null;
 }
 
 /** Area search.
@@ -23,81 +23,95 @@ interface Place {
  * each tab would violate it.
  */
 export function SearchBar() {
-  const query = useStore((s) => s.filters.query)
-  const setQuery = useStore((s) => s.setQuery)
-  const setFocus = useStore((s) => s.setFocus)
-  const setWatch = useStore((s) => s.setWatch)
-  const t = useStore((s) => s.t)
+  const query = useStore((s) => s.filters.query);
+  const setQuery = useStore((s) => s.setQuery);
+  const setFocus = useStore((s) => s.setFocus);
+  const setWatch = useStore((s) => s.setWatch);
+  const t = useStore((s) => s.t);
 
-  const [places, setPlaces] = useState<Place[] | null>(null)
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const [places, setPlaces] = useState<Place[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const term = query.trim()
+    const term = query.trim();
     // Clear on EVERY input change: otherwise, during the 450 ms wait plus
     // network time, pressing Enter right after typing "lyon" would still go
     // to the results for "paris".
-    setPlaces(null)
-    setOpen(false)
+    setPlaces(null);
+    setOpen(false);
     if (term.length < 3) {
-      return
+      return;
     }
     // debounce: we don't geocode on every keystroke, we wait for typing to
     // settle. Local filtering, on the other hand, stays instant.
-    const controller = new AbortController()
+    const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      fetch(`/api/geocode?q=${encodeURIComponent(term)}`, { signal: controller.signal })
+      fetch(`/api/geocode?q=${encodeURIComponent(term)}`, {
+        signal: controller.signal,
+      })
         .then((r) => r.json())
         .then((data: { results: Place[] }) => {
-          setPlaces(data.results ?? [])
-          setOpen(true)
+          setPlaces(data.results ?? []);
+          setOpen(true);
         })
-        .catch(() => setPlaces(null))
-    }, 450)
+        .catch(() => setPlaces(null));
+    }, 450);
 
     return () => {
-      window.clearTimeout(timer)
-      controller.abort()
-    }
-  }, [query])
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [query]);
 
   const goTo = (place: Place) => {
     // a city is viewed up close, a country from afar: the bbox returned by
     // Nominatim tells us which of the two was just requested
-    let zoom = 9
+    let zoom = 9;
     if (place.bbox && place.bbox.length === 4) {
-      const [south, north, west, east] = place.bbox
-      const span = Math.max(Math.abs(north - south), Math.abs(east - west))
-      zoom = span > 20 ? 3 : span > 5 ? 5 : span > 1 ? 7 : 10
+      const [south, north, west, east] = place.bbox;
+      const span = Math.max(Math.abs(north - south), Math.abs(east - west));
+      zoom = span > 20 ? 3 : span > 5 ? 5 : span > 1 ? 7 : 10;
     }
-    setFocus({ lat: place.lat, lon: place.lon, zoom, name: place.name })
+    setFocus({ lat: place.lat, lon: place.lon, zoom, name: place.name });
     // Going to a place is also the clearest way to say "this is the place I
     // care about": arming the arrival countdown here costs the user nothing.
-    setWatch({ lat: place.lat, lon: place.lon, name: place.name.split(',')[0] })
-    setOpen(false)
-    inputRef.current?.blur()
-  }
+    setWatch({
+      lat: place.lat,
+      lon: place.lon,
+      name: place.name.split(",")[0],
+    });
+    setOpen(false);
+    inputRef.current?.blur();
+  };
 
   return (
     <div className="search">
       <span className="search-icon" aria-hidden="true">
         ⌕
       </span>
+      {/* A combobox, declared as one. Without these attributes a blind user
+          typing "Sendai" is never told a list of places appeared below, and
+          Enter silently re-centres the map and arms a watch on the first
+          result they never heard about. */}
       <input
         ref={inputRef}
         type="search"
+        role="combobox"
+        aria-expanded={Boolean(open && places)}
+        aria-controls="search-results"
+        aria-autocomplete="list"
         value={query}
-        placeholder={t('search.placeholder')}
-        aria-label={t('search.placeholder')}
+        placeholder={t("search.placeholder")}
+        aria-label={t("search.placeholder")}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => places && setOpen(true)}
         onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            setOpen(false)
-            if (!query) inputRef.current?.blur()
+          if (e.key === "Escape") {
+            setOpen(false);
+            if (!query) inputRef.current?.blur();
           }
-          if (e.key === 'Enter' && places?.length) goTo(places[0])
+          if (e.key === "Enter" && places?.length) goTo(places[0]);
         }}
       />
       {query ? (
@@ -105,24 +119,38 @@ export function SearchBar() {
           type="button"
           className="search-clear"
           onClick={() => {
-            setQuery('')
-            setPlaces(null)
+            setQuery("");
+            setPlaces(null);
           }}
-          aria-label={t('detail.close')}
+          aria-label={t("detail.close")}
         >
           ✕
         </button>
       ) : null}
 
+      {/* Announced, and only when the count changes: a live region on the list
+          itself would re-read every option each time one character is typed. */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {open && places
+          ? places.length === 0
+            ? t("search.none")
+            : t("search.count", { n: Math.min(places.length, 5) })
+          : ""}
+      </p>
+
       {open && places ? (
-        <ul className="search-results">
+        <ul className="search-results" id="search-results" role="listbox">
           {places.length === 0 ? (
-            <li className="search-none">{t('search.none')}</li>
+            <li className="search-none">{t("search.none")}</li>
           ) : (
             places.slice(0, 5).map((place) => (
-              <li key={`${place.lat},${place.lon}`}>
+              <li
+                key={`${place.lat},${place.lon}`}
+                role="option"
+                aria-selected={false}
+              >
                 <button type="button" onClick={() => goTo(place)}>
-                  <strong>{t('search.goto')}</strong>
+                  <strong>{t("search.goto")}</strong>
                   <span>{place.name}</span>
                 </button>
               </li>
@@ -131,5 +159,5 @@ export function SearchBar() {
         </ul>
       ) : null}
     </div>
-  )
+  );
 }

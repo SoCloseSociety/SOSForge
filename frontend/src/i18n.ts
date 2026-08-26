@@ -147,6 +147,8 @@ const fr: Dict = {
     "Solution automatique, non revue: magnitude et position seront affinees",
   "tag.felt": "{n} ressentis",
   "tag.felt.why": "Nombre de temoignages recus",
+  "search.count":
+    "{n} lieu(x) trouve(s), utilisez Entree pour aller au premier",
 };
 
 const en: Dict = {
@@ -274,6 +276,7 @@ const en: Dict = {
     "Automatic solution, not yet reviewed: magnitude and position will be refined",
   "tag.felt": "{n} felt",
   "tag.felt.why": "Number of felt reports received",
+  "search.count": "{n} place(s) found, press Enter for the first",
 };
 
 const es: Dict = {
@@ -400,6 +403,7 @@ const es: Dict = {
     "Solucion automatica, sin revisar: magnitud y posicion se afinaran",
   "tag.felt": "{n} sentidos",
   "tag.felt.why": "Numero de testimonios recibidos",
+  "search.count": "{n} lugar(es) encontrado(s), pulse Intro para el primero",
 };
 
 const ja: Dict = {
@@ -526,6 +530,7 @@ const ja: Dict = {
   "tag.preliminary.why": "自動解析、未確認: 規模と位置は精査されます",
   "tag.felt": "体感 {n} 件",
   "tag.felt.why": "寄せられた体感報告の件数",
+  "search.count": "{n} 件の場所が見つかりました。Enter で先頭へ",
 };
 
 const id: Dict = {
@@ -654,6 +659,7 @@ const id: Dict = {
     "Solusi otomatis, belum ditinjau: magnitudo dan posisi akan disempurnakan",
   "tag.felt": "{n} merasakan",
   "tag.felt.why": "Jumlah laporan dirasakan",
+  "search.count": "{n} tempat ditemukan, tekan Enter untuk yang pertama",
 };
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id };
