@@ -281,3 +281,56 @@ it touched changed.
 (`package.json`, a config file, a Makefile target). If it is not, do not run it.
 A review cannot find a real defect inside a thousand lines of reformatting, and
 the diff is the only thing a reviewer has.
+
+## 23. A `types` block in nginx REPLACES the MIME table, it does not extend it
+
+**The mistake.** To serve `/manifest.webmanifest` with its correct type, I
+added a `types { application/manifest+json webmanifest; }` block to the server
+context. nginx does not merge that with the inherited table -- it substitutes
+it. Every `.js` file started going out as `application/octet-stream`, and it
+shipped to production for one deploy.
+
+**Root cause.** I verified the config with `nginx -t` and it passed. Syntax
+validity says nothing about semantics, and I treated a green check as proof of
+correctness for a directive whose merge behaviour I had not looked up.
+
+**The rule.** Set a single content type in its own `location` with
+`default_type`. And after any change to what a server SENDS, verify the thing
+actually sent -- `curl -I` on a real URL -- not the configuration that was
+supposed to send it. `nginx -t` proves the file parses; nothing else.
+
+## 24. `check` before you trust: simulate a rule against real data before shipping it
+
+**The mistake, twice, in one file.** The local agent's rule for alerts with no
+coordinates started as "notify if extreme". Replayed against a real day of the
+feed from Los Angeles, it fired 63 times -- marine warnings in Michigan,
+Florida and the Carolinas. The second version, "same country", was no better
+for a country that size, and severity turned out to separate nothing at all
+(all 63 were "extreme" too).
+
+**Root cause.** Both rules were reasonable in the abstract. Neither had been
+measured against the distribution they would actually meet, and a notification
+rule cannot be judged any other way: its cost is entirely in how often it
+fires on real traffic.
+
+**The rule.** Any rule that decides whether to interrupt a person gets a
+replay command against real recent data, and the number it produces is what
+decides -- not the argument for it. When no honest automatic rule exists, make
+the choice explicit and print the user's own number next to it. `check` caught
+both of these before either reached anyone.
+
+## 25. A subagent's finding is a lead, not a fact
+
+**What happened.** Seven parallel audits produced roughly forty findings, all
+plausible and specifically written. Two did not survive checking: one fixture
+in an audit's suggested test did not match the real API shape (GEOFON puts the
+id at feature level, not in `properties`), and one proposed fix -- purging NWS
+alerts on `expires` -- would have wiped 28% of the running US warnings off the
+map, because `expires` is the validity of the MESSAGE and `ends` is the end of
+the ALERT.
+
+**The rule.** Reproduce every finding against the real payload before fixing
+it, and re-measure after. The value of parallel audits is coverage, not
+verdicts: they find far more than one pass can, and they are wrong often
+enough that acting on them unverified would ship regressions with confident
+commit messages attached.
