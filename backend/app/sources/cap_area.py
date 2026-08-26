@@ -30,6 +30,8 @@ from pathlib import Path
 
 import httpx
 
+from app.sources.cap_text import CapText, parse_cap_text
+
 log = logging.getLogger(__name__)
 
 WMO_CAP_BASE = "https://severeweather.wmo.int/v2/cap-alerts/"
@@ -45,6 +47,12 @@ CAP_DOCUMENTS_PER_CYCLE = 40
 # dictionary of every alert the planet published. Eviction is free here: an
 # alert that has left the aggregate is never asked for again.
 CAP_CACHE_MAX = 20_000
+
+# The texts get a far smaller ceiling. A position is a pair of floats; an
+# instruction block is about a kilobyte, and only the alerts currently in the
+# feed can still need theirs. Two thousand covers today's whole Severe-and-
+# above set several times over.
+CAP_TEXT_CACHE_MAX = 2_000
 
 
 def _tag(element: ET.Element) -> str:
@@ -136,8 +144,17 @@ class CapAreaCache:
         base: str = WMO_CAP_BASE,
         per_cycle: int = CAP_DOCUMENTS_PER_CYCLE,
         max_entries: int = CAP_CACHE_MAX,
+        max_texts: int = CAP_TEXT_CACHE_MAX,
     ):
         self._positions: dict[str, tuple[float, float] | None] = {}
+        # The actionable text from the SAME bytes: what to do, and how the
+        # agency describes it. Costs zero extra requests -- we already have the
+        # document open for its polygon. Kept apart from the positions and NOT
+        # persisted: a position is a few numbers and worth carrying across a
+        # restart, a text block is about a kilobyte and there is one per alert
+        # ever issued, so writing them to disk would grow without bound.
+        self._texts: dict[str, CapText] = {}
+        self.max_texts = max_texts
         self._cache_path = cache_path
         self.base = base
         self.per_cycle = per_cycle
@@ -170,6 +187,10 @@ class CapAreaCache:
     def known(self, path: str) -> tuple[float, float] | None:
         return self._positions.get(path)
 
+    def text(self, path: str) -> CapText | None:
+        """What that document told people to do, if we have read it."""
+        return self._texts.get(path)
+
     def has(self, path: str) -> bool:
         return path in self._positions
 
@@ -182,6 +203,7 @@ class CapAreaCache:
                 response = await client.get(self.base + path)
                 response.raise_for_status()
                 position = parse_cap_position(response.text)
+                self._texts[path] = parse_cap_text(response.text)
             except Exception as exc:
                 # A document that will not come back is remembered as
                 # unplaceable, so we do not queue it again on every cycle.
@@ -200,3 +222,11 @@ class CapAreaCache:
         excess = len(self._positions) - self.max_entries
         for path in list(self._positions)[:excess]:
             del self._positions[path]
+            self._texts.pop(path, None)
+
+        # The texts have their own, much smaller ceiling: about a kilobyte
+        # each against a few dozen bytes for a position, and only the alerts
+        # currently in the feed can still need theirs.
+        text_excess = len(self._texts) - self.max_texts
+        for path in list(self._texts)[:text_excess]:
+            del self._texts[path]

@@ -136,6 +136,16 @@ class Settings(BaseSettings):
     # Conservative on purpose: a tracker that cries "swarm" over five ordinary
     # aftershocks teaches its readers to ignore it.
     # Japan's own tsunami advisories, which the two US centres do not cover.
+    # Canada and Greece: 87% and 96% of their events exist nowhere else in
+    # this feed.
+    enable_nrcan: bool = True
+    nrcan_poll_seconds: float = 60.0
+    enable_noa: bool = True
+    noa_poll_seconds: float = 60.0
+    # Felt-report counts from EMSC, applied as revisions to events already
+    # stored. A detail, not a headline: 4% of events overall carry one.
+    enable_felt_reports: bool = True
+
     enable_jma_tsunami: bool = True
     jma_tsunami_poll_seconds: float = 30.0
     # SSN UNAM: the only national seismic coverage for Mexico. No HTTPS at all

@@ -73,6 +73,12 @@ def parse_feature(feature: dict) -> Event | None:
         # "automatic" until a geophysicist has looked at it.
         preliminary=(props.get("status") or "").strip().lower() != "reviewed",
         intensity_mmi=_number(props.get("mmi")),
+        # `cdi` is the intensity people REPORTED (DYFI), `mmi` the intensity
+        # the ground-motion model ESTIMATED. Same scale, routinely different
+        # answers, and both are worth showing: the modelled one is there in
+        # seconds and is a guess, the reported one takes minutes and is what
+        # actually happened to somebody.
+        intensity_cdi=_number(props.get("cdi")),
         felt_reports=_int(props.get("felt")),
         alert=props.get("alert"),
         title=props.get("title") or f"M {mag} -- {place}",

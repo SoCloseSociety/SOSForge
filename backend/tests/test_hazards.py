@@ -18,6 +18,7 @@ import pytest
 from app.models.event import Kind, Severity
 from app.sources.hazards import (
     NHC_ARCGIS_ROOT,
+    EonetSource,
     NhcSource,
     _resolve_valid_time,
     cyclone_severity,
@@ -375,3 +376,82 @@ def test_forecast_layer_root_matches_the_real_service():
         "https://mapservices.weather.noaa.gov/tropical/rest/services/"
         "tropical/NHC_tropical_weather/MapServer"
     )
+
+
+# ---------------------------------------------------------------------- EONET
+#
+# Verbatim excerpts of eonet.gsfc.nasa.gov/api/v3/events, 2026-08-26. The
+# geometry arrays are trimmed to their last entries -- which is the only part
+# the parser reads, since `geometry` is a TRAJECTORY and the last point is the
+# current position.
+
+EONET_ICEBERG = {
+    "id": "EONET_2736",
+    "title": "Iceberg B22A",
+    "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_2736",
+    "categories": [{"id": "seaLakeIce", "title": "Sea and Lake Ice"}],
+    "sources": [{"id": "BYU_ICE", "url": "http://www.scp.byu.edu/data/iceberg/ascat/b22a.ascat"}],
+    "geometry": [
+        {
+            "magnitudeValue": 725.0,
+            "magnitudeUnit": "NM^2",
+            "date": "2026-07-30T00:00:00Z",
+            "type": "Point",
+            "coordinates": [172.86, -69.01],
+        },
+        {
+            "magnitudeValue": 725.0,
+            "magnitudeUnit": "NM^2",
+            "date": "2026-08-20T00:00:00Z",
+            "type": "Point",
+            "coordinates": [171.19, -69.24],
+        },
+    ],
+}
+
+EONET_WILDFIRE = {
+    "id": "EONET_23209",
+    "title": "Wildfire Old Deer, Carson, Texas",
+    "link": "https://eonet.gsfc.nasa.gov/api/v3/events/EONET_23209",
+    "categories": [{"id": "wildfires", "title": "Wildfires"}],
+    "sources": [
+        {"id": "IRWIN", "url": "https://irwin.doi.gov/observer/incidents/2026-TXTXS-267516"}
+    ],
+    "geometry": [
+        {
+            "magnitudeValue": 676.0,
+            "magnitudeUnit": "acres",
+            "date": "2026-08-23T20:38:00Z",
+            "type": "Point",
+            "coordinates": [-101.217, 35.4635],
+        }
+    ],
+}
+
+
+def _eonet(*rows):
+    return {e.source_id: e for e in EonetSource().parse_payload({"events": list(rows)})}
+
+
+def test_an_iceberg_is_an_observation_not_a_danger_to_anyone():
+    """Everything EONET publishes was given a flat MODERATE -- the rung of a
+    felt M5 earthquake -- whatever it was. On the live feed of 2026-08-26 that
+    put ELEVEN drifting Antarctic icebergs on that rung, in the Southern Ocean,
+    where the nearest person is on a research station.
+
+    They stay in the feed: a calving is a real thing that happened, and this
+    product tracks the planet. They leave the rung that means "act if you are
+    in the area"."""
+    events = _eonet(EONET_ICEBERG)
+    assert events["EONET_2736"].severity is Severity.INFO
+    # still placed, still readable: the current position, not the 2011 one
+    assert events["EONET_2736"].lat == -69.24
+
+
+def test_an_observed_burning_wildfire_is_not_demoted_with_it():
+    """The counterpart. An EONET fire is a hazard OBSERVED from orbit and still
+    burning -- exactly the case `severity_for_cap` reserves the face-value
+    reading for. Nothing here moves it."""
+    events = _eonet(EONET_WILDFIRE)
+    assert events["EONET_23209"].kind is Kind.WILDFIRE
+    assert events["EONET_23209"].severity is Severity.MODERATE

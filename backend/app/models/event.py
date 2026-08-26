@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import re
 from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
@@ -24,6 +25,13 @@ class Kind(str, Enum):
     DROUGHT = "drought"
     STORM = "storm"
     HEAT = "heat"
+    # Both of these ALREADY arrive -- EONET publishes landslides, Meteoalarm
+    # publishes avalanche warnings as awareness type 9 -- and both were mapped
+    # to OTHER, where they sat next to marine advisories and dust. A reader
+    # looking for them could not find them, and a filter that cannot be
+    # selected is a filter that reads as "no such thing here".
+    LANDSLIDE = "landslide"
+    AVALANCHE = "avalanche"
     # No position, forecast-oriented by nature, and its own iconography:
     # it does not belong in the OTHER catch-all with landslides and dust.
     SPACE_WEATHER = "space_weather"
@@ -59,6 +67,68 @@ def to_utc(value: str | None) -> datetime | None:
     except (TypeError, ValueError):
         return None
     return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+# Caps on the free text a feed can hand us. They are safety bounds, not
+# editorial ones: measured on 1631 real NWS alerts and 2622 Meteoalarm ones,
+# the longest `instruction` ever seen was 1155 characters and the longest
+# `description` 2711. `instruction` is therefore never cut in practice -- it
+# is the part that tells a person what to DO, and half an instruction is a
+# dangerous thing to print. `description` is the part that can be resumed
+# elsewhere, so it carries the tighter bound: 300 alerts land in the opening
+# websocket snapshot, and every character is paid for on a phone.
+INSTRUCTION_MAX = 2000
+DESCRIPTION_MAX = 1200
+
+# A blank line, or a line that opens a bullet, starts a new paragraph.
+# CAP text arrives hard-wrapped for a teletype at about 60 columns; a browser
+# does its own wrapping, and honouring the teletype's line breaks produces a
+# ragged column. Re-flowing inside a paragraph is the normalization; the
+# paragraph structure itself is meaning ("* WHAT... * WHERE... * WHEN...")
+# and is kept.
+_PARAGRAPH_BREAK = re.compile(r"\n\s*\n+|\n(?=\s*[*-]\s)")
+
+
+def normalize_text(value: str | None, limit: int) -> str | None:
+    """Free text from a feed, turned into data we are willing to store.
+
+    This is NOT sanitizing markup, and it deliberately does not try to be:
+    an alert legitimately says `temperatures < 32F` or `SLOW DOWN & MOVE
+    OVER`, and a filter that strips `<` or unescapes `&amp;` would corrupt
+    the real text of an emergency instruction to protect against a threat
+    that belongs one layer further out. What this guarantees is that the
+    value is TEXT -- no control characters, bounded length, no markup
+    *introduced* by us -- and the renderer's job is to put it in a text node.
+    Nothing in this backend ever emits it as HTML.
+
+    Removed: control characters (a lone `\r`, a NUL, the ANSI escapes that
+    a terminal consumer would obey). Kept: paragraph structure. Bounded: the
+    total length, cut on a paragraph or sentence boundary so the tail that
+    survives is a whole thought rather than half a word.
+    """
+    if not value or not isinstance(value, str):
+        return None
+    # A carriage return becomes a line break rather than disappearing. Dropped
+    # outright, `line one\rline two` from a CR-only producer comes out as
+    # `line onetwo` -- two words welded into one inside an emergency
+    # instruction, which is the kind of quiet corruption this whole function
+    # exists to avoid.
+    value = value.replace("\r\n", "\n").replace("\r", "\n")
+    cleaned = "".join(c for c in value if c == "\n" or c == "\t" or c.isprintable())
+    paragraphs = [" ".join(p.split()) for p in _PARAGRAPH_BREAK.split(cleaned)]
+    text = "\n\n".join(p for p in paragraphs if p)
+    if not text:
+        return None
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    # Cut back to the last boundary we can find, in decreasing order of how
+    # clean the break is. The 60% floor stops a text with no boundary at all
+    # from being reduced to almost nothing.
+    cut = max(head.rfind("\n\n"), head.rfind(". "), head.rfind(" "))
+    if cut > limit * 0.6:
+        head = head[:cut]
+    return head.rstrip(" .,;:") + " ..."
 
 
 class Event(BaseModel):
@@ -110,6 +180,14 @@ class Event(BaseModel):
     # How many people reported feeling it. Absent is NOT zero: most of the
     # planet has no reporters, and a zero would be a claim we cannot make.
     felt_reports: int | None = None
+    # What people REPORTED feeling (USGS `cdi`, the DYFI community intensity),
+    # as opposed to `intensity_mmi`, which is what a ground-motion model
+    # ESTIMATES they felt. They are the same scale and they disagree often,
+    # and the difference is exactly the interesting part: the modelled value
+    # arrives in seconds and is a guess, the reported one arrives in minutes
+    # and is a report from people -- so they are two fields, never averaged
+    # into one number that would be neither.
+    intensity_cdi: float | None = None
     ongoing: bool = False
     # When the SOURCE states an expiry (NWS, Meteoalarm and the CAP feeds all
     # do). An explicit end beats every heuristic we could apply: waiting for
@@ -121,6 +199,44 @@ class Event(BaseModel):
 
     title: str = ""
     url: str | None = None
+
+    # What to DO. Every serious CAP consumer leads with this, and until now it
+    # was downloaded on every NWS poll and thrown away: a person inside a
+    # tornado polygon got a severity, a place, an age and a link. `headline`
+    # says what is happening; `instruction` is the only field that says
+    # "move to an interior room on the lowest floor".
+    #
+    # It is attacker-influenced text from feeds we do not control. It is
+    # stored as DATA (see `normalize_text`) and must reach the browser as a
+    # text node -- never as markup, on either side.
+    instruction: str | None = None
+    # The body of the alert: the WHAT / WHERE / WHEN / IMPACTS block. Present
+    # on 100% of NWS alerts, 94% of Meteoalarm ones. Bounded harder than the
+    # instruction, because it is the part a reader can do without.
+    description: str | None = None
+    # CAP `responseType`, verbatim from the standard's own closed vocabulary:
+    # Shelter, Evacuate, Prepare, Execute, Avoid, Monitor, Assess, AllClear,
+    # None. One word that classifies the action, present on 99.9% of NWS
+    # alerts and 100% of Meteoalarm ones -- so it is usable as an icon or a
+    # badge where the full instruction does not fit.
+    response_type: str | None = None
+
+    # ---------------------------------------------------------- tsunami
+    # The two questions a coastal reader actually has, and neither of them is
+    # "what magnitude was it".
+    #
+    # When the first wave is forecast to reach the nearest threatened place,
+    # and which place that is. Read from the warning centre's own bulletin,
+    # never computed here: a travel time we estimated ourselves would be a
+    # number this product has no business publishing.
+    wave_eta: datetime | None = None
+    wave_eta_site: str | None = None
+    # What a tide gauge ACTUALLY recorded, above the normal tide level, and
+    # where. This is the difference between a cancelled advisory and Tohoku,
+    # and it is the one field here that is a measurement rather than a
+    # forecast. Absent means no gauge has reported yet -- never "no wave".
+    wave_max_m: float | None = None
+    wave_max_site: str | None = None
 
     # Forecast positions, when the source publishes them (NHC cyclone tracks).
     # A first-class field rather than a corner of `raw`, because `public()`
@@ -134,7 +250,7 @@ class Event(BaseModel):
 
     raw: dict[str, Any] = Field(default_factory=dict, repr=False)
 
-    @field_validator("time", "received_at", "updated_at", "last_seen", "expires")
+    @field_validator("time", "received_at", "updated_at", "last_seen", "expires", "wave_eta")
     @classmethod
     def _must_be_aware(cls, value: datetime | None) -> datetime | None:
         """A naive datetime compared to an aware one raises TypeError and kills
@@ -144,6 +260,25 @@ class Event(BaseModel):
         if value is None or value.tzinfo is not None:
             return value
         return value.replace(tzinfo=UTC)
+
+    @field_validator("instruction")
+    @classmethod
+    def _clean_instruction(cls, value: str | None) -> str | None:
+        return normalize_text(value, INSTRUCTION_MAX)
+
+    @field_validator("description")
+    @classmethod
+    def _clean_description(cls, value: str | None) -> str | None:
+        return normalize_text(value, DESCRIPTION_MAX)
+
+    @field_validator("response_type", "wave_eta_site", "wave_max_site")
+    @classmethod
+    def _clean_label(cls, value: str | None) -> str | None:
+        """A one-line label (a CAP responseType, a gauge name). Same rules as
+        the long text, on a much shorter leash: these are printed inside a
+        badge, and a feed that sends a paragraph where a word belongs must
+        not be able to blow the layout open."""
+        return normalize_text(value, 80)
 
     @field_validator("url")
     @classmethod
@@ -226,6 +361,21 @@ class Event(BaseModel):
             # reaches the browser, since `public()` strips `raw`: a swarm
             # growing from 9 quakes to 30 never updated on screen.
             self.title,
+            # WHAT PEOPLE FELT and WHAT THE SEA DID. Same reason as the
+            # forecast above, and the same trap: these arrive LATER than the
+            # event -- DYFI needs minutes to collect reports, a tide gauge
+            # needs the wave to travel. USGS republishes the same quake with
+            # `felt` climbing from 12 to 1200; a warning centre reissues the
+            # same bulletin with the first observed amplitude in it. Left out
+            # of the fingerprint, every one of those updates is a `noop` and
+            # the browser keeps the version where nobody had felt anything
+            # and no gauge had seen a thing.
+            f"{self.intensity_mmi}|{self.intensity_cdi}|{self.felt_reports}",
+            f"{self.wave_eta}|{self.wave_max_m}|{self.wave_max_site}",
+            # The INSTRUCTION and the response type. A warning that is
+            # extended or upgraded rewrites what to do, and that rewrite is
+            # the whole point of re-reading the alert.
+            f"{self.instruction}|{self.response_type}|{self.description}",
         ]
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
 
@@ -299,3 +449,141 @@ def severity_from_magnitude(mag: float | None, tsunami: bool = False) -> Severit
     if mag >= 2.5:
         return Severity.MINOR
     return Severity.INFO
+
+
+# --------------------------------------------------------------- CAP severity
+#
+# CAP (Common Alerting Protocol) is what Meteoalarm, the WMO aggregate and the
+# NWS all speak. It carries THREE independent axes, and this product read only
+# one of them:
+#
+#     severity   Extreme / Severe / Moderate / Minor / Unknown
+#     urgency    Immediate / Expected / Future / Past / Unknown
+#     certainty  Observed / Likely / Possible / Unlikely / Unknown
+#
+# Reading `severity` alone flattened them. Measured on the live feed of
+# 2026-08-26, that cost the product its one summary judgment: 461 of the 480
+# Meteoalarm warnings sat at SEVERE -- the rank this product gives a M6.5
+# earthquake -- and the single most frequent entry in the whole feed was
+# "Orange Thunderstorm warning". A US "Fire Weather Watch" that might happen
+# the day after tomorrow outranked a shallow M5.
+#
+# The rule below extends what `severity_for_quake` already does rather than
+# inventing a second philosophy. There, magnitude is the base and DEPTH -- does
+# the energy actually reach people -- moves it; PAGER, which knows the exposed
+# population, is allowed to promote and never to demote. Here:
+#
+#   * the agency's own rank is the base. It is the only quantity in the
+#     payload, and CAP defines it in harm terms: Extreme is "extraordinary
+#     threat to life or property", Severe "significant threat";
+#
+#   * `certainty` is this product's PAGER -- the field that knows more than we
+#     do about whether the harm is real. A warning is a FORECAST of harm until
+#     the agency says it is OBSERVING it, and a forecast does not belong on the
+#     same rung as a measurement. So an observed alert keeps the identity
+#     mapping and everything else sits one step below it. Measured on the real
+#     payloads of 2026-08-26, that is what separates the Spanish red rain
+#     warning already dropping 180 mm (Extreme/Immediate/Observed, "extreme or
+#     catastrophic damages to people ... may occur") from the 40 Kazakh
+#     fire-danger bulletins forecast for tomorrow at the very same rank;
+#
+#   * a rank the agency is only half sure of (`Possible`, `Unlikely`) drops one
+#     further. This is the "Fire Weather Watch" case: Severe, but Possible.
+#
+# What deliberately does NOT enter the base: `urgency`, except for `Past`.
+# Severity answers "how bad", urgency answers "how soon", and collapsing them
+# re-creates exactly the flattening this rule exists to undo. Demoting a
+# warning because it has not started yet is also lesson 14 in a new costume: a
+# weather warning is PUBLISHED BEFORE it starts, and that advance notice is the
+# whole point of it. `Past` is the one exception, and it is not about timing but
+# about harm: the danger is over.
+#
+# Nothing here promotes above the agency's own rank. No CAP field tells us who
+# is exposed, so there is no honest way to say a warning is worse than the
+# agency called it.
+
+CAP_RANKS = {"minor": 1, "moderate": 2, "severe": 3, "extreme": 4}
+
+# What the agency says it is SEEING: its rank is taken at face value.
+_CAP_OBSERVED = {
+    1: Severity.MINOR,
+    2: Severity.MODERATE,
+    3: Severity.SEVERE,
+    4: Severity.EXTREME,
+}
+# What the agency says it EXPECTS: one step below, whatever the colour on the
+# national map. EXTREME then means what it says on this product -- a measured
+# mass-casualty event, a tsunami in the water, a M7 -- and stays empty on a day
+# when none of that has happened, which is the honest answer.
+_CAP_FORECAST = {
+    1: Severity.INFO,
+    2: Severity.MINOR,
+    3: Severity.MODERATE,
+    4: Severity.SEVERE,
+}
+
+
+def severity_for_cap(
+    rank: str | None,
+    urgency: str | None = None,
+    certainty: str | None = None,
+    *,
+    observed: bool = False,
+    actionable: bool | None = None,
+) -> Severity:
+    """CAP severity / urgency / certainty -> this product's ladder.
+
+    `rank` is the CAP `severity` element by name ("Severe"), or any national
+    scale already translated into that vocabulary -- Meteoalarm's awareness
+    level is one, and it is the only scale its ten countries share.
+
+    `observed=True` forces the observed reading for a source we already know is
+    not forecasting. It exists for exactly one caller (the NWS tsunami
+    bulletins, see `nws.py`) and is not a general escape hatch.
+    """
+    tier = CAP_RANKS.get((rank or "").strip().lower(), 0)
+    if not tier:
+        # Unknown is not a low rank, it is an absent one. Nothing can be
+        # concluded, and this product says nothing rather than something wrong.
+        return Severity.INFO
+
+    certainty = (certainty or "").strip().lower()
+    urgency = (urgency or "").strip().lower()
+
+    seen = observed or certainty == "observed"
+    severity = (_CAP_OBSERVED if seen else _CAP_FORECAST)[tier]
+
+    if certainty in ("possible", "unlikely"):
+        severity = _step(severity, -1)
+        # ...but the TOP rank has a floor. A national service publishing RED is
+        # at the top of its own scale, and "take action now" is what red means
+        # in every European country's public communication. Demoting a forecast
+        # one rung is right -- a forecast of harm is not a measurement of harm.
+        # Carrying it a second rung is not: it puts a red warning BELOW a
+        # routine orange one that happens to be marked Observed, an inversion
+        # the reader would notice the moment they opened the national site next
+        # to ours, and would be right to distrust us for.
+        if tier == 4:
+            severity = max(severity, Severity.SEVERE, key=_LADDER.index)
+
+    # A CAP document carrying NEITHER an instruction NOR a description is a
+    # statement about conditions: it tells nobody to do anything, because
+    # there is nothing to do yet. Measured on 70 real documents at the top two
+    # ranks, and consistent per ISSUER rather than per alert -- India 17/17
+    # carry actionable text, Kazakhstan 0/14, issuer 066 0/8. That is what
+    # separates 75 routine fire-danger bulletins from "Extremely Heavy Rain"
+    # over Uttar Pradesh, which a blanket demotion would have taken with them.
+    #
+    # `None` means we have not read the document yet, and that is NOT the same
+    # as knowing it says nothing: demoting on absence of knowledge would rank
+    # an alert by how recently we happened to meet it.
+    if actionable is False and not seen:
+        severity = _step(severity, -1)
+
+    if urgency == "past":
+        # The danger has been and gone. Keeping it visible is right; keeping it
+        # ranked is not. (No source in the current set publishes `Past` today:
+        # this branch is a guard, not a measured behaviour.)
+        severity = min(severity, Severity.MINOR, key=_LADDER.index)
+
+    return severity

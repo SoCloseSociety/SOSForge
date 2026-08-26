@@ -18,7 +18,7 @@ from pathlib import Path
 
 import httpx
 
-from app.models.event import Event, Kind, Severity, to_utc
+from app.models.event import Event, Kind, severity_for_cap, to_utc
 from app.sources.base import Emit, Source
 from app.sources.nws_zones import ZoneResolver
 
@@ -27,14 +27,6 @@ log = logging.getLogger(__name__)
 URL = (
     "https://api.weather.gov/alerts/active?status=actual&message_type=alert&severity=Extreme,Severe"
 )
-
-NWS_SEVERITY = {
-    "Extreme": Severity.EXTREME,
-    "Severe": Severity.SEVERE,
-    "Moderate": Severity.MODERATE,
-    "Minor": Severity.MINOR,
-    "Unknown": Severity.INFO,
-}
 
 # Order matters: the first pattern found wins ("Tsunami" before "Flood").
 
@@ -147,7 +139,24 @@ def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | N
             if known:
                 lat, lon = known
                 break
-    severity = NWS_SEVERITY.get(props.get("severity") or "", Severity.INFO)
+    # The NWS publishes all three CAP axes on every alert and only `severity`
+    # was read. Measured on the live feed of 2026-08-26: a "Fire Weather Watch"
+    # (Severe, but urgency Future and certainty Possible -- the forecaster is
+    # saying conditions MAY become favourable the day after tomorrow) carried
+    # the same rank as a M6.5 earthquake. Three of the three alerts the feed
+    # served at Severe that day were fire-weather or heat products.
+    #
+    # Tsunami is the one exception, and it is about consistency rather than
+    # calibration: `tsunami.py` already ranks a Warning EXTREME and an Advisory
+    # or Watch SEVERE, and the NWS relays THE SAME bulletins as CAP alerts.
+    # Reading one copy as a forecast and the other as a fact would publish one
+    # wave at two ranks depending on which feed reached us first.
+    severity = severity_for_cap(
+        props.get("severity"),
+        props.get("urgency"),
+        props.get("certainty"),
+        observed=kind is Kind.TSUNAMI,
+    )
 
     # `/alerts/active` returns, by construction, only alerts in force: every
     # feature it serves is ongoing. Saying so is what lets the horizon keep it
@@ -180,6 +189,17 @@ def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | N
         alert=(props.get("urgency") or "").lower() or None,
         title=props.get("headline") or event_name,
         url=props.get("@id") or f"https://api.weather.gov/alerts/{alert_id}",
+        # The three fields this parser used to download and drop. Measured on
+        # the 1631 alerts NWS published at Severe or Extreme between
+        # 2026-08-21 and 2026-08-26: `description` 100%, `response` 99.9%,
+        # `instruction` 85.2% (it is absent from Watches by design -- a watch
+        # says "conditions are favourable", it has nothing to instruct yet).
+        instruction=props.get("instruction"),
+        description=props.get("description"),
+        # CAP `responseType`, called `response` in the GeoJSON rendering. On
+        # that same sample: Shelter 1006, Avoid 421, Monitor 93, Prepare 60,
+        # Execute 46, Evacuate 4.
+        response_type=props.get("response"),
         raw={
             "event": event_name,
             "urgency": props.get("urgency"),

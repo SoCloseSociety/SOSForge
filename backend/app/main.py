@@ -24,6 +24,8 @@ from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
 from app.sources.eew import CencSource, JmaEewSource
 from app.sources.emsc_ws import EmscWebsocketSource
+from app.sources.fdsn import NoaSource, NrcanSource
+from app.sources.felt import FeltReportCache
 from app.sources.gdacs import GdacsSource
 from app.sources.geonet_volcano import GeonetVolcanoSource
 from app.sources.hazards import AshSource, EonetSource, NhcSource
@@ -151,6 +153,15 @@ def build_sources() -> list[Source]:
     # The volcano filter silently meant "US volcanoes". A filter showing zero
     # reads as calm, not as no-coverage. Whakaari killed tourists in 2019 at
     # alert level 2, and that level is published for free.
+    # Canada and Greece, through their FDSN event services. Measured against
+    # USGS-week plus EMSC: 87% of NRCan's events and 96% of NOA's exist
+    # NOWHERE else in this feed. A previous survey wrote both off as dead --
+    # NRCan rejects `format=json` with a 422, NOA refuses any query without a
+    # `starttime` with a bare Apache 400. Both answer `format=text` fine.
+    if settings.enable_nrcan:
+        built.append(NrcanSource(settings.nrcan_poll_seconds))
+    if settings.enable_noa:
+        built.append(NoaSource(settings.noa_poll_seconds))
     if settings.enable_geonet_volcano:
         built.append(
             GeonetVolcanoSource(
@@ -223,6 +234,35 @@ async def sweep_stale() -> None:
             log.warning("sweep: %s", exc)
 
 
+async def felt_reports() -> None:
+    """How many people reported feeling it, arriving as a revision.
+
+    Not a source: it adds nothing to the feed, it corrects something already
+    in it. The count is what answers "did anyone else feel this", which the
+    magnitude cannot -- and it only exists minutes AFTER the quake, growing
+    from a dozen to a thousand. Measured: present on 40% of M>=5 events and
+    4% overall, so this is a detail, not a headline.
+    """
+    cache = FeltReportCache()
+
+    async def on_change(unid: str, count: int) -> None:
+        event = store.get(f"emsc:{unid}")
+        if event is None or event.felt_reports == count:
+            return
+        # Back through the pipeline so it becomes an ordinary revision: the
+        # fingerprint covers `felt_reports`, so open tabs learn about it.
+        updated = event.model_copy(deep=True)
+        updated.felt_reports = count
+        await pipeline.emit(updated)
+
+    try:
+        await cache.run(on_change)
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:  # noqa: BLE001 -- a detail must never kill the feed
+        log.warning("felt reports unavailable: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global sources
@@ -264,6 +304,8 @@ async def lifespan(app: FastAPI):
     tasks = [asyncio.create_task(s.supervise(pipeline.emit), name=f"src:{s.name}") for s in sources]
     tasks.append(asyncio.create_task(heartbeat(), name="heartbeat"))
     tasks.append(asyncio.create_task(sweep_stale(), name="sweep"))
+    if settings.enable_felt_reports:
+        tasks.append(asyncio.create_task(felt_reports(), name="felt"))
     log.info("SOSForge online -- %d sources: %s", len(sources), ", ".join(s.name for s in sources))
 
     yield

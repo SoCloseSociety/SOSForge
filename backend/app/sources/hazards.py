@@ -423,7 +423,7 @@ EONET_KIND = {
     "floods": Kind.FLOOD,
     "drought": Kind.DROUGHT,
     "earthquakes": Kind.EARTHQUAKE,
-    "landslides": Kind.OTHER,
+    "landslides": Kind.LANDSLIDE,
     "seaLakeIce": Kind.OTHER,
     "snow": Kind.STORM,
     "dustHaze": Kind.OTHER,
@@ -431,6 +431,24 @@ EONET_KIND = {
     "waterColor": Kind.OTHER,
     "temperatureExtremes": Kind.HEAT,
 }
+
+# EONET categories that are OBSERVATIONS OF THE ENVIRONMENT rather than
+# hazards to people. Everything EONET publishes was given a flat MODERATE --
+# the rung this product gives a M5 earthquake -- whatever it was. Measured on
+# the live feed of 2026-08-26, that put ELEVEN drifting Antarctic icebergs
+# (B22A, A76C, A81, C39, D32, D33B, D35, D33C, A83, A84, A85) at the same rank
+# as a felt earthquake, in the middle of the Southern Ocean, where the nearest
+# person is on a research station.
+#
+# They belong in the feed: this product tracks the planet, and an iceberg
+# calving is a real thing that happened. They do not belong on a rung that
+# means "act if you are in the area".
+#
+# Nothing else moves. An EONET wildfire or volcano is an event OBSERVED from
+# orbit and still burning, which is exactly what `severity_for_cap` reserves
+# the honest reading for -- MODERATE for an observed hazard whose exposure we
+# cannot measure is the right answer, and the one this file already gave.
+EONET_OBSERVATION_ONLY = {"seaLakeIce", "waterColor"}
 
 
 class EonetSource(JsonPollSource):
@@ -483,7 +501,7 @@ class EonetSource(JsonPollSource):
 
             magnitude = last.get("magnitudeValue")
             unit = last.get("magnitudeUnit")
-            severity = Severity.MODERATE
+            severity = Severity.INFO if category in EONET_OBSERVATION_ONLY else Severity.MODERATE
             if kind is Kind.CYCLONE and isinstance(magnitude, (int, float)):
                 severity = cyclone_severity(float(magnitude), "HU" if magnitude >= 64 else "TS")
 

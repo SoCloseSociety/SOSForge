@@ -24,6 +24,7 @@ import httpx
 
 from app.models.event import Event, Kind, Severity
 from app.sources.base import Emit, Source
+from app.sources.tsunami_bulletin import Bulletin, BulletinCache
 
 log = logging.getLogger(__name__)
 
@@ -94,6 +95,45 @@ def _parse_time(value: str | None) -> datetime:
     return datetime.now(UTC)
 
 
+def text_bulletin_link(entry: ET.Element) -> str | None:
+    """The plain-text bulletin behind an Atom entry.
+
+    The entry offers two documents: a CAP XML (`rel="related"`, type
+    `application/cap+xml`) and the bulletin itself (`rel="alternate"`,
+    `.../WEAK53.txt`). Only the second one carries the arrival table and the
+    gauge readings -- both were checked against the real files for the same
+    event. So this deliberately picks the `.txt`, not the first link, and
+    returns nothing rather than falling back to a document that cannot
+    contain the answer.
+    """
+    for node in entry.findall("atom:link", NS):
+        href = node.get("href") or ""
+        if href.lower().endswith(".txt"):
+            return href.strip()
+    return None
+
+
+def apply_bulletin(event: Event, bulletin: Bulletin) -> Event:
+    """Attach what the bulletin text added, if it added anything.
+
+    Nothing is invented and nothing is cleared: an empty bulletin leaves the
+    event exactly as the Atom feed described it. A later message that has
+    dropped its arrival table (they do, once the wave has passed) must not
+    erase the arrival time an earlier one gave, but each bulletin URL is a
+    separate document and the event is rebuilt from the latest one -- so the
+    honest statement is that the event says what its CURRENT bulletin says.
+    """
+    arrival = bulletin.first_arrival
+    if arrival:
+        event.wave_eta = arrival.at
+        event.wave_eta_site = arrival.site
+    largest = bulletin.largest
+    if largest:
+        event.wave_max_m = largest.metres
+        event.wave_max_site = largest.site
+    return event
+
+
 def parse_entry(entry: ET.Element, center: str) -> Event | None:
     entry_id = _text(entry, "atom:id") or _text(entry, "atom:updated")
     if not entry_id:
@@ -162,6 +202,10 @@ class TsunamiSource(Source):
         super().__init__()
         self.poll_seconds = poll_seconds
         self.feeds = feeds or FEEDS
+        # The Atom summary answers "how big was the earthquake". The two
+        # questions a person on a coast actually has -- when does it reach me,
+        # and has a gauge seen anything -- are only in the text bulletin.
+        self.bulletins = BulletinCache()
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
@@ -179,9 +223,21 @@ class TsunamiSource(Source):
                         alive += 1
                         for entry in root.findall(".//atom:entry", NS):
                             event = parse_entry(entry, center)
-                            if event:
-                                seen += 1
-                                await emit(event)
+                            if not event:
+                                continue
+                            # One extra GET the first time a bulletin appears,
+                            # and none ever again: the document is immutable
+                            # and the cache keeps the parsed result, empty
+                            # ones included. A failure here costs the arrival
+                            # time, never the alert.
+                            link = text_bulletin_link(entry)
+                            if link:
+                                apply_bulletin(
+                                    event,
+                                    await self.bulletins.get(client, link, event.time),
+                                )
+                            seen += 1
+                            await emit(event)
                     except Exception as exc:
                         self.health.fail(exc)
                         log.warning("tsunami %s: %s", center, exc)

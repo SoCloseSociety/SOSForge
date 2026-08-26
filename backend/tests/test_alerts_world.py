@@ -83,6 +83,80 @@ LIFTED = {
 }
 
 
+# Verbatim: the archetype of the 461 warnings that made the whole feed one
+# colour. `feeds-poland`, 2026-08-26. Orange, and what the forecaster actually
+# writes underneath the colour is "BE PREPARED ... some flooding of properties
+# ... possible ... some evacuations MAY be required".
+ORANGE_FORECAST = {
+    "alert": {
+        "identifier": "2.49.0.0.616.0.PL.Gd20260821035709701.PL0201",
+        "info": [
+            {
+                "area": [
+                    {
+                        "areaDesc": "Dolno\u015bl\u0105skie Province Boles\u0142awiecki County",
+                        "geocode": [{"value": "PL0201", "valueName": "EMMA_ID"}],
+                    }
+                ],
+                "category": ["Met"],
+                "certainty": "Likely",
+                "event": "Orange Rain warning",
+                "expires": "2026-08-22T06:00:00+02:00",
+                "headline": "Orange Heavy rain and thunderstorm warning for Poland - Dolnoslaskie Province Boleslawiecki County",  # noqa: E501
+                "instruction": "BE PREPARED to protect yourself and your property. Some flooding of properties and transport networks are possible.",  # noqa: E501
+                "language": "en-GB",
+                "onset": "2026-08-21T17:00:00+02:00",
+                "parameter": [
+                    {"value": "3; orange; Severe", "valueName": "awareness_level"},
+                    {"value": "10; Rain", "valueName": "awareness_type"},
+                ],
+                "responseType": ["None"],
+                "senderName": "IMGW-PIB, Marine Meteorological Forecast Office in Gdynia",
+                "severity": "Severe",
+                "urgency": "Expected",
+            }
+        ],
+    }
+}
+
+# Verbatim: the ONE warning out of the 2622 served by the ten country feeds on
+# 2026-08-26 that the issuing agency says it is OBSERVING at the top rank --
+# 180 mm already on the ground north of Tarragona.
+RED_OBSERVED = {
+    "alert": {
+        "identifier": "2.49.0.0.724.0.ES.260822032408.694303PRP2220569048",
+        "info": [
+            {
+                "area": [
+                    {
+                        "areaDesc": "Litoral norte de Tarragona",
+                        "geocode": [{"value": "ES191", "valueName": "EMMA_ID"}],
+                    }
+                ],
+                "category": ["Met"],
+                "certainty": "Observed",
+                "description": "Twelve-hours accumulated precipitation: 180 mm.",
+                "effective": "2026-08-22T05:20:58+02:00",
+                "event": "Extreme rain warning",
+                "expires": "2026-08-22T06:59:59+02:00",
+                "headline": "Extreme rain warning. Litoral norte de Tarragona",
+                "instruction": "Take precautionary action, remain vigilant and act on advice given by authorities. Extreme or catastrophic damages to people and properties may occur.",  # noqa: E501
+                "language": "en-GB",
+                "onset": "2026-08-22T05:00:00+02:00",
+                "parameter": [
+                    {"value": "4; red; Extreme", "valueName": "awareness_level"},
+                    {"value": "10; Rain", "valueName": "awareness_type"},
+                ],
+                "responseType": ["Monitor"],
+                "senderName": "AEMET. State Meteorological Agency",
+                "severity": "Extreme",
+                "urgency": "Immediate",
+            }
+        ],
+    }
+}
+
+
 def test_only_one_event_per_warning_despite_two_language_blocks():
     """Each warning carries its content twice (local language + English).
     Without an explicit choice, each one produced two events."""
@@ -101,10 +175,16 @@ def test_awareness_type_drives_the_kind_not_the_local_label():
 
 
 def test_awareness_level_is_a_composite_string():
-    """ "2; yellow; Moderate" -- the severity is the first field, not the string."""
+    """ "2; yellow; Moderate" -- the rank is the first field, not the string.
+
+    Yellow is CAP rank Moderate, and this excerpt states no `certainty`, so it
+    is read as a forecast: MINOR. Saying nothing about certainty is not a claim
+    that the thing is happening, and the conservative reading is the only
+    honest one here.
+    """
     event = parse_meteoalarm(ALERT, "france")
     assert event is not None
-    assert event.severity is Severity.MODERATE
+    assert event.severity is Severity.MINOR
     assert event.ongoing is True
     assert event.time.tzinfo is not None  # onset carries a local offset (+02:00)
     assert "Alpes-de-Haute-Provence" in event.place
@@ -117,6 +197,54 @@ def test_allclear_is_a_lifted_warning_not_an_alert():
     assert event.severity is Severity.INFO
     assert event.ongoing is False
     assert event.alert == "lifted"
+
+
+def test_an_orange_forecast_does_not_rank_with_a_destructive_earthquake():
+    """The measured defect, on the live feed of 2026-08-26: 461 of the 480
+    Meteoalarm warnings sat at SEVERE -- the rank this product gives a M6.5 --
+    and "Orange Thunderstorm warning" was the single most frequent title in the
+    whole feed. Poland alone contributed 331 of them.
+
+    Orange is CAP rank Severe, forecast (`certainty: Likely`), so it lands one
+    rung lower: MODERATE, "dangerous, act if you are in the area". Which is
+    what the warning itself says in its own instruction field.
+    """
+    event = parse_meteoalarm(ORANGE_FORECAST, "poland")
+    assert event is not None
+    assert event.severity is Severity.MODERATE
+    assert event.raw["urgency"] == "Expected"
+    assert event.raw["certainty"] == "Likely"
+    # the colour is not lost, it is simply no longer pretending to be a rank
+    assert event.alert == "Severe"
+
+
+def test_a_red_warning_the_agency_is_watching_land_reaches_the_top():
+    """The counterpart, and the reason this is a rule and not a cap on
+    Meteoalarm: 180 mm already measured on the ground, `certainty: Observed`.
+    The agency is no longer forecasting, so its rank is taken at face value.
+    One warning out of the 2622 served that day qualified."""
+    event = parse_meteoalarm(RED_OBSERVED, "spain")
+    assert event is not None
+    assert event.severity is Severity.EXTREME
+
+
+def test_a_red_warning_still_to_come_is_severe_not_extreme():
+    """Same red warning, with the agency forecasting instead of observing."""
+    forecast = deepcopy(RED_OBSERVED)
+    forecast["alert"]["info"][0]["certainty"] = "Likely"
+    event = parse_meteoalarm(forecast, "spain")
+    assert event is not None
+    assert event.severity is Severity.SEVERE
+
+
+def test_a_rank_the_forecaster_is_unsure_of_drops_one_further():
+    """CAP keeps certainty separate from severity for a reason, and reading
+    only the second put "this may happen" on the rung of "this is happening"."""
+    unsure = deepcopy(ORANGE_FORECAST)
+    unsure["alert"]["info"][0]["certainty"] = "Possible"
+    event = parse_meteoalarm(unsure, "poland")
+    assert event is not None
+    assert event.severity is Severity.MINOR
 
 
 def test_meteoalarm_garbage_is_ignored():
@@ -269,13 +397,19 @@ def test_wmo_ranks_grow_with_the_severity_they_do_not_shrink():
     Moderate, 3 Severe, 4 Extreme, 99 agreements out of 100."""
     event = parse_wmo(WMO_ITEM)
     assert event is not None
-    assert event.severity is Severity.SEVERE  # s = 3
-
-    assert parse_wmo(EXTREME_ITEM).severity is Severity.EXTREME  # s = 4
-    assert parse_wmo(MINOR_ITEM).severity is Severity.MINOR  # s = 1
+    # Ranks still GROW with `s`. Where each one lands on this product's ladder
+    # is one rung lower than the aggregate's own word for it, because every one
+    # of these is a national agency FORECASTING (see the next test).
+    assert event.severity is Severity.MODERATE  # s = 3, forecast
+    assert parse_wmo(EXTREME_ITEM).severity is Severity.SEVERE  # s = 4, forecast
+    assert parse_wmo(MINOR_ITEM).severity is Severity.INFO  # s = 1
 
     unknown = parse_wmo({**WMO_ITEM, "id": "X-2", "s": 0})
     assert unknown is not None and unknown.severity is Severity.INFO
+
+    # ... and an agency that says it is WATCHING the thing keeps its own rank.
+    observed = parse_wmo({**EXTREME_ITEM, "id": "X-3", "c": 4})
+    assert observed is not None and observed.severity is Severity.EXTREME
 
 
 def test_urgency_and_certainty_are_ranked_the_same_way():
@@ -285,6 +419,23 @@ def test_urgency_and_certainty_are_ranked_the_same_way():
     assert parse_wmo(WMO_ITEM).raw["urgency"] == "expected"  # u = 3
     assert parse_wmo(EXTREME_ITEM).raw["certainty"] == "likely"  # c = 3
     assert parse_wmo(MINOR_ITEM).raw["urgency"] is None  # u = 0, unknown
+
+
+def test_a_national_extreme_is_not_this_products_extreme():
+    """Measured on the aggregate of 2026-08-26: 103 alerts at `s` = 4, and 75
+    of them are ONE member's routine forest-fire-danger bulletins (070,
+    Kazhydromet -- CAPURL_ITEM below is one of them, verbatim). They were the
+    entire top of this product's feed, above every earthquake on the planet.
+
+    Not one of those 103 claimed `c` = 4 (Observed). The aggregate mixes some
+    thirty national scales that CAP itself never promised were comparable, so
+    the one thing worth reading off them is the distinction the producers DO
+    all encode: are you watching this, or forecasting it.
+    """
+    kazakh_fire_danger = parse_wmo(CAPURL_ITEM)
+    assert kazakh_fire_danger is not None
+    assert kazakh_fire_danger.severity is Severity.SEVERE  # was EXTREME
+    assert kazakh_fire_danger.raw["certainty"] == "likely"  # never "observed"
 
 
 def test_the_filter_keeps_the_top_tiers_not_the_bottom_ones():

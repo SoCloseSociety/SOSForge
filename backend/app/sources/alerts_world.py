@@ -38,9 +38,10 @@ from typing import Any
 
 import httpx
 
-from app.models.event import Event, Kind, Severity, to_utc
+from app.models.event import Event, Kind, Severity, severity_for_cap, to_utc
 from app.sources.base import Emit, Source
 from app.sources.cap_area import WMO_CAP_BASE, CapAreaCache, parse_polygon
+from app.sources.cap_text import CapText
 from app.sources.nws import _matches
 from app.sources.regional import USER_AGENT, JsonPollSource
 
@@ -78,18 +79,32 @@ AWARENESS_TYPE_KIND = {
     "6": Kind.STORM,  # low temperature
     "7": Kind.FLOOD,  # coastal event
     "8": Kind.WILDFIRE,  # forest fire
-    "9": Kind.OTHER,  # avalanches
+    "9": Kind.AVALANCHE,
     "10": Kind.STORM,  # rain
     "11": Kind.FLOOD,  # flooding
     "12": Kind.FLOOD,  # rain-flood
 }
 
-# level 1 green (no danger) -> 4 red (major danger)
-AWARENESS_LEVEL_SEVERITY = {
-    "1": Severity.INFO,
-    "2": Severity.MODERATE,
-    "3": Severity.SEVERE,
-    "4": Severity.EXTREME,
+# `awareness_level` IS a CAP rank: level 1 green (no danger) -> 4 red (major
+# danger) is the harmonized European scale, and it maps onto CAP's vocabulary
+# term for term. Measured on the 2622 warnings of the ten country feeds on
+# 2026-08-26, the producers' own CAP `severity` element agrees with it almost
+# everywhere -- level 1 -> Minor 1123/1123, level 2 -> Moderate 888/1030,
+# level 3 -> Severe 396/452, level 4 -> Extreme 9/17.
+#
+# The level is what we read, not the element, and deliberately: the level is the
+# ONE scale the ten countries share, which is the whole reason Meteoalarm
+# exists. The element is each national producer's own reading, and the 8 red
+# warnings it calls merely "Severe" are the disagreement, not the truth.
+#
+# Where the ranks land on this product's ladder is decided in one place for
+# every CAP source -- `severity_for_cap` in `models/event.py` -- so that an
+# orange warning and a M6 earthquake stop claiming the same rung.
+AWARENESS_LEVEL_RANK = {
+    "1": "minor",
+    "2": "moderate",
+    "3": "severe",
+    "4": "extreme",
 }
 
 
@@ -158,12 +173,37 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
     if params.get("awareness_type"):
         awareness_type = params["awareness_type"].split(";")[0].strip()
 
-    severity = AWARENESS_LEVEL_SEVERITY.get(level or "", Severity.INFO)
+    # `urgency` and `certainty` sit next to `severity` in every Meteoalarm
+    # info block (2622/2622 on 2026-08-26) and were never read: an orange
+    # warning the forecaster is only half sure of was ranked exactly like one
+    # already dropping 180 mm.
+    severity = severity_for_cap(
+        AWARENESS_LEVEL_RANK.get(level or ""),
+        urgency=info.get("urgency"),
+        certainty=info.get("certainty"),
+        # NOT passing `actionable` here, deliberately. The rule that demotes a
+        # text-less alert was measured on the WMO aggregate, where the absence
+        # of an instruction is a property of the ISSUER -- Kazakhstan 0/14,
+        # India 17/17. Nothing was measured for Meteoalarm, where 98% of
+        # warnings carry an instruction and the 2% that do not are far more
+        # likely to be a sparse publisher than a statement about conditions.
+        # Extending an unmeasured rule to a second population is exactly the
+        # mistake lesson 24 is about.
+    )
     kind = AWARENESS_TYPE_KIND.get(awareness_type or "", Kind.OTHER)
 
     # `AllClear` means the warning is LIFTED. Like the "no danger" tsunami
     # bulletins, it is displayed but does not alert.
     lifted = "AllClear" in (info.get("responseType") or [])
+    # Already in the payload, at zero extra cost: measured 66% instruction,
+    # 94% description, 100% responseType across the ten country feeds. This is
+    # the actionable core of an alert -- what to DO -- and it was being thrown
+    # away on every one of them.
+    # "None" is a real CAP responseType and it means "no action recommended".
+    # As a badge it would be noise on 331 of today's 425 warnings -- a label
+    # that says nothing, on the one element meant to say what to do.
+    # "AllClear" is handled separately: it lifts the alert.
+    responses = [r for r in (info.get("responseType") or []) if r and r not in ("AllClear", "None")]
     if lifted:
         severity = Severity.INFO
 
@@ -190,11 +230,16 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         alert=("lifted" if lifted else (params.get("awareness_level") or "").split(";")[-1].strip())
         or None,
         title=info.get("headline") or info.get("event") or place,
+        instruction=info.get("instruction"),
+        description=info.get("description"),
+        response_type=responses[0] if responses else None,
         url=info.get("web"),
         raw={
             "event": info.get("event"),
             "awareness_level": params.get("awareness_level"),
             "awareness_type": params.get("awareness_type"),
+            "urgency": info.get("urgency"),
+            "certainty": info.get("certainty"),
             "expires": info.get("expires"),
             "areas": len(areas),
         },
@@ -274,18 +319,23 @@ class MeteoalarmSource(Source):
 # So the source was keeping the 246 *Minor* alerts, publishing them as EXTREME,
 # and dropping the 91 Extreme and 353 Severe ones. See `WmoCapSource` for how
 # the kept set is expressed now.
-WMO_SEVERITY = {
-    1: Severity.MINOR,
-    2: Severity.MODERATE,
-    3: Severity.SEVERE,
-    4: Severity.EXTREME,
-}
+WMO_SEVERITY = {1: "minor", 2: "moderate", 3: "severe", 4: "extreme"}
 
 # Same reading, same sample: `u` 1=Past 2=Future 3=Expected 4=Immediate,
 # `c` 2=Possible 3=Likely 4=Observed. Kept as text in `raw` because a bare
 # rank is unreadable and was already being misread once.
 WMO_URGENCY = {1: "past", 2: "future", 3: "expected", 4: "immediate"}
 WMO_CERTAINTY = {1: "unlikely", 2: "possible", 3: "likely", 4: "observed"}
+
+# `u` and `c` were decoded, written into `raw`, shown to nobody, and never
+# allowed to touch the rank -- so a national "Extreme" was published as this
+# product's EXTREME whatever the agency thought of its own forecast. Measured
+# on the aggregate of 2026-08-26: 103 alerts at s=4, of which 75 are one
+# member's (070, Kazhydromet) routine forest-fire-danger bulletins, and NOT ONE
+# of the 103 claims `c=4` (Observed). They were the entire top of this
+# product's feed. CAP itself warns that the ranks are the national agency's
+# own, and this aggregate mixes 30-odd of them: `severity_for_cap` is where
+# that gets read honestly, once, for every CAP source at the same time.
 
 # CAP severity has four tiers; the settings express how many of them to keep,
 # counting down from Extreme.
@@ -326,7 +376,11 @@ def wmo_cap_path(item: dict) -> str | None:
     return str(path) if path else None
 
 
-def parse_wmo(item: dict, position: tuple[float, float] | None = None) -> Event | None:
+def parse_wmo(
+    item: dict,
+    position: tuple[float, float] | None = None,
+    text: CapText | None = None,
+) -> Event | None:
     item_id = item.get("id")
     if not item_id:
         return None
@@ -344,7 +398,16 @@ def parse_wmo(item: dict, position: tuple[float, float] | None = None) -> Event 
         except (TypeError, ValueError):
             return None
 
-    severity = WMO_SEVERITY.get(rank(item.get("s")) or 0, Severity.INFO)
+    urgency = WMO_URGENCY.get(rank(item.get("u")) or 0)
+    certainty = WMO_CERTAINTY.get(rank(item.get("c")) or 0)
+    severity = severity_for_cap(
+        WMO_SEVERITY.get(rank(item.get("s")) or 0),
+        urgency=urgency,
+        certainty=certainty,
+        # None until the CAP document has been fetched: not knowing is not the
+        # same as knowing it says nothing.
+        actionable=bool(text.instruction or text.description) if text else None,
+    )
 
     # the identifier is prefixed with the ISO2 country code ("IN-...",
     # "CN-..."): it is the feed's only country indication, and enough to show
@@ -372,14 +435,20 @@ def parse_wmo(item: dict, position: tuple[float, float] | None = None) -> Event 
         ongoing=True,
         alert=event_name.lower(),
         title=item.get("headline") or event_name,
+        # From the CAP document, which we have already downloaded for its
+        # polygon: the same bytes, zero extra requests. This is what the
+        # issuing agency told people to DO, and it was being discarded.
+        instruction=text.instruction if text else None,
+        description=text.description if text else None,
+        response_type=text.response_type if text else None,
         # the aggregated JSON has shown times inconsistent with the source
         # CAP: for any critical time, the CAP is authoritative
         url=f"{WMO_CAP_BASE}{cap_path}" if cap_path else None,
         raw={
             "event": event_name,
             "expires": item.get("expires"),
-            "urgency": WMO_URGENCY.get(rank(item.get("u")) or 0),
-            "certainty": WMO_CERTAINTY.get(rank(item.get("c")) or 0),
+            "urgency": urgency,
+            "certainty": certainty,
             "member": item.get("mid"),
         },
     )
@@ -441,7 +510,11 @@ class WmoCapSource(JsonPollSource):
         events = []
         for item in items:
             path = wmo_cap_path(item)
-            event = parse_wmo(item, self.areas.known(path) if path else None)
+            event = parse_wmo(
+                item,
+                self.areas.known(path) if path else None,
+                self.areas.text(path) if path else None,
+            )
             if event:
                 events.append(event)
         return events

@@ -394,3 +394,81 @@ whoever owns `main.py` and `config.py`:
   already places, and it would cost two extra hops per zone at another agency.
 - **CAP `<circle>`**: 0 of 771 real documents used it, so there is no real
   fixture and therefore no parser.
+
+---
+
+## One ladder for every hazard: CAP severity / urgency / certainty (2026-08-26)
+
+### The measured defect
+
+`/api/events?limit=2000` on the live site, 2026-08-26 10:26 UTC, 1579 events:
+
+- **480 Meteoalarm, 461 of them SEVERE** -- the rank this product gives a M6.5
+  earthquake. The most frequent title in the entire product was "Orange
+  Thunderstorm warning" (216). Poland alone: 331 events, 328 severe.
+- **215 WMO, all EXTREME.** On the aggregate itself, 103 alerts at `s` = 4 and
+  **75 of them are one member's routine forest-fire-danger bulletins**
+  (`mid` 070, Kazhydromet). Not one of the 103 claimed `c` = 4 (Observed).
+- Of the 233 EXTREME events in the feed, **zero** were an earthquake, a tsunami
+  or an eruption. Sorted by severity, the top 20 was 7 red heat warnings and 13
+  identical "Forestfire" bulletins.
+- 714 of 1579 events (45%) sat at or above the alarm threshold
+  (`SEVERITY_RANK >= severe` in `store.ts`, and the `ALERT` log line in
+  `pipeline.py`).
+
+Root cause: five national colour codes, a magnitude ladder, a CAP rank and an
+aviation colour code were all being flattened onto one five-step severity as if
+they meant the same thing -- and of CAP's three axes only `severity` was read.
+
+### The rule
+
+`severity_for_cap` in `models/event.py`, extending `severity_for_quake` rather
+than inventing a second philosophy:
+
+- the agency's own rank is the base (CAP defines it in harm terms);
+- `certainty` is this product's PAGER, the field that knows more than we do
+  about whether the harm is REAL. Observed -> the rank at face value;
+  anything else -> one rung lower, because a forecast of harm is not a
+  measurement of harm. `Possible`/`Unlikely` -> one further rung down;
+- `urgency` deliberately does NOT enter the base, except `Past` (the danger is
+  over -> capped at MINOR). Severity is "how bad", urgency is "how soon", and
+  collapsing them re-creates the flattening. Demoting the advance notice is
+  also lesson 14 in a new costume;
+- nothing promotes above the agency's own rank: no CAP field says who is
+  exposed.
+
+Applied to `meteoalarm` (via the harmonized awareness level, the one scale its
+ten countries share), `wmo`, `nws`. Plus one unrelated calibration fix in
+`hazards.py`: EONET gave a flat MODERATE to everything, which put eleven
+drifting Antarctic icebergs on the rung of a felt M5.
+
+### Measured after (same payloads, same ingestion filters)
+
+| source | before severe+extreme | after severe+extreme |
+|---|---|---|
+| meteoalarm (469) | 463 | 17 |
+| wmo (103) | 103 | 96 |
+| nws (3) | 3 | 0 |
+| eonet (54) | 1 | 1 |
+
+Whole feed, alarm threshold: 714/1579 (45%) -> 124/1155 (11%). EXTREME went
+from 233 events, none of them a measured disaster, to one: AEMET reporting
+180 mm already on the ground north of Tarragona.
+
+### Not done, on purpose
+
+- **The 75 Kazakh fire-danger bulletins still sit at SEVERE.** Their CAP
+  document carries no `description`, no `instruction` and no `responseType`:
+  `Fire / Forestfire / Extreme / Future / Likely` and nothing else. Nothing in
+  the payload separates them from a genuine extreme fire emergency. The two
+  honest fixes -- per-member calibration, or a "forecast of conditions"
+  product family -- both need a measurement over days, not one snapshot.
+  Demoting every WMO forecast to reach them would also have demoted the Indian
+  "Extremely Heavy Rain" over Uttar Pradesh, which is the trade lesson 19
+  forbids.
+- **The ingestion filters** (`meteoalarm_min_level`, `wmo_max_severity_rank`)
+  are untouched. They decide recall, not rank, and changing them needs its own
+  before/after.
+- **The ash SIGMET threshold** (`SEVERE` above 25000 ft): all nine live SIGMETs
+  are below it, so no measurement could say whether moving it helps.
+- **`cyclone_severity`**: already anchored on Saffir-Simpson, i.e. on harm.

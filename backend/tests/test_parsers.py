@@ -276,14 +276,79 @@ NWS_FEATURE = {
 }
 
 
+# Verbatim excerpt of api.weather.gov/alerts/active, 2026-08-26. THE case that
+# proves the point: "Severe" -- the rank this product gives a M6.5 earthquake --
+# for conditions that MIGHT become favourable the day after tomorrow. All three
+# alerts the live feed served at Severe that day were fire-weather or heat
+# products.
+NWS_WATCH_FEATURE = {
+    "id": "urn:oid:2.49.0.1.840.0.fe82c2a0d7a2952fc441651adac433d5a6970a08.001.1",
+    "geometry": None,
+    "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.fe82c2a0d7a2952fc441651adac433d5a6970a08.001.1",
+        "event": "Fire Weather Watch",
+        "severity": "Severe",
+        "urgency": "Future",
+        "certainty": "Possible",
+        "sent": "2026-08-25T13:37:00-06:00",
+        "effective": "2026-08-25T13:37:00-06:00",
+        "ends": "2026-08-27T21:00:00-06:00",
+        "expires": "2026-08-26T06:00:00-06:00",
+        "areaDesc": "Owyhee Mountains; Burns BLM; Steens Mountain; Southern Grasslands",
+        "headline": "Fire Weather Watch issued August 25 at 1:37PM MDT until August 27 at 9:00PM MDT by NWS Boise ID",  # noqa: E501
+        "senderName": "NWS Boise ID",
+    },
+}
+
+
 def test_nws_alert():
     event = parse_nws(NWS_FEATURE)
     assert event is not None
     assert event.kind is Kind.FLOOD
-    assert event.severity is Severity.SEVERE
+    # Severe, Immediate, Likely: a warning in force, but the forecaster is not
+    # saying the water is out yet, so it sits a rung below its own word.
+    assert event.severity is Severity.MODERATE
     # centroid of the polygon
     assert event.lat == 39.5 and event.lon == -82.5
     assert event.time.tzinfo is not None
+
+
+def test_a_watch_does_not_rank_with_a_warning_that_is_happening():
+    """`urgency` and `certainty` sit next to `severity` on every NWS alert and
+    only the third was read. A watch is the forecaster saying conditions MAY
+    become favourable: Possible drops it one rung below the same-ranked
+    warning."""
+    watch = parse_nws(NWS_WATCH_FEATURE)
+    assert watch is not None
+    assert watch.severity is Severity.MINOR
+
+    warning = parse_nws(NWS_FEATURE)
+    assert warning is not None
+    assert warning.severity is Severity.MODERATE
+
+    observed = {"properties": {**NWS_FEATURE["properties"], "certainty": "Observed"}}
+    seen = parse_nws(observed)
+    assert seen is not None and seen.severity is Severity.SEVERE
+
+
+def test_a_tsunami_bulletin_keeps_the_rank_tsunami_py_already_gives_it():
+    """The NWS relays the same tsunami bulletins as CAP alerts that
+    `tsunami.py` reads as Atom. There, a Warning is EXTREME. Routing the CAP
+    copy through the forecast reading would publish one wave at two ranks
+    depending on which feed reached us first."""
+    bulletin = {
+        "properties": {
+            **NWS_FEATURE["properties"],
+            "id": "urn:oid:2.49.0.1.840.0.tsunami.001.1",
+            "event": "Tsunami Warning",
+            "severity": "Extreme",
+            "certainty": "Likely",
+        }
+    }
+    event = parse_nws(bulletin)
+    assert event is not None
+    assert event.kind is Kind.TSUNAMI and event.tsunami is True
+    assert event.severity is Severity.EXTREME
 
 
 def test_nws_alert_without_geometry_still_parses():
