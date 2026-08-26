@@ -142,7 +142,7 @@ class Agent:
             self.config.lon,
             min_severity=self.config.min_severity,
             max_distance_km=self.config.max_distance_km,
-            home_country=self.config.country_code,
+            home_country=self.config.country_code if self.config.zone_alerts else None,
         )
         self._announced.add(event_id)
 

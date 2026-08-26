@@ -55,9 +55,14 @@ own history:
   counties, Canadian parks. Alerts without geometry needed a locator, and the
   only one they carry is the country.
 - Country alone was still too coarse for a country the size of the United
-  States, which is what pushed the fix upstream: the server now resolves the
-  UGC zones NWS publishes, and **11% of US alerts had a position before, 100%
-  after**.
+  States, which pushed the fix upstream: the server now resolves the UGC zones
+  NWS publishes, and **11% of US alerts had a position before, 100% after**.
+- What remains are alerts with no position anywhere in the payload -- most of
+  the WMO aggregate. Those are off by default (`zone_alerts`), because country
+  is the only locator they carry and that is fine for France and useless for
+  the United States: measured on one real day, **Los Angeles 63, Paris 2**, and
+  severity separates nothing (all 63 were "extreme" too). `check` prints your
+  own number so the choice is informed rather than guessed.
 
 ## What wakes you, and what does not
 
@@ -68,8 +73,7 @@ own history:
 | A small quake far away | Silent -- the radius grows with magnitude, from ~25 km at M2.5 to ~1500 km at M8 |
 | A large quake far away | Rings. A M7.8 four hundred kilometres away is felt, and on a coast it is the thing you needed to hear |
 | A swarm producing forty qualifying events | At most `max_per_hour` (12 by default). A machine that buzzes forty times gets muted, and then protects nobody |
-| An alert with no coordinates, in your country | Rings if severe |
-| An alert with no coordinates, elsewhere | Silent |
+| An alert with no coordinates | Silent by default -- see below |
 | A preliminary solution | Rings, and says "preliminary, may be revised" |
 
 ## Configuration

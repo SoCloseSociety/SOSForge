@@ -131,12 +131,13 @@ class TestItSpeaksWhenItMust:
         )
         assert spy.calls[0][2] is True, "an extreme event must be urgent"
 
-    def test_a_zone_alert_in_your_country_rings(self):
-        """Weather warnings are issued for named zones, not points, and half
-        the world's alerts arrive with no geometry at all. Country is the only
-        locator they carry."""
+    def test_a_zone_alert_in_your_country_rings_when_asked_for(self):
+        """Weather warnings are issued for named zones, not points, and some
+        arrive with no geometry anywhere in the payload. Country is then the
+        only locator they carry -- useful in a small country, useless in a
+        large one, so it is opt-in (see config.zone_alerts)."""
         spy = Spy()
-        agent = Agent(config(country_code="JP"), spy)
+        agent = Agent(config(country_code="JP", zone_alerts=True), spy)
         assert (
             agent.handle(
                 {
@@ -217,6 +218,40 @@ class TestItSpeaksWhenItMust:
         agent.handle({"type": "purge", "ids": ["usgs:1"], "reason": "cancelled"})
         agent.handle({"type": "event", "event": quake(severity="severe")})
         assert len(spy.calls) == 2
+
+
+class TestZoneAlertsAreOffUntilAsked:
+    """Measured on one real day of the feed: with them on, Los Angeles would
+    have been notified 63 times -- marine warnings in Michigan, Florida and the
+    Carolinas -- and Paris 2 genuinely local ones. Severity separates nothing:
+    all 63 were "extreme" as well. So the default is silence, and `check`
+    prints the reader's own number before they change it."""
+
+    def test_by_default_a_positionless_alert_says_nothing(self):
+        spy = Spy()
+        agent = Agent(config(country_code="US"), spy)
+        agent.handle(
+            {
+                "type": "event",
+                "event": quake(
+                    kind="storm",
+                    severity="extreme",
+                    lat=None,
+                    lon=None,
+                    magnitude=None,
+                    place="Chesapeake Bay",
+                    country_code="US",
+                ),
+            }
+        )
+        assert spy.calls == []
+
+    def test_positioned_alerts_are_unaffected_by_that_setting(self):
+        """The setting must only touch what cannot be placed -- everything with
+        coordinates is still judged on distance."""
+        spy = Spy()
+        agent = Agent(config(country_code="US"), spy)
+        assert agent.handle({"type": "event", "event": quake(magnitude=5.5)}) is True
 
 
 class TestTheDistanceRules:

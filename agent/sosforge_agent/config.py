@@ -34,6 +34,18 @@ class Config:
     # minutes, and a machine that buzzes forty times gets muted for good.
     max_per_hour: int = 12
     sound: bool = True
+    # Alerts published with NO coordinates at all -- most of the WMO aggregate,
+    # some national bulletins. Country is the only locator they carry, which is
+    # a fine proxy for France and a useless one for the United States: measured
+    # on a real day of the feed, someone in Los Angeles would have been woken
+    # 63 times by marine warnings in Michigan, Florida and the Carolinas, while
+    # someone in Paris got 2 genuinely local ones. Severity does not separate
+    # them either -- all 63 were "extreme" too.
+    #
+    # So it is a choice, defaulted to silence, and `check` prints what turning
+    # it on would cost YOU before you decide. The real remedy is upstream:
+    # giving those alerts a position, the way NWS zones now are.
+    zone_alerts: bool = False
 
     @classmethod
     def load(cls, path: Path = DEFAULT_PATH) -> Config:

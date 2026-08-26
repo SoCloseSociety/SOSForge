@@ -137,6 +137,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     events = payload["events"] if isinstance(payload, dict) else payload
 
     spoken: list[str] = []
+    zoneless: list[str] = []
     # The hourly ceiling is a real-time protection; applying it to a replay of
     # a whole day would silently truncate the very count this command exists
     # to show.
@@ -147,9 +148,28 @@ def cmd_check(args: argparse.Namespace) -> int:
         if agent.handle({"type": "event", "event": event, "primary": True, "breaking": False}):
             spoken.append(f"  {event.get('severity', '?'):9s} {str(event.get('place'))[:56]}")
 
+    # And what the coordinate-less alerts WOULD add, so the choice is a number
+    # rather than a guess.
+    if not config.zone_alerts and config.country_code:
+        counter = Agent(
+            replace(config, max_per_hour=10**6, zone_alerts=True),
+            notifier=lambda *a, **k: True,
+        )
+        for event in events:
+            if event.get("lat") is None and counter.handle(
+                {"type": "event", "event": event, "primary": True, "breaking": False}
+            ):
+                zoneless.append(str(event.get("place"))[:60])
+
     print(f"Over the last {args.hours} h, {len(events)} events reached the feed.")
     print(f"This machine would have notified you {len(spoken)} time(s):")
     print("\n".join(spoken) if spoken else "  (nothing -- quiet where you are)")
+    if zoneless:
+        print(f"\nPlus {len(zoneless)} alert(s) published with NO position, currently silent.")
+        print(f"They are located only by country ({config.country_code}), which for a large")
+        print("country means alerts thousands of km away. Enable with zone_alerts: true.")
+        for place in zoneless[:5]:
+            print(f"  {place}")
     return 0
 
 
