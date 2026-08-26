@@ -660,11 +660,28 @@ const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id };
 
 const STORAGE_KEY = "sosforge.lang";
 
+/** The language segment of the URL, when there is one: `/ja/`, `/es/`.
+ *
+ * English keeps the root -- it is the canonical URL that is already indexed,
+ * and moving it would throw that away. */
+export function pathLang(): Lang | null {
+  const segment = window.location.pathname.split("/")[1]?.toLowerCase();
+  return segment && segment in DICTS ? (segment as Lang) : null;
+}
+
 export function detectLang(): Lang {
   // `detectLang` runs when the store is created, so at module load time. A
   // localStorage access that throws (iframe with blocked cookies, certain
   // private modes) would cause exactly what this product dreads the most: a
   // blank page on startup.
+  // The URL WINS over everything else, including a remembered choice.
+  // /ja/ is a distinct indexable page whose whole point is to be the Japanese
+  // one: someone arriving there from a Japanese search result, or following a
+  // link a Japanese speaker sent them, must land in Japanese even if this
+  // browser once picked Spanish. Anything else makes the shared link lie.
+  const fromPath = pathLang();
+  if (fromPath) return fromPath;
+
   let stored: Lang | null = null;
   try {
     stored = localStorage.getItem(STORAGE_KEY) as Lang | null;

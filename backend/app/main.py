@@ -25,7 +25,9 @@ from app.sources.base import Source
 from app.sources.eew import CencSource, JmaEewSource
 from app.sources.emsc_ws import EmscWebsocketSource
 from app.sources.gdacs import GdacsSource
+from app.sources.geonet_volcano import GeonetVolcanoSource
 from app.sources.hazards import AshSource, EonetSource, NhcSource
+from app.sources.jma_tsunami import JmaTsunamiSource
 from app.sources.nws import NwsSource
 from app.sources.regional import (
     AfadSource,
@@ -36,6 +38,7 @@ from app.sources.regional import (
     JmaSource,
 )
 from app.sources.space import SpaceWeatherSource
+from app.sources.ssn import SsnSource
 from app.sources.tsunami import TsunamiSource
 from app.sources.usgs import UsgsSource, backfill
 from app.sources.volcano import VolcanoSource
@@ -120,6 +123,30 @@ def build_sources() -> list[Source]:
         built.append(SpaceWeatherSource(settings.space_poll_seconds))
     if settings.enable_wmo:
         built.append(WmoCapSource(settings.wmo_poll_seconds, settings.wmo_max_severity_rank))
+    # Japan's own tsunami advisories. Until now the only tsunami coverage was
+    # two US centres (NTWC/PTWC): a JMA 津波注意報 never appeared at all, on a
+    # product that ships a Japanese interface for the most tsunami-exposed
+    # population it targets.
+    if settings.enable_jma_tsunami:
+        built.append(JmaTsunamiSource(settings.jma_tsunami_poll_seconds))
+    # Mexico had NO national coverage. Guerrero and Oaxaca quakes felt across
+    # Mexico City fall below the global catalogues' threshold: measured over
+    # three days on the whole Mexican box, USGS returned zero events and EMSC
+    # 52 at M>=3, while SSN goes down to M1.4. Twenty million people in a basin
+    # with extreme site amplification were getting worse coverage than New
+    # Zealand's five million.
+    if settings.enable_ssn:
+        built.append(SsnSource(settings.ssn_poll_seconds))
+    # The volcano filter silently meant "US volcanoes". A filter showing zero
+    # reads as calm, not as no-coverage. Whakaari killed tourists in 2019 at
+    # alert level 2, and that level is published for free.
+    if settings.enable_geonet_volcano:
+        built.append(
+            GeonetVolcanoSource(
+                settings.geonet_volcano_poll_seconds,
+                min_level=settings.geonet_volcano_min_level,
+            )
+        )
     return built
 
 

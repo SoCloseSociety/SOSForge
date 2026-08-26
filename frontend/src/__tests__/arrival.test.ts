@@ -27,8 +27,10 @@ describe('countdown', () => {
   it('the countdown is distance over speed, minus elapsed time', () => {
     const quake = makeEvent({ id: 'q', time: minutesAgo(1), magnitude: 6, lat: 36.5, lon: 140.5 })
     const arrival = arrivalAt(quake, TOKYO[0], TOKYO[1], NOW)!
-    expect(arrival.pIn).toBeCloseTo(arrival.distanceKm / P_SPEED_KM_S - 60, 1)
-    expect(arrival.sIn).toBeCloseTo(arrival.distanceKm / S_SPEED_KM_S - 60, 1)
+    // the distance the waves travel is the one from the HYPOCENTRE, which is
+    // deeper than the dot on the map (see arrivalDepth.test.ts)
+    expect(arrival.pIn).toBeCloseTo(arrival.hypocentralKm / P_SPEED_KM_S - 60, 1)
+    expect(arrival.sIn).toBeCloseTo(arrival.hypocentralKm / S_SPEED_KM_S - 60, 1)
   })
 
   it('goes negative once the wave has passed, and is then not offered', () => {

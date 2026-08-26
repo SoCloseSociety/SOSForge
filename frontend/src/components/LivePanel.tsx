@@ -53,15 +53,32 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
   useEffect(() => {
     if (event.lat === null || event.lon === null) {
       setNearby(null)
+      setLoading(false)
       return
     }
     const controller = new AbortController()
+    // The previous event's answer describes the previous event. Keeping it on
+    // screen while the new one loads would attribute one area's webcams to
+    // another -- so the panel goes back to "loading" and says nothing it
+    // cannot yet source.
+    setNearby(null)
     setLoading(true)
     fetch(`/api/events/${encodeURIComponent(event.id)}/nearby`, { signal: controller.signal })
       .then((r) => r.json())
       .then((data: Nearby) => setNearby(data))
-      .catch(() => setNearby(null))
-      .finally(() => setLoading(false))
+      // An abort rejects on the NEXT microtask, by which time the effect for
+      // the new selection has already set `loading`. Without this guard the
+      // dead request's handlers wrote over the live one's state, the render
+      // fell through to the non-loading branch with `nearby === null`, and the
+      // panel announced "no Windy key configured" -- a statement about the
+      // deployment -- for the whole duration of a request that was running
+      // perfectly well.
+      .catch(() => {
+        if (!controller.signal.aborted) setNearby(null)
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
     return () => controller.abort()
   }, [event.id, event.lat, event.lon])
 

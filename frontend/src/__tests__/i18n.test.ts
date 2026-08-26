@@ -115,3 +115,47 @@ describe('parity of the five dictionaries', () => {
     }
   })
 })
+
+describe('the language in the URL', () => {
+  const stubLanguages = (languages: string[]) =>
+    Object.defineProperty(navigator, 'languages', { value: languages, configurable: true })
+
+  /* Each of /fr/ /es/ /ja/ /id/ is a separate indexable page whose entire
+   * reason to exist is to be findable in that language. Someone arriving from
+   * a Japanese search result must land in Japanese -- a remembered preference
+   * from a previous visit would make every shared link lie about itself. */
+  const setPath = (pathname: string) => {
+    Object.defineProperty(window, 'location', {
+      value: { ...window.location, pathname },
+      configurable: true,
+      writable: true,
+    })
+  }
+
+  afterEach(() => setPath('/'))
+
+  it('wins over a remembered choice', () => {
+    localStorage.setItem('sosforge.lang', 'es')
+    setPath('/ja/')
+    expect(detectLang()).toBe('ja')
+    localStorage.clear()
+  })
+
+  it('wins over the browser languages', () => {
+    stubLanguages(['fr-FR'])
+    setPath('/id/')
+    expect(detectLang()).toBe('id')
+  })
+
+  it('leaves the root alone: English is the canonical URL', () => {
+    stubLanguages(['fr-FR'])
+    setPath('/')
+    expect(detectLang()).toBe('fr')
+  })
+
+  it('ignores a path segment that is not a language', () => {
+    stubLanguages(['fr-FR'])
+    setPath('/api/events')
+    expect(detectLang()).toBe('fr')
+  })
+})

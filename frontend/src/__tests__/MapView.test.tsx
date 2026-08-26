@@ -197,6 +197,38 @@ describe('a selection made before the map is ready', () => {
     expect(fake.FakePopup.instances[0].added).toBe(1)
   })
 
+  it('waits for the event itself when the link arrives before the feed', () => {
+    /* The other half of the same race: the map can be ready while the
+     * websocket snapshot is still in flight, so the selected id matches
+     * nothing yet. Bailing out for good here would leave the shared link just
+     * as dead as before. */
+    const event = makeEvent({ id: 'emsc:pending', time: minutesAgo(30) })
+    useStore.setState({ selected: 'emsc:pending' })
+
+    const { rerender } = render(<MapView events={[]} now={NOW} />)
+    act(() => lastMap().fire('load'))
+    expect(lastMap().flyToCalls).toHaveLength(0)
+
+    rerender(<MapView events={[event]} now={NOW} />)
+
+    expect(lastMap().flyToCalls).toHaveLength(1)
+    expect(fake.FakePopup.instances).toHaveLength(1)
+  })
+
+  it('opens the popup once, not on every tick of the feed', () => {
+    const event = makeEvent({ id: 'emsc:once', time: minutesAgo(30) })
+    useStore.setState({ selected: 'emsc:once' })
+    const { rerender } = render(<MapView events={[event]} now={NOW} />)
+    act(() => lastMap().fire('load'))
+
+    // a new array on every tick, as App produces it
+    rerender(<MapView events={[{ ...event }]} now={NOW + 1000} />)
+    rerender(<MapView events={[{ ...event }]} now={NOW + 2000} />)
+
+    expect(lastMap().flyToCalls).toHaveLength(1)
+    expect(fake.FakePopup.instances).toHaveLength(1)
+  })
+
   it('still reacts to a selection made after the map is ready', () => {
     const event = makeEvent({ id: 'emsc:later', time: minutesAgo(30) })
     render(<MapView events={[event]} now={NOW} />)

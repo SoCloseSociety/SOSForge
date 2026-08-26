@@ -135,6 +135,21 @@ class Settings(BaseSettings):
     # --- swarm detection (computed on our own feed, no extra source) ---
     # Conservative on purpose: a tracker that cries "swarm" over five ordinary
     # aftershocks teaches its readers to ignore it.
+    # Japan's own tsunami advisories, which the two US centres do not cover.
+    enable_jma_tsunami: bool = True
+    jma_tsunami_poll_seconds: float = 30.0
+    # SSN UNAM: the only national seismic coverage for Mexico. No HTTPS at all
+    # on this host, and the server is flaky under rapid-fire requests -- do not
+    # poll it faster than 60 s.
+    enable_ssn: bool = True
+    ssn_poll_seconds: float = 60.0
+    # GeoNet volcanic alert levels. Level 0 is literally "no volcanic unrest"
+    # and ten of the twelve volcanoes sit there permanently: publishing them
+    # would put ten "nothing is happening" markers on an emergency map.
+    enable_geonet_volcano: bool = True
+    geonet_volcano_poll_seconds: float = 300.0
+    geonet_volcano_min_level: int = 1
+
     enable_swarm_detection: bool = True
     swarm_radius_km: float = 30.0
     swarm_window_hours: float = 24.0

@@ -115,6 +115,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<MapLibreMap | null>(null)
   const popup = useRef<Popup | null>(null)
+  /** Event the open popup belongs to. */
+  const popupId = useRef<string | null>(null)
   /** Instant the open popup is dated from, so its age can keep counting
    * without rebuilding the whole card. */
   const popupTime = useRef<number | null>(null)
@@ -288,24 +290,24 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     return () => {
       instance.remove()
       map.current = null
-      ready.current = false
+      setReady(false)
     }
   }, [])
 
   // --- data
   const fresh = useStore((s) => s.fresh)
   useEffect(() => {
-    if (!map.current || !ready.current) return
+    if (!map.current || !ready) return
     const source = map.current.getSource('events') as maplibregl.GeoJSONSource | undefined
     source?.setData(toFeatureCollection(events, fresh))
-  }, [events, fresh])
+  }, [events, fresh, ready])
 
   // --- forecast tracks: fed from the storms' raw payload
   useEffect(() => {
-    if (!map.current || !ready.current) return
+    if (!map.current || !ready) return
     const source = map.current.getSource('tracks') as maplibregl.GeoJSONSource | undefined
     source?.setData(forecastTracks(events))
-  }, [events])
+  }, [events, ready])
 
   // --- wave fronts: a loop that runs ONLY when there's an earthquake recent
   // enough for its waves to still be propagating. The rest of the time, no
@@ -318,6 +320,11 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     [events, Math.floor(now / 30_000)],
   )
 
+  // Deliberately NOT gated on prefers-reduced-motion: the front's position is
+  // the information itself -- where the shaking is arriving right now --
+  // whereas the halo pulse and the camera flight are only ways of drawing
+  // attention. Freezing this one would not calm the page, it would make it
+  // wrong.
   useEffect(() => {
     if (!waveCandidates) return
     let frame = 0
@@ -343,10 +350,27 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   // --- halo pulsation, only when there's something fresh
   useEffect(() => {
     if (fresh.size === 0) return
+    // Reduced motion: the halo stays, the throbbing goes. Freshness is
+    // information -- it says "this just happened" -- while the pulse is only
+    // the way we draw attention to it, and it is exactly the kind of repeated
+    // movement that makes a vestibular disorder unbearable. So we paint the
+    // halo once, statically, and start no frame loop at all.
+    if (reduceMotion) {
+      const instance = map.current
+      if (instance && ready && instance.getLayer('events-halo')) {
+        instance.setPaintProperty('events-halo', 'circle-opacity', 0.25)
+        instance.setPaintProperty('events-halo', 'circle-radius', [
+          '*',
+          RADIUS,
+          1.8,
+        ] as unknown as maplibregl.ExpressionSpecification)
+      }
+      return
+    }
     let frame = 0
     const animate = () => {
       const instance = map.current
-      if (instance && ready.current && instance.getLayer('events-halo')) {
+      if (instance && ready && instance.getLayer('events-halo')) {
         const phase = (Date.now() % 1600) / 1600
         instance.setPaintProperty('events-halo', 'circle-opacity', 0.3 * (1 - phase))
         instance.setPaintProperty('events-halo', 'circle-radius', [
@@ -359,32 +383,63 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     }
     frame = requestAnimationFrame(animate)
     return () => cancelAnimationFrame(frame)
-  }, [fresh])
+  }, [fresh, ready, reduceMotion])
+
+  /** Move the camera, honouring the reader's motion setting.
+   *
+   * `essential: true` is MapLibre's explicit opt-OUT of its own
+   * prefers-reduced-motion handling: passing it unconditionally is what
+   * defeated the setting. We take the decision here instead -- jump when
+   * motion is refused, fly otherwise -- and only then is `essential` honest,
+   * since we have already checked. */
+  const moveCamera = (
+    instance: MapLibreMap,
+    center: [number, number],
+    zoom: number,
+    speed: number,
+  ) => {
+    if (reduceMotion) instance.jumpTo({ center, zoom })
+    else instance.flyTo({ center, zoom, speed, curve: 1.5, essential: true })
+  }
 
   // --- search: go to the requested area
   const focus = useStore((s) => s.focus)
   useEffect(() => {
     const instance = map.current
-    if (!instance || !ready.current || !focus) return
-    instance.flyTo({
-      center: [focus.lon, focus.lat],
-      zoom: focus.zoom,
-      speed: 1.6,
-      curve: 1.5,
-      essential: true,
-    })
-  }, [focus])
+    if (!instance || !ready || !focus) return
+    moveCamera(instance, [focus.lon, focus.lat], focus.zoom, 1.6)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- moveCamera is
+    // rebuilt on every render; `reduceMotion` is what actually changes it
+  }, [focus, ready, reduceMotion])
 
   // --- selection: center on it and open the card
   const selected = useStore((s) => s.selected)
+  /** Is the selected event on the map RIGHT NOW? A deep link can also land
+   * before the websocket snapshot does, and then the id matches nothing yet.
+   * A boolean, so the effect wakes up when the event finally arrives and not
+   * on every one-second tick of the feed (which would re-fly the camera and
+   * rebuild the popup a second after it opened). */
+  const selectedPlaced = useMemo(
+    () => events.some((e) => e.id === selected && e.lat !== null && e.lon !== null),
+    [events, selected],
+  )
   useEffect(() => {
     const instance = map.current
-    if (!instance || !ready.current) return
-    popup.current?.remove()
-    popup.current = null
-    if (!selected) return
+    if (!instance || !ready) return
+    // Close the card only when it belongs to a DIFFERENT event. Reopening it
+    // on every re-run would tear it down under the reader's cursor, and
+    // closing it because the event dropped out of the current filter would
+    // silently clear a selection the panel beside the map still shows.
+    if (popupId.current !== selected) {
+      popup.current?.remove()
+      popup.current = null
+      popupId.current = null
+      popupTime.current = null
+    }
+    if (!selected || popup.current) return
 
     const event = latest.current.events.find((e) => e.id === selected)
+    // not here YET: `selectedPlaced` brings us back when it arrives
     if (!event || event.lat === null || event.lon === null) return
 
     // Zoom in as close as possible to the area: the user clicks to SEE what's
@@ -393,21 +448,33 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     // administrative zone (NWS, GDACS) only makes sense at regional scale --
     // pulling it in to 300 m would show nothing but a field.
     const pointLike = event.source !== 'nws' && event.source !== 'gdacs'
-    instance.flyTo({
-      center: [event.lon, event.lat],
-      zoom: pointLike ? 11 : 8,
-      speed: 1.4,
-      curve: 1.5,
-      essential: true,
-    })
+    moveCamera(instance, [event.lon, event.lat], pointLike ? 11 : 8, 1.4)
     popup.current = new maplibregl.Popup({ closeButton: true, maxWidth: '320px' })
       .setLngLat([event.lon, event.lat])
       .setHTML(popupHtml(event, latest.current.now))
       .addTo(instance)
+    popupId.current = event.id
+    popupTime.current = Date.parse(event.time)
     popup.current.on('close', () => {
       if (useStore.getState().selected === event.id) useStore.getState().select(null)
     })
-  }, [selected])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see moveCamera
+  }, [selected, selectedPlaced, ready, reduceMotion])
+
+  // --- the open popup's age must keep counting
+  //
+  // The card is built once per selection, so "12 s ago" froze at the instant
+  // it opened while the LivePanel beside it kept counting: stale data
+  // presented as live, which is the one thing this product forbids itself.
+  // Only the age NODE is rewritten -- rebuilding the popup once a second
+  // would tear the official link out from under the cursor and close any
+  // text selection.
+  useEffect(() => {
+    if (popupTime.current === null) return
+    const age = popup.current?.getElement()?.querySelector('.popup-age')
+    if (!age) return
+    age.textContent = formatAge(useStore.getState().t, (now - popupTime.current) / 1000)
+  }, [now, selected, ready])
 
   if (failed) {
     return (
