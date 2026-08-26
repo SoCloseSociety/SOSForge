@@ -334,3 +334,42 @@ it, and re-measure after. The value of parallel audits is coverage, not
 verdicts: they find far more than one pass can, and they are wrong often
 enough that acting on them unverified would ship regressions with confident
 commit messages attached.
+
+## 26. Never `git add -A` while agents are writing in the same tree
+
+**The mistake.** With three agents editing disjoint files, I committed with
+`git add -A`. It swept two agents' half-written test files into a commit whose
+message described something else entirely. One of them told me so in its
+report: its work is now in history under my commit, attributed to a change it
+had nothing to do with.
+
+**Root cause.** `add -A` stages by absence of exclusion, not by intent. Nothing
+about it is wrong when I am the only writer; the moment anyone else is writing,
+it stages work whose author has not finished deciding whether it is right.
+
+**The rule.** While background agents hold files, stage explicit paths -- mine
+and those of agents that have REPORTED. A file belonging to a running agent is
+not mine to commit, even if it currently compiles and the tests pass.
+
+## 27. A rank is not a rank until you have read the other end of it
+
+**The mistake, inherited and shipped for weeks.** WMO's aggregate carries `s`,
+`u`, `c` ranks. The code read them as "1 = most severe" -- a perfectly ordinary
+convention, written in a comment, and backwards. They grow WITH severity:
+0=Unknown, 1=Minor, 2=Moderate, 3=Severe, 4=Extreme.
+
+With the filter set to "keep the most severe", the product therefore kept the
+252 MINOR alerts, published them as EXTREME, and discarded all 90 Extreme and
+349 Severe ones. It looked correct from every angle: alerts arrived, they were
+red, the counts were plausible.
+
+**Root cause.** The convention was assumed from the shape of the numbers rather
+than resolved against the thing they describe. Nothing in the aggregate says
+which way the scale runs, and no test could catch it because the fixtures were
+built from the same assumption.
+
+**The rule.** When a source encodes a scale as bare integers, find the document
+that spells the value out in words and check both ends of the range against it.
+Here that was the `<severity>` element of the linked CAP document: 29 samples
+across all five ranks, 29 exact. One sample at one end would have been enough
+to catch it; zero samples was what shipped.
