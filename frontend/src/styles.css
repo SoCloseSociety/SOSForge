@@ -1409,6 +1409,94 @@ button {
   border-color: var(--hairline-strong);
 }
 
+/* ------------------------------------------------- what to do about it */
+
+/* The instruction sits above every other detail on purpose: someone reading
+   this panel from inside a warning area needs it before the magnitude, the
+   depth or the source. It is the only block here that asks something of them. */
+.live-todo {
+  margin: 12px 0 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
+  background: var(--surface-2);
+}
+
+.live-todo h4,
+.live-wave h4 {
+  margin: 0 0 5px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-muted);
+}
+
+.live-todo p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+/* A gauge actually measured this. It is the only measurement in a tsunami
+   bulletin, and the difference between a cancelled advisory and Tohoku. */
+.live-wave {
+  margin: 10px 0 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--sev-extreme);
+  background: var(--surface-2);
+}
+
+.live-wave p {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.live-eta {
+  margin: 6px 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.live-about {
+  margin: 10px 0;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.live-about summary {
+  cursor: pointer;
+  color: var(--ink-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.live-about p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+/* One word saying what is being asked. The glyph never carries it alone --
+   the label is always next to it, per the palette rule. */
+.tag-do {
+  border-color: var(--hairline-strong);
+  color: var(--ink);
+}
+
+.tag-do-evacuate,
+.tag-do-shelter {
+  border-color: rgba(208, 59, 59, 0.55);
+  color: var(--sev-extreme-text);
+}
+
+.tag-do-avoid {
+  border-color: rgba(236, 131, 90, 0.5);
+  color: var(--sev-severe);
+}
+
 /* =========================================================================
    MEDIA QUERIES -- ALWAYS LAST IN THIS FILE.
    ------------------------------------------------------------------------

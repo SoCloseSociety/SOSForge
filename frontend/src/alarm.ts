@@ -31,6 +31,12 @@ export const REACH_KM: Record<Kind, number> = {
   wildfire: 80,
   heat: 200, // heat waves are regional by nature
   drought: 300,
+  // A landslide destroys a slope, not a region: the hazard zone is a valley,
+  // and a warning ten kilometres away concerns a different hillside.
+  landslide: 40,
+  // Tighter still. An avalanche bulletin is issued for one massif, and being
+  // in the next valley is being somewhere else entirely.
+  avalanche: 30,
   // A geomagnetic storm has no epicentre: it concerns a latitude band, and the
   // events carry no position at all. Proximity cannot decide anything here, so
   // it never raises a location alarm.
@@ -48,6 +54,11 @@ const MIN_SEVERITY: Record<Kind, Severity> = {
   earthquake: 'moderate',
   tsunami: 'moderate',
   volcano: 'severe',
+  // Both are issued when a real threshold has been crossed, and both kill
+  // people who were a few hundred metres from safety. A moderate one is worth
+  // knowing about if you are inside its very small radius.
+  landslide: 'moderate',
+  avalanche: 'moderate',
   cyclone: 'severe',
   flood: 'severe',
   storm: 'severe',

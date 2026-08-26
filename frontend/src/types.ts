@@ -8,6 +8,8 @@ export type Kind =
   | "drought"
   | "storm"
   | "heat"
+  | "landslide"
+  | "avalanche"
   | "space_weather"
   | "other";
 
@@ -33,18 +35,40 @@ export interface SosEvent {
   severity: Severity;
   /** declared ONGOING by its source (active fire, live storm, running warning).
    * It stays relevant while it runs, unlike a past earthquake. */
-  ongoing: boolean
+  ongoing: boolean;
   /** an automatic solution, not yet reviewed by a human. The first automatic
    * magnitude of a large quake is routinely off by up to a full unit and
    * relocated by tens of km in the minutes that follow -- every agency labels
    * it, and so must we. */
-  preliminary: boolean
+  preliminary: boolean;
   /** shaking, as opposed to size: the quantity that answers "how strong was it
    * HERE", which magnitude does not. */
-  intensity_mmi: number | null
+  intensity_mmi: number | null;
   /** how many people reported feeling it. Null is NOT zero: most of the planet
    * has no reporters. */
   felt_reports: number | null;
+  /** What the issuing agency told people to DO. The actionable core of an
+   * alert, and the reason CAP has the field at all. Attacker-influenced text
+   * from feeds we do not control: render it through a text node, NEVER through
+   * dangerouslySetInnerHTML. Nothing strips `<` on the way in, because real
+   * alerts say "temperatures < 32F". */
+  instruction: string | null;
+  /** The agency's own prose description of the hazard. */
+  description: string | null;
+  /** CAP responseType, a closed vocabulary: Shelter, Evacuate, Avoid, Monitor,
+   * Prepare, Execute. One word, present on ~100% of NWS and Meteoalarm alerts,
+   * which is what makes it the one new field dense enough for the list. */
+  response_type: string | null;
+  /** What people REPORTED feeling, as opposed to intensity_mmi which is what
+   * the model estimates. Never average the two: they measure different things. */
+  intensity_cdi: number | null;
+  /** Tsunami: when the first wave reaches a named site, and the largest height
+   * a gauge has actually measured. The height is the only measurement in the
+   * set, and the one that deserves to be loud. */
+  wave_eta: string | null;
+  wave_eta_site: string | null;
+  wave_max_m: number | null;
+  wave_max_site: string | null;
   /** when the source states an end (NWS and the CAP feeds do). The server
    * purges on it; the UI can show the remaining time. */
   expires: string | null;

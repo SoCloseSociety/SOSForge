@@ -64,6 +64,19 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
           </span>
           <span className="tag">{kindLabel(t, event.kind)}</span>
           <span>{SOURCE_LABEL[event.source] ?? event.source}</span>
+          {/* What to DO, in one word. A closed CAP vocabulary carried by
+              essentially every NWS and Meteoalarm alert -- the only one of the
+              new fields dense enough to earn a place in the list, and the only
+              thing here that tells a reader inside the warning area what is
+              being asked of them. */}
+          {event.response_type ? (
+            <span
+              className={`tag tag-do tag-do-${event.response_type.toLowerCase()}`}
+            >
+              {RESPONSE_GLYPH[event.response_type] ?? "•"}{" "}
+              {t(`response.${event.response_type.toLowerCase()}`)}
+            </span>
+          ) : null}
           {/* Say it before the number is believed. An automatic solution
               minutes old is routinely off by up to a magnitude unit, and a
               screenshot of the wrong figure travels much further than the
@@ -123,6 +136,18 @@ function NewEventAnnouncer({ events }: { events: SosEvent[] }): JSX.Element {
     </p>
   );
 }
+
+/** The CAP responseType vocabulary, glyphed. Colour never carries this alone:
+ * the word is always next to it. */
+const RESPONSE_GLYPH: Record<string, string> = {
+  Shelter: "🏠",
+  Evacuate: "🚸",
+  Avoid: "⛔",
+  Prepare: "🎒",
+  Execute: "▶",
+  Monitor: "👁",
+  Assess: "📋",
+};
 
 export function Feed({ events, now, emptyKey }: Props) {
   const t = useStore((s) => s.t);
