@@ -122,7 +122,18 @@ def build_sources() -> list[Source]:
     if settings.enable_space:
         built.append(SpaceWeatherSource(settings.space_poll_seconds))
     if settings.enable_wmo:
-        built.append(WmoCapSource(settings.wmo_poll_seconds, settings.wmo_max_severity_rank))
+        built.append(
+            WmoCapSource(
+                settings.wmo_poll_seconds,
+                settings.wmo_max_severity_rank,
+                # Persisted next to the journal. Unlike an NWS zone, there is a
+                # new CAP document per alert issued, so the cache never
+                # converges -- but losing it at every restart means starting
+                # from zero positions every time, and the alerts that were
+                # already placed go back to being unplaceable.
+                cap_cache=settings.data_dir / "wmo-cap.json",
+            )
+        )
     # Japan's own tsunami advisories. Until now the only tsunami coverage was
     # two US centres (NTWC/PTWC): a JMA 津波注意報 never appeared at all, on a
     # product that ships a Japanese interface for the most tsunami-exposed
