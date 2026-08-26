@@ -127,7 +127,9 @@ class TestOneClientCannotOwnTheWebsocket:
         from app.hub import ConnectionQuota
 
         quota = ConnectionQuota(per_ip=settings.max_ws_per_ip)
-        accepted = sum(1 for _ in range(settings.max_ws_per_ip + 20) if quota.acquire("203.0.113.7"))
+        accepted = sum(
+            1 for _ in range(settings.max_ws_per_ip + 20) if quota.acquire("203.0.113.7")
+        )
 
         assert accepted == settings.max_ws_per_ip
 

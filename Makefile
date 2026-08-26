@@ -76,8 +76,8 @@ clean:
 
 # ---------------------------------------------------------------- local agent
 
-agent-setup: ## configure the local background agent (position + thresholds)
-	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent setup
+agent-setup: ## configure the local agent -- make agent-setup CITY="Sendai"
+	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent setup $(if $(CITY),--city "$(CITY)") $(ARGS)
 
 agent-test: ## send one test notification (also triggers the macOS permission prompt)
 	cd agent && PYTHONPATH=. $(CURDIR)/$(PY) -m sosforge_agent test

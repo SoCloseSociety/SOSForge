@@ -12,12 +12,60 @@ import asyncio
 import json
 import logging
 import sys
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
 from .agent import Agent, main_async
 from .config import DEFAULT_PATH, DEFAULT_URL, Config
 from .notify import notify
+
+
+def geocode(api_base: str, query: str) -> list[dict]:
+    """Resolves a place name through SOSForge's OWN geocoder.
+
+    Not a third-party service: the product already proxies Nominatim, with the
+    rate limit their policy requires and a cache. Using it here means one less
+    dependency, no separate quota, and the same answers the site's search bar
+    gives.
+    """
+    url = f"{api_base}/api/geocode?q={urllib.parse.quote(query)}"
+    try:
+        with urllib.request.urlopen(url, timeout=15) as response:
+            return json.load(response).get("results") or []
+    except Exception as exc:  # noqa: BLE001 -- offline, DNS, a proxy: all the same here
+        print(f"Could not reach the geocoder ({exc}).", file=sys.stderr)
+        return []
+
+
+def api_base_of(ws_url: str) -> str:
+    return ws_url.replace("wss://", "https://").replace("ws://", "http://").removesuffix("/ws")
+
+
+def ask_for_a_place(api_base: str) -> tuple[float, float, str, str | None] | None:
+    """Asks, once, in the terminal. Only when there is a terminal to ask in."""
+    if not sys.stdin.isatty():
+        return None
+    try:
+        query = input("Which town or area are you in? (e.g. Paris, or Sendai) ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    if not query:
+        return None
+
+    results = geocode(api_base, query)
+    if not results:
+        print(f"Nothing found for {query!r}.", file=sys.stderr)
+        return None
+
+    for index, row in enumerate(results[:5], start=1):
+        print(f"  {index}. {row['name']}")
+    try:
+        picked = input(f"Which one? [1-{min(len(results), 5)}, Enter for 1] ").strip() or "1"
+        row = results[: min(len(results), 5)][int(picked) - 1]
+    except (ValueError, IndexError, EOFError, KeyboardInterrupt):
+        return None
+    return float(row["lat"]), float(row["lon"]), row["name"], row.get("country_code")
 
 
 def locate() -> tuple[float, float, str, str | None] | None:
@@ -41,11 +89,34 @@ def cmd_setup(args: argparse.Namespace) -> int:
     path = Path(args.config)
     lat, lon, label = args.lat, args.lon, args.label
     country = args.country
+    api_base = api_base_of(args.url)
+
+    # Three ways in, in order of how much they can be trusted: coordinates you
+    # typed, a place you named, then a guess from your IP address. The last one
+    # is city-level at best, sometimes wrong by a country, and it is a public
+    # service that rate-limits -- so it is the fallback, never the only path.
+    if (lat is None or lon is None) and args.city:
+        found = geocode(api_base, args.city)
+        if not found:
+            print(f"Nothing found for {args.city!r}.", file=sys.stderr)
+            return 2
+        row = found[0]
+        lat, lon = float(row["lat"]), float(row["lon"])
+        label = label or row["name"]
+        country = country or row.get("country_code")
+        print(f"Found: {row['name']}")
 
     if lat is None or lon is None:
-        guess = locate()
+        guess = locate() or ask_for_a_place(api_base)
         if guess is None:
-            print("Could not guess a position. Pass --lat and --lon.", file=sys.stderr)
+            print(
+                "\nCould not work out where you are. Any of these will do:\n"
+                '  --city "Sendai"            look it up by name\n'
+                "  --lat 38.2682 --lon 140.8694 --country JP     exact coordinates\n"
+                "(your IP address was tried first and did not answer -- the free\n"
+                "service it uses rate-limits, which is normal and not your fault)",
+                file=sys.stderr,
+            )
             return 2
         lat, lon, guessed, guessed_country = guess
         label = label or guessed
@@ -67,7 +138,10 @@ def cmd_setup(args: argparse.Namespace) -> int:
     print(f"  position     {config.lat:.4f}, {config.lon:.4f}  ({config.label})")
     print(f"  feed         {config.url}")
     print(f"  speaks about {config.min_severity} and above, within {config.max_distance_km:.0f} km")
-    print(f"  country      {config.country_code or '(none -- zone alerts will be ignored)'}")
+    print(
+        f"  country      {config.country_code or '(unknown -- alerts published without'}"
+        f"{'' if config.country_code else ' coordinates cannot be judged)'}"
+    )
     print(f"  ceiling      {config.max_per_hour} notifications per hour")
     print("\nTry it:   python -m sosforge_agent test")
     print("Run it:   python -m sosforge_agent run")
@@ -181,6 +255,9 @@ def build_parser() -> argparse.ArgumentParser:
     setup = sub.add_parser("setup", help="write the configuration file")
     setup.add_argument("--lat", type=float)
     setup.add_argument("--lon", type=float)
+    setup.add_argument(
+        "--city", default=None, help='look the position up by name, e.g. --city "Sendai"'
+    )
     setup.add_argument("--label", default=None)
     setup.add_argument(
         "--country",

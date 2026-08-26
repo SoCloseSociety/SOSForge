@@ -30,6 +30,10 @@ _lock = asyncio.Lock()
 _cache: dict[str, list[dict]] = {}
 _CACHE_MAX = 500
 
+# Injected by the tests so they can drive a real response shape without a
+# network call. None means "the normal transport".
+_transport: httpx.AsyncBaseTransport | None = None
+
 
 async def search(query: str, limit: int = 5) -> list[dict]:
     global _last_call
@@ -53,10 +57,20 @@ async def search(query: str, limit: int = 5) -> list[dict]:
         async with httpx.AsyncClient(
             timeout=12.0,
             headers={"User-Agent": USER_AGENT, "Accept-Language": "en"},
+            transport=_transport,
         ) as client:
             resp = await client.get(
                 NOMINATIM,
-                params={"q": query, "format": "jsonv2", "limit": str(limit)},
+                params={
+                    "q": query,
+                    "format": "jsonv2",
+                    "limit": str(limit),
+                    # Without this Nominatim omits the address block entirely,
+                    # and the country code below would silently be None
+                    # everywhere. The local agent needs it: an alert published
+                    # with no coordinates carries its country and nothing else.
+                    "addressdetails": "1",
+                },
             )
             resp.raise_for_status()
             payload = resp.json() or []
@@ -75,6 +89,13 @@ async def search(query: str, limit: int = 5) -> list[dict]:
                     "lat": float(row["lat"]),
                     "lon": float(row["lon"]),
                     "type": row.get("type"),
+                    # Uppercase ISO2, the form every source in this product
+                    # uses. Absent for the open ocean and for anything
+                    # straddling a border -- and absent must stay absent
+                    # rather than become a guess (lesson 15).
+                    "country_code": (
+                        ((row.get("address") or {}).get("country_code") or "").upper() or None
+                    ),
                     # Nominatim bbox: [south, north, west, east], not GeoJSON order
                     "bbox": [float(v) for v in row.get("boundingbox", [])] or None,
                 }

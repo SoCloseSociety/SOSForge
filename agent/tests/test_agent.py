@@ -303,3 +303,90 @@ class TestTheMessageItself:
     def test_every_hazard_is_recognisable_before_it_is_read(self, kind, expected):
         title, _ = format_event(quake(kind=kind, magnitude=None), Decision(True, 5.0, "x"))
         assert expected in title
+
+
+class TestSetupCanAlwaysFindYou:
+    """The first command anyone runs, and the one that failed on a real
+    machine: IP geolocation answered 429 (the free service rate-limits, which
+    is normal) and setup simply gave up with "pass --lat and --lon". Nobody
+    knows their own coordinates.
+    """
+
+    def test_a_city_name_is_enough(self, monkeypatch, tmp_path):
+        from sosforge_agent import __main__ as cli
+
+        monkeypatch.setattr(
+            cli,
+            "geocode",
+            lambda base, q: [
+                {
+                    "name": "Sendai, Miyagi, Japan",
+                    "lat": 38.2682,
+                    "lon": 140.8694,
+                    "country_code": "JP",
+                }
+            ],
+        )
+        config_path = tmp_path / "agent.json"
+        args = cli.build_parser().parse_args(
+            ["--config", str(config_path), "setup", "--city", "Sendai"]
+        )
+
+        assert args.func(args) == 0
+
+        saved = Config.load(config_path)
+        assert saved.lat == 38.2682
+        assert saved.country_code == "JP", "the country must come along, or zone alerts cannot work"
+
+    def test_it_does_not_fall_back_to_a_guess_when_a_city_was_named(self, monkeypatch, tmp_path):
+        """Naming a place that does not resolve must fail loudly, not silently
+        settle for wherever the IP address thinks you are."""
+        from sosforge_agent import __main__ as cli
+
+        monkeypatch.setattr(cli, "geocode", lambda base, q: [])
+        monkeypatch.setattr(cli, "locate", lambda: (0.0, 0.0, "somewhere", "XX"))
+        args = cli.build_parser().parse_args(
+            ["--config", str(tmp_path / "a.json"), "setup", "--city", "Atlantis"]
+        )
+
+        assert args.func(args) == 2
+        assert not (tmp_path / "a.json").exists()
+
+    def test_explicit_coordinates_never_touch_the_network(self, monkeypatch, tmp_path):
+        from sosforge_agent import __main__ as cli
+
+        def forbidden(*a, **k):
+            raise AssertionError("no lookup should happen when coordinates are given")
+
+        monkeypatch.setattr(cli, "geocode", forbidden)
+        monkeypatch.setattr(cli, "locate", forbidden)
+        config_path = tmp_path / "agent.json"
+        args = cli.build_parser().parse_args(
+            [
+                "--config",
+                str(config_path),
+                "setup",
+                "--lat",
+                "35.68",
+                "--lon",
+                "139.77",
+                "--country",
+                "JP",
+            ]
+        )
+
+        assert args.func(args) == 0
+        assert Config.load(config_path).country_code == "JP"
+
+    def test_when_everything_fails_it_says_what_to_type(self, monkeypatch, tmp_path, capsys):
+        from sosforge_agent import __main__ as cli
+
+        monkeypatch.setattr(cli, "locate", lambda: None)
+        monkeypatch.setattr(cli, "ask_for_a_place", lambda base: None)
+        args = cli.build_parser().parse_args(["--config", str(tmp_path / "a.json"), "setup"])
+
+        assert args.func(args) == 2
+
+        message = capsys.readouterr().err
+        assert "--city" in message and "--lat" in message
+        assert "rate-limit" in message, "it must say the failure is not the user's doing"
