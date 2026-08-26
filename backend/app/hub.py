@@ -29,6 +29,48 @@ class Client:
         self.evicted = asyncio.Event()
 
 
+class ConnectionQuota:
+    """A per-address ceiling on open websockets.
+
+    The hub already bounds what each client can COST once connected (a bounded
+    queue, eviction when it falls behind). Nothing bounded how many clients one
+    host could be. An idle connection is nearly free to hold open and costs the
+    server a fresh snapshot to create and a fan-out slot on every message
+    after, so a single machine could quietly multiply the work of the one
+    channel the whole product depends on.
+
+    Per address rather than global on purpose: a global cap would let one
+    attacker lock everyone else out, which is the denial of service we are
+    trying to prevent rather than a defence against it.
+    """
+
+    def __init__(self, per_ip: int):
+        self.per_ip = per_ip
+        self._open: dict[str, int] = {}
+
+    def acquire(self, address: str | None) -> bool:
+        # No address means we cannot attribute the connection -- behind a proxy
+        # that strips it, that would be EVERY connection, and putting them all
+        # in one bucket would let the first few lock out the rest. We let them
+        # through: the per-client queue bound still applies.
+        if not address:
+            return True
+        current = self._open.get(address, 0)
+        if current >= self.per_ip:
+            return False
+        self._open[address] = current + 1
+        return True
+
+    def release(self, address: str | None) -> None:
+        if not address:
+            return
+        remaining = self._open.get(address, 0) - 1
+        if remaining > 0:
+            self._open[address] = remaining
+        else:
+            self._open.pop(address, None)
+
+
 class Hub:
     def __init__(self) -> None:
         self._clients: set[Client] = set()

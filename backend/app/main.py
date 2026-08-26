@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.dedupe import Deduper
 from app.geocode import search as geocode_search
-from app.hub import Client, hub
+from app.hub import Client, ConnectionQuota, hub
 from app.models.event import Kind, utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
@@ -52,6 +52,7 @@ log = logging.getLogger("sosforge")
 store = EventStore(
     maxlen=settings.ring_size, data_dir=settings.data_dir, persist=settings.persist_jsonl
 )
+ws_quota = ConnectionQuota(per_ip=settings.max_ws_per_ip)
 deduper = Deduper(
     window_seconds=settings.dedupe_window_seconds,
     radius_km=settings.dedupe_radius_km,
@@ -383,6 +384,15 @@ async def api_sources() -> dict:
 
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
+    # Refuse BEFORE accepting: an accepted connection has already cost a
+    # snapshot, and refusing after would be the expensive half of the work we
+    # are declining to do.
+    address = ws.client.host if ws.client else None
+    if not ws_quota.acquire(address):
+        log.warning("websocket refused: %s is already at the per-address cap", address)
+        await ws.close(code=1013)  # 1013 = try again later
+        return
+
     await ws.accept()
     client = Client(uuid.uuid4().hex[:8])
     await hub.register(client)
@@ -446,6 +456,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         log.debug("websocket %s ended: %s", client.id, exc)
     finally:
         await hub.unregister(client)
+        ws_quota.release(address)
 
 
 def main() -> None:

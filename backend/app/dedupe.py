@@ -25,6 +25,11 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * EARTH_RADIUS_KM * math.asin(min(1.0, math.sqrt(a)))
 
 
+# Events the product generates about its own contents. They must never be
+# compared with agency solutions, in either direction.
+SYNTHETIC_SOURCES = frozenset({"swarm", "aftershock"})
+
+
 class Deduper:
     def __init__(
         self,
@@ -40,6 +45,19 @@ class Deduper:
 
     def assign(self, event: Event) -> Event:
         """Sets `cluster_id` on the event. Idempotent."""
+        # SYNTHETIC events are ours: a swarm summary, an aftershock forecast.
+        # They are built FROM events already in the store -- same place, same
+        # time, same magnitude as the strongest member -- so the deduper
+        # matched a swarm bulletin against the very quake it summarises and
+        # marked our own alert a duplicate. During every live swarm, which is
+        # the only time the feature matters, it was filtered out of the default
+        # view. The reverse was worse: sitting in the window, the bulletin then
+        # adopted the real quakes that followed, removing them from the feed
+        # and from the swarm's own count.
+        if event.source in SYNTHETIC_SOURCES:
+            event.cluster_id = event.id
+            return event
+
         if event.kind.value != "earthquake" or event.lat is None or event.lon is None:
             # These are NOT added to the history: they can never match (the
             # loop below only pairs located earthquakes), and adding them
@@ -85,6 +103,30 @@ class Deduper:
         event.cluster_id = event.id
         self._recent.append(event)
         return event
+
+    def forget(self, event_ids: set[str]) -> int:
+        """Drops events the store no longer has.
+
+        The deque was an append-only shadow of the store with no notion of
+        liveness, so it kept speaking for events that had been retracted. A
+        cancelled early warning stayed in the window and adopted the real
+        solutions that arrived after it -- and `primary_only`, which is what
+        /api/events and the websocket snapshot use, hides anything whose
+        cluster is not itself. The quake was ingested, stored, and shown to
+        nobody.
+        """
+        if not event_ids:
+            return 0
+        survivors = [e for e in self._recent if e.id not in event_ids]
+        dropped = len(self._recent) - len(survivors)
+        self._recent.clear()
+        self._recent.extend(survivors)
+        # Anything that had been adopted by a removed event is orphaned: it
+        # becomes its own representative rather than pointing at a ghost.
+        for event in self._recent:
+            if event.cluster_id in event_ids:
+                event.cluster_id = event.id
+        return dropped
 
     def is_primary(self, event: Event) -> bool:
         return event.cluster_id == event.id

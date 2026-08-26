@@ -33,7 +33,18 @@ export interface SosEvent {
   severity: Severity;
   /** declared ONGOING by its source (active fire, live storm, running warning).
    * It stays relevant while it runs, unlike a past earthquake. */
-  ongoing: boolean;
+  ongoing: boolean
+  /** an automatic solution, not yet reviewed by a human. The first automatic
+   * magnitude of a large quake is routinely off by up to a full unit and
+   * relocated by tens of km in the minutes that follow -- every agency labels
+   * it, and so must we. */
+  preliminary: boolean
+  /** shaking, as opposed to size: the quantity that answers "how strong was it
+   * HERE", which magnitude does not. */
+  intensity_mmi: number | null
+  /** how many people reported feeling it. Null is NOT zero: most of the planet
+   * has no reporters. */
+  felt_reports: number | null;
   /** when the source states an end (NWS and the CAP feeds do). The server
    * purges on it; the UI can show the remaining time. */
   expires: string | null;

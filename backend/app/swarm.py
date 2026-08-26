@@ -29,6 +29,11 @@ from app.models.event import Event, Kind, Severity, utcnow
 log = logging.getLogger(__name__)
 
 
+def _wrap(longitude: float) -> float:
+    """Brings a longitude back into [-180, 180]."""
+    return (longitude + 180.0) % 360.0 - 180.0
+
+
 class Swarm:
     """A cluster of earthquakes close in space and time."""
 
@@ -37,9 +42,17 @@ class Swarm:
         magnitudes = [e.magnitude for e in events if e.magnitude is not None]
         self.count = len(events)
         self.max_magnitude = max(magnitudes) if magnitudes else None
-        # the centroid is good enough: a swarm is by definition compact
+        # The centroid is good enough -- a swarm is by definition compact --
+        # but longitudes must be averaged UNWRAPPED. Kermadec, the Rat Islands
+        # and Fiji sit on the 180th meridian and are among the most swarm-prone
+        # ground on Earth: their quakes alternate between +179.9 and -179.9,
+        # whose arithmetic mean is 0, in the Gulf of Guinea. Eighteen thousand
+        # kilometres out, and the coordinate validators cannot catch it because
+        # 0.0 is a perfectly valid longitude.
         self.lat = sum(e.lat or 0.0 for e in events) / self.count
-        self.lon = sum(e.lon or 0.0 for e in events) / self.count
+        anchor = events[0].lon or 0.0
+        offsets = [_wrap((e.lon or 0.0) - anchor) for e in events]
+        self.lon = _wrap(anchor + sum(offsets) / self.count)
         self.started = self.events[0].time
         self.latest = self.events[-1].time
 

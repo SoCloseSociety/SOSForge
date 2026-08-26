@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type JSX } from 'react'
-import { useStore } from '../store'
+import { useEffect, useRef, useState, type JSX } from "react";
+import { useStore } from "../store";
 import {
   SEVERITY_META,
   SOURCE_LABEL,
@@ -9,31 +9,31 @@ import {
   formatAge,
   kindLabel,
   severityLabel,
-} from '../format'
-import type { SosEvent } from '../types'
+} from "../format";
+import type { SosEvent } from "../types";
 
 interface Props {
-  events: SosEvent[]
+  events: SosEvent[];
   /** current server timestamp, refreshed every second */
-  now: number
-  emptyKey: string
+  now: number;
+  emptyKey: string;
 }
 
 function Row({ event, now }: { event: SosEvent; now: number }) {
-  const selected = useStore((s) => s.selected === event.id)
-  const fresh = useStore((s) => s.fresh.has(event.id))
-  const select = useStore((s) => s.select)
-  const t = useStore((s) => s.t)
-  const lang = useStore((s) => s.lang)
-  const severity = SEVERITY_META[event.severity]
-  const flag = flagEmoji(event.country_code)
-  const chip = badge(event)
-  const age = (now - Date.parse(event.time)) / 1000
+  const selected = useStore((s) => s.selected === event.id);
+  const fresh = useStore((s) => s.fresh.has(event.id));
+  const select = useStore((s) => s.select);
+  const t = useStore((s) => s.t);
+  const lang = useStore((s) => s.lang);
+  const severity = SEVERITY_META[event.severity];
+  const flag = flagEmoji(event.country_code);
+  const chip = badge(event);
+  const age = (now - Date.parse(event.time)) / 1000;
 
   return (
     <button
       type="button"
-      className={`item${fresh ? ' fresh' : ''}`}
+      className={`item${fresh ? " fresh" : ""}`}
       // `aria-selected` is only valid on option/tab/row/gridcell: on a button
       // screen readers ignore it, so opening an event announced no state at
       // all. `aria-pressed` is the toggle that this actually is.
@@ -47,8 +47,11 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
 
       <span>
         <span className="place">
-          <span className="flag" title={countryName(lang, event.country_code) ?? ''}>
-            {flag ?? '🌐'}
+          <span
+            className="flag"
+            title={countryName(lang, event.country_code) ?? ""}
+          >
+            {flag ?? "🌐"}
           </span>
           {event.place || event.title}
         </span>
@@ -61,13 +64,32 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
           </span>
           <span className="tag">{kindLabel(t, event.kind)}</span>
           <span>{SOURCE_LABEL[event.source] ?? event.source}</span>
-          {event.revision > 0 ? <span className="tag">{t('map.revised')}</span> : null}
+          {/* Say it before the number is believed. An automatic solution
+              minutes old is routinely off by up to a magnitude unit, and a
+              screenshot of the wrong figure travels much further than the
+              correction. "Revised" after the fact is not the same promise. */}
+          {event.preliminary ? (
+            <span
+              className="tag tag-preliminary"
+              title={t("tag.preliminary.why")}
+            >
+              {t("tag.preliminary")}
+            </span>
+          ) : null}
+          {event.revision > 0 ? (
+            <span className="tag">{t("map.revised")}</span>
+          ) : null}
+          {event.felt_reports ? (
+            <span className="tag" title={t("tag.felt.why")}>
+              {t("tag.felt", { n: event.felt_reports })}
+            </span>
+          ) : null}
         </span>
       </span>
 
       <span className="age">{formatAge(t, age)}</span>
     </button>
-  )
+  );
 }
 
 /** Says ONE sentence when an event arrives, and is otherwise silent.
@@ -78,34 +100,34 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
  * announcements it existed for.
  */
 function NewEventAnnouncer({ events }: { events: SosEvent[] }): JSX.Element {
-  const t = useStore((s) => s.t)
-  const newest = events[0]
-  const [announced, setAnnounced] = useState<string | null>(null)
-  const spoken = useRef<string | null>(null)
+  const t = useStore((s) => s.t);
+  const newest = events[0];
+  const [announced, setAnnounced] = useState<string | null>(null);
+  const spoken = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!newest || spoken.current === newest.id) return
-    spoken.current = newest.id
+    if (!newest || spoken.current === newest.id) return;
+    spoken.current = newest.id;
     setAnnounced(
-      t('a11y.newevent', {
+      t("a11y.newevent", {
         kind: t(`kind.${newest.kind}`),
         place: newest.place,
         severity: t(`sev.${newest.severity}`),
       }),
-    )
-  }, [newest, t])
+    );
+  }, [newest, t]);
 
   return (
     <p className="sr-only" role="status" aria-live="polite">
       {announced}
     </p>
-  )
+  );
 }
 
 export function Feed({ events, now, emptyKey }: Props) {
-  const t = useStore((s) => s.t)
+  const t = useStore((s) => s.t);
   if (events.length === 0) {
-    return <div className="feed-empty">{t(emptyKey)}</div>
+    return <div className="feed-empty">{t(emptyKey)}</div>;
   }
   return (
     // NO aria-live here, and no role="feed".
@@ -126,5 +148,5 @@ export function Feed({ events, now, emptyKey }: Props) {
         ))}
       </div>
     </>
-  )
+  );
 }

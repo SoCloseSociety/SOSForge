@@ -154,6 +154,12 @@ class Pipeline:
                 }
             )
 
+    def _forget(self, events: list[Event]) -> None:
+        """Whatever leaves the store must leave the deduper's window with it,
+        or the window keeps adopting new solutions on behalf of a ghost."""
+        if events:
+            self.deduper.forget({e.id for e in events})
+
     async def _announce_purge(self, events: list[Event], reason: str) -> None:
         """Tells the open tabs that events are gone.
 
@@ -164,6 +170,7 @@ class Pipeline:
         """
         if not events:
             return
+        self._forget(events)
         await hub.broadcast({"type": "purge", "ids": [e.id for e in events], "reason": reason})
         await self._flush_promotions()
 

@@ -1384,6 +1384,14 @@ button {
   min-width: 44px;
 }
 
+/* An automatic solution wearing its uncertainty. Deliberately quiet -- it is a
+   caveat, not an alarm -- but never invisible: it is what stops the wrong
+   number from being screenshotted as a fact. */
+.tag-preliminary {
+  border-color: rgba(250, 178, 25, 0.45);
+  color: var(--sev-moderate);
+}
+
 /* =========================================================================
    MEDIA QUERIES -- ALWAYS LAST IN THIS FILE.
    ------------------------------------------------------------------------

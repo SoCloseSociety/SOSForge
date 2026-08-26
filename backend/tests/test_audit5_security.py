@@ -107,3 +107,59 @@ class TestTheRawFeedPayloadStaysServerSide:
         assert body["found"] is True
         assert "raw" not in body, "the verbatim source payload is still exposed"
         assert body["event"]["id"] == event.id
+
+
+class TestOneClientCannotOwnTheWebsocket:
+    """Every accepted connection is answered with a full snapshot -- up to 300
+    events serialised and sent -- and then receives every broadcast and every
+    heartbeat for as long as it stays open, which nginx allows for an hour.
+
+    The hub bounds each client's QUEUE and evicts slow ones, but nothing
+    bounded the NUMBER of clients. A single host opening connections in a loop
+    costs itself almost nothing (an idle client just parks on receive) and
+    costs the server a snapshot build per connection plus a fan-out multiplier
+    on every message afterwards. That is the one channel the entire product
+    depends on.
+    """
+
+    def test_a_single_address_cannot_open_an_unbounded_number(self):
+        from app.core.config import settings
+        from app.hub import ConnectionQuota
+
+        quota = ConnectionQuota(per_ip=settings.max_ws_per_ip)
+        accepted = sum(1 for _ in range(settings.max_ws_per_ip + 20) if quota.acquire("203.0.113.7"))
+
+        assert accepted == settings.max_ws_per_ip
+
+    def test_closing_a_connection_gives_the_slot_back(self):
+        from app.hub import ConnectionQuota
+
+        quota = ConnectionQuota(per_ip=2)
+        assert quota.acquire("203.0.113.7") is True
+        assert quota.acquire("203.0.113.7") is True
+        assert quota.acquire("203.0.113.7") is False
+
+        quota.release("203.0.113.7")
+
+        assert quota.acquire("203.0.113.7") is True
+
+    def test_one_saturated_address_does_not_shut_out_everyone_else(self):
+        """A shared NAT, a university, a mobile carrier: many real people can
+        legitimately arrive from one address, and the cap must not turn into a
+        denial of service against the neighbours of whoever misbehaves."""
+        from app.hub import ConnectionQuota
+
+        quota = ConnectionQuota(per_ip=2)
+        quota.acquire("203.0.113.7")
+        quota.acquire("203.0.113.7")
+
+        assert quota.acquire("198.51.100.4") is True
+
+    def test_an_unknown_address_is_not_a_shared_bucket(self):
+        """A missing client address must not put every anonymous connection in
+        one bucket that the first few fill for everybody."""
+        from app.hub import ConnectionQuota
+
+        quota = ConnectionQuota(per_ip=1)
+        assert quota.acquire(None) is True
+        assert quota.acquire(None) is True

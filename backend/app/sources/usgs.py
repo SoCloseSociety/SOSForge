@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
+from typing import Any
 
 import httpx
 
@@ -85,16 +86,19 @@ def parse_feature(feature: dict) -> Event | None:
     )
 
 
-def _number(value: object) -> float | None:
+def _number(value: Any) -> float | None:
+    """USGS omits `mmi`, `cdi` and `felt` far more often than it sends them:
+    absent must stay absent, never become a zero we would then display as a
+    fact ("nobody felt it")."""
     try:
-        return float(value)  # type: ignore[arg-type]
+        return float(value)
     except (TypeError, ValueError):
         return None
 
 
-def _int(value: object) -> int | None:
+def _int(value: Any) -> int | None:
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)
     except (TypeError, ValueError):
         return None
 

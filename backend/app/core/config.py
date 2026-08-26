@@ -123,6 +123,11 @@ class Settings(BaseSettings):
     future_tolerance_seconds: float = 120.0
     stale_after_hours: float = 6.0
     sweep_seconds: float = 300.0
+
+    # Open websockets allowed per client address. Generous on purpose: a shared
+    # NAT, a university or a mobile carrier legitimately puts many real readers
+    # behind one address, and several tabs each open their own connection.
+    max_ws_per_ip: int = 24
     # journal retention: about 5 MB per day, on a disk shared with the other
     # products of the suite
     journal_keep_days: int = 7

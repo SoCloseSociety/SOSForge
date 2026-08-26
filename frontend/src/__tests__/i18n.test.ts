@@ -85,7 +85,10 @@ describe('parity of the five dictionaries', () => {
   function dictKeys(name: string): string[] {
     const block = source.match(new RegExp(`const ${name}: Dict = \\{([\\s\\S]*?)\\n\\}`))
     if (!block) throw new Error(`dictionary ${name} not found in i18n.ts`)
-    return [...block[1].matchAll(/^\s*'([^']+)':/gm)].map((m) => m[1])
+    // Either quote style: prettier normalises the whole file to double quotes
+    // as soon as ONE value contains an apostrophe, and this guard-rail is
+    // about key parity, not about quoting.
+    return [...block[1].matchAll(/^\s*['"]([^'"]+)['"]:/gm)].map((m) => m[1])
   }
 
   const reference = dictKeys('en')
