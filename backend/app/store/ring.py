@@ -55,7 +55,13 @@ class EventStore:
                 self._ring.append(event)
                 if evicted is not None:
                     self._forget(evicted)
-                self.counters[event.source] = self.counters.get(event.source, 0) + 1
+                # NOT during a replay. This counter is what /api/sources shows
+                # as "ingested", meaning what this source delivered in THIS
+                # session; crediting it with journal-restored events made every
+                # source overstate itself after each restart -- the misleading
+                # observability the events_seen/ingested split exists to avoid.
+                if not self._replaying:
+                    self.counters[event.source] = self.counters.get(event.source, 0) + 1
                 self._write_jsonl(event, "new")
                 return event, "new"
 

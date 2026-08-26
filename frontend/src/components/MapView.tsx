@@ -6,6 +6,12 @@ import { SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
 import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
 import { forecastTracks } from '../tracks'
+import { useMediaQuery } from '../useMediaQuery'
+
+/** Someone who asked their system for less motion asked the whole product,
+ * not just the stylesheet. The map is where the motion actually is: camera
+ * flights and a pulsing halo. */
+const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
 /** Dark CARTO basemap: no API key needed, OSM + CARTO attribution required. */
 const STYLE: maplibregl.StyleSpecification = {
@@ -97,7 +103,7 @@ function popupHtml(event: SosEvent, now: number): string {
     <h3>${escape(event.place || event.title)}</h3>
     <div style="color:${severity.text};font-size:12px">
       ${severity.glyph} ${severityLabel(t, event.severity)} &middot; ${kindLabel(t, event.kind)}
-      &middot; ${formatAge(t, (now - Date.parse(event.time)) / 1000)}
+      &middot; <span class="popup-age">${formatAge(t, (now - Date.parse(event.time)) / 1000)}</span>
     </div>
     <dl>${rows.join('')}</dl>
     ${event.url ? `<p style="margin:8px 0 0"><a href="${escape(event.url)}" target="_blank" rel="noreferrer">${t('detail.official')}</a></p>` : ''}
@@ -109,7 +115,17 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<MapLibreMap | null>(null)
   const popup = useRef<Popup | null>(null)
-  const ready = useRef(false)
+  /** Instant the open popup is dated from, so its age can keep counting
+   * without rebuilding the whole card. */
+  const popupTime = useRef<number | null>(null)
+  /** Readiness is STATE and not a ref, and that is the whole fix for a deep
+   * link: `#e/...` selects the event at App mount, while the map is lazily
+   * loaded and fires `load` much later. With a ref, the selection effect ran
+   * once, bailed out, and had nothing left to re-trigger it -- `selected`
+   * never changes again. The shared link centred nothing and opened nothing.
+   * As state, the flip to `true` re-runs every effect that was waiting. */
+  const [ready, setReady] = useState(false)
+  const reduceMotion = useMediaQuery(REDUCED_MOTION)
   const [failed, setFailed] = useState(false)
   const latest = useRef({ events, now })
   latest.current = { events, now }
@@ -251,7 +267,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         },
       })
 
-      ready.current = true
+      setReady(true)
       instance.getSource('events') &&
         (instance.getSource('events') as maplibregl.GeoJSONSource).setData(
           toFeatureCollection(latest.current.events, useStore.getState().fresh),

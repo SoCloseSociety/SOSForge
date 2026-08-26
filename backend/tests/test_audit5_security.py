@@ -92,10 +92,16 @@ class TestTheRawFeedPayloadStaysServerSide:
     JMA list every entry.
     """
 
-    def test_the_endpoint_does_not_serve_the_verbatim_source_object(self):
+    def test_the_endpoint_does_not_serve_the_verbatim_source_object(self, monkeypatch):
         from fastapi.testclient import TestClient
 
         from app.main import app, store
+
+        # The module-level store persists to the REAL journal directory. This
+        # test used to write `test:1` into it, which then came back on every
+        # restart and showed up in production measurements as a mystery event.
+        # A test must not be able to put anything into the product's own data.
+        monkeypatch.setattr(store, "_persist", False)
 
         event = event_with_url("https://example.org/x")
         event.raw = {"secret_looking": "x" * 5000, "nested": {"payload": "<script>"}}

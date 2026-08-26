@@ -480,6 +480,9 @@ class TestAnExtendedWarningLearnsItsNewEnd:
 
         same = quake("nws:steady", kind=Kind.STORM, magnitude=None, ongoing=True)
         same.expires = alert.expires
+        # same origin time too: a republication is the same event, not a new
+        # one dated at the moment we happened to read it
+        same.time = alert.time
         _, action = store.upsert(same)
 
         assert action == "noop"

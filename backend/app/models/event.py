@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 from datetime import UTC, datetime
 from enum import Enum
@@ -210,6 +211,21 @@ class Event(BaseModel):
             # force, or left standing after being cut short.
             str(self.ongoing),
             self.expires.isoformat() if self.expires else "None",
+            # The ORIGIN TIME, to the second. Agencies revise it, and two
+            # events fifteen minutes apart fingerprinted identically, so the
+            # wrong time stayed in the feed and the date sort put the event in
+            # the wrong place. Second resolution because a revision is minutes
+            # apart, never microseconds: finer precision would only add noise.
+            str(int(self.time.timestamp())),
+            # The FORECAST. It was made a first-class field precisely because
+            # "a forecast the client never receives is a forecast that does not
+            # exist" -- and then the fingerprint could not see it, so a
+            # stationary storm whose forecast shifted looked unchanged.
+            json.dumps(self.forecast_track, sort_keys=True, default=str),
+            # The TITLE. It is the only channel by which a swarm's count
+            # reaches the browser, since `public()` strips `raw`: a swarm
+            # growing from 9 quakes to 30 never updated on screen.
+            self.title,
         ]
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
 

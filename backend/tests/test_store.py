@@ -39,7 +39,12 @@ def test_insert_then_identical_reinsert_is_a_noop(store: EventStore):
     _, action = store.upsert(event)
     assert action == "new"
 
-    _, action = store.upsert(make_event("usgs:a", 1))
+    # The SAME origin time, as a source republishing its list would send: the
+    # fingerprint now includes the time, so building a second event from the
+    # clock would differ by microseconds and prove nothing.
+    again = make_event("usgs:a", 1)
+    again.time = event.time
+    _, action = store.upsert(again)
     assert action == "noop"
 
 
