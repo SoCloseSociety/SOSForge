@@ -337,6 +337,13 @@ function Footer() {
         </button>
         <span className="spacer" />
         <span>{t("footer.clients", { n: clients })}</span>
+        <span className="credit">
+          Developed by{" "}
+          <a href="https://soclose.co" target="_blank" rel="noopener">
+            SoClose Pte. Ltd.
+          </a>
+          , Singapore
+        </span>
       </footer>
     );
   }
@@ -382,6 +389,13 @@ function Footer() {
       <span className="spacer" />
       <span>{t("footer.clients", { n: clients })}</span>
       <span>{t("footer.basemap")}</span>
+      <span className="credit">
+        Developed by{" "}
+        <a href="https://soclose.co" target="_blank" rel="noopener">
+          SoClose Pte. Ltd.
+        </a>
+        , Singapore
+      </span>
     </footer>
   );
 }
