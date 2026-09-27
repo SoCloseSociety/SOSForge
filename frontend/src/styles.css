@@ -511,7 +511,15 @@ button {
   min-height: 0;
 }
 
-.map {
+/* MapLibre's own stylesheet declares `.maplibregl-map { position: relative }`
+   on the very same element, and it is injected at RUNTIME: the map is lazy
+   loaded (React.lazy in App.tsx), so its CSS chunk lands after this file and
+   wins at equal specificity. The container then had `position: relative` and
+   a height of 0 px, MapLibre fell back to its 400x300 default canvas, and the
+   map was a black rectangle on the live site while WebGL, the tiles and the
+   feed all worked. The extra selector level wins on specificity, whatever the
+   load order. Verified on https://sosforge.soclose.co with the built bundle. */
+.map-wrap > .map {
   position: absolute;
   inset: 0;
 }

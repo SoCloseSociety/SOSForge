@@ -69,11 +69,14 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
               new fields dense enough to earn a place in the list, and the only
               thing here that tells a reader inside the warning area what is
               being asked of them. */}
-          {event.response_type ? (
+          {/* Only the vocabulary the dictionary knows. CAP also carries
+              "None" and "AllClear", and a server that let one through
+              printed the raw key `response.none` on every row concerned. */}
+          {event.response_type && RESPONSE_GLYPH[event.response_type] ? (
             <span
               className={`tag tag-do tag-do-${event.response_type.toLowerCase()}`}
             >
-              {RESPONSE_GLYPH[event.response_type] ?? "•"}{" "}
+              {RESPONSE_GLYPH[event.response_type]}{" "}
               {t(`response.${event.response_type.toLowerCase()}`)}
             </span>
           ) : null}

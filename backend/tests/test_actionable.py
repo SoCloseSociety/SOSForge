@@ -322,6 +322,24 @@ MONTENEGRO_CAP = """<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
 """
 
 
+# severeweather.wmo.int/v2/cap-alerts/sa-ncm-en/2026/09/26/18/36/46-...xml,
+# cut to the `<info>` text fields. The Saudi NCM publishes a literal
+# `<responseType>None</responseType>` on every warning.
+NCM_CAP = """<?xml version="1.0" encoding="UTF-8"?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2"><identifier>46f492dd-633c-41e3-8e66-1fbd5132c8dd</identifier><sender>cr@ncm.gov.sa</sender><sent>2026-09-26T21:36:46+03:00</sent><status>Actual</status><msgType>Alert</msgType><scope>Public</scope><info><language>en-US</language><category>Met</category><event>Heavy rain</event><responseType>None</responseType><urgency>Immediate</urgency><severity>Extreme</severity><certainty>Possible</certainty><headline>Warning, Heavy rain</headline><description>Heavy rain Active winds, Lack of horizontal visibility, Hail falls, Torrential rains, Thunder Strikes</description><instruction/></info></alert>
+"""
+
+
+def test_cap_none_is_no_action_not_a_label() -> None:
+    """CAP `None` means "no action recommended". Passed through as a string it
+    became a "what to do" tag the dictionary cannot translate, and the feed
+    printed `response.none` on every NCM warning. The aggregate path already
+    drops it; this path must too."""
+    text = parse_cap_text(NCM_CAP)
+    assert text.response_type is None
+    assert text.headline == "Warning, Heavy rain"
+
+
 def test_cap_prefers_the_english_info_block() -> None:
     """The local-language block comes first in this real document. Taking the
     first one would put a Spanish instruction under an English headline."""

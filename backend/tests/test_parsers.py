@@ -229,6 +229,39 @@ GDACS_OLD_DROUGHT = """<rss xmlns:gdacs="http://www.gdacs.org"><channel><item>
 """
 
 
+# Verbatim from gdacs.org/xml/rss.xml on 2026-09-27: a GloFAS flood FORECAST,
+# published on the 26th for a start on 5 October.
+GDACS_FORECAST_FLOOD = """<rss xmlns:gdacs="http://www.gdacs.org"
+     xmlns:georss="http://www.georss.org/georss"><channel><item>
+      <title>Green flood alert in Mexico</title>
+      <link>https://www.gdacs.org/report.aspx?eventtype=FL&amp;eventid=1104191</link>
+      <pubDate>Sat, 26 Sep 2026 06:33:31 GMT</pubDate>
+      <gdacs:iscurrent>true</gdacs:iscurrent>
+      <gdacs:fromdate>Mon, 05 Oct 2026 01:00:00 GMT</gdacs:fromdate>
+      <gdacs:todate>Wed, 07 Oct 2026 01:00:00 GMT</gdacs:todate>
+      <georss:point>17.666667 -100</georss:point>
+      <gdacs:eventtype>FL</gdacs:eventtype>
+      <gdacs:alertlevel>Green</gdacs:alertlevel>
+      <gdacs:eventid>1104191</gdacs:eventid>
+      <gdacs:episodeid>1</gdacs:episodeid>
+      <gdacs:severity unit="" value="0">Magnitude 0 </gdacs:severity>
+      <gdacs:country>Mexico</gdacs:country>
+</item></channel></rss>
+"""
+
+
+def test_gdacs_forecast_is_dated_at_publication_not_at_its_future_start():
+    """Dated at `fromdate`, this item sat pinned above every live earthquake
+    for eight days, captioned "in 8 d". The alert was published on the 26th:
+    that is the event."""
+    event = parse_item(ET.fromstring(GDACS_FORECAST_FLOOD).find(".//item"))
+    assert event is not None
+    assert event.time.isoformat() == "2026-09-26T06:33:31+00:00"
+    assert event.updated_at is not None
+    assert event.time <= event.updated_at
+    assert event.ongoing is True
+
+
 def test_gdacs_severity_comes_from_the_attribute_not_the_text():
     event = parse_item(ET.fromstring(GDACS_ITEM).find(".//item"))
     assert event is not None

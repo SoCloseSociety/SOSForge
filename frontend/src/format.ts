@@ -40,13 +40,18 @@ export const KIND_GLYPH: Record<Kind, string> = {
   other: '⚠️',
 }
 
+/** Display name of every backend source (`Source.name`). English, like the
+ * rest of the interface's source data: this table used to mix French labels
+ * ("USGS volcans", "Cendres (SIGMET)", "OMM") into a Japanese or English
+ * page, and nine sources added later had no entry at all, so the footer
+ * printed their raw identifiers ("phivolcs", "jma-tsunami", "geonet-volcano"). */
 export const SOURCE_LABEL: Record<string, string> = {
   emsc: 'EMSC (push)',
   usgs: 'USGS',
   tsunami: 'NOAA tsunami',
   gdacs: 'GDACS',
   nws: 'NWS',
-  volcano: 'USGS volcans',
+  volcano: 'USGS volcanoes',
   jma: 'JMA',
   bmkg: 'BMKG',
   geonet: 'GeoNet',
@@ -54,13 +59,22 @@ export const SOURCE_LABEL: Record<string, string> = {
   geofon: 'GEOFON',
   eonet: 'NASA EONET',
   meteoalarm: 'Meteoalarm',
-  wmo: 'OMM',
+  wmo: 'WMO',
   nhc: 'NHC',
-  ash: 'Cendres (SIGMET)',
+  ash: 'Ash SIGMET',
   afad: 'AFAD',
-  jma_eew: 'JMA alerte precoce',
+  jma_eew: 'JMA EEW',
   cenc: 'CENC',
   swarm: 'Swarm detection',
+  aftershock: 'USGS aftershock',
+  space: 'NOAA SWPC',
+  'jma-tsunami': 'JMA tsunami',
+  ssn: 'SSN (Mexico)',
+  nrcan: 'NRCan',
+  noa: 'NOA (Greece)',
+  phivolcs: 'PHIVOLCS',
+  igp: 'IGP (Peru)',
+  'geonet-volcano': 'GeoNet volcanoes',
 }
 
 /** The flag is computed from the ISO2 code (two Unicode regional indicator
