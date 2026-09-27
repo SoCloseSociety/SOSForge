@@ -123,6 +123,20 @@ the narrowing costs.
   meaning alone: a glyph and a label go with it everywhere.
 - **MapLibre**: initialization is inside a `try/catch`. Without WebGL the map
   shows a fallback and the feed keeps running.
+- **MapLibre CSS lands AFTER ours**: the map is lazy loaded, so
+  `maplibregl-map { position: relative }` is injected at runtime on the same
+  element as `.map` and wins at equal specificity. The container went to 0 px
+  high, the canvas fell back to 400x300, and production showed a black
+  rectangle for a month while every test stayed green. The rule is
+  `.map-wrap > .map` for that reason: never lower it back to one class. The
+  popup had the same defect (`.maplibregl-popup-content { background: #fff }`
+  won, white text on white): every `.maplibregl-*` override in `styles.css`
+  is scoped under `.map`, and any new one must be too.
+- **Basemap**: OpenFreeMap (`tiles.openfreemap.org`, no key). CARTO's free
+  raster tiles started answering "API KEY REQUIRED" in 2026-09. The host
+  `connect-src` in BOTH `deploy/nginx.conf` and the VPS host nginx must name
+  the tile host, or the browser blocks every tile. If the style cannot be
+  fetched the map falls back to a plain background and still draws the events.
 - **Media queries** go at the END of the stylesheet. At equal specificity the
   last rule wins, and a media block placed before the rules it overrides does
   nothing (this broke the whole mobile layout once).

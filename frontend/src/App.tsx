@@ -124,6 +124,11 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
       </span>
       <span>
         {top.tsunami ? t("banner.tsunami") : t("banner.major")} :{" "}
+        {/* The place alone is not enough: the NHC names a storm by its
+            given name, so the banner read "MAJOR ALERT: Polo" and nothing
+            told the reader that Polo was a hurricane. The hazard type comes
+            first, the place after. */}
+        {top.tsunami ? "" : `${kindLabel(t, top.kind)} -- `}
         {top.place || top.title}
         <br />
         <small>

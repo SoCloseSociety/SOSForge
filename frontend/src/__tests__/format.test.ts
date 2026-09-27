@@ -1,6 +1,6 @@
 /** format.ts: the small functions every feed row goes through. */
 import { describe, expect, it } from 'vitest'
-import { badge, flagEmoji, formatAge, type T } from '../format'
+import { SOURCE_LABEL, badge, flagEmoji, formatAge, type T } from '../format'
 import { translate } from '../i18n'
 import { makeEvent } from './helpers'
 
@@ -104,5 +104,30 @@ describe('lead time', () => {
   it('a small clock difference still reads as "just now", not as the future', () => {
     expect(formatAge(t, -5)).toBe('just now')
     expect(formatAge(t, -59)).toBe('just now')
+  })
+})
+
+describe('SOURCE_LABEL: every backend source has a display name', () => {
+  // The 28 `Source.name` values the API publishes in /api/sources. Nine of
+  // them had no entry and the footer printed raw identifiers ("phivolcs",
+  // "jma-tsunami", "geonet-volcano") next to translated labels.
+  const BACKEND_SOURCES = [
+    'afad', 'aftershock', 'ash', 'bmkg', 'cenc', 'emsc', 'eonet', 'gdacs', 'geofon',
+    'geonet', 'geonet-volcano', 'igp', 'ingv', 'jma', 'jma-tsunami', 'jma_eew',
+    'meteoalarm', 'nhc', 'noa', 'nrcan', 'nws', 'phivolcs', 'space', 'ssn', 'tsunami',
+    'usgs', 'volcano', 'wmo', 'swarm',
+  ]
+
+  it('covers every source name', () => {
+    const missing = BACKEND_SOURCES.filter((name) => !SOURCE_LABEL[name])
+    expect(missing).toEqual([])
+  })
+
+  it('is English: the interface language is the dictionary, not this table', () => {
+    // The French labels that used to live here ("USGS volcans", "Cendres
+    // (SIGMET)", "OMM") showed up unchanged on the Japanese and English pages.
+    for (const label of Object.values(SOURCE_LABEL)) {
+      expect(label).not.toMatch(/volcans|Cendres|precoce|^OMM$/)
+    }
   })
 })

@@ -15,8 +15,9 @@ No API key is required: all twenty-six sources are public and open.
 
 ![screenshot](docs/screenshot.png)
 
-<sub>On a phone the feed comes first and the map sits below: you read first, you
-explore second. [Mobile screenshot](docs/screenshot-mobile.png).</sub>
+<sub>On a phone the map comes first, bounded to a third of the screen, and the
+feed runs below it: the map is always one flick away, the feed is never starved.
+[Mobile screenshot](docs/screenshot-mobile.png).</sub>
 
 ## The idea
 
@@ -125,7 +126,7 @@ cd /root/SAAS/SuiteForge/SOSForge && git pull && docker compose up -d --build
 | Data | docker volume `sos-data` (JSONL journal, purged after 7 days) |
 
 Security headers live on the host: a restrictive CSP (the site loads only its own
-code, CARTO tiles and its websocket), `nosniff`, HSTS, and a permanent redirect
+code, OpenFreeMap tiles and its websocket), `nosniff`, HSTS, and a permanent redirect
 from HTTP to HTTPS.
 
 ## API
@@ -274,7 +275,7 @@ Data: EMSC/CSEM, USGS, NOAA (NWS, NTWC, PTWC, NHC, Aviation Weather Center),
 GDACS (European Commission and UN), Smithsonian Institution Global Volcanism
 Program, JMA (Japan), BMKG (Indonesia), CENC (China), GNS Science / GeoNet (New
 Zealand), INGV (Italy), AFAD (Turkey), GFZ GEOFON, NASA EONET, Meteoalarm, WMO.
-Basemap by OpenStreetMap and CARTO. These feeds are public; they belong to their
+Basemap by OpenStreetMap, OpenMapTiles and OpenFreeMap. These feeds are public; they belong to their
 producers.
 
 **SOSForge is not an official warning service.** In a real emergency, your local

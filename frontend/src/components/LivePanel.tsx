@@ -12,6 +12,13 @@ import {
 } from "../format";
 import type { SosEvent } from "../types";
 
+/** A translated string for a server-provided link, or the server's own text
+ * when the dictionary has no entry (`t` returns the key itself in that case). */
+function linkText(t: (key: string) => string, key: string, fallback: string): string {
+  const value = t(key);
+  return value === key ? fallback : value;
+}
+
 interface NearbyLink {
   id: string;
   label: string;
@@ -230,8 +237,12 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
             {(nearby?.links ?? []).map((link) => (
               <li key={link.id}>
                 <a href={link.url} target="_blank" rel="noreferrer">
-                  <strong>{link.label}</strong>
-                  <span>{link.detail}</span>
+                  {/* The server labels its links in English; the dictionary
+                      carries the four it knows, keyed by id, so a French
+                      panel no longer mixes "Satellite imagery" under a
+                      French heading. An unknown id keeps the server text. */}
+                  <strong>{linkText(t, `live.link.${link.id}`, link.label)}</strong>
+                  <span>{linkText(t, `live.link.${link.id}.detail`, link.detail)}</span>
                 </a>
               </li>
             ))}

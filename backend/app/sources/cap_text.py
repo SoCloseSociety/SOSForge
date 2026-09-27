@@ -63,9 +63,12 @@ def _response_type(info: ET.Element) -> str | None:
     """CAP allows several `<responseType>` elements on one `<info>`.
 
     `AllClear` is the one that changes what the alert MEANS -- it says the
-    warning has been lifted -- so it wins over any other value present, and
-    `None` (a literal CAP value, not an absence) only wins if it is alone.
-    Anything else, first one wins.
+    warning has been lifted -- so it wins over any other value present.
+    `None` is a literal CAP value ("no action recommended"), not an absence:
+    it is dropped, exactly as the aggregate path already does. Returned as a
+    string, it reached the browser as a "what to do" tag that no dictionary
+    translates, and every Saudi NCM warning showed the raw key
+    `response.none` in the feed. Anything else, first one wins.
     """
     values = [(child.text or "").strip() for child in info if _tag(child) == "responseType"]
     values = [v for v in values if v]
@@ -77,7 +80,7 @@ def _response_type(info: ET.Element) -> str | None:
     for value in values:
         if value.lower() != "none":
             return value
-    return values[0]
+    return None
 
 
 def pick_info(root: ET.Element) -> ET.Element | None:

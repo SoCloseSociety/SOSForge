@@ -28,9 +28,20 @@ const fake = vi.hoisted(() => {
     flyToCalls: Array<Record<string, unknown>> = []
     jumpToCalls: Array<Record<string, unknown>> = []
     removed = 0
+    styleLoaded = false
+    setStyleCalls: unknown[] = []
 
     constructor(public options: Record<string, unknown>) {
       FakeMap.instances.push(this)
+    }
+
+    isStyleLoaded() {
+      return this.styleLoaded
+    }
+
+    setStyle(style: unknown) {
+      this.setStyleCalls.push(style)
+      this.styleLoaded = true
     }
 
     /** `on(type, cb)` and `on(type, layer, cb)`, like the real one. */
@@ -172,6 +183,35 @@ afterEach(() => {
   vi.restoreAllMocks()
   // @ts-expect-error -- restoring the jsdom default
   delete window.matchMedia
+})
+
+describe('the basemap is a third party, the events are not', () => {
+  /* The style is fetched from tiles.openfreemap.org. If that fetch fails,
+   * MapLibre never fires `load`, and every layer the component adds on
+   * `load` -- plates, markers, wave fronts -- would never exist: a remote
+   * basemap outage would blank the alerts. The component must swap in its
+   * local fallback style, once. */
+  it('falls back to a plain background when the remote style fails before load', () => {
+    render(<MapView events={[makeEvent({ time: minutesAgo(30) })]} now={NOW} />)
+    const map = lastMap()
+    expect(map.options.style).toBe('https://tiles.openfreemap.org/styles/dark')
+
+    act(() => map.fire('error', { error: new Error('style: 503') }))
+    expect(map.setStyleCalls).toHaveLength(1)
+    expect((map.setStyleCalls[0] as { sources: object }).sources).toEqual({})
+
+    // once only: a later tile error is not a reason to reset the style
+    act(() => map.fire('error', { error: new Error('tile: 404') }))
+    expect(map.setStyleCalls).toHaveLength(1)
+  })
+
+  it('leaves a loaded style alone when a tile fails', () => {
+    render(<MapView events={[makeEvent({ time: minutesAgo(30) })]} now={NOW} />)
+    const map = lastMap()
+    map.styleLoaded = true
+    act(() => map.fire('error', { error: new Error('tile: 404') }))
+    expect(map.setStyleCalls).toHaveLength(0)
+  })
 })
 
 describe('a selection made before the map is ready', () => {

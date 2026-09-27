@@ -74,6 +74,31 @@ describe('a feed row', () => {
     expect(screen.getByText('12 min ago')).toBeInTheDocument()
   })
 
+  it('a known CAP response is a translated "what to do" tag', () => {
+    render(
+      <Feed
+        events={[makeEvent({ id: 'do-1', kind: 'storm', response_type: 'Prepare' })]}
+        now={NOW}
+        emptyKey="filters.empty"
+      />,
+    )
+    expect(screen.getByText(/Get ready/)).toBeInTheDocument()
+  })
+
+  it('an unknown CAP response ("None") never prints a raw dictionary key', () => {
+    // CAP `None` is a literal value ("no action"). The server drops it now,
+    // but a row must never show `response.none` whatever the server sends.
+    const { container } = render(
+      <Feed
+        events={[makeEvent({ id: 'do-2', kind: 'storm', response_type: 'None' })]}
+        now={NOW}
+        emptyKey="filters.empty"
+      />,
+    )
+    expect(container.textContent).not.toContain('response.none')
+    expect(container.querySelector('.tag-do')).toBeNull()
+  })
+
   it('a revision is flagged on the row', () => {
     render(
       <Feed events={[makeEvent({ id: 'rev-1', revision: 2 })]} now={NOW} emptyKey="filters.empty" />,

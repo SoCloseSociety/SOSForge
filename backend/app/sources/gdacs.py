@@ -77,6 +77,15 @@ def parse_item(item: ET.Element) -> Event | None:
     # drought "ongoing" since July 2025 has a fromdate a year old but is not
     # current news.
     published = _parse_date(_text(item, "pubDate")) or time
+    # A flood alert is a GloFAS FORECAST: its fromdate can sit a week ahead of
+    # the publication ("Green flood alert in Mexico", from 5 Oct, published
+    # 26 Sep). Dated at fromdate, the pipeline let it through (it is ongoing,
+    # and an ongoing alert may legitimately start later), the feed sorted it
+    # by date, and two forecasts sat pinned above every live earthquake for
+    # eight days, each captioned "in 8 d". What GDACS actually did at
+    # `published` is publish the alert: that is the event, so that is its time.
+    if time > published:
+        time = published
 
     lat = lon = None
     point = _text(item, "georss:point")

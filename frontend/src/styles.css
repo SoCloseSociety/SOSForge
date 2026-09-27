@@ -511,7 +511,15 @@ button {
   min-height: 0;
 }
 
-.map {
+/* MapLibre's own stylesheet declares `.maplibregl-map { position: relative }`
+   on the very same element, and it is injected at RUNTIME: the map is lazy
+   loaded (React.lazy in App.tsx), so its CSS chunk lands after this file and
+   wins at equal specificity. The container then had `position: relative` and
+   a height of 0 px, MapLibre fell back to its 400x300 default canvas, and the
+   map was a black rectangle on the live site while WebGL, the tiles and the
+   feed all worked. The extra selector level wins on specificity, whatever the
+   load order. Verified on https://sosforge.soclose.co with the built bundle. */
+.map-wrap > .map {
   position: absolute;
   inset: 0;
 }
@@ -571,7 +579,12 @@ button {
 
 /* --------------------------------------------------------------------- popup */
 
-.maplibregl-popup-content {
+/* Same trap as `.map-wrap > .map` above: MapLibre's stylesheet arrives
+   after this one and sets `.maplibregl-popup-content { background: #fff }`
+   at the same specificity. With one class each, MapLibre won: the popup
+   opened white with our white text on it -- five labels and no values, on
+   every marker click. Scoped under `.map` so ours wins whatever the order. */
+.map .maplibregl-popup-content {
   background: var(--surface-2);
   color: var(--ink);
   border: 1px solid var(--hairline);
@@ -581,12 +594,12 @@ button {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
-.maplibregl-popup-tip {
+.map .maplibregl-popup-tip {
   border-top-color: var(--surface-2) !important;
   border-bottom-color: var(--surface-2) !important;
 }
 
-.maplibregl-popup-close-button {
+.map .maplibregl-popup-close-button {
   color: var(--ink-muted);
   font-size: 17px;
   padding: 2px 7px;

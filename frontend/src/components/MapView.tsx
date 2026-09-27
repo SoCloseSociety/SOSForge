@@ -13,22 +13,25 @@ import { useMediaQuery } from '../useMediaQuery'
  * flights and a pulsing halo. */
 const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 
-/** Dark CARTO basemap: no API key needed, OSM + CARTO attribution required. */
-const STYLE: maplibregl.StyleSpecification = {
+/** Dark basemap from OpenFreeMap: OpenStreetMap vector tiles served without
+ * any API key, registration or quota (openfreemap.org). Attribution comes
+ * with the tile metadata and is shown by the map's own control.
+ *
+ * Until 2026-09 this was CARTO's `dark_all` raster. CARTO then began
+ * answering every tile request -- whatever the referrer -- with the same
+ * 2.5 kB "API KEY REQUIRED" placeholder, and the live site showed markers
+ * scattered over black tiles stamped with a watermark. Verified with curl
+ * against three tiles under three referrers: one identical file each time. */
+const BASEMAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
+
+/** What the map falls back to when the style above cannot be fetched (host
+ * down, blocked by a stricter CSP, offline): a plain dark background. The
+ * plate boundaries, the markers and the wave fronts still render on it. A
+ * basemap outage must degrade the picture, never take the alerts down. */
+const FALLBACK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
-  sources: {
-    carto: {
-      type: 'raster',
-      tiles: [
-        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-      ],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap &copy; CARTO',
-    },
-  },
-  layers: [{ id: 'base', type: 'raster', source: 'carto' }],
+  sources: {},
+  layers: [{ id: 'base', type: 'background', paint: { 'background-color': '#0d0d0d' } }],
 }
 
 const SEVERITY_COLOR: maplibregl.ExpressionSpecification = [
@@ -144,7 +147,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     try {
       instance = new maplibregl.Map({
         container: container.current,
-        style: STYLE,
+        style: BASEMAP_STYLE_URL,
         center: [10, 20],
         zoom: 1.4,
         attributionControl: { compact: true },
@@ -155,7 +158,20 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       return
     }
     map.current = instance
-    instance.on('error', (event) => console.warn('maplibre:', event.error?.message ?? event))
+    // An error BEFORE the style is loaded is the style itself failing to
+    // arrive: without one, MapLibre never fires `load`, and none of the
+    // layers below would exist -- the whole map, markers included, would
+    // stay blank because a third-party basemap was unreachable. Swap in the
+    // local fallback style once; `load` then fires on the next frame.
+    let fallbackApplied = false
+    instance.on('error', (event) => {
+      console.warn('maplibre:', event.error?.message ?? event)
+      if (!fallbackApplied && !instance.isStyleLoaded()) {
+        fallbackApplied = true
+        console.warn('basemap unavailable: showing the events on a plain background')
+        instance.setStyle(FALLBACK_STYLE)
+      }
+    })
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     instance.on('load', () => {
