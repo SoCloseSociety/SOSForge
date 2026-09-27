@@ -128,7 +128,10 @@ the narrowing costs.
   element as `.map` and wins at equal specificity. The container went to 0 px
   high, the canvas fell back to 400x300, and production showed a black
   rectangle for a month while every test stayed green. The rule is
-  `.map-wrap > .map` for that reason: never lower it back to one class.
+  `.map-wrap > .map` for that reason: never lower it back to one class. The
+  popup had the same defect (`.maplibregl-popup-content { background: #fff }`
+  won, white text on white): every `.maplibregl-*` override in `styles.css`
+  is scoped under `.map`, and any new one must be too.
 - **Basemap**: OpenFreeMap (`tiles.openfreemap.org`, no key). CARTO's free
   raster tiles started answering "API KEY REQUIRED" in 2026-09. The host
   `connect-src` in BOTH `deploy/nginx.conf` and the VPS host nginx must name
