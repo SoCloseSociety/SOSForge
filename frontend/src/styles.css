@@ -646,6 +646,28 @@ button {
   color: var(--ink-muted);
 }
 
+/* Agency credit: one discreet line on its own row at the very bottom of the
+   footer, in every language (it is not translated on purpose). Same muted
+   ink as the rest of the footer. A plain link loads nothing, so the CSP
+   (default-src 'self') is untouched. */
+.footer .credit {
+  flex-basis: 100%;
+  font-size: 11px;
+  color: var(--ink-muted);
+  text-align: right;
+}
+
+.footer .credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--hairline-strong);
+}
+
+.footer .credit a:hover {
+  color: var(--ink-2);
+}
+
 .source {
   display: inline-flex;
   align-items: center;
