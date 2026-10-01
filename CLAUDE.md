@@ -148,7 +148,9 @@ runs `uvicorn app.main:app`: a `pkill -f "uvicorn app.main:app"` also kills
 ScanGithub (`:8894`) and the others on the same machine. That mistake has
 already cost a neighbouring session three in-flight GitHub sweeps, and sent it
 hunting for the failure inside its own code. Use `make stop-api` (which targets
-port 8300) or `lsof -ti tcp:8300 | xargs kill`.
+port 8300) or `lsof -ti tcp:8300 -sTCP:LISTEN | xargs kill` (`-sTCP:LISTEN` is
+load-bearing: without it lsof also returns the CLIENT sockets connected to the
+port, so the kill hits the browser tab or the Vite proxy instead of the API).
 
 ## Commands
 

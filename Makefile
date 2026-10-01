@@ -21,8 +21,12 @@ dev-api: ## FastAPI with auto-reload on :8300
 # "uvicorn app.main:app": a `pkill -f "uvicorn app.main:app"` also kills
 # ScanGithub (:8894) and the others, and that mistake has already cost another
 # session its in-flight sweeps. The port, on the other hand, is ours alone.
+# -sTCP:LISTEN est obligatoire: sans lui, `lsof -ti tcp:8300` renvoie AUSSI les
+# sockets CLIENTES connectees a ce port (onglet navigateur, proxy Vite de
+# dev-web, Sentinel...), et le kill tuait ces clients au lieu du serveur.
+# Mesure 2026-10-01 sur :8888 -- seul resultat = Sentinel (connexion sortante).
 stop-api: ## stop ONLY the SOSForge API, by its port
-	@lsof -ti tcp:8300 | xargs kill 2>/dev/null || echo "no SOSForge API on :8300"
+	@lsof -ti tcp:8300 -sTCP:LISTEN | xargs kill 2>/dev/null || echo "no SOSForge API on :8300"
 
 restart-api: stop-api ## restart the SOSForge API cleanly
 	@sleep 1
