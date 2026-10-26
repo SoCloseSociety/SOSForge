@@ -79,7 +79,9 @@ class TestNoParameters:
             emit(ws, v2, ev("far", *LOS_ANGELES))
             (message,) = drain(ws)
             assert message["type"] == "event" and message["event"]["id"] == "test:far"
-            assert set(message) == {"type", "event", "primary", "breaking"}
+            # `escalated` is the pipeline's own field (audit 6, #4), always
+            # present; what this pins is that the scope layer adds nothing.
+            assert set(message) == {"type", "event", "primary", "breaking", "escalated"}
             ws.portal.call(v2.pipeline.retract, "test:far", "cancelled")
             assert drain(ws) == [{"type": "purge", "ids": ["test:far"], "reason": "cancelled"}]
 

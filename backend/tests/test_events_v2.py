@@ -4,11 +4,12 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import timedelta
 
 import pytest
 from fastapi.testclient import TestClient
 
-from app.models.event import Severity
+from app.models.event import Severity, utcnow
 
 TOKYO = (35.6762, 139.6503)
 YOKOHAMA = (35.4437, 139.6380)
@@ -142,6 +143,16 @@ class TestCursor:
         asyncio.run(v2.pipeline.retract("test:eew", "cancelled"))
         delta = client.get(f"/api/events?{NEAR_TOKYO}&since={body['cursor']}").json()
         assert delta["removed"] == ["test:eew"]
+
+    def test_an_alert_that_comes_back_expired_is_a_removal(self, v2, client, ev):
+        # Lanes B and F meet here: the pipeline now retracts a stored alert
+        # when its source re-lists it past `expires` (audit 6, #6). The phone's
+        # background poll must hear about it, or its notification stays up.
+        emit(v2, ev("adv", *YOKOHAMA, expires=utcnow() + timedelta(hours=1)))
+        body, _ = self.full_read(client)
+        emit(v2, ev("adv", *YOKOHAMA, expires=utcnow() - timedelta(minutes=1)))
+        delta = client.get(f"/api/events?{NEAR_TOKYO}&since={body['cursor']}").json()
+        assert delta["events"] == [] and delta["removed"] == ["test:adv"]
 
     def test_changes_the_client_never_held_are_not_listed_as_removals(self, v2, client, ev):
         body, _ = self.full_read(client)
