@@ -64,72 +64,30 @@ export async function hasGuidance(): Promise<boolean> {
   return !!version?.features.includes(GUIDANCE_FEATURE)
 }
 
-/** The official page a line was taken from, wherever the table puts it:
- * `source_url`, `url`, or a `source` object `{url, name}`. Lane B's catalogue
- * was being written while this client was, so the client reads the few
- * spellings a reasonable table would use rather than pinning one guess. */
-function lineUrl(line: Record<string, unknown>): string | null {
-  const nested =
-    line.source && typeof line.source === 'object'
-      ? (line.source as Record<string, unknown>).url
-      : undefined
-  const candidates = [line.source_url, line.url, nested, line.source]
-  for (const value of candidates) {
-    if (typeof value === 'string' && /^https?:\/\//.test(value)) return value
-  }
-  return null
+/** One line of `GET /api/guidance` (contract v2, lane B):
+ * `{text, source: {name, url, lang}, needs_review}`. */
+interface WireLine {
+  text?: unknown
+  source?: { name?: unknown; url?: unknown; lang?: unknown } | null
+  needs_review?: unknown
 }
 
-/** Who publishes it, for display. Never the URL itself. */
-function linePublisher(line: Record<string, unknown>): string | null {
-  const nested =
-    line.source && typeof line.source === 'object'
-      ? (line.source as Record<string, unknown>).name
-      : undefined
-  for (const value of [line.source_name, line.publisher, line.authority, nested, line.source]) {
-    if (typeof value === 'string' && value.trim() !== '' && !/^https?:\/\//.test(value)) {
-      return value.trim()
-    }
-  }
-  return null
-}
-
-/** A line is usable only when it has both a text and an official URL. The
- * server is ours, but the table behind it is edited by hand, and a line with
- * a text and no source must not be shown as if it were sourced. */
+/** A line is usable only when it has both a text and an official https URL.
+ * The server validates its catalogue, but this is the last step before a
+ * reader acts on the words: a line without a source must never be shown as
+ * if it were sourced. */
 function cleanLines(lines: unknown): GuidanceLine[] {
   if (!Array.isArray(lines)) return []
   const out: GuidanceLine[] = []
-  for (const raw of lines) {
+  for (const raw of lines as WireLine[]) {
     if (!raw || typeof raw !== 'object') continue
-    const line = raw as Record<string, unknown>
-    const text = typeof line.text === 'string' ? line.text.trim() : ''
-    const url = lineUrl(line)
-    if (!text || !url) continue
-    out.push({ text, source_url: url, source: linePublisher(line) })
+    const text = typeof raw.text === 'string' ? raw.text.trim() : ''
+    const url = typeof raw.source?.url === 'string' ? raw.source.url : ''
+    if (!text || !/^https:\/\//.test(url)) continue
+    const name = typeof raw.source?.name === 'string' ? raw.source.name.trim() : ''
+    out.push({ text, source_url: url, source: name || null, needs_review: raw.needs_review === true })
   }
   return out
-}
-
-/** The kinds of a guidance answer as `[kind, entry]` pairs. Accepts the kinds
- * keyed by name (`{kinds: {earthquake: {...}}}`), as a list
- * (`{kinds: [{kind: 'earthquake', ...}]}`), under `guidance` instead of
- * `kinds`, or keyed at the top level next to `lang`: the table is the
- * contract, not its container. */
-function kindEntries(raw: Record<string, unknown>): [string, Record<string, unknown>][] {
-  const container = raw.kinds ?? raw.guidance ?? raw
-  if (Array.isArray(container)) {
-    return container
-      .filter((e): e is Record<string, unknown> => !!e && typeof e === 'object')
-      .filter((e) => typeof e.kind === 'string')
-      .map((e) => [e.kind as string, e])
-  }
-  if (container && typeof container === 'object') {
-    return Object.entries(container as Record<string, unknown>)
-      .filter(([, v]) => !!v && typeof v === 'object' && !Array.isArray(v))
-      .map(([k, v]) => [k, v as Record<string, unknown>])
-  }
-  return []
 }
 
 /** The guidance table for one language, or null when the API does not
@@ -143,17 +101,17 @@ export function guidance(lang: string): Promise<GuidanceResponse | null> {
         if (versionPromise === null) guidanceByLang.delete(lang)
         return null
       }
-      const raw = await getJson<Record<string, unknown>>(
+      // 422: a language the catalogue does not have; 503: a broken
+      // catalogue. Either way the panel keeps the CAP "what to do".
+      const raw = await getJson<{ lang?: unknown; kinds?: unknown }>(
         `/api/guidance?lang=${encodeURIComponent(lang)}`,
       )
       if (raw === undefined) guidanceByLang.delete(lang) // retry next time
-      if (!raw || typeof raw !== 'object') return null
+      if (!raw || typeof raw !== 'object' || !raw.kinds || typeof raw.kinds !== 'object') return null
       const kinds: Record<string, KindGuidance> = {}
-      for (const [kind, entry] of kindEntries(raw)) {
-        // a phase may sit directly on the entry or under `phases`
-        const phases = (
-          entry.phases && typeof entry.phases === 'object' ? entry.phases : entry
-        ) as Record<string, unknown>
+      for (const [kind, value] of Object.entries(raw.kinds as Record<string, unknown>)) {
+        if (!value || typeof value !== 'object') continue
+        const phases = value as Record<string, unknown>
         const cleaned: KindGuidance = {
           kind: kind as Kind,
           before: cleanLines(phases.before),

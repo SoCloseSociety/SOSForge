@@ -1840,6 +1840,19 @@ a {
   overflow-wrap: anywhere;
 }
 
+/* A wording still under review: said after the source, quietly, in words
+   (a dashed rule marks it apart without a colour that could read as a
+   state or a rank). */
+.guidance-review {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px dashed var(--t3);
+  border-radius: var(--pill);
+  font-size: var(--ts-over);
+  color: var(--t3);
+}
+
 .live-links {
   list-style: none;
   margin: 0;

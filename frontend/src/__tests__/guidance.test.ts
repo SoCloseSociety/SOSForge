@@ -29,12 +29,46 @@ function serve(routes: Record<string, Route>) {
   return calls
 }
 
-const VERSION = { api: 2, features: ['events_cursor', 'guidance'], app: '1.1.0' }
-const LINE = (text: string, url = 'https://www.jma.go.jp/jma/en/Activities/earthquake.html') => ({
+/** `/api/version` of the merged v2 API, verbatim feature list. */
+const VERSION = {
+  api: 2,
+  features: [
+    'ws_zones',
+    'ws_out_of_scope',
+    'ws_error',
+    'snapshot_pinned',
+    'events_zone',
+    'events_cursor',
+    'events_etag',
+    'guidance',
+    'escalated',
+  ],
+}
+
+/** One line exactly as `GET /api/guidance` serves it (backend/app/guidance.py,
+ * `Catalogue._build`). */
+const LINE = (text: string, needsReview = false, url = 'https://www.jma.go.jp/jma/en/Activities/earthquake.html') => ({
   text,
-  source_url: url,
-  source: 'JMA',
+  source: { name: 'JMA', url, lang: 'en' },
+  needs_review: needsReview,
 })
+
+/** The whole body, exactly the merged contract: `{lang, version, phases,
+ * lines, needs_review, kinds: {<kind>: {before, during, after}}}`. */
+const BODY = {
+  lang: 'ja',
+  version: 3,
+  phases: ['before', 'during', 'after'],
+  lines: 3,
+  needs_review: 1,
+  kinds: {
+    earthquake: {
+      before: [LINE('Fix furniture to the walls.')],
+      during: [LINE('Drop, cover, hold on.')],
+      after: [LINE('Expect aftershocks.', true)],
+    },
+  },
+}
 
 beforeEach(() => resetGuidanceCache())
 afterEach(() => vi.unstubAllGlobals())
@@ -71,65 +105,54 @@ describe('feature detection', () => {
   })
 })
 
-describe('reading the catalogue', () => {
-  it('reads kinds keyed by name, with the language in the query', async () => {
-    const calls = serve({
-      '/api/version': { body: VERSION },
-      '/api/guidance': {
-        body: {
-          lang: 'ja',
-          kinds: {
-            earthquake: {
-              before: [LINE('Fix furniture to the walls.')],
-              during: [LINE('Drop, cover, hold on.')],
-              after: [LINE('Expect aftershocks.')],
-            },
-          },
-        },
-      },
-    })
+describe('reading the catalogue (contract v2, exact structure)', () => {
+  it('reads every phase, the publisher and the review flag, with the language in the query', async () => {
+    const calls = serve({ '/api/version': { body: VERSION }, '/api/guidance': { body: BODY } })
     const found = await guidanceFor('ja', 'earthquake')
-    expect(found?.during[0]).toEqual({
-      text: 'Drop, cover, hold on.',
-      source_url: 'https://www.jma.go.jp/jma/en/Activities/earthquake.html',
-      source: 'JMA',
+    expect(found).toEqual({
+      kind: 'earthquake',
+      before: [
+        {
+          text: 'Fix furniture to the walls.',
+          source_url: 'https://www.jma.go.jp/jma/en/Activities/earthquake.html',
+          source: 'JMA',
+          needs_review: false,
+        },
+      ],
+      during: [
+        {
+          text: 'Drop, cover, hold on.',
+          source_url: 'https://www.jma.go.jp/jma/en/Activities/earthquake.html',
+          source: 'JMA',
+          needs_review: false,
+        },
+      ],
+      after: [
+        {
+          text: 'Expect aftershocks.',
+          source_url: 'https://www.jma.go.jp/jma/en/Activities/earthquake.html',
+          source: 'JMA',
+          needs_review: true,
+        },
+      ],
     })
     expect(calls).toContain('/api/guidance?lang=ja')
   })
 
-  it('reads kinds as a list, phases under `phases`, and a nested source object', async () => {
+  it('drops a line with no https source rather than showing it as sourced', async () => {
     serve({
       '/api/version': { body: VERSION },
       '/api/guidance': {
         body: {
-          kinds: [
-            {
-              kind: 'tsunami',
-              phases: {
-                during: [
-                  { text: 'Go to high ground now.', source: { name: 'NOAA', url: 'https://www.tsunami.gov/' } },
-                ],
-              },
-            },
-          ],
-        },
-      },
-    })
-    const found = await guidanceFor('en', 'tsunami')
-    expect(found?.during).toEqual([
-      { text: 'Go to high ground now.', source_url: 'https://www.tsunami.gov/', source: 'NOAA' },
-    ])
-  })
-
-  it('drops a line with no official URL rather than showing it as sourced', async () => {
-    serve({
-      '/api/version': { body: VERSION },
-      '/api/guidance': {
-        body: {
+          ...BODY,
           kinds: {
             flood: {
-              before: [{ text: 'Move valuables upstairs.' }, LINE('Know your evacuation route.', 'https://www.ready.gov/floods')],
-              during: [{ text: 'Never drive through water.', source_url: 'javascript:alert(1)' }],
+              before: [
+                { text: 'Move valuables upstairs.', source: null, needs_review: false },
+                LINE('Know your evacuation route.', false, 'https://www.ready.gov/floods'),
+              ],
+              during: [LINE('Never drive through water.', false, 'javascript:alert(1)')],
+              after: [LINE('Boil water until told otherwise.', false, 'http://example.org/')],
             },
           },
         },
@@ -138,14 +161,29 @@ describe('reading the catalogue', () => {
     const found = await guidanceFor('en', 'flood')
     expect(found?.before.map((l) => l.text)).toEqual(['Know your evacuation route.'])
     expect(found?.during).toEqual([])
+    expect(found?.after).toEqual([])
   })
 
   it('a kind with nothing sourced is absent, so the panel shows what it did before', async () => {
     serve({
       '/api/version': { body: VERSION },
-      '/api/guidance': { body: { kinds: { heat: { before: [{ text: 'Drink water.' }] } } } },
+      '/api/guidance': { body: { ...BODY, kinds: { heat: { before: [{ text: 'Drink water.' }] } } } },
     })
     expect(await guidanceFor('en', 'heat')).toBeNull()
+  })
+
+  it('a broken catalogue (503) leaves the CAP instruction alone, and is asked again later', async () => {
+    const calls = serve({ '/api/version': { body: VERSION }, '/api/guidance': { status: 503, body: {} } })
+    expect(await guidanceFor('en', 'earthquake')).toBeNull()
+    expect(await guidanceFor('en', 'earthquake')).toBeNull()
+    expect(calls.filter((c) => c.startsWith('/api/guidance'))).toHaveLength(2)
+  })
+
+  it('an unknown language (422) is an answer: no guidance, and not asked again', async () => {
+    const calls = serve({ '/api/version': { body: VERSION }, '/api/guidance': { status: 422, body: {} } })
+    expect(await guidanceFor('xx', 'earthquake')).toBeNull()
+    expect(await guidanceFor('xx', 'earthquake')).toBeNull()
+    expect(calls.filter((c) => c.startsWith('/api/guidance'))).toHaveLength(1)
   })
 })
 

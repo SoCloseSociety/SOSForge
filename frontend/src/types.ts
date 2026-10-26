@@ -135,8 +135,8 @@ export type ServerMessage =
        * the buffer). Only this case deserves a halo, flash, and sound. */
       breaking: boolean;
       /** an UPDATE whose severity rose (or whose tsunami flag turned on)
-       * inside the breaking window: as urgent as a new event. Absent on an
-       * API that predates it. */
+       * inside the breaking window: as urgent as a new event. Always present
+       * on the v2 API (feature `escalated`); optional here for an older one. */
       escalated?: boolean;
     }
   | {
@@ -148,7 +148,10 @@ export type ServerMessage =
        * is easy to miss. */
       type: "purge";
       ids: string[];
-      reason: "stale" | "cancelled" | "lifted";
+      /** `expired`: the alert's own end time passed; `out_of_scope`: a held
+       * event left a zoned subscription. The client removes the ids whatever
+       * the reason -- an expired warning is as gone as a lifted one. */
+      reason: "stale" | "cancelled" | "lifted" | "expired" | "out_of_scope";
     }
   | {
       type: "tick";
@@ -175,6 +178,9 @@ export interface GuidanceLine {
   source_url: string;
   /** who publishes it, for display ("FEMA", "JMA"); the URL is the proof */
   source?: string | null;
+  /** the wording is a judgement call, or the source is not in this
+   * language: shown, but never presented as the authority's own words */
+  needs_review: boolean;
 }
 
 /** The three moments of the guidance, in reading order. */

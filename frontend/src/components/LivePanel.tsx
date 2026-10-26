@@ -56,10 +56,12 @@ function GuidancePhase({
   title,
   lines,
   sourceLabel,
+  reviewLabel,
 }: {
   title: string;
   lines: GuidanceLine[];
   sourceLabel: string;
+  reviewLabel: string;
 }) {
   if (lines.length === 0) return null;
   return (
@@ -69,9 +71,23 @@ function GuidancePhase({
         {lines.map((line, index) => (
           <li key={`${line.source_url}-${index}`}>
             <span>{line.text}</span>{" "}
-            <a href={line.source_url} target="_blank" rel="noreferrer">
-              {line.source ? line.source : sourceLabel} ↗
-            </a>
+            {/* One link per RUN of lines from the same page, on its last
+                line: four "Ready.gov (FEMA) -- Earthquakes" links in a row
+                buried the advice under its own citations. Every line still
+                ends at, or sits right above, the page it comes from. */}
+            {lines[index + 1]?.source_url === line.source_url ? null : (
+              <a href={line.source_url} target="_blank" rel="noreferrer">
+                {line.source ? line.source : sourceLabel} ↗
+              </a>
+            )}
+            {/* A paraphrase still being checked, or one whose only source is
+                in another language: shown, because it is still the best
+                advice we have, but never dressed as the authority's own
+                words -- the link says where it comes from, this says how
+                far to trust the wording. */}
+            {line.needs_review ? (
+              <span className="guidance-review">{reviewLabel}</span>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -111,6 +127,7 @@ function Guidance({
           title={t(`guidance.${phase}`)}
           lines={guidance[phase]}
           sourceLabel={t("guidance.source")}
+          reviewLabel={t("guidance.review")}
         />
       ))}
       {rest.length > 0 ? (
