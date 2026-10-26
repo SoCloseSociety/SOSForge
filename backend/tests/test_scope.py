@@ -269,18 +269,15 @@ class TestCompose:
 
 
 class TestSplit:
-    def test_nothing_past_the_first_message(self):
+    def test_an_empty_snapshot_is_one_empty_chunk(self):
         from app.scope import split
 
-        head, chunks = split([{"id": i} for i in range(3)], 5, 2, 10_000)
-        assert [e["id"] for e in head] == [0, 1, 2] and chunks == []
+        assert split([], 2, 10_000) == [[]]
 
     def test_order_is_kept_and_both_bounds_apply(self):
         from app.scope import split
 
-        events = [{"id": i, "pad": "x" * (500 if i == 4 else 10)} for i in range(9)]
-        head, chunks = split(events, 2, 3, 200)
-        assert [e["id"] for e in head] == [0, 1]
-        assert [[e["id"] for e in c] for c in chunks] == [[2, 3], [4], [5, 6, 7], [8]]
-        flat = head + [e for c in chunks for e in c]
-        assert flat == events
+        events = [{"id": i, "pad": "x" * (500 if i == 2 else 10)} for i in range(7)]
+        chunks = split(events, 3, 200)
+        assert [[e["id"] for e in c] for c in chunks] == [[0, 1], [2], [3, 4, 5], [6]]
+        assert [e for c in chunks for e in c] == events

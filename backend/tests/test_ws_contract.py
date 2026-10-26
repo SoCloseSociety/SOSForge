@@ -26,8 +26,6 @@ SAPPORO = (43.0618, 141.3545)
 LOS_ANGELES = (34.0522, -118.2437)
 TOKYO_300 = "35.6762,139.6503,300"
 LEGACY_SNAPSHOT_KEYS = {"type", "server_time", "events", "stats", "sources"}
-# `more` is the only key the chunked snapshot adds to the first message
-SNAPSHOT_KEYS = LEGACY_SNAPSHOT_KEYS | {"more"}
 
 
 def tick() -> dict:
@@ -61,7 +59,7 @@ def whole_snapshot(ws) -> tuple[list[dict], list[dict]]:
     first = ws.receive_json()
     assert first["type"] == "snapshot"
     messages, events = [first], list(first["events"])
-    remaining = first["more"]
+    remaining = first.get("more", 0)
     while remaining:
         message = ws.receive_json()
         messages.append(message)
@@ -90,8 +88,7 @@ class TestNoParameters:
         asyncio.run(v2.pipeline.emit(ev("a", *TOKYO)))
         with client.websocket_connect("/ws") as ws:
             snap = ws.receive_json()
-        assert set(snap) == SNAPSHOT_KEYS
-        assert snap["more"] == 0
+        assert set(snap) == LEGACY_SNAPSHOT_KEYS
         assert [e["id"] for e in snap["events"]] == ["test:a"]
 
     def test_every_message_arrives_unchanged(self, v2, client, ev):
@@ -125,9 +122,14 @@ class TestSnapshot:
             v2.pipeline.emit(ev("red", 10, 40, minutes_ago=19 * 60, severity=Severity.EXTREME))
         )
         asyncio.run(v2.pipeline.emit(ev("wind", 10, 41, minutes_ago=30 * 60, ongoing=True)))
-        with client.websocket_connect("/ws") as ws:
+        with client.websocket_connect("/ws?chunks=1") as ws:
             ids = [e["id"] for e in whole_snapshot(ws)[0]]
         assert ids == ["test:r0", "test:r1", "test:red", "test:wind"]
+        # without the opt-in: the pre-v2 rule, latest snapshot_size only
+        with client.websocket_connect("/ws") as ws:
+            snap = ws.receive_json()
+        assert [e["id"] for e in snap["events"]] == ["test:r0", "test:r1"]
+        assert set(snap) == LEGACY_SNAPSHOT_KEYS
 
     def test_a_filtered_snapshot_is_filtered_before_it_is_cut(self, v2, client, ev, monkeypatch):
         monkeypatch.setattr(v2.main.settings, "snapshot_size", 2)
@@ -240,6 +242,9 @@ class TestRefusal:
             ("kinds=quake", "bad_kinds"),
             ("unplaced=FR", "bad_unplaced"),
             ("zones=0,0,10&zones=1,1,10", "bad_zones"),
+            ("chunks=2", "bad_chunks"),
+            ("chunks=yes", "bad_chunks"),
+            ("chunks=1&chunks=1", "bad_chunks"),
         ],
     )
     def test_bad_parameters_are_refused_with_a_reason_then_closed(self, client, query, code):
@@ -298,16 +303,17 @@ class TestEviction:
 
 
 class TestChunkedSnapshot:
-    """The pinned snapshot was 2.7 times the old one in a single message, and
-    a client's 15 s silence watchdog runs while it downloads. The first
-    message now carries what every client got before pinning; the rest
-    follows in small `snapshot_more` chunks, before any delta."""
+    """`/ws?chunks=1`. The pinned snapshot in one message was 2.3 to 2.7 times
+    the old one, and a client's 15 s silence watchdog runs while it
+    downloads. Opted in, the composed snapshot goes out as `snapshot` (with
+    `more`) and `snapshot_more` chunks, all before any delta. Without the
+    opt-in nothing changes, because pre-chunking web builds throw on an
+    unknown frame and installed macOS agents are old."""
 
     @pytest.fixture
     def pinned_store(self, v2, ev, monkeypatch):
         monkeypatch.setattr(v2.main.settings, "snapshot_size", 2)
         monkeypatch.setattr(v2.main, "SNAPSHOT_CHUNK_EVENTS", 2)
-        monkeypatch.setattr(v2.main, "SNAPSHOT_TICK_EVERY", 1000)
         for i in range(3):
             asyncio.run(v2.pipeline.emit(ev(f"r{i}", *YOKOHAMA, minutes_ago=i)))
         for i in range(5):
@@ -316,25 +322,34 @@ class TestChunkedSnapshot:
                     ev(f"p{i}", *YOKOHAMA, minutes_ago=600 + i, severity=Severity.SEVERE)
                 )
             )
+        # latest 2, then every pinned one; r2 is neither
         return ["test:r0", "test:r1", "test:p0", "test:p1", "test:p2", "test:p3", "test:p4"]
 
     def test_chunks_follow_in_composition_order_and_count_down(self, client, pinned_store):
-        with client.websocket_connect("/ws") as ws:
+        with client.websocket_connect("/ws?chunks=1") as ws:
             events, messages = whole_snapshot(ws)
         assert [e["id"] for e in events] == pinned_store
+        assert set(messages[0]) == LEGACY_SNAPSHOT_KEYS | {"more"}
         assert messages[0]["more"] == 5
+        assert [len(m["events"]) for m in messages] == [2, 2, 2, 1]
         assert [m["type"] for m in messages] == ["snapshot"] + ["snapshot_more"] * 3
         assert [m["remaining"] for m in messages[1:]] == [3, 1, 0]
-        assert [len(m["events"]) for m in messages[1:]] == [2, 2, 1]
         for chunk in messages[1:]:
             assert set(chunk) == {"type", "events", "remaining", "server_time"}
 
-    def test_a_client_that_ignores_chunks_sees_what_it_saw_before(self, v2, client, pinned_store):
-        # the pre-chunking, pre-pinning snapshot: the latest snapshot_size primaries
+    def test_without_the_opt_in_the_snapshot_is_the_pre_v2_one(self, v2, client, pinned_store):
         before = v2.store.recent(limit=v2.main.settings.snapshot_size, primary_only=True)
         with client.websocket_connect("/ws") as ws:
-            first = ws.receive_json()
-        assert [e["id"] for e in first["events"]] == [e.id for e in before]
+            snap = ws.receive_json()
+            assert drain(ws) == []  # no snapshot_more behind it
+        assert set(snap) == LEGACY_SNAPSHOT_KEYS
+        assert [e["id"] for e in snap["events"]] == [e.id for e in before]
+
+    def test_a_small_snapshot_is_one_message_with_more_zero(self, client):
+        with client.websocket_connect("/ws?chunks=1") as ws:
+            snap = ws.receive_json()
+            assert drain(ws) == []
+        assert snap["events"] == [] and snap["more"] == 0
 
     def test_no_delta_overtakes_a_chunk(self, v2, client, ev, pinned_store, monkeypatch):
         """A delta broadcast while the snapshot is being cut is queued, and
@@ -349,49 +364,32 @@ class TestChunkedSnapshot:
             return out
 
         monkeypatch.setattr(v2.main, "split", split_then_broadcast)
-        with client.websocket_connect("/ws") as ws:
+        with client.websocket_connect("/ws?chunks=1") as ws:
             _, messages = whole_snapshot(ws)
             assert all(m["type"] in ("snapshot", "snapshot_more") for m in messages)
             (update,) = drain(ws)
         assert update["type"] == "update" and update["event"]["id"] == "test:p4"
         assert update["event"]["severity"] == "extreme"
 
-    def test_keepalive_ticks_between_chunks_never_after_the_last(
-        self, client, pinned_store, monkeypatch
-    ):
-        import app.main as main
-
-        monkeypatch.setattr(main, "SNAPSHOT_TICK_EVERY", 1)
-        with client.websocket_connect("/ws") as ws:
-            events, messages = whole_snapshot(ws)
-        assert [m["type"] for m in messages] == [
-            "snapshot",
-            "snapshot_more",
-            "tick",
-            "snapshot_more",
-            "tick",
-            "snapshot_more",
-        ]
-        assert [e["id"] for e in events] == pinned_store
-
     def test_the_byte_budget_cuts_a_chunk_early(self, client, pinned_store, monkeypatch):
         import app.main as main
 
         monkeypatch.setattr(main, "SNAPSHOT_CHUNK_EVENTS", 100)
-        monkeypatch.setattr(main, "SNAPSHOT_CHUNK_BYTES", 1)  # one event per chunk
-        with client.websocket_connect("/ws") as ws:
-            _, messages = whole_snapshot(ws)
-        assert [len(m["events"]) for m in messages[1:]] == [1] * 5
+        monkeypatch.setattr(main, "SNAPSHOT_CHUNK_BYTES", 1)  # one event per message
+        with client.websocket_connect("/ws?chunks=1") as ws:
+            events, messages = whole_snapshot(ws)
+        assert [len(m["events"]) for m in messages] == [1] * 7
+        assert [e["id"] for e in events] == pinned_store
 
     def test_every_chunked_id_is_held_from_the_start(self, v2, client, ev, pinned_store):
-        with client.websocket_connect(f"/ws?zones={TOKYO_300}") as ws:
+        with client.websocket_connect(f"/ws?zones={TOKYO_300}&chunks=1") as ws:
             events, messages = whole_snapshot(ws)
             assert [e["id"] for e in events] == pinned_store
             assert "scope" in messages[0] and "unplaced" in messages[0]
             assert all("scope" not in m for m in messages[1:])
-            # p3 travelled in the LAST chunk; relocating it must still reach us
-            emit(ws, v2, ev("p3", *SAPPORO, minutes_ago=603, severity=Severity.SEVERE))
-            assert drain(ws) == [{"type": "purge", "ids": ["test:p3"], "reason": "out_of_scope"}]
+            # p4 travelled in the LAST chunk; relocating it must still reach us
+            emit(ws, v2, ev("p4", *SAPPORO, minutes_ago=604, severity=Severity.SEVERE))
+            assert drain(ws) == [{"type": "purge", "ids": ["test:p4"], "reason": "out_of_scope"}]
 
     def test_a_scoped_snapshot_chunks_only_what_is_in_scope(self, v2, client, ev, pinned_store):
         for i in range(4):
@@ -400,10 +398,20 @@ class TestChunkedSnapshot:
                     ev(f"la{i}", *LOS_ANGELES, minutes_ago=700 + i, severity=Severity.EXTREME)
                 )
             )
-        with client.websocket_connect(f"/ws?zones={TOKYO_300}") as ws:
+        with client.websocket_connect(f"/ws?zones={TOKYO_300}&chunks=1") as ws:
             events, messages = whole_snapshot(ws)
         assert [e["id"] for e in events] == pinned_store
         assert messages[0]["more"] == 5
+
+    def test_chunks_alone_is_not_a_scope(self, v2, client, ev, pinned_store):
+        asyncio.run(v2.pipeline.emit(ev("la", *LOS_ANGELES, minutes_ago=1)))
+        with client.websocket_connect("/ws?chunks=1") as ws:
+            events, messages = whole_snapshot(ws)
+            emit(ws, v2, ev("far", *LOS_ANGELES))
+            (message,) = drain(ws)
+        assert "scope" not in messages[0]
+        assert "test:la" in [e["id"] for e in events]  # Los Angeles, no zone asked
+        assert message["event"]["id"] == "test:far"
 
 
 def test_version_announces_the_chunked_snapshot(client):

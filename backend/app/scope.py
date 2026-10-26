@@ -360,46 +360,50 @@ def pinned(event: Event) -> bool:
     return event.ongoing or event.tsunami or SEVERITY_RANK[event.severity.value] >= SEVERE_RANK
 
 
-def compose(events: list[Event], size: int, scope: Scope | None) -> tuple[list[Event], Unplaced]:
+def compose(
+    events: list[Event], size: int, scope: Scope | None, *, pin: bool = True
+) -> tuple[list[Event], Unplaced]:
     """A snapshot (or a v2 full read): the latest `size` events of the scope,
-    plus every older one that is `pinned`.
+    plus, with `pin`, every older one that is `pinned`.
 
     `events` must be sorted newest first (what `EventStore.recent` returns).
     The scope is applied BEFORE the size cut, otherwise a Tokyo client would
     get the few Tokyo events that happen to sit in the planet's latest 300.
+    Without `pin` this is the snapshot rule every client had before v2.
     """
     unplaced = Unplaced()
     if scope is not None:
         events, unplaced = scope.apply(events)
     head = events[:size]
-    tail = [e for e in events[size:] if pinned(e)]
-    return head + tail, unplaced
+    if not pin:
+        return head, unplaced
+    return head + [e for e in events[size:] if pinned(e)], unplaced
 
 
 def split(
-    events: list[dict[str, Any]], first: int, max_events: int, max_bytes: int
-) -> tuple[list[dict[str, Any]], list[list[dict[str, Any]]]]:
-    """A composed snapshot, cut for the wire: the first `first` events, then
-    chunks of at most `max_events` events and `max_bytes` of serialized JSON.
+    events: list[dict[str, Any]], max_events: int, max_bytes: int
+) -> list[list[dict[str, Any]]]:
+    """A composed snapshot cut for the wire: chunks of at most `max_events`
+    events and `max_bytes` of serialized JSON, in order. Never empty: a
+    snapshot with no event is one empty chunk, so there is always a first
+    message.
 
-    The pinned events made one snapshot message 2.7 times larger, and a
-    client's 15 s silence watchdog runs while it downloads: on a slow link a
-    fresh tab closed mid-snapshot and reconnected forever. Small messages
+    The pinned snapshot in ONE message was 2.3 to 2.7 times the old one, and
+    a client's 15 s silence watchdog runs while it downloads: on a slow link
+    a fresh tab closed mid-snapshot and reconnected forever. Small messages
     keep every gap short. The byte budget is what keeps a chunk small on a
-    day unlike the one the count was measured on (long CAP descriptions in
-    a row compress less well than the average). Order is preserved.
+    day unlike the one the count was measured on (long CAP descriptions in a
+    row compress less well than the average).
     """
-    head, rest = events[:first], events[first:]
     chunks: list[list[dict[str, Any]]] = []
     current: list[dict[str, Any]] = []
     size = 0
-    for event in rest:
+    for event in events:
         length = len(json.dumps(event, default=str))
         if current and (len(current) >= max_events or size + length > max_bytes):
             chunks.append(current)
             current, size = [], 0
         current.append(event)
         size += length
-    if current:
-        chunks.append(current)
-    return head, chunks
+    chunks.append(current)
+    return chunks
