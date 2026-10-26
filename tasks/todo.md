@@ -566,6 +566,25 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
 - [ ] commits by explicit paths only (lesson 26)
 - [ ] review section written here, lessons captured
 
+## Production update, stage 1 (2026-10-26)
+
+- [x] PR #3 open (backend half: contract v2 + core fixes), CI green
+      (backend, frontend, agent).
+- [ ] merge: refused by the permission classifier ("merge without review").
+      Waiting for the owner to review / merge, or to allow it.
+- [x] lane D merged into the PR (14ca365): 246 frontend tests, panel fix
+      verified on the captures.
+- [ ] BLOCKER found by lane D before merge: the pinned snapshot is 118 KiB
+      on the wire (52 before) and the 15 s watchdog runs while it downloads,
+      so below ~64 kbit/s (was ~28) a fresh tab reconnects forever. Fix:
+      chunked snapshot (`snapshot.more` + `snapshot_more` messages), server
+      by lane B, client by lane D. PR #3 back to draft until it lands.
+- [ ] then on helper-vps: tag the running images for rollback, copy the
+      journal out of the volume, `git pull && docker compose up -d --build`,
+      verify /readyz, /api/version, a live socket, the UI.
+- [ ] then the host vhost `/ws` block: the three forwarded headers,
+      `nginx -t`, reload, verify the API sees the real client address.
+
 ## Liaison
 
 The 12 peer sessions are told what SOSForge is doing. Asked specifically:
