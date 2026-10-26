@@ -98,8 +98,20 @@ describe('connectLive: URL', () => {
     stop = connectLive()
     // jsdom serves the page on http://localhost:3000: the socket must target
     // the same host (the /ws proxy), never a hard-coded one.
-    expect(lastSocket().url).toBe(`ws://${location.host}/ws`)
-    expect(lastSocket().url).toBe('ws://localhost:3000/ws')
+    expect(lastSocket().url).toBe(`ws://${location.host}/ws?chunks=1`)
+    expect(lastSocket().url).toBe('ws://localhost:3000/ws?chunks=1')
+  })
+
+  /* The chunked snapshot is OPT-IN (decision 2026-10-26): a server sends
+   * chunks only to a client that asks, so a tab on an older build keeps
+   * receiving the snapshot whole. This build reads chunks, so it asks --
+   * and every reconnect asks again. */
+  it('asks for the chunked snapshot, on every connection', () => {
+    stop = connectLive()
+    expect(new URL(lastSocket().url).searchParams.get('chunks')).toBe('1')
+    lastSocket().close()
+    vi.advanceTimersByTime(1000)
+    expect(new URL(lastSocket().url).searchParams.get('chunks')).toBe('1')
   })
 })
 

@@ -35,7 +35,10 @@ export function connectLive(): () => void {
 
   const url = () => {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${protocol}//${location.host}/ws`
+    // `chunks=1`: ask for the snapshot in `snapshot_more` chunks. Opt-in, so a
+    // tab still running an older build gets the snapshot whole, as it always
+    // did, instead of a first chunk it cannot read the rest of.
+    return `${protocol}//${location.host}/ws?chunks=1`
   }
 
   const scheduleReconnect = () => {
