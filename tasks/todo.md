@@ -558,7 +558,13 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
       The pinned snapshot grew 331 -> 879 KiB; JSON deflates ~8.5x and
       uvicorn negotiates permessage-deflate by default, so ~100 KiB on the
       wire. Accepted.
-- [ ] lane C merged, `make smoke` shows every source `up` with events seen
+- [x] lane C merged (5d6733d) and integrated (47092b4: registry built,
+      zones match `bbox`, change log judges the previous box). Live on the
+      integrated code, :8370, 2026-10-26 21:31 UTC: 32 sources, 32 up, 0
+      degraded; the four new ones all with events (imo 15, imo-volcano 3,
+      jma-volcano 12, ncs 300 seen / 48 ingested); 101 of 928 events carry a
+      bbox. `space` and `jma-tsunami` saw 0 CURRENT events: their only items
+      were expired and are now withdrawn at the source, as intended.
 - [ ] lane D merged, screenshots at 390 / 1440 px, both themes, measured
 - [ ] lane A rebuilt against the merged backend, emulator run of every funnel
       step, signed APK dropped with its CHECKLIST
