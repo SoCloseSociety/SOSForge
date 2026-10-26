@@ -570,7 +570,9 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
       funnel + watch service + map run on emulator 5590 under the adb_file
       lock, 4 real notifications. Signed APK 0.1.0 (code 5), sha256 0307549...,
       signer verified with apksigner; dropped in `_apk-drops/sosforge/` with
-      its CHECKLIST. Separate PR #4 (touches nothing deployed).
+      its CHECKLIST. Separate PR #4 (touches nothing deployed). Then 0.1.1
+      (code 6, d537570): the clock-skew fix lane D found in the web, same
+      rule; sha256 971ebc3..., same key, unit tests only (no emulator rerun).
 - [ ] lane E findings reproduced one by one before any fix (lesson 25)
 - [ ] commits by explicit paths only (lesson 26)
 - [ ] review section written here, lessons captured
