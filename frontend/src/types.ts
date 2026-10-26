@@ -126,6 +126,18 @@ export type ServerMessage =
       events: SosEvent[];
       stats: Stats;
       sources: SourceHealth[];
+      /** events still to come in `snapshot_more` chunks; 0 or absent (an
+       * older server) means this snapshot is complete */
+      more?: number;
+    }
+  | {
+      /** the rest of the snapshot, in chunks small enough to land between
+       * two watchdog checks on a slow link. All of them arrive before any
+       * delta; `remaining: 0` closes the snapshot. */
+      type: "snapshot_more";
+      server_time: string;
+      events: SosEvent[];
+      remaining: number;
     }
   | {
       type: "event" | "update";

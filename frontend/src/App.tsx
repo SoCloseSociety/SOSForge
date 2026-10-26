@@ -51,6 +51,7 @@ function Kpis({ now }: { now: number }) {
   const sources = useStore((s) => s.sources);
   const events = useStore((s) => s.events);
   const t = useStore((s) => s.t);
+  const loading = useStore((s) => s.snapshotRemaining > 0);
 
   const lastQuake = useMemo(
     () => events.find((e) => e.kind === "earthquake"),
@@ -64,7 +65,10 @@ function Kpis({ now }: { now: number }) {
         <div className="label">{t("kpi.quakes")}</div>
         <div className="value">{stats?.earthquakes_last_hour ?? "--"}</div>
         <div className="sub">
-          {lastQuake
+          {/* the newest quake may still be in a snapshot chunk on its way */}
+          {loading
+            ? t("kpi.loading")
+            : lastQuake
             ? t("kpi.quakes.last", {
                 age: formatAge(t, (now - Date.parse(lastQuake.time)) / 1000),
               })
@@ -146,6 +150,7 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
 
 function Filters({ events, alarms }: { events: SosEvent[]; alarms: Alarm[] }) {
   const filters = useStore((s) => s.filters);
+  const loading = useStore((s) => s.snapshotRemaining > 0);
   const toggleKind = useStore((s) => s.toggleKind);
   const setMinMagnitude = useStore((s) => s.setMinMagnitude);
   const setWindow = useStore((s) => s.setWindow);
@@ -261,7 +266,12 @@ function Filters({ events, alarms }: { events: SosEvent[]; alarms: Alarm[] }) {
             >
               <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
               {kindLabel(t, kind)}
-              <span className="count">{n}</span>
+              {/* "+" while the snapshot is still arriving: a count of what
+                  has landed so far is a floor, not a total */}
+              <span className="count">
+                {n}
+                {loading ? "+" : ""}
+              </span>
             </button>
           );
         })}
@@ -492,6 +502,7 @@ export default function App() {
   const selected = useStore((s) => s.selected);
   const lang = useStore((s) => s.lang);
   const t = useStore((s) => s.t);
+  const remaining = useStore((s) => s.snapshotRemaining);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
@@ -581,7 +592,8 @@ export default function App() {
           <Feed
             events={visible}
             now={now}
-            emptyKey={emptyReason({ events, visible, filters })}
+            remaining={remaining}
+            emptyKey={emptyReason({ events, visible, filters, remaining })}
           />
         </section>
         <div className="map-column">

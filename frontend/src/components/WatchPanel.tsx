@@ -64,6 +64,7 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
   const watch = useStore((s) => s.watch)
   const setWatch = useStore((s) => s.setWatch)
   const soundOn = useStore((s) => s.soundOn)
+  const loading = useStore((s) => s.snapshotRemaining > 0)
   const select = useStore((s) => s.select)
   const t = useStore((s) => s.t)
 
@@ -304,7 +305,16 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
         </button>
       </div>
 
-      {alarms.length === 0 ? (
+      {alarms.length === 0 && loading ? (
+        // "nothing concerns this area" is a claim about EVERY event: not
+        // made while part of the snapshot has not arrived yet
+        <p className="state" role="status">
+          <span className="state-glyph" aria-hidden="true">
+            ○
+          </span>
+          <span>{t('watch.checking')}</span>
+        </p>
+      ) : alarms.length === 0 ? (
         <p className="state state-ok">
           <span className="state-glyph" aria-hidden="true">
             ✓

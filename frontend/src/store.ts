@@ -85,6 +85,10 @@ interface State {
    * (the watch panel) mounts and unmounts with the phone filter sheet: every
    * opening forgot it and the whole last hour alarmed again. */
   alarmed: Set<string>;
+  /** snapshot events still on their way (`snapshot.more`, then each chunk's
+   * `remaining`). While above zero, nothing on screen may claim the picture
+   * is complete: no "no event", no final count. */
+  snapshotRemaining: number;
 
   ingest: (message: ServerMessage) => void;
   setConnected: (value: boolean) => void;
@@ -292,6 +296,7 @@ export const useStore = create<State>((set, get) => ({
   focus: null,
   watch: loadWatch(),
   alarmed: loadAlarmed(),
+  snapshotRemaining: 0,
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -374,9 +379,31 @@ export const useStore = create<State>((set, get) => ({
         // a reconnection starts from a clean state: without this, "just
         // happened" halos would survive an outage of several minutes
         fresh: new Set(),
+        snapshotRemaining: Math.max(0, Number(message.more) || 0),
       });
       return;
     }
+
+    if (message.type === "snapshot_more") {
+      // The rest of the snapshot: HISTORY, upserted like the snapshot's own
+      // events -- no halo, no sound, nothing "breaking" about an event that
+      // was already in the buffer before this tab connected.
+      set((s) => {
+        const byId = new Map(s.events.map((e) => [e.id, e]));
+        for (const event of message.events ?? []) byId.set(event.id, event);
+        const events = [...byId.values()].sort(
+          (a, b) => Date.parse(b.time) - Date.parse(a.time),
+        );
+        return {
+          events: capEvents(events),
+          clockSkew: new Date(message.server_time).getTime() - now,
+          lastMessageAt: now,
+          snapshotRemaining: Math.max(0, Number(message.remaining) || 0),
+        };
+      });
+      return;
+    }
+
 
     if (message.type === "tick") {
       set({
@@ -399,6 +426,13 @@ export const useStore = create<State>((set, get) => ({
         fresh: new Set([...s.fresh].filter((id) => !gone.has(id))),
         lastMessageAt: now,
       }));
+      return;
+    }
+
+    // A frame type this build does not know (a newer server): alive, but
+    // not an event. Reading it as one threw on `undefined.id`.
+    if (message.type !== "event" && message.type !== "update") {
+      set({ lastMessageAt: now });
       return;
     }
 
