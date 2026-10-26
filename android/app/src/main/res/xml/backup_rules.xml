@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and below: no backup. The places (the owner's own coordinates) stay on this device. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="root" path="." />
+</full-backup-content>

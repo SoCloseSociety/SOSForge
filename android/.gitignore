@@ -1,0 +1,12 @@
+# Never committed: build outputs, Gradle state, the local SDK path, keys and their passwords.
+/.gradle/
+/build/
+/app/build/
+/dist/
+/local.properties
+*.jks
+*.keystore
+*.properties.local
+/.kotlin/
+/captures/
+.DS_Store
