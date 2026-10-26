@@ -396,3 +396,22 @@ worktree, and an agent with no worktree of its own opened its shell there.
   claims to measure, or the measurement says nothing about that code.
 - Brief every agent with an absolute working directory, even a read-only
   one: "the repo" is wherever the shell happens to be.
+
+## 29. A symlink into another tree's node_modules loads a second React
+
+**What happened.** Just before a production PR, 31 of 166 frontend tests
+failed in the main checkout with "Cannot read properties of null (reading
+'useCallback')", on code identical to `main`. Someone had run an `ln -s` of
+a worktree's `frontend/node_modules` onto the main checkout's. The target
+already existed as a directory, so `ln` created the link INSIDE it:
+`node_modules/node_modules`. Node's resolution walks up through that path,
+so `@testing-library/react` found the worktree's React while the app found
+the checkout's: two Reacts, every hook null.
+
+**The rules.**
+- An agent never creates, links or installs anything in a tree it does not
+  own; it passes a path or a URL to the tool instead.
+- Before trusting a red frontend suite on unchanged code, look for a second
+  copy of React (`find node_modules -path '*/node_modules/react/package.json'`)
+  and for anything under `node_modules` newer than the last install.
+- `ln -s src dst` onto an existing directory does not replace it: it nests.
