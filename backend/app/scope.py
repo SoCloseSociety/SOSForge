@@ -31,6 +31,7 @@ is measured to be useless for a country the size of the United States
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections.abc import Iterable
@@ -337,3 +338,32 @@ def compose(events: list[Event], size: int, scope: Scope | None) -> tuple[list[E
     head = events[:size]
     tail = [e for e in events[size:] if pinned(e)]
     return head + tail, unplaced
+
+
+def split(
+    events: list[dict[str, Any]], first: int, max_events: int, max_bytes: int
+) -> tuple[list[dict[str, Any]], list[list[dict[str, Any]]]]:
+    """A composed snapshot, cut for the wire: the first `first` events, then
+    chunks of at most `max_events` events and `max_bytes` of serialized JSON.
+
+    The pinned events made one snapshot message 2.7 times larger, and a
+    client's 15 s silence watchdog runs while it downloads: on a slow link a
+    fresh tab closed mid-snapshot and reconnected forever. Small messages
+    keep every gap short. The byte budget is what keeps a chunk small on a
+    day unlike the one the count was measured on (long CAP descriptions in
+    a row compress less well than the average). Order is preserved.
+    """
+    head, rest = events[:first], events[first:]
+    chunks: list[list[dict[str, Any]]] = []
+    current: list[dict[str, Any]] = []
+    size = 0
+    for event in rest:
+        length = len(json.dumps(event, default=str))
+        if current and (len(current) >= max_events or size + length > max_bytes):
+            chunks.append(current)
+            current, size = [], 0
+        current.append(event)
+        size += length
+    if current:
+        chunks.append(current)
+    return head, chunks

@@ -31,7 +31,15 @@ from app.hub import Client, ConnectionQuota, hub
 from app.models.event import Event, Kind, utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
-from app.scope import SCOPE_PARAMS, Scope, ScopeError, compose, parse_point_scope, parse_scope
+from app.scope import (
+    SCOPE_PARAMS,
+    Scope,
+    ScopeError,
+    compose,
+    parse_point_scope,
+    parse_scope,
+    split,
+)
 from app.sources.aftershock import AftershockSource
 from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
@@ -200,6 +208,19 @@ def build_sources() -> list[Source]:
     return built
 
 
+def tick_message() -> dict:
+    """The freshness proof: server clock, store stats, every source's health."""
+    return {
+        "type": "tick",
+        "server_time": utcnow().isoformat(),
+        "stats": store.stats(),
+        "sources": [
+            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+        ],
+        "clients": hub.client_count,
+    }
+
+
 async def heartbeat() -> None:
     """One tick per second: proves to the client that the feed is alive and
     resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
@@ -212,18 +233,7 @@ async def heartbeat() -> None:
         try:
             if not hub.client_count:
                 continue
-            await hub.broadcast(
-                {
-                    "type": "tick",
-                    "server_time": utcnow().isoformat(),
-                    "stats": store.stats(),
-                    "sources": [
-                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
-                        for s in sources
-                    ],
-                    "clients": hub.client_count,
-                }
-            )
+            await hub.broadcast(tick_message())
         except Exception as exc:
             log.warning("heartbeat: %s", exc)
 
@@ -424,6 +434,7 @@ FEATURES = [
     "events_etag",  # ETag / If-None-Match -> 304 on every v2 read
     "guidance",  # /api/guidance?lang=en|fr|es|ja|id
     "escalated",  # `update` messages may carry escalated: true, forwarded untouched
+    "snapshot_chunked",  # snapshot carries `more`; the rest follows as snapshot_more
 ]
 
 
@@ -715,6 +726,18 @@ async def api_sources() -> dict:
 
 
 WS_QUERY_MAX = 2000
+# The snapshot on the wire. The first message carries the latest
+# `snapshot_size` events -- exactly what every client saw before pinning, so
+# a client that ignores `snapshot_more` loses nothing. The pinned rest
+# follows in chunks small enough that no message takes long on a slow link.
+# Chosen by measurement on live data (tasks/todo.md, lane B, chunking): with
+# permessage-deflate the 32 KB JSON budget gave chunks of at most 6.0 KiB on
+# the wire, half the 12 KiB ceiling, so a day that compresses twice as badly
+# still fits. A tick every 3 chunks keeps the bytes a pre-chunking client
+# waits through under its old snapshot (20 KiB against 52.7).
+SNAPSHOT_CHUNK_EVENTS = 40
+SNAPSHOT_CHUNK_BYTES = 32_000
+SNAPSHOT_TICK_EVERY = 3
 
 
 def ws_scope(ws: WebSocket) -> Scope | None:
@@ -790,21 +813,54 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             settings.snapshot_size,
             scope,
         )
+        if scope is not None:
+            # every chunked id too: a chunk still in flight is already held
+            for event in snapshot:
+                client.hold(event.id)
+        head, chunks = split(
+            [e.public() for e in snapshot],
+            settings.snapshot_size,
+            SNAPSHOT_CHUNK_EVENTS,
+            SNAPSHOT_CHUNK_BYTES,
+        )
+        remaining = len(snapshot) - len(head)
         message: dict = {
             "type": "snapshot",
             "server_time": utcnow().isoformat(),
-            "events": [e.public() for e in snapshot],
+            "events": head,
             "stats": store.stats(),
             "sources": [
                 {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
             ],
+            "more": remaining,
         }
         if scope is not None:
-            for event in snapshot:
-                client.hold(event.id)
             message["scope"] = scope.public()
             message["unplaced"] = placed.public()
         await ws.send_text(json.dumps(message, default=str))
+        # The rest of the snapshot, before the pump below starts: no queued
+        # delta can overtake a chunk, so a revision always lands on top of
+        # the version it revises.
+        for index, chunk in enumerate(chunks, start=1):
+            remaining -= len(chunk)
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "snapshot_more",
+                        "events": chunk,
+                        "remaining": remaining,
+                        "server_time": utcnow().isoformat(),
+                    },
+                    default=str,
+                )
+            )
+            if remaining and index % SNAPSHOT_TICK_EVERY == 0:
+                # A client built before chunking ignores `snapshot_more`, and
+                # its watchdog only counts the messages it understands. A
+                # real tick every few chunks keeps the bytes between two of
+                # those under the pre-chunking snapshot, so that client works
+                # on every link it worked on before.
+                await ws.send_text(json.dumps(tick_message(), default=str))
 
         async def pump() -> None:
             getter = asyncio.ensure_future(client.queue.get())
