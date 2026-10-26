@@ -176,3 +176,40 @@ describe('the severity palette is one palette, whatever the theme', () => {
     }
   })
 })
+
+/** The event panel floats over the MAP, which is dark in both themes with
+ * light labels anywhere on it: its surface is measured over the darkest and
+ * the lightest pixel the map can show, not over the page grounds. */
+describe('the event panel floating over the map', () => {
+  const MAP_EXTREMES: RGBA[] = [
+    [0, 0, 0, 1],
+    [255, 255, 255, 1],
+  ]
+
+  /* jsdom has no compositor, so the defect itself cannot be reproduced here:
+   * it was seen in Chrome (2026-10-26) as a slab of page ground painted under
+   * the panel, down to the bottom of the map, whenever the panel's background
+   * was OPAQUE (Chrome then composites the scroller). The rule that prevents
+   * it is pinned instead: the panel's surface must keep an alpha under 1. */
+  it('is translucent in both themes, which is what keeps the map visible under it', () => {
+    const rule = /\.live-panel\s*\{[^}]*\bbackground:\s*var\((--[a-z-]+)\)/.exec(
+      css.replace(/\/\*[\s\S]*?\*\//g, ''),
+    )
+    expect(rule?.[1]).toBe('--surface-float')
+    for (const pal of [LUNAR, SOFT]) expect(tok(pal, '--surface-float')[3]).toBeLessThan(1)
+  })
+
+  it.each([
+    ['Lunar', LUNAR],
+    ['Soft', SOFT],
+  ])('keeps text and every severity word at 4.5:1 over any map pixel (%s)', (_name, pal) => {
+    const surface = tok(pal, '--surface-float')
+    const inks = ['--t1', '--t2', '--t3', '--cyan', ...RANKS.map((r) => `--sev-${r}-text`)]
+    for (const under of MAP_EXTREMES) {
+      const ground = over(surface, under)
+      for (const ink of inks) {
+        expect(ratio(tok(pal, ink), ground), `${ink} over ${under.join(',')}`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+  })
+})

@@ -83,6 +83,9 @@
   --surface-mini: rgba(10, 13, 16, 0.72);
   --surface-pill: rgba(10, 13, 16, 0.8);
   --surface-panel: var(--bg-1);
+  /* The event panel floating over the map: --surface-panel at .96, NOT
+     opaque. See `.live-panel` for the measured reason. */
+  --surface-float: rgba(10, 13, 16, 0.96);
 
   --primary-bg: var(--t1);
   --primary-ink: var(--bg-1);
@@ -186,6 +189,7 @@
   --surface-card: rgba(255, 255, 255, 0.96);
   --surface-mini: rgba(255, 253, 248, 0.92);
   --surface-pill: rgba(255, 255, 255, 0.9);
+  --surface-float: rgba(248, 243, 233, 0.96);
 
   --primary-ink: #fcf9f2;
   --focus-halo: var(--bg-1);
@@ -1635,7 +1639,18 @@ a {
   max-height: calc(100% - 90px);
   overflow-y: auto;
   overscroll-behavior: contain;
-  background: var(--surface-panel);
+  /* Translucent on purpose, and the reason is measured, not taste. With an
+     OPAQUE background Chrome composites this scroller, and the part of its
+     scrolling contents below the clip was painted as a slab of the page
+     ground: a cream (Soft) or black (Lunar) rectangle from the panel's
+     bottom edge down to the bottom of the map, hiding the map under it.
+     elementsFromPoint saw only the canvas there; hiding the panel brought
+     the map back; `overflow: hidden` did too; contain: paint, isolation,
+     will-change, a square corner and overscroll-behavior did not. Any alpha
+     under 1 (or a backdrop-filter) keeps it clean. contrast.test.ts pins
+     both the alpha and the text contrast on it, over the map's darkest and
+     lightest pixel. */
+  background: var(--surface-float);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   padding: 16px 18px;
