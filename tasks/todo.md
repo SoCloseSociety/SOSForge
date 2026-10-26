@@ -566,8 +566,11 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
       bbox. `space` and `jma-tsunami` saw 0 CURRENT events: their only items
       were expired and are now withdrawn at the source, as intended.
 - [ ] lane D merged, screenshots at 390 / 1440 px, both themes, measured
-- [ ] lane A rebuilt against the merged backend, emulator run of every funnel
-      step, signed APK dropped with its CHECKLIST
+- [x] lane A: native app (515eae7, `android/` only), 263 tests, the whole
+      funnel + watch service + map run on emulator 5590 under the adb_file
+      lock, 4 real notifications. Signed APK 0.1.0 (code 5), sha256 0307549...,
+      signer verified with apksigner; dropped in `_apk-drops/sosforge/` with
+      its CHECKLIST. Separate PR #4 (touches nothing deployed).
 - [ ] lane E findings reproduced one by one before any fix (lesson 25)
 - [ ] commits by explicit paths only (lesson 26)
 - [ ] review section written here, lessons captured
@@ -590,6 +593,23 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
       verify /readyz, /api/version, a live socket, the UI.
 - [ ] then the host vhost `/ws` block: the three forwarded headers,
       `nginx -t`, reload, verify the API sees the real client address.
+
+## Follow-ups (not in PR #3 / #4)
+
+- **The tick is now the bandwidth floor** (lane B): each 1 Hz tick is ~1 KiB
+  on the wire, 8.3 KB of JSON, mostly the health of 32 sources, so ~8 kbit/s
+  sustained. Send `sources` only when they change (protocol change for web,
+  app and the agent, opt-in like `chunks=1`).
+- APK is 39 MB because MapLibre ships three ABIs: split per ABI for the Fold.
+- es / ja / id strings of the app and the 28 guidance lines flagged
+  `needs_review` need a native reader.
+- `specialUse` needs a Play Console declaration before any store release.
+- ScanGithub scans 164, 165, 166 are queued behind fleet scan 163 (no cancel
+  endpoint): read their libraries when they complete.
+- `read_journal` skips events dated more than 24 h ago, so long-running
+  alerts vanish until the next poll after a restart (lane F).
+- Structure (lane E): sources registry as a table, `protocol.py`, routers;
+  behind a golden contract test, after these PRs merge.
 
 ## Liaison
 
