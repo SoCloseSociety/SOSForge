@@ -502,15 +502,15 @@ def test_distant_quakes_are_not_merged():
 # The real Atom entry offers TWO documents, and lists the CAP XML first.
 # Verbatim shape from a live tsunami.gov entry.
 TSUNAMI_BOTH_LINKS = TSUNAMI_ATOM.replace(
-    '''    <link rel="related" title="CapXML document"
+    """    <link rel="related" title="CapXML document"
           href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/PAAQCAP.xml"
-          type="application/cap+xml"/>''',
-    '''    <link rel="related" title="CapXML document"
+          type="application/cap+xml"/>""",
+    """    <link rel="related" title="CapXML document"
           href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/PAAQCAP.xml"
           type="application/cap+xml"/>
     <link rel="alternate" title="Bulletin"
           href="https://www.tsunami.gov/events/PAAQ/2026/08/13/tjpse5/1/WEAK53/WEAK53.txt"
-          type="text/plain"/>''',
+          type="text/plain"/>""",
 )
 
 
