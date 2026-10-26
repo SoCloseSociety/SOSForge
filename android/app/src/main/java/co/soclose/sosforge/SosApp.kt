@@ -252,13 +252,14 @@ class SosApp : Application() {
         return when (l?.language) { "fr", "es", "ja" -> l.language; "in", "id" -> "id"; else -> "en" }
     }
 
-    private suspend fun onBatch(batch: List<ServerMessage>, deviceNow: Long) {
+    private suspend fun onBatch(batch: List<LiveClient.Arrived>, deviceNow: Long) {
         val changes = mutableListOf<FeedChange>()
         var snapshot = false
         val state = feedLock.withLock {
             var s = _feed.value
-            for (m in batch) {
-                val r = FeedReducer.reduce(s, m, deviceNow)
+            for ((m, at) in batch) {
+                // each message is reduced at its OWN arrival time: the clock window reads it per message
+                val r = FeedReducer.reduce(s, m, at)
                 s = r.state
                 changes += r.changes
                 if (m is ServerMessage.Snapshot || m is ServerMessage.SnapshotMore) snapshot = true
@@ -297,10 +298,10 @@ class SosApp : Application() {
      * read replaces the list like a snapshot; a zoned read is merged. [fullRead]: the read is the whole
      * picture (no cursor, or a reset), which matters for the first-read-is-history rule.
      */
-    suspend fun applyPoll(events: List<SosEvent>, removed: List<String>, serverTimeMs: Long?, replace: Boolean, fullRead: Boolean) {
+    suspend fun applyPoll(events: List<SosEvent>, removed: List<String>, serverTimeMs: Long?, replace: Boolean, fullRead: Boolean, arrivedAt: Long? = null) {
         val now = System.currentTimeMillis()
         val (state, changes) = feedLock.withLock {
-            val r = FeedReducer.fromPoll(_feed.value, events, removed, serverTimeMs, replace, now)
+            val r = FeedReducer.fromPoll(_feed.value, events, removed, serverTimeMs, replace, now, arrivedAt ?: now)
             _feed.value = r.state
             r.state to r.changes
         }

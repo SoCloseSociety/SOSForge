@@ -50,9 +50,12 @@ class LiveClient(
     private val http: OkHttpClient,
     private val clock: () -> Long = System::currentTimeMillis,
     private val random: () -> Double = { Random.nextDouble() },
-    private val onBatch: suspend (List<ServerMessage>, Long) -> Unit,
+    private val onBatch: suspend (List<Arrived>, Long) -> Unit,
 ) {
     private val _state = MutableStateFlow(SocketState())
+
+    /** A message with the device time it ARRIVED (the clock offset is read per message, not per batch). */
+    data class Arrived(val message: ServerMessage, val at: Long)
     val state: StateFlow<SocketState> = _state.asStateFlow()
 
     @Volatile private var gen = 0
@@ -62,7 +65,7 @@ class LiveClient(
     /** Returns the socket URL, or null for "not now" (the server's contract is not known yet). */
     private var urlProvider: (() -> String?)? = null
     private var openedUrl: String? = null
-    private val inbox = Channel<Pair<Int, String>>(Channel.UNLIMITED)
+    private val inbox = Channel<Triple<Int, String, Long>>(Channel.UNLIMITED)
     private val wake = Channel<Unit>(Channel.CONFLATED)
 
     /** Start (or keep) the socket on [url]. Calling it again with the same URL changes nothing. */
@@ -160,7 +163,7 @@ class LiveClient(
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 if (mine != gen) return
-                inbox.trySend(mine to text)
+                inbox.trySend(Triple(mine, text, clock()))
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
@@ -189,24 +192,24 @@ class LiveClient(
     }
 
     private suspend fun drain() {
-        val batch = ArrayList<String>()
+        val batch = ArrayList<Pair<String, Long>>()
         while (scope.isActive) {
             val first = inbox.receive()
-            if (first.first == gen) batch += first.second
+            if (first.first == gen) batch += first.second to first.third
             val deadline = clock() + BATCH_MS
             while (true) {
                 val left = deadline - clock()
                 if (left <= 0) break
                 val next = withTimeoutOrNull(left) { inbox.receive() } ?: break
-                if (next.first == gen) batch += next.second
+                if (next.first == gen) batch += next.second to next.third
             }
             if (batch.isEmpty()) continue
             val now = clock()
-            val messages = batch.mapNotNull { Protocol.parse(it) }
+            val messages = batch.mapNotNull { (text, at) -> Protocol.parse(text)?.let { Arrived(it, at) } }
             batch.clear()
             if (messages.isEmpty()) continue
             // Success is a MESSAGE received: only now are the backoff and "busy" reset.
-            val refused = messages.filterIsInstance<ServerMessage.Refused>().firstOrNull()
+            val refused = messages.map { it.message }.filterIsInstance<ServerMessage.Refused>().firstOrNull()
             _state.update {
                 it.copy(
                     lastMessageAt = now, everReceived = true, attempt = 0, busy = false,

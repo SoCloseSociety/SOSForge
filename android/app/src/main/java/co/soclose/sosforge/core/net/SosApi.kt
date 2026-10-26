@@ -25,8 +25,12 @@ sealed interface ApiError {
 
 class ApiException(val error: ApiError, cause: Throwable? = null) : IOException(error.toString(), cause)
 
-/** One poll of `/api/events`: a body, or "not modified" (ETag), with the ETag to send next time. */
-data class EventsRead(val reply: EventsReply?, val etag: String?, val notModified: Boolean)
+/**
+ * One poll of `/api/events`: a body, or "not modified" (ETag), with the ETag to send next time, and
+ * [arrivedAt], the device time its headers arrived (the server stamped `server_time` before sending
+ * them; reading the time after the download and the decode would make the server look late).
+ */
+data class EventsRead(val reply: EventsReply?, val etag: String?, val notModified: Boolean, val arrivedAt: Long = 0L)
 
 /**
  * The REST half of the contract (backend/app/main.py). Blocking calls: run them on Dispatchers.IO.
@@ -37,12 +41,16 @@ class SosApi(val origin: String, private val http: OkHttpClient) {
 
     private fun url(path: String): HttpUrl = (origin.trimEnd('/') + path).toHttpUrl()
 
+    /** Device time the last response's headers arrived (per call site, read right after [get]). */
+    @Volatile private var headersAt: Long = 0L
+
     private fun get(u: HttpUrl, etag: String? = null): Triple<Int, String?, String?> {
         val req = Request.Builder().url(u).header("Accept", "application/json").apply {
             if (etag != null) header("If-None-Match", etag)
         }.build()
         try {
             http.newCall(req).execute().use { r ->
+                headersAt = System.currentTimeMillis()
                 return Triple(r.code, if (r.code == 304) null else r.body?.string(), r.header("ETag"))
             }
         } catch (e: IOException) {
@@ -90,10 +98,11 @@ class SosApi(val origin: String, private val http: OkHttpClient) {
         if (scope != null && version.has(ApiVersion.EVENTS_ZONE)) scope.addTo(b)
         if (since != null && version.has(ApiVersion.EVENTS_CURSOR)) b.addQueryParameter("since", since)
         val (code, body, newTag) = get(b.build(), etag.takeIf { version.has(EVENTS_ETAG) })
-        if (code == 304) return EventsRead(null, newTag ?: etag, notModified = true)
+        val arrived = headersAt
+        if (code == 304) return EventsRead(null, newTag ?: etag, notModified = true, arrivedAt = arrived)
         if (code !in 200..299 || body == null) throw ApiException(ApiError.Refused(code, body?.take(200)))
         val reply = runCatching { SosJson.decodeFromString<EventsReply>(body) }.getOrElse { throw ApiException(ApiError.Unreadable, it) }
-        return EventsRead(reply, newTag, notModified = false)
+        return EventsRead(reply, newTag, notModified = false, arrivedAt = arrived)
     }
 
     /** The per-kind before / during / after guidance, or null when this server has none (404). */

@@ -32,9 +32,39 @@ data class FeedState(
     val unplaced: co.soclose.sosforge.core.net.Unplaced? = null,
     /** Chunks of a split snapshot still to come: while > 0 the picture is NOT complete ("nothing near you" is not true yet). */
     val snapshotRemaining: Int = 0,
+    /** The readings [clockSkewMs] is the maximum of. */
+    val skewWindow: SkewWindow = SkewWindow(),
 ) {
+    /** The next state's clock after a reading; [newConnection] starts a new window. */
+    fun clock(arrivedAt: Long, serverMs: Long?, newConnection: Boolean = false): Pair<Long, SkewWindow> {
+        if (serverMs == null) return clockSkewMs to (if (newConnection) SkewWindow() else skewWindow)
+        val w = (if (newConnection) SkewWindow() else skewWindow).add(arrivedAt, serverMs)
+        return (w.skew ?: clockSkewMs) to w
+    }
+
     fun serverNow(deviceNow: Long): Long = deviceNow + clockSkewMs
     fun byId(id: String): SosEvent? = events.firstOrNull { it.id == id }
+}
+
+/**
+ * The server clock offset on a slow link (lane D's web finding, fixed there in b865340).
+ * `server_time - arrival` is only ever too LOW: a message that waited in the socket (ticks queued
+ * behind a snapshot, a backlog draining, a body downloading) arrives late and makes the server look
+ * behind. It never makes it look ahead. So the offset is the MAXIMUM reading of the last [WINDOW_MS],
+ * by TIME (a count dropped the good reading while the backlog drained), and a new connection starts a
+ * new window (a phone whose clock changed between two connections must not keep the old maximum).
+ */
+data class SkewWindow(val samples: List<Pair<Long, Long>> = emptyList()) {
+    /** The best estimate, or null before any reading. */
+    val skew: Long? get() = samples.maxOfOrNull { it.second }
+
+    /** A reading taken at device time [arrivedAt] for a message stamped [serverMs]. */
+    fun add(arrivedAt: Long, serverMs: Long): SkewWindow =
+        SkewWindow(samples.filter { arrivedAt - it.first in 0..WINDOW_MS } + (arrivedAt to serverMs - arrivedAt))
+
+    companion object {
+        const val WINDOW_MS = 60_000L
+    }
 }
 
 /** One change the alert engine must hear about. */
@@ -88,7 +118,7 @@ object FeedReducer {
 
     fun reduce(state: FeedState, msg: ServerMessage, deviceNow: Long): Reduced = when (msg) {
         is ServerMessage.Snapshot -> {
-            val skew = msg.serverTimeMs?.let { it - deviceNow } ?: state.clockSkewMs
+            val (skew, window) = state.clock(deviceNow, msg.serverTimeMs, newConnection = true)
             val events = trim(msg.events.filter { !it.isAllClear }.distinctBy { it.id }.sortedWith(byEventTime), deviceNow + skew)
             val before = state.events.associateBy { it.id }
             val changes = events.map { FeedChange.Upserted(it, before[it.id], fromSnapshot = true, breaking = false) }
@@ -98,6 +128,7 @@ object FeedReducer {
                     stats = msg.stats ?: state.stats,
                     sources = msg.sources.ifEmpty { state.sources },
                     clockSkewMs = skew,
+                    skewWindow = window,
                     lastMessageAt = deviceNow,
                     dataServerTime = msg.serverTimeMs ?: state.dataServerTime,
                     fromCache = false,
@@ -110,7 +141,7 @@ object FeedReducer {
         }
         is ServerMessage.SnapshotMore -> {
             // a chunk of the same snapshot: merged, never replacing what the first part brought
-            val skew = msg.serverTimeMs?.let { it - deviceNow } ?: state.clockSkewMs
+            val (skew, window) = state.clock(deviceNow, msg.serverTimeMs)
             val incoming = msg.events.filter { !it.isAllClear }.distinctBy { it.id }
             val ids = incoming.map { it.id }.toSet()
             val before = state.events.associateBy { it.id }
@@ -119,6 +150,7 @@ object FeedReducer {
                 state.copy(
                     events = events,
                     clockSkewMs = skew,
+                    skewWindow = window,
                     lastMessageAt = deviceNow,
                     dataServerTime = msg.serverTimeMs ?: state.dataServerTime,
                     snapshotRemaining = msg.remaining.coerceAtLeast(0),
@@ -126,17 +158,18 @@ object FeedReducer {
                 incoming.map { FeedChange.Upserted(it, before[it.id], fromSnapshot = true, breaking = false) },
             )
         }
-        is ServerMessage.Tick -> Reduced(
+        is ServerMessage.Tick -> state.clock(deviceNow, msg.serverTimeMs).let { (skew, window) -> Reduced(
             state.copy(
                 stats = msg.stats ?: state.stats,
                 sources = msg.sources.ifEmpty { state.sources },
                 clients = msg.clients ?: state.clients,
-                clockSkewMs = msg.serverTimeMs?.let { it - deviceNow } ?: state.clockSkewMs,
+                clockSkewMs = skew,
+                skewWindow = window,
                 lastMessageAt = deviceNow,
                 dataServerTime = msg.serverTimeMs ?: state.dataServerTime,
             ),
             emptyList(),
-        )
+        ) }
         is ServerMessage.Purge -> {
             val gone = msg.ids.toSet()
             Reduced(
@@ -184,13 +217,18 @@ object FeedReducer {
      * snapshot); otherwise each event is merged and [removed] ids are withdrawn (a zoned or delta read
      * must never shrink the world feed the screens show to the owner's zones).
      */
-    fun fromPoll(state: FeedState, events: List<SosEvent>, removed: List<String>, serverTimeMs: Long?, full: Boolean, deviceNow: Long): Reduced {
+    fun fromPoll(
+        state: FeedState, events: List<SosEvent>, removed: List<String>, serverTimeMs: Long?, full: Boolean, deviceNow: Long,
+        /** When the reply's headers arrived (the body was stamped before it was sent), else [deviceNow]. */
+        arrivedAt: Long = deviceNow,
+    ): Reduced {
+        val (skew, window) = state.clock(arrivedAt, serverTimeMs)
         if (full) {
-            val r = reduce(state, ServerMessage.Snapshot(serverTimeMs, events, null, emptyList(), 0, null), deviceNow)
-            // a poll is not a live message: it must not make the socket look alive
-            return r.copy(state = r.state.copy(lastMessageAt = state.lastMessageAt))
+            val r = reduce(state, ServerMessage.Snapshot(null, events, null, emptyList(), 0, null), deviceNow)
+            // a poll is not a live message: it must not make the socket look alive, nor reset the clock window
+            return r.copy(state = r.state.copy(lastMessageAt = state.lastMessageAt, clockSkewMs = skew, skewWindow = window, dataServerTime = serverTimeMs ?: r.state.dataServerTime))
         }
-        var s = state.copy(clockSkewMs = serverTimeMs?.let { it - deviceNow } ?: state.clockSkewMs)
+        var s = state.copy(clockSkewMs = skew, skewWindow = window)
         val changes = mutableListOf<FeedChange>()
         if (removed.isNotEmpty()) {
             val r = reduce(s, ServerMessage.Purge(removed, "stale"), deviceNow)

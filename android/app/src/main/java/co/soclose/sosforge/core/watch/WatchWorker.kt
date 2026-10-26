@@ -52,7 +52,7 @@ class WatchWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
                 val r = read.reply!!
                 val full = cursor.isEmpty() || r.reset
                 // a zoned read never REPLACES the world feed the screens show: it is merged
-                app.applyPoll(r.events, r.removed, Iso.ms(r.serverTime), replace = false, fullRead = full)
+                app.applyPoll(r.events, r.removed, Iso.ms(r.serverTime), replace = false, fullRead = full, arrivedAt = read.arrivedAt.takeIf { it > 0 })
                 // an empty delta returns our own cursor; a delta too big comes back as a full read (reset)
                 prefs.putString(Prefs.K_POLL_CURSOR, r.cursor ?: "")
                 prefs.putString(Prefs.K_POLL_ETAG, read.etag)
@@ -60,7 +60,7 @@ class WatchWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ctx,
             } else {
                 val read = withContext(Dispatchers.IO) { api.events(ApiVersion.NONE, null, null, null) }
                 val r = read.reply!!
-                app.applyPoll(r.events, emptyList(), Iso.ms(r.serverTime), replace = true, fullRead = true)
+                app.applyPoll(r.events, emptyList(), Iso.ms(r.serverTime), replace = true, fullRead = true, arrivedAt = read.arrivedAt.takeIf { it > 0 })
                 done(prefs, "legacy ${r.events.size}")
             }
         } catch (e: ApiException) {
