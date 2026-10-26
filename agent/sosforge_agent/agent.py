@@ -17,12 +17,13 @@ import logging
 import time
 from collections import deque
 from collections.abc import Callable
+from datetime import datetime
 
 import websockets
 
 from .config import Config
 from .notify import notify as desktop_notify
-from .proximity import Decision, should_notify
+from .proximity import SEVERITY_RANK, Decision, should_notify
 
 log = logging.getLogger("sosforge.agent")
 
@@ -42,6 +43,27 @@ KIND_ICON = {
 # network, it is a dead connection -- and an agent that believes it is
 # connected is an agent that is silently protecting nobody.
 SILENCE_TIMEOUT_S = 15.0
+
+# How recent a rise in severity must be to count as news when it is only seen
+# through a reconnect snapshot, which carries no `escalated` flag. Mirrors the
+# server's breaking window (`breaking_seconds`, 900 s by default): live, the
+# server decides; across an outage, this is the same rule applied here.
+ESCALATION_WINDOW_S = 900.0
+
+
+def _rank(event: dict) -> int:
+    return SEVERITY_RANK.get(str(event.get("severity") or "info"), 0)
+
+
+def _age_seconds(event: dict, server_time: str | None) -> float | None:
+    """Age on the SERVER's clock, never this machine's (the product rule).
+    Python 3.11+ (the agent's floor) reads the trailing `Z` itself."""
+    try:
+        now = datetime.fromisoformat(str(server_time))
+        then = datetime.fromisoformat(str(event.get("time")))
+        return (now - then).total_seconds()
+    except (TypeError, ValueError):
+        return None
 
 
 class RateLimiter:
@@ -101,10 +123,18 @@ class Agent:
         self.config = config
         self.notifier = notifier
         self.limiter = RateLimiter(config.max_per_hour)
-        # Ids already announced. Revisions arrive constantly -- an early
-        # warning is re-issued every second or two, USGS revises magnitudes for
-        # hours -- and not one of them may ring again.
-        self._announced: set[str] = set()
+        # Each id already judged, with the highest severity rank it was judged
+        # at. Revisions arrive constantly -- an early warning is re-issued
+        # every second or two, USGS revises magnitudes for hours -- and not
+        # one of them may ring again at a rank already judged. A HIGHER rank
+        # is judged afresh: this used to be a plain set, so the Bonin Islands
+        # warning of 2026-10-25 (moderate -> severe -> extreme in 131 s, one
+        # EventID) could never ring past its first, moderate, verdict.
+        self._judged: dict[str, int] = {}
+        # Only the FIRST snapshot is history. The server sends one on every
+        # reconnect, and treating each as history swallowed whatever landed
+        # during the drop -- a nearby M6.6 inside a 30 s outage was never said.
+        self._history_loaded = False
         self.connected = False
         self.notified = 0
         self.considered = 0
@@ -114,25 +144,57 @@ class Agent:
         kind = message.get("type")
 
         if kind == "snapshot":
-            # The backlog is history, not news. Remembering it is exactly what
-            # stops the agent from firing three hundred notifications the
-            # second it starts.
-            for event in message.get("events") or []:
-                self._announced.add(str(event.get("id")))
-            log.info("connected -- %d events already known", len(self._announced))
-            return False
+            events = message.get("events") or []
+            if not self._history_loaded:
+                # The backlog is history, not news. Remembering it is exactly
+                # what stops the agent from firing three hundred notifications
+                # the second it starts.
+                for event in events:
+                    self._remember(event)
+                self._history_loaded = True
+                log.info("connected -- %d events already known", len(self._judged))
+                return False
+            # A reconnect: what we have not judged yet arrived while we were
+            # away, and is judged exactly as it would have been live.
+            log.info("reconnected -- catching up on %d events", len(events))
+            notified = False
+            for event in events:
+                known = self._judged.get(str(event.get("id")))
+                if known is not None and _rank(event) > known:
+                    age = _age_seconds(event, message.get("server_time"))
+                    if age is None or not 0 <= age <= ESCALATION_WINDOW_S:
+                        self._remember(event)
+                        continue
+                notified = self._consider(event) or notified
+            return notified
 
         if kind == "purge":
             for event_id in message.get("ids") or []:
-                self._announced.discard(str(event_id))
+                self._judged.pop(str(event_id), None)
             return False
 
         if kind not in ("event", "update"):
             return False
 
         event = message.get("event") or {}
+        known = self._judged.get(str(event.get("id")))
+        # An update only rings when the server calls it an escalation: it
+        # alone knows whether the rise is inside its breaking window, so a
+        # two-hour-old quake reviewed upwards stays a silent correction. An
+        # older server that sends no flag keeps the old silence.
+        if known is not None and kind == "update" and not message.get("escalated"):
+            self._remember(event)
+            return False
+        return self._consider(event)
+
+    def _remember(self, event: dict) -> None:
         event_id = str(event.get("id"))
-        if event_id in self._announced:
+        self._judged[event_id] = max(self._judged.get(event_id, -1), _rank(event))
+
+    def _consider(self, event: dict) -> bool:
+        event_id = str(event.get("id"))
+        known = self._judged.get(event_id)
+        if known is not None and _rank(event) <= known:
             return False
 
         self.considered += 1
@@ -144,7 +206,7 @@ class Agent:
             max_distance_km=self.config.max_distance_km,
             home_country=self.config.country_code if self.config.zone_alerts else None,
         )
-        self._announced.add(event_id)
+        self._remember(event)
 
         if not decision.notify:
             log.debug("silent: %s (%s)", event.get("place"), decision.reason)

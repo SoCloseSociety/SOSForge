@@ -23,7 +23,7 @@ from __future__ import annotations
 import logging
 from datetime import timedelta
 
-from app.dedupe import haversine_km
+from app.dedupe import SYNTHETIC_SOURCES, haversine_km
 from app.models.event import Event, Kind, Severity, utcnow
 
 log = logging.getLogger(__name__)
@@ -37,8 +37,12 @@ def _wrap(longitude: float) -> float:
 class Swarm:
     """A cluster of earthquakes close in space and time."""
 
-    def __init__(self, events: list[Event]):
+    def __init__(self, events: list[Event], key: str | None = None):
         self.events = sorted(events, key=lambda e: e.time)
+        # The id of the feed entry this swarm already has, when it has one.
+        # Assigned by `detect()`, which is the only place that sees both the
+        # new clusters and the entries left by the previous sweep.
+        self.key = key
         magnitudes = [e.magnitude for e in events if e.magnitude is not None]
         self.count = len(events)
         self.max_magnitude = max(magnitudes) if magnitudes else None
@@ -89,6 +93,12 @@ def detect(
         e
         for e in events
         if e.kind is Kind.EARTHQUAKE
+        # Our own bulletins are earthquakes by kind, primaries by cluster, and
+        # sit at the very centroid of what they summarise. Read back from the
+        # store, the previous sweep's entry joined the next cluster as a
+        # member carrying the max magnitude -- a swarm counted itself, and
+        # with seven real quakes the marker was the eighth that kept it alive.
+        and e.source not in SYNTHETIC_SOURCES
         and e.lat is not None
         and e.lon is not None
         and e.time >= cutoff
@@ -114,7 +124,49 @@ def detect(
             clusters.append([quake])
             heads.append((lat, lon))
 
-    return [Swarm(c) for c in clusters if len(c) >= min_count]
+    swarms = [Swarm(c) for c in clusters if len(c) >= min_count]
+    _keep_identities(swarms, [e for e in events if e.source == "swarm"], radius_km)
+    return swarms
+
+
+def _keep_identities(swarms: list[Swarm], entries: list[Event], radius_km: float) -> None:
+    """Gives each swarm the id of the entry it already has in the feed.
+
+    The id used to BE the centroid rounded to 0.1 degree. A swarm drifting a
+    few hundred metres across a rounding line got a new id and a second
+    marker, and the first one stayed on the map until the silence sweep:
+    live on 2026-10-26, 28 swarm entries of which 18 pairs sat closer than
+    the 30 km that define one swarm.
+
+    Matching is one to one and nearest first: two clusters near one old entry
+    must not both write to it, or every sweep overwrites the other. A swarm
+    with no entry yet is named by its rounded centroid as before, unless that
+    name is taken -- single-link clustering can leave two distinct clusters
+    whose centroids share a cell -- and then by its earliest member, which no
+    other cluster can share.
+    """
+    candidates = sorted(
+        (haversine_km(s.lat, s.lon, e.lat, e.lon), i, e.id)
+        for i, s in enumerate(swarms)
+        for e in entries
+        if e.lat is not None and e.lon is not None
+    )
+    taken: set[str] = set()
+    for distance, index, entry_id in candidates:
+        if distance > radius_km:
+            break
+        if swarms[index].key is None and entry_id not in taken:
+            swarms[index].key = entry_id
+            taken.add(entry_id)
+    for swarm in swarms:
+        if swarm.key is None:
+            name = _cell_key(swarm)
+            swarm.key = name if name not in taken else f"swarm:{swarm.events[0].id}"
+            taken.add(swarm.key)
+
+
+def _cell_key(swarm: Swarm) -> str:
+    return f"swarm:{swarm.lat:.1f}:{swarm.lon:.1f}"
 
 
 def as_event(swarm: Swarm) -> Event:
@@ -126,22 +178,16 @@ def as_event(swarm: Swarm) -> Event:
     if (swarm.max_magnitude or 0) >= 5.0 or swarm.count >= 30:
         severity = Severity.SEVERE
 
+    # Identity is the ENTRY the swarm already has (see `_keep_identities`),
+    # not the place it is at now. The rounded centroid alone "barely drifts"
+    # until it crosses a rounding line; the start time is no anchor either,
+    # since a swarm grows in both directions. `ongoing` plus the stale sweep
+    # retire the entry once the quakes stop.
+    key = swarm.key or _cell_key(swarm)
     return Event(
-        # Keyed on LOCATION ONLY, rounded to about 11 km.
-        #
-        # The start time looked like the natural second half of the key, and it
-        # was wrong: a swarm grows in both directions, so an older quake joining
-        # moved `started` back an hour, changed the id, and spawned a second
-        # marker for the same swarm. Location is the part that does not move --
-        # the centroid of a cluster capped at 30 km barely drifts.
-        #
-        # The trade-off: two genuinely distinct swarms less than 11 km apart
-        # merge into one entry. At that distance they are the same tectonic
-        # story anyway, and `ongoing` plus the stale sweep retire the entry once
-        # the quakes stop.
-        id=f"swarm:{swarm.lat:.1f}:{swarm.lon:.1f}",
+        id=key,
         source="swarm",
-        source_id=f"{swarm.lat:.2f},{swarm.lon:.2f}",
+        source_id=key.removeprefix("swarm:"),
         kind=Kind.EARTHQUAKE,
         time=swarm.latest,
         lat=swarm.lat,

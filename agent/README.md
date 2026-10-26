@@ -68,8 +68,10 @@ own history:
 
 | Situation | Behaviour |
 |---|---|
-| The 300 events already in the feed when it connects | Silent. That is history, not news |
-| The same event revised (an early warning re-issued, a magnitude corrected) | Silent after the first |
+| The 300 events already in the feed when it first connects | Silent. That is history, not news |
+| Events that landed while the connection was down | Judged on reconnect exactly as they would have been live. Only the FIRST snapshot is history |
+| The same event revised at the same severity (an early warning re-issued, a magnitude corrected) | Silent after the first |
+| The same event escalating (an early warning upgraded from moderate to extreme) | Rings again, once per higher severity, when the server flags it `escalated` -- a rise inside its 15-minute breaking window. Falling back and climbing again to a severity already announced stays silent |
 | A small quake far away | Silent -- the radius grows with magnitude, from ~25 km at M2.5 to ~1500 km at M8 |
 | A large quake far away | Rings. A M7.8 four hundred kilometres away is felt, and on a coast it is the thing you needed to hear |
 | A swarm producing forty qualifying events | At most `max_per_hour` (12 by default). A machine that buzzes forty times gets muted, and then protects nobody |
