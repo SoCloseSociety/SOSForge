@@ -373,3 +373,26 @@ that spells the value out in words and check both ends of the range against it.
 Here that was the `<severity>` element of the linked CAP document: 29 samples
 across all five ranks, 29 exact. One sample at one end would have been enough
 to catch it; zero samples was what shipped.
+
+## 28. An agent that dies leaves its servers running, on code that no longer exists
+
+**What happened.** Five worktree agents were cut off mid-task by a usage
+quota. Their uvicorn servers kept running. One worktree was auto-cleaned
+because its agent had changed nothing, so its server on :8320 kept polling
+all 28 public sources from a directory that no longer existed. The agent
+that replaced it found the port taken and moved to :8340, which was also
+started from a worktree deleted soon after. And lane B's server on :8310 had
+been started before the last edits to main.py, so any "live measurement"
+taken through it would have measured the old code.
+
+On resume, the session's cwd had drifted into lane B's half-written
+worktree, and an agent with no worktree of its own opened its shell there.
+
+**The rules.**
+- After any agent stops abnormally, list the listeners on the lane ports
+  (`lsof -ti tcp:<port> -sTCP:LISTEN`, then the process's cwd and start time)
+  and stop the orphans BY PORT.
+- A server's start time must be later than the last edit of the code it
+  claims to measure, or the measurement says nothing about that code.
+- Brief every agent with an absolute working directory, even a read-only
+  one: "the repo" is wherever the shell happens to be.

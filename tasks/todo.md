@@ -585,3 +585,39 @@ Answers received and relayed to the lanes:
   alert near the user is never held).
 - **aiblog-c5, clip-generator-local-67**: auth handoff and Glance widgets,
   not needed for a key-free app.
+
+## Lane E findings -> owners (audit 2026-10-26, top four re-measured by me)
+
+Re-measured on production before dispatch (lesson 25): a fresh tab's snapshot
+reaches back 8.3 h; 49 of 70 severe/extreme/tsunami events and 264 of 346
+ongoing alerts are missing from it. `/ws` sends no forwarded address and
+uvicorn runs without `--proxy-headers`, so the 24-socket cap is shared by the
+whole site. On a phone `WatchPanel` is not mounted while the sheet is
+closed. jma-tsunami has ingested 12 257 times against 181 for jma.
+
+| # | Finding | Owner | Files |
+|---|---|---|---|
+| 1 | snapshot misses ongoing / severe | B (composition), D (client 1000 cut), A (app) | main.py / scope.py, store.ts |
+| 2 | 24 tabs for the whole site | F (repo side); VPS host vhost = owner go | deploy/nginx.conf, backend/Dockerfile |
+| 3 | location alarm dead on phones | D | App.tsx, WatchPanel, store |
+| 4 | escalation never sounds | F (server `escalated` flag + agent), D and A (consume it) | pipeline.py, agent/ |
+| 5 | restart resurrects withdrawn events | F | store/ring.py |
+| 6 | expired alerts flap every 5 min | F (pipeline), C (jma_tsunami skips expired rows) | pipeline.py, sources/ |
+| 7 | depth rule bypassed (EMSC etc.) | C | sources/ |
+| 8 | tsunami counter 0 during a warning | F (counter), D (banner 6 h cutoff) | ring.py, App.tsx |
+| 9 | swarm counts itself, duplicates | F | swarm.py |
+| 10 | half-dead source shows green | C (degraded + last_event_at), D (footer) | sources/base.py |
+| 11 | silence sweep ignores source health | F, MEASURE on the journal first | ring.py |
+| 12 | socket stuck in CONNECTING | D | live.ts |
+| 13 | agent swallows outage events | F; A applies the same rule to the watch service | agent/ |
+| 14 | aftershock forecasts lack `expires` | C | sources/aftershock.py |
+| 15 | security headers sent twice | me, at deploy (owner go) | VPS host vhost |
+| 16 | Meteoalarm HTML entities; geocode global queue | C; me | sources/, geocode.py |
+| -- | docs drift (19/26/28 sources, test counts, API docs) | me, at integration | README, CLAUDE.md, .env.example |
+| -- | nginx 1.27 EOL, CI gaps | F | frontend/Dockerfile, .github/ |
+| -- | backend lockfile | owner decision | -- |
+| -- | structure (registry, protocol, routers) | me, after B merges, behind a golden contract test | main.py |
+
+Lane F (new) owns the critical files no other lane holds: `pipeline.py`,
+`store/ring.py`, `swarm.py`, `agent/`, the Dockerfiles, `deploy/nginx.conf`,
+CI. This section is its written plan.
