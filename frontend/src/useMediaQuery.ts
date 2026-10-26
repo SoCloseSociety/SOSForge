@@ -52,8 +52,14 @@ export function useMediaQuery(query: string): boolean {
  * expanded at 242 px and pushed every event below the fold.
  *
  * Narrow OR short. A phone held sideways is 844 px wide and 390 px tall: too
- * wide to be caught by a width rule, far too short for two columns. */
-export const PHONE = "(max-width: 820px), (max-height: 560px)";
+ * wide to be caught by a width rule, far too short for two columns.
+ *
+ * The width frontier is 779/780, the Sentinel House one-column frontier
+ * (its other one, 599/600, only compacts the header here). It was 820 until
+ * 2026-10; no width between them is a Fold width (673, 752, 835, 841), so
+ * no device changes layout because of the move except a few tablets held
+ * upright between 780 and 820, which get the two columns they have room for. */
+export const PHONE = "(max-width: 779px), (max-height: 560px)";
 
 export function useIsPhone(): boolean {
   return useMediaQuery(PHONE);

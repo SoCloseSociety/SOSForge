@@ -110,6 +110,13 @@ export interface SourceHealth {
   /** what actually made it into the store (events_seen counts reads) */
   ingested?: number;
   errors: number;
+  /** some of the source's feeds failed while others answered (an API that
+   * predates it omits the field). Read through `degradedFeeds()`, which
+   * accepts the shapes a server may send: a flag, a list, an object. */
+  degraded?: boolean | string[] | { failed?: string[]; feeds?: string[] } | null;
+  failed_feeds?: string[] | null;
+  /** when this source last delivered an EVENT (not a successful poll) */
+  last_event_at?: string | null;
 }
 
 export type ServerMessage =
@@ -127,6 +134,10 @@ export type ServerMessage =
       /** the event actually just happened (as opposed to: just arrived in
        * the buffer). Only this case deserves a halo, flash, and sound. */
       breaking: boolean;
+      /** an UPDATE whose severity rose (or whose tsunami flag turned on)
+       * inside the breaking window: as urgent as a new event. Always present
+       * on the v2 API (feature `escalated`); optional here for an older one. */
+      escalated?: boolean;
     }
   | {
       /** the server removed events: a lifted warning, a cancelled early
@@ -137,7 +148,10 @@ export type ServerMessage =
        * is easy to miss. */
       type: "purge";
       ids: string[];
-      reason: "stale" | "cancelled" | "lifted";
+      /** `expired`: the alert's own end time passed; `out_of_scope`: a held
+       * event left a zoned subscription. The client removes the ids whatever
+       * the reason -- an expired warning is as gone as a lifted one. */
+      reason: "stale" | "cancelled" | "lifted" | "expired" | "out_of_scope";
     }
   | {
       type: "tick";
@@ -146,3 +160,42 @@ export type ServerMessage =
       sources: SourceHealth[];
       clients: number;
     };
+
+/** `GET /api/version`: what this API is and which optional features it
+ * serves. The frontend feature-detects on `features` and never assumes an
+ * endpoint exists because a newer build would have it. */
+export interface ApiVersion {
+  /** the contract version (2 on the first API that has this endpoint) */
+  api: number | string;
+  features: string[];
+}
+
+/** One line of prevention guidance, with the official page it was taken
+ * from. The URL is shown next to the line: advice without a source is an
+ * opinion, and this product only relays authorities. */
+export interface GuidanceLine {
+  text: string;
+  source_url: string;
+  /** who publishes it, for display ("FEMA", "JMA"); the URL is the proof */
+  source?: string | null;
+  /** the wording is a judgement call, or the source is not in this
+   * language: shown, but never presented as the authority's own words */
+  needs_review: boolean;
+}
+
+/** The three moments of the guidance, in reading order. */
+export type GuidancePhase = "before" | "during" | "after";
+
+/** Before / during / after lines for one hazard kind, in one language.
+ * `GET /api/guidance?lang=` returns these keyed by kind. */
+export interface KindGuidance {
+  kind: Kind;
+  before: GuidanceLine[];
+  during: GuidanceLine[];
+  after: GuidanceLine[];
+}
+
+export interface GuidanceResponse {
+  lang: string;
+  kinds: Record<string, KindGuidance>;
+}

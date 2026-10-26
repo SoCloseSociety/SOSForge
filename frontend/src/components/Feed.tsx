@@ -40,7 +40,9 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
       aria-pressed={selected}
       onClick={() => select(selected ? null : event.id)}
     >
-      <span className="mag" style={{ color: severity.text }}>
+      {/* The rank colours the number through a class, not an inline colour:
+          the text shade differs per theme (styles.css, --sev-*-text). */}
+      <span className={`mag sev-${event.severity}`}>
         {chip.value}
         {chip.unit ? <small>{chip.unit}</small> : null}
       </span>

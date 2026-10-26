@@ -19,7 +19,9 @@
  * to an old build lingers forever.
  */
 
-const CACHE_VERSION = 'v1'
+// v2 (2026-10): the precached manifest changed colour with the Sentinel
+// House restyle; without the bump a returning visitor kept the old one.
+const CACHE_VERSION = 'v2'
 const SHELL_CACHE = `sosforge-shell-${CACHE_VERSION}`
 const RUNTIME_CACHE = `sosforge-runtime-${CACHE_VERSION}`
 const CURRENT_CACHES = new Set([SHELL_CACHE, RUNTIME_CACHE])
@@ -133,4 +135,24 @@ self.addEventListener('fetch', (event) => {
 
   // Anything else (robots.txt, sitemap.xml, a dev-server module graph
   // request, ...): left alone. No caching, no interception.
+})
+
+// A watch alarm shown through this worker (src/notify.ts: Chrome on Android
+// accepts no other way). Without this handler a tap on it did nothing at all:
+// the reader saw "Earthquake -- My location", tapped, and stayed where they
+// were. Focus the tab that is already open, or open one, on the event.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/'
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      for (const client of windows) {
+        if (new URL(client.url).origin === self.location.origin && 'focus' in client) {
+          if ('navigate' in client && target !== '/') client.navigate(target).catch(() => {})
+          return client.focus()
+        }
+      }
+      return self.clients.openWindow(target)
+    }),
+  )
 })

@@ -11,6 +11,22 @@ import { detectLang, persistLang, translate, type Lang } from "./i18n";
 
 const MAX_EVENTS = 1000;
 
+/** The buffer cap, applied to what is OVER only. The list is sorted by event
+ * time, so a plain `slice` dropped the OLDEST first -- which is exactly where
+ * a volcano alert open for a month or a tsunami advisory issued this morning
+ * sits. They are still in force; the server keeps them in its snapshot, and
+ * the client must not quietly cut them on the next quake. Ongoing events are
+ * kept whatever their age, and the cap applies to the rest. */
+function capEvents(events: SosEvent[]): SosEvent[] {
+  if (events.length <= MAX_EVENTS) return events;
+  let kept = 0;
+  return events.filter((event) => {
+    if (event.ongoing) return true;
+    kept += 1;
+    return kept <= MAX_EVENTS;
+  });
+}
+
 export interface Filters {
   kinds: Set<Kind>;
   minMagnitude: number;
@@ -31,6 +47,19 @@ export interface Filters {
  */
 export const WINDOWS: number[] = [15, 60, 360, 1440, 0];
 
+/** The place the user wants to be warned about.
+ *
+ * `kinds` is what the reader chose to be alarmed for, in step 2 of the watch
+ * funnel. ABSENT means "not chosen yet": every kind alarms (the safe default)
+ * and the panel asks the question. A watch armed from the search bar arrives
+ * without it, and so does one saved before the funnel existed. */
+export interface Watch {
+  lat: number;
+  lon: number;
+  name: string;
+  kinds?: Kind[];
+}
+
 interface State {
   events: SosEvent[];
   connected: boolean;
@@ -50,7 +79,12 @@ interface State {
   focus: { lat: number; lon: number; zoom: number; name: string } | null;
   /** the place the user wants to be warned about. Wave arrival is computed
    * against this point, so it is opt-in and never guessed silently. */
-  watch: { lat: number; lon: number; name: string } | null;
+  watch: Watch | null;
+  /** ids of the events that already raised a watch alarm for this place.
+   * In the store, and persisted, because the component that used to keep it
+   * (the watch panel) mounts and unmounts with the phone filter sheet: every
+   * opening forgot it and the whole last hour alarmed again. */
+  alarmed: Set<string>;
 
   ingest: (message: ServerMessage) => void;
   setConnected: (value: boolean) => void;
@@ -62,6 +96,7 @@ interface State {
   setQuery: (query: string) => void;
   setFocus: (focus: State["focus"]) => void;
   setWatch: (watch: State["watch"]) => void;
+  markAlarmed: (ids: string[]) => void;
   setLang: (lang: Lang) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
@@ -131,27 +166,63 @@ const WATCH_KEY = "sosforge.watch";
 
 /** The watched place survives a reload: an alert you have to re-arm on every
  * visit is an alert you will not have when it matters. */
-function loadWatch(): { lat: number; lon: number; name: string } | null {
+function loadWatch(): Watch | null {
   try {
     const raw = localStorage.getItem(WATCH_KEY);
     if (!raw) return null;
     const saved = JSON.parse(raw);
     if (typeof saved?.lat !== "number" || typeof saved?.lon !== "number")
       return null;
-    return { lat: saved.lat, lon: saved.lon, name: String(saved.name ?? "") };
+    const watch: Watch = {
+      lat: saved.lat,
+      lon: saved.lon,
+      name: String(saved.name ?? ""),
+    };
+    // Only kinds this build knows: a hand-edited or future value must not
+    // smuggle an unknown kind into the alarm filter.
+    if (Array.isArray(saved.kinds)) {
+      watch.kinds = saved.kinds.filter((k: unknown): k is Kind =>
+        ALL_KINDS.includes(k as Kind),
+      );
+    }
+    return watch;
   } catch {
     return null;
   }
 }
 
-function saveWatch(
-  watch: { lat: number; lon: number; name: string } | null,
-): void {
+function saveWatch(watch: Watch | null): void {
   try {
     if (watch) localStorage.setItem(WATCH_KEY, JSON.stringify(watch));
     else localStorage.removeItem(WATCH_KEY);
   } catch {
     /* private mode: it just will not persist */
+  }
+}
+
+const ALARMED_KEY = "sosforge.alarmed";
+/** Enough for weeks of alarms at one place; the oldest ids go first. */
+const ALARMED_MAX = 500;
+
+/** Already-alarmed ids survive a reload too. An ongoing alert stays
+ * alarm-worthy for as long as it runs (days, for a heat wave): without this,
+ * every reload of the tab rang it again. */
+function loadAlarmed(): Set<string> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ALARMED_KEY) ?? "[]");
+    return new Set(
+      Array.isArray(saved) ? saved.filter((id) => typeof id === "string") : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAlarmed(ids: Set<string>): void {
+  try {
+    localStorage.setItem(ALARMED_KEY, JSON.stringify([...ids].slice(-ALARMED_MAX)));
+  } catch {
+    /* private mode: alarms may repeat after a reload, nothing worse */
   }
 }
 
@@ -220,6 +291,7 @@ export const useStore = create<State>((set, get) => ({
   fresh: new Set(),
   focus: null,
   watch: loadWatch(),
+  alarmed: loadAlarmed(),
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -254,7 +326,33 @@ export const useStore = create<State>((set, get) => ({
   setFocus: (focus) => set({ focus }),
   setWatch: (watch) => {
     saveWatch(watch);
-    set({ watch });
+    // A NEW place starts with a clean memory: an event already alarmed for
+    // Osaka has never been announced for Sendai. Changing what is watched at
+    // the same place keeps it.
+    const previous = get().watch;
+    const moved =
+      !watch ||
+      !previous ||
+      previous.lat !== watch.lat ||
+      previous.lon !== watch.lon;
+    if (moved) {
+      const alarmed = new Set<string>();
+      saveAlarmed(alarmed);
+      set({ watch, alarmed });
+    } else {
+      set({ watch });
+    }
+  },
+  markAlarmed: (ids) => {
+    if (ids.length === 0) return;
+    const alarmed = new Set(get().alarmed);
+    for (const id of ids) {
+      // re-inserted at the end, so the cap drops the oldest
+      alarmed.delete(id);
+      alarmed.add(id);
+    }
+    saveAlarmed(alarmed);
+    set({ alarmed });
   },
   setLang: (lang) => {
     persistLang(lang);
@@ -323,8 +421,11 @@ export const useStore = create<State>((set, get) => ({
     // `breaking` comes from the server: it distinguishes "just happened"
     // from "just arrived in the buffer". Without it, the first GDACS cycle
     // would make a hundred alerts several days old flash.
+    // `escalated` is the same urgency reached by an UPDATE: a quake revised
+    // from M5.9 to M7.1 two minutes after it struck, a bulletin that gained
+    // its tsunami flag. Checking `breaking` alone let those pass in silence.
     let fresh = state.fresh;
-    if (message.breaking) {
+    if (message.breaking || message.escalated) {
       fresh = new Set(state.fresh);
       fresh.add(incoming.id);
       // the halo fades out on its own after 30 s
@@ -342,7 +443,7 @@ export const useStore = create<State>((set, get) => ({
       }
     }
 
-    set({ events: events.slice(0, MAX_EVENTS), lastMessageAt: now, fresh });
+    set({ events: capEvents(events), lastMessageAt: now, fresh });
   },
 }));
 

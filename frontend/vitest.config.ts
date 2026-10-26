@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
-/** Config de test separee de vite.config.ts: le serveur de dev (proxy :8300,
- * port 5273) n'a rien a faire dans un run de tests. */
+/** Test config, kept apart from vite.config.ts: the dev server (port 5380,
+ * proxy to the API on :8300) has no business in a test run. */
 export default defineConfig({
   plugins: [react()],
   test: {
