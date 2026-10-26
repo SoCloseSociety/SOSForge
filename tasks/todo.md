@@ -664,9 +664,8 @@ none) and then goes through the same bounded queue and the same eviction.
 
 - [x] `app/scope.py`: `zones` (<= 10, lat/lon bounded, radius 1..2000 km),
       `min_severity`, `kinds`, `unplaced` (`drop` | `all` | ISO country
-      list). Great-circle match on the event's POINT: the `Event` model
-      carries no shape (every source reduces its polygon to a centroid
-      before building the event), so there is nothing to intersect here.
+      list). Great-circle match on the event's point, and since lane C on
+      its `bbox` when the source published a shape (`Zone.touches`).
       Events with no position: dropped by default and COUNTED
       (`unplaced.dropped`), or delivered by country / all on request.
 - [x] Snapshot composition (`scope.compose`): latest N primaries + every
@@ -695,12 +694,40 @@ none) and then goes through the same bounded queue and the same eviction.
       test_events_v2, test_guidance (113 new; mutation-checked).
 - [x] Live measurement on :8310 (review below).
 
+### Chunked snapshot, opt-in (`/ws?chunks=1`)
+
+The pinned snapshot in one message regressed slow links: the web's 15 s
+silence watchdog runs while it downloads, so a fresh tab closed mid-snapshot
+and reconnected forever. Pre-chunking web builds THROW on an unknown frame
+and installed macOS agents are old, so chunking is opt-in:
+
+- without `chunks=1`: the pre-v2 snapshot rule, byte for byte in keys and
+  content (latest `snapshot_size` primaries, scope applied if given, no
+  pinning, no `more`);
+- with `chunks=1` (any other value: `bad_chunks`, error + 1008): the
+  composed snapshot (latest + every ongoing / severe+ / tsunami primary,
+  scope before the cut) as `snapshot` + `more: N`, then `snapshot_more`
+  `{events, remaining, server_time}` chunks in composition order, all
+  before the first queued delta, every id held from the start. Chunks are
+  cut at 40 events or 32 KB of JSON, whichever comes first; the first
+  message is the first chunk.
+
+Measured on :8310, permessage-deflate as negotiated by uvicorn 0.54
+(server_max_window_bits=12), real wire bytes through a counting proxy and a
+deflate simulator that matched them to the byte:
+
+| | messages | largest on the wire | floor for no 15 s gap |
+|---|---|---|---|
+| pre-merge (= no opt-in) | 1 (300 events) | 54.6 KiB | 29.8 kbit/s |
+| PR #3, one message | 1 (469 events) | 79.7 KiB | 43.5 kbit/s |
+| `chunks=1` | 18 (469 events) | 6.9 KiB (total 81.6) | 3.8 kbit/s |
+
 ### Not done, on purpose
 
-- **Shape matching.** Needs a shape on the event: an optional bbox or
-  simplified polygon on `Event` (models) filled by the NWS, CAP, Meteoalarm
-  UK and ash SIGMET normalizers (lane C). `scope.py` would then match on
-  distance to the shape instead of the centroid. Until then a zone must be
-  wider than the warning areas it should catch.
 - **A magnitude-dependent reach** for earthquakes (the local agent's felt
   radius): the zone is the client's own radius, by contract.
+- **The 1 Hz tick costs about 1 KiB on the wire** (8.3 KB of JSON, 28
+  sources' health): roughly 8 kbit/s sustained. Below that, a client that
+  got its snapshot still falls further behind every second and is evicted
+  at the queue bound. Slimming the tick (sources only when they change) is
+  a protocol change for lanes D and F, not done here.

@@ -31,7 +31,15 @@ from app.hub import Client, ConnectionQuota, hub
 from app.models.event import Event, Kind, utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
-from app.scope import SCOPE_PARAMS, Scope, ScopeError, compose, parse_point_scope, parse_scope
+from app.scope import (
+    SCOPE_PARAMS,
+    Scope,
+    ScopeError,
+    compose,
+    parse_point_scope,
+    parse_scope,
+    split,
+)
 from app.sources.aftershock import AftershockSource
 from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
@@ -204,6 +212,19 @@ def build_sources() -> list[Source]:
     return built
 
 
+def tick_message() -> dict:
+    """The freshness proof: server clock, store stats, every source's health."""
+    return {
+        "type": "tick",
+        "server_time": utcnow().isoformat(),
+        "stats": store.stats(),
+        "sources": [
+            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+        ],
+        "clients": hub.client_count,
+    }
+
+
 async def heartbeat() -> None:
     """One tick per second: proves to the client that the feed is alive and
     resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
@@ -216,18 +237,7 @@ async def heartbeat() -> None:
         try:
             if not hub.client_count:
                 continue
-            await hub.broadcast(
-                {
-                    "type": "tick",
-                    "server_time": utcnow().isoformat(),
-                    "stats": store.stats(),
-                    "sources": [
-                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
-                        for s in sources
-                    ],
-                    "clients": hub.client_count,
-                }
-            )
+            await hub.broadcast(tick_message())
         except Exception as exc:
             log.warning("heartbeat: %s", exc)
 
@@ -422,12 +432,13 @@ FEATURES = [
     "ws_zones",  # /ws?zones=&min_severity=&kinds=&unplaced=
     "ws_out_of_scope",  # a held event leaving the scope arrives as purge reason=out_of_scope
     "ws_error",  # bad /ws params: one `error` message, then close 1008
-    "snapshot_pinned",  # snapshot = latest N + every ongoing / severe+ / tsunami event
+    "snapshot_pinned",  # with chunks=1 (and v2 REST full reads): latest N + every pinned event
     "events_zone",  # /api/events?lat=&lon=&radius_km= (and the ws scope params)
     "events_cursor",  # /api/events?since=<cursor> -> events, removed, cursor, reset
     "events_etag",  # ETag / If-None-Match -> 304 on every v2 read
     "guidance",  # /api/guidance?lang=en|fr|es|ja|id
     "escalated",  # `update` messages may carry escalated: true, forwarded untouched
+    "snapshot_chunked",  # /ws?chunks=1: snapshot + `more`, then snapshot_more chunks
 ]
 
 
@@ -719,26 +730,42 @@ async def api_sources() -> dict:
 
 
 WS_QUERY_MAX = 2000
+WS_PARAMS = (*SCOPE_PARAMS, "chunks")
+# `chunks=1`: the snapshot a chunk-aware client opts into. Without it, the
+# snapshot is the rule every client had before v2 (latest `snapshot_size`
+# primaries, no pinning, no `more`): web builds from before chunking THROW on
+# an unknown frame, and the installed macOS agents are old. With it, the
+# composed snapshot (latest + every pinned event) goes out as `snapshot` +
+# `snapshot_more` chunks, none of them long on a slow link.
+# Chosen by measurement on live data (tasks/todo.md, lane B, chunking): with
+# permessage-deflate the 32 KB JSON budget gave messages of at most 6.0 KiB
+# on the wire, half the 12 KiB ceiling, so a day that compresses twice as
+# badly still fits.
+SNAPSHOT_CHUNK_EVENTS = 40
+SNAPSHOT_CHUNK_BYTES = 32_000
 
 
-def ws_scope(ws: WebSocket) -> Scope | None:
-    """The socket's scope, from its query string. Strict on purpose: an
-    unknown parameter is a typo (`zone=` for `zones=`), and a client that
-    misspelled its zone and silently got the whole planet would take every
-    alert it receives for a local one."""
+def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
+    """The socket's scope and whether it takes a chunked snapshot. Strict on
+    purpose: an unknown parameter is a typo (`zone=` for `zones=`), and a
+    client that misspelled its zone and silently got the whole planet would
+    take every alert it receives for a local one."""
     params = ws.query_params
     if len(ws.url.query) > WS_QUERY_MAX:
         raise ScopeError("too_long", f"query string longer than {WS_QUERY_MAX} characters")
-    unknown = sorted(set(params.keys()) - set(SCOPE_PARAMS))
+    unknown = sorted(set(params.keys()) - set(WS_PARAMS))
     if unknown:
         raise ScopeError(
             "unknown_param",
-            f"unknown parameter(s): {', '.join(unknown)} (accepted: {', '.join(SCOPE_PARAMS)})",
+            f"unknown parameter(s): {', '.join(unknown)} (accepted: {', '.join(WS_PARAMS)})",
         )
     for key in params:
         if len(params.getlist(key)) > 1:
             raise ScopeError(f"bad_{key}", f"{key} given more than once")
-    return parse_scope({k: params.get(k) for k in SCOPE_PARAMS})
+    chunks = params.get("chunks")
+    if chunks is not None and chunks != "1":
+        raise ScopeError("bad_chunks", f"chunks only takes 1 -- got {chunks!r}")
+    return parse_scope({k: params.get(k) for k in SCOPE_PARAMS}), chunks == "1"
 
 
 async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
@@ -765,7 +792,7 @@ async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     try:
-        scope = ws_scope(ws)
+        scope, chunked = ws_params(ws)
     except ScopeError as refused:
         log.info("websocket refused: %s (%s)", refused.code, refused.reason)
         await refuse_ws(ws, refused)
@@ -793,22 +820,48 @@ async def websocket_endpoint(ws: WebSocket) -> None:
             store.recent(limit=settings.ring_size, primary_only=True),
             settings.snapshot_size,
             scope,
+            pin=chunked,
         )
+        if scope is not None:
+            # every chunked id too: a chunk still in flight is already held
+            for event in snapshot:
+                client.hold(event.id)
+        publics = [e.public() for e in snapshot]
+        chunks = (
+            split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
+        )
+        remaining = len(publics) - len(chunks[0])
         message: dict = {
             "type": "snapshot",
             "server_time": utcnow().isoformat(),
-            "events": [e.public() for e in snapshot],
+            "events": chunks[0],
             "stats": store.stats(),
             "sources": [
                 {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
             ],
         }
+        if chunked:
+            message["more"] = remaining
         if scope is not None:
-            for event in snapshot:
-                client.hold(event.id)
             message["scope"] = scope.public()
             message["unplaced"] = placed.public()
         await ws.send_text(json.dumps(message, default=str))
+        # The rest of the snapshot, before the pump below starts: no queued
+        # delta can overtake a chunk, so a revision always lands on top of
+        # the version it revises.
+        for chunk in chunks[1:]:
+            remaining -= len(chunk)
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "snapshot_more",
+                        "events": chunk,
+                        "remaining": remaining,
+                        "server_time": utcnow().isoformat(),
+                    },
+                    default=str,
+                )
+            )
 
         async def pump() -> None:
             getter = asyncio.ensure_future(client.queue.get())

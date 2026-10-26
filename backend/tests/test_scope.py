@@ -266,3 +266,18 @@ class TestCompose:
         scope = Scope(zones=(Zone(*TOKYO, 300),))
         out, _ = compose([event("red", *SAPPORO, severity=Severity.EXTREME)], 0, scope)
         assert out == []
+
+
+class TestSplit:
+    def test_an_empty_snapshot_is_one_empty_chunk(self):
+        from app.scope import split
+
+        assert split([], 2, 10_000) == [[]]
+
+    def test_order_is_kept_and_both_bounds_apply(self):
+        from app.scope import split
+
+        events = [{"id": i, "pad": "x" * (500 if i == 2 else 10)} for i in range(7)]
+        chunks = split(events, 3, 200)
+        assert [[e["id"] for e in c] for c in chunks] == [[0, 1], [2], [3, 4, 5], [6]]
+        assert [e for c in chunks for e in c] == events
