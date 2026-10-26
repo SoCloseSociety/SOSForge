@@ -177,3 +177,65 @@ describe('nothing on screen claims a complete picture while chunks arrive', () =
     expect(screen.getByRole('button', { name: /Earthquakes/ }).textContent).toMatch(/5$/)
   })
 })
+
+describe('the server clock, when messages queue behind a slow snapshot', () => {
+  /* Measured in Chrome on Slow 3G against the chunked server: the header's
+   * UTC clock ran up to 20 s behind, and every "N s ago" was 20 s too
+   * young. All chunks are SENT at once and RECEIVED over ~20 s, and the ticks
+   * the server emitted meanwhile wait behind them; each message's
+   * server_time, compared with its arrival, read as a server clock running
+   * 20 s late. A transit delay can only make the server look behind, never
+   * ahead: the least delayed message is the truest one. */
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetStore()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  const at = (ms: number) => new Date(NOW + ms).toISOString()
+
+  it('a message that waited in the socket does not drag the clock back', () => {
+    const { ingest } = useStore.getState()
+    vi.setSystemTime(NOW)
+    ingest({ ...snapshot(quakes(0, 1), 2), server_time: at(0) } as ServerMessage)
+    vi.setSystemTime(NOW + 15_000) // received 15 s after it was sent
+    ingest({ ...chunk(quakes(1, 1), 0), server_time: at(100) } as ServerMessage)
+    vi.setSystemTime(NOW + 19_000) // a tick queued behind the chunks
+    ingest({ type: 'tick', server_time: at(1_000), stats: makeStats(), sources: [], clients: 1 } as ServerMessage)
+    expect(Math.abs(useStore.getState().clockSkew)).toBeLessThan(500)
+  })
+
+  it('a real offset is still measured', () => {
+    const { ingest } = useStore.getState()
+    vi.setSystemTime(NOW)
+    ingest({ ...snapshot([]), server_time: at(300_000) } as ServerMessage)
+    vi.setSystemTime(NOW + 1_000)
+    ingest({ type: 'tick', server_time: at(301_050), stats: makeStats(), sources: [], clients: 1 } as ServerMessage)
+    expect(useStore.getState().clockSkew).toBeGreaterThan(299_000)
+    expect(useStore.getState().clockSkew).toBeLessThan(301_000)
+  })
+})
+
+describe('the server clock window is a minute, not a number of messages', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+    resetStore()
+  })
+  afterEach(() => vi.useRealTimers())
+
+  it('keeps the good first sample through 40 late messages, then lets it go after a minute', () => {
+    const { ingest } = useStore.getState()
+    const at = (ms: number) => new Date(NOW + ms).toISOString()
+    vi.setSystemTime(NOW)
+    ingest({ ...snapshot([], 40), server_time: at(0) } as ServerMessage)
+    for (let i = 1; i <= 40; i += 1) {
+      vi.setSystemTime(NOW + i * 500) // each one arrives later than it was sent
+      ingest({ ...chunk([], 40 - i), server_time: at(100) } as ServerMessage)
+    }
+    expect(Math.abs(useStore.getState().clockSkew)).toBeLessThan(500)
+    // a minute on, only honest fresh ticks remain in the window
+    vi.setSystemTime(NOW + 90_000)
+    ingest({ type: 'tick', server_time: at(89_950), stats: makeStats(), sources: [], clients: 1 } as ServerMessage)
+    expect(useStore.getState().clockSkew).toBe(-50)
+  })
+})

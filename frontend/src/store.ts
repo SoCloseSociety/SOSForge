@@ -11,6 +11,41 @@ import { detectLang, persistLang, translate, type Lang } from "./i18n";
 
 const MAX_EVENTS = 1000;
 
+/** How long a server-clock sample is kept. In TIME, not in messages: a
+ * slow snapshot delivers ~18 chunks and then ~20 queued ticks, and a
+ * 30-message window dropped the one good sample (the first chunk) while the
+ * queue was still draining -- the clock was still 8 s behind (measured). */
+const SKEW_WINDOW_MS = 60_000;
+
+/** The server clock offset, from a message's server_time and its arrival.
+ *
+ * A message can wait in the socket: on a slow link the snapshot chunks are
+ * sent at once and received over twenty seconds, and the ticks emitted
+ * meanwhile queue behind them. Each of those, read on its own, said the
+ * server clock was up to 20 s late -- the header showed a time 20 s in the
+ * past and every "N s ago" was 20 s too young (measured in Chrome, Slow 3G).
+ * A transit delay can only make the server look BEHIND, never ahead, so the
+ * least delayed recent message is the truest: the offset is the max of the
+ * samples of the last minute. A new snapshot (a new connection) starts a new
+ * window. The price: if the browser clock jumps forward, the old offset holds
+ * for up to a minute. */
+function nextSkew(
+  samples: [number, number][],
+  serverTime: string,
+  arrival: number,
+  fresh = false,
+): { clockSkew: number; skewSamples: [number, number][] } {
+  const sample = new Date(serverTime).getTime() - arrival;
+  const kept = (fresh ? [] : samples).filter(([at]) => arrival - at <= SKEW_WINDOW_MS);
+  const next: [number, number][] = Number.isFinite(sample)
+    ? [...kept, [arrival, sample]]
+    : kept;
+  return {
+    clockSkew: next.length ? Math.max(...next.map(([, value]) => value)) : 0,
+    skewSamples: next,
+  };
+}
+
 /** The buffer cap, applied to what is OVER only. The list is sorted by event
  * time, so a plain `slice` dropped the OLDEST first -- which is exactly where
  * a volcano alert open for a month or a tsunami advisory issued this morning
@@ -69,6 +104,9 @@ interface State {
   clients: number;
   /** browser clock -> server clock offset, in ms */
   clockSkew: number;
+  /** [arrival, server_time - arrival] of the last minute; `clockSkew` is
+   * the max of their values */
+  skewSamples: [number, number][];
   lastMessageAt: number;
   selected: string | null;
   soundOn: boolean;
@@ -278,6 +316,7 @@ export const useStore = create<State>((set, get) => ({
   sources: [],
   clients: 0,
   clockSkew: 0,
+  skewSamples: [],
   lastMessageAt: 0,
   selected: null,
   soundOn: false,
@@ -373,7 +412,7 @@ export const useStore = create<State>((set, get) => ({
         events: message.events,
         stats: message.stats,
         sources: message.sources,
-        clockSkew: new Date(message.server_time).getTime() - now,
+        ...nextSkew(get().skewSamples, message.server_time, now, true),
         lastMessageAt: now,
         connected: true,
         // a reconnection starts from a clean state: without this, "just
@@ -396,7 +435,7 @@ export const useStore = create<State>((set, get) => ({
         );
         return {
           events: capEvents(events),
-          clockSkew: new Date(message.server_time).getTime() - now,
+          ...nextSkew(s.skewSamples, message.server_time, now),
           lastMessageAt: now,
           snapshotRemaining: Math.max(0, Number(message.remaining) || 0),
         };
@@ -410,7 +449,7 @@ export const useStore = create<State>((set, get) => ({
         stats: message.stats,
         sources: message.sources,
         clients: message.clients,
-        clockSkew: new Date(message.server_time).getTime() - now,
+        ...nextSkew(get().skewSamples, message.server_time, now),
         lastMessageAt: now,
       });
       return;
