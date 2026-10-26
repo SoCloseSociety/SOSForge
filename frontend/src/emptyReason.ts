@@ -17,8 +17,13 @@ export function emptyReason(state: {
   events: SosEvent[]
   visible: SosEvent[]
   filters: Pick<Filters, 'query' | 'kinds' | 'minMagnitude' | 'windowMinutes'>
+  /** snapshot events still on their way (chunked snapshot) */
+  remaining?: number
 }): string {
   const { events, filters } = state
+  // First, before any blame: while the snapshot is still arriving, "no
+  // event" would be a statement about events we have not received yet.
+  if ((state.remaining ?? 0) > 0) return 'feed.loading'
   if (filters.query.trim()) return 'filters.empty.search'
   if (events.length === 0) return 'filters.empty'
   if (filters.kinds.size === 0) return 'filters.empty.kinds'

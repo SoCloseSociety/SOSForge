@@ -160,3 +160,19 @@ describe('the alarm memory', () => {
     expect(useStore.getState().alarmed.size).toBe(0)
   })
 })
+
+describe('while the snapshot is still arriving', () => {
+  /* "Nothing concerns this area" is a statement about every event. Seen on a
+   * chunked snapshot with 566 events still to come: the green check was
+   * already there, about events this tab had not received yet. */
+  it('does not say "nothing concerns this area" before it has seen everything', () => {
+    stubNotification('granted')
+    useStore.setState({
+      watch: { ...TOKYO, kinds: ['earthquake', 'tsunami'] },
+      snapshotRemaining: 566,
+    })
+    render(<WatchPanel alarms={[]} />)
+    expect(screen.queryByText('Nothing concerns this area')).toBeNull()
+    expect(screen.getByText(/not checked yet/)).toBeInTheDocument()
+  })
+})

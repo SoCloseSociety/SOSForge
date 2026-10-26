@@ -1306,6 +1306,17 @@ a {
   text-align: center;
 }
 
+/* The snapshot is still arriving: said once, above the rows, in words. */
+.feed-loading {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: var(--ts-meta);
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
 .item {
   position: relative;
   display: grid;

@@ -212,6 +212,9 @@ const fr: Dict = {
   "footer.source.degraded": "dégradée",
   "footer.failed": "Flux en échec : {feeds}",
   "footer.lastevent": "Dernier événement {age}",
+  "feed.loading": "Chargement du flux : encore {n} événements à venir.",
+  "kpi.loading": "chargement...",
+  "watch.checking": "Flux en cours d’arrivée : ce lieu n’est pas encore vérifié.",
 };
 
 const en: Dict = {
@@ -403,6 +406,9 @@ const en: Dict = {
   "footer.source.degraded": "degraded",
   "footer.failed": "Failed feeds: {feeds}",
   "footer.lastevent": "Last event {age}",
+  "feed.loading": "Loading the feed: {n} more events to come.",
+  "kpi.loading": "loading...",
+  "watch.checking": "Feed still arriving: this place is not checked yet.",
 };
 
 const es: Dict = {
@@ -593,6 +599,9 @@ const es: Dict = {
   "footer.source.degraded": "degradada",
   "footer.failed": "Flujos con fallo: {feeds}",
   "footer.lastevent": "Último evento {age}",
+  "feed.loading": "Cargando el flujo: faltan {n} eventos.",
+  "kpi.loading": "cargando...",
+  "watch.checking": "El flujo sigue llegando: este lugar aún no está revisado.",
 };
 
 const ja: Dict = {
@@ -783,6 +792,9 @@ const ja: Dict = {
   "footer.source.degraded": "一部停止",
   "footer.failed": "失敗したフィード：{feeds}",
   "footer.lastevent": "最新のイベント {age}",
+  "feed.loading": "フィードを読み込み中：残り {n} 件。",
+  "kpi.loading": "読み込み中...",
+  "watch.checking": "フィードの受信中：この場所はまだ確認されていません。",
 };
 
 const id: Dict = {
@@ -975,6 +987,9 @@ const id: Dict = {
   "footer.source.degraded": "terganggu",
   "footer.failed": "Umpan gagal: {feeds}",
   "footer.lastevent": "Kejadian terakhir {age}",
+  "feed.loading": "Memuat umpan: {n} kejadian lagi.",
+  "kpi.loading": "memuat...",
+  "watch.checking": "Umpan masih masuk: tempat ini belum diperiksa.",
 };
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id };
