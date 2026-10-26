@@ -577,8 +577,10 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
 
 ## Production update, stage 1 (2026-10-26)
 
-- [x] PR #3 open (backend half: contract v2 + core fixes), CI green
-      (backend, frontend, agent).
+- [x] PR #3 open, now backend + sources + web, ready for review, CI green
+      on the final state (backend, frontend, agent). `main`'s own CI has
+      been red since 2026-08-26 (`No module named 'app'`); PR #3 fixes it, so
+      PR #4 (android only) goes green once #3 is merged.
 - [ ] merge: refused by the permission classifier ("merge without review").
       Waiting for the owner to review / merge, or to allow it.
 - [x] lane D merged into the PR (14ca365): 246 frontend tests, panel fix
