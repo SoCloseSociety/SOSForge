@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { eventUrl } from "../deeplink";
+import { currentPhase, guidanceFor } from "../guidance";
 import { useStore } from "../store";
 import {
   SEVERITY_META,
@@ -10,7 +11,12 @@ import {
   kindLabel,
   severityLabel,
 } from "../format";
-import type { SosEvent } from "../types";
+import type {
+  GuidanceLine,
+  GuidancePhase as Phase,
+  KindGuidance,
+  SosEvent,
+} from "../types";
 
 /** A translated string for a server-provided link, or the server's own text
  * when the dictionary has no entry (`t` returns the key itself in that case). */
@@ -43,6 +49,84 @@ interface Nearby {
   cameras_configured?: boolean;
 }
 
+/** One phase of the prevention guidance: a few lines, each with the official
+ * page it comes from. The link is part of the line, not a footnote: this
+ * product relays authorities, it does not give advice of its own. */
+function GuidancePhase({
+  title,
+  lines,
+  sourceLabel,
+}: {
+  title: string;
+  lines: GuidanceLine[];
+  sourceLabel: string;
+}) {
+  if (lines.length === 0) return null;
+  return (
+    <div className="guidance-phase">
+      <h5>{title}</h5>
+      <ul>
+        {lines.map((line, index) => (
+          <li key={`${line.source_url}-${index}`}>
+            <span>{line.text}</span>{" "}
+            <a href={line.source_url} target="_blank" rel="noreferrer">
+              {line.source ? line.source : sourceLabel} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const PHASES: Phase[] = ["before", "during", "after"];
+
+/** Before / during / after, opened on the phase that matters NOW for this
+ * event (`currentPhase`): a warning ahead of its onset opens on "before", a
+ * running alert on "during", an old quake on "after". The other two phases
+ * wait behind "Show more" -- three lists at once buried the one that applies. */
+function Guidance({
+  guidance,
+  event,
+  now,
+}: {
+  guidance: KindGuidance;
+  event: SosEvent;
+  now: number;
+}) {
+  const t = useStore((s) => s.t);
+  const [all, setAll] = useState(false);
+  const present = PHASES.filter((phase) => guidance[phase].length > 0);
+  if (present.length === 0) return null;
+  const wanted = currentPhase(event, now);
+  const first = present.includes(wanted) ? wanted : present[0];
+  const rest = present.filter((phase) => phase !== first);
+  const shown = all ? [first, ...rest] : [first];
+  return (
+    <section className="live-guidance" aria-labelledby="live-guidance-title">
+      <h4 id="live-guidance-title">{t("guidance.title")}</h4>
+      {shown.map((phase) => (
+        <GuidancePhase
+          key={phase}
+          title={t(`guidance.${phase}`)}
+          lines={guidance[phase]}
+          sourceLabel={t("guidance.source")}
+        />
+      ))}
+      {rest.length > 0 ? (
+        <button
+          type="button"
+          className="btn btn-quiet btn-more"
+          aria-expanded={all}
+          onClick={() => setAll((v) => !v)}
+        >
+          {all ? t("more.hide") : t("more.show")}
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 /** Card for the selected event + access to live views of the area.
  *
  * Links are computed server-side and work without any key. Webcams only
@@ -56,6 +140,10 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
   const [nearby, setNearby] = useState<Nearby | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  /** Prevention guidance for this kind, when the API serves it. `null` is
+   * the ordinary case on an API without the feature, and the panel then
+   * shows exactly what it showed before the feature existed. */
+  const [guidance, setGuidance] = useState<KindGuidance | null>(null);
 
   useEffect(() => {
     if (event.lat === null || event.lon === null) {
@@ -91,12 +179,32 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
     return () => controller.abort();
   }, [event.id, event.lat, event.lon]);
 
+  // Guidance is per kind and per language, cached in guidance.ts: switching
+  // between two earthquakes costs nothing. A stale answer for a previous kind
+  // must not land on this one, hence the cancellation flag.
+  useEffect(() => {
+    let cancelled = false;
+    setGuidance(null);
+    void guidanceFor(lang, event.kind).then((found) => {
+      if (!cancelled) setGuidance(found);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, event.kind]);
+
   const severity = SEVERITY_META[event.severity];
 
   return (
-    <aside className="live-panel">
+    <aside className="live-panel" aria-label={event.place || event.title}>
       <header>
-        <div>
+        <div className="live-head">
+          <p className="overline">
+            {kindLabel(t, event.kind)}
+            {countryName(lang, event.country_code)
+              ? ` · ${countryName(lang, event.country_code)}`
+              : ""}
+          </p>
           <h3>
             <span className="flag" aria-hidden="true">
               {flagEmoji(event.country_code) ?? "🌐"}
@@ -104,22 +212,18 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
             {event.place || event.title}
           </h3>
           <p className="live-meta">
-            <span style={{ color: severity.text }}>
-              <span aria-hidden="true">{severity.glyph}</span>{" "}
+            <span className={`sev sev-${event.severity}`}>
+              <span className="glyph" aria-hidden="true">{severity.glyph}</span>{" "}
               {severityLabel(t, event.severity)}
             </span>
             {" · "}
-            {kindLabel(t, event.kind)}
-            {" · "}
-            {countryName(lang, event.country_code)
-              ? `${countryName(lang, event.country_code)} · `
-              : ""}
             {formatAge(t, (now - Date.parse(event.time)) / 1000)}
           </p>
         </div>
         <span className="live-actions">
           <button
             type="button"
+            className="btn btn-quiet btn-icon"
             onClick={() => {
               void navigator.clipboard?.writeText(eventUrl(event.id));
               setCopied(true);
@@ -128,10 +232,11 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
             title={t("detail.share")}
             aria-label={t("detail.share")}
           >
-            {copied ? "✓" : "🔗"}
+            {copied ? "✓" : "⧉"}
           </button>
           <button
             type="button"
+            className="btn btn-quiet btn-icon"
             onClick={() => select(null)}
             aria-label={t("detail.close")}
           >
@@ -224,6 +329,15 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
         >
           {t("detail.official")} ↗
         </a>
+      ) : null}
+
+      {/* Prevention, when the API serves it (feature-detected in
+          guidance.ts), under the official instruction: the instruction is
+          about THIS alert, the guidance is about the hazard in general. An
+          API without the feature leaves this out and the panel is exactly
+          what it was before. Each line carries the authority it comes from. */}
+      {guidance ? (
+        <Guidance key={event.id} guidance={guidance} event={event} now={now} />
       ) : null}
 
       <h4>{t("live.title")}</h4>

@@ -205,6 +205,21 @@ describe('the basemap is a third party, the events are not', () => {
     expect(map.setStyleCalls).toHaveLength(1)
   })
 
+  /* Seen in a real Chrome on 2026-10-26: `isStyleLoaded()` is false while
+   * TILES are still loading, long after the style itself arrived. A tile that
+   * failed in that window swapped the whole style for the fallback -- after
+   * `load` had already added the plates, the markers and the wave layers --
+   * so the map went black with not one marker on it, and MapLibre threw on
+   * every frame (`updateTransitions` of a layer that no longer existed). */
+  it('never swaps the style once it has arrived, even while tiles still load', () => {
+    render(<MapView events={[makeEvent({ time: minutesAgo(30) })]} now={NOW} />)
+    const map = lastMap()
+    act(() => map.fire('load'))
+    map.styleLoaded = false // tiles still in flight
+    act(() => map.fire('error', { error: new Error('tile: timeout') }))
+    expect(map.setStyleCalls).toHaveLength(0)
+  })
+
   it('leaves a loaded style alone when a tile fails', () => {
     render(<MapView events={[makeEvent({ time: minutesAgo(30) })]} now={NOW} />)
     const map = lastMap()
@@ -353,6 +368,29 @@ describe('prefers-reduced-motion', () => {
     )
     expect(opacity).toHaveLength(1)
     expect(opacity[0][2]).toBeGreaterThan(0)
+  })
+
+  /* MapLibre accepts `zoom` only as the input of a TOP-LEVEL interpolate or
+   * step. The halo was sized `['*', RADIUS, k]`, which buries the zoom
+   * interpolate inside a product: MapLibre rejected it ("zoom expression may
+   * only be used as input to a top-level step or interpolate"), so the halo
+   * never grew, and the pulse logged that warning on every animation frame.
+   * Seen in a real Chrome on 2026-10-26. */
+  it('sizes the halo with zoom at the top of the expression, as MapLibre requires', () => {
+    stubMatchMedia([REDUCED_MOTION])
+    const event = makeEvent({ id: 'emsc:halo', time: minutesAgo(30) })
+    useStore.setState({ fresh: new Set(['emsc:halo']) })
+
+    render(<MapView events={[event]} now={NOW} />)
+    act(() => lastMap().fire('load'))
+
+    const radius = lastMap().paint.filter(
+      ([layer, property]) => layer === 'events-halo' && property === 'circle-radius',
+    )
+    expect(radius).toHaveLength(1)
+    const expression = radius[0][2] as unknown[]
+    expect(expression[0]).toBe('interpolate')
+    expect(expression[2]).toEqual(['zoom'])
   })
 
   it('pulses the halo when motion is not refused', () => {

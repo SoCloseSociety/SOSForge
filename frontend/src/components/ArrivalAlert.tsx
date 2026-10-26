@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { useStore } from '../store'
 import { nextArrival } from '../arrival'
-import { SEVERITY_META } from '../format'
 import type { SosEvent } from '../types'
 
 /** The countdown of seismic waves reaching the watched place.
@@ -60,7 +59,11 @@ export function ArrivalAlert({ events, now }: { events: SosEvent[]; now: number 
             place: arrival.event.place,
           })}
         </span>
-        <span className="arrival-phase" style={{ color: SEVERITY_META.severe.color }}>
+        {/* White on the vital red like the rest of the banner (11.2:1). The
+            severe orange it used to wear measures 4.23:1 on that red, under
+            the 4.5 a 13 px line needs, and it borrowed a severity colour
+            for something that is not a rank. */}
+        <span className="arrival-phase">
           {pPassed ? t('arrival.p.passed') : t('arrival.p.in', { n: Math.round(arrival.pIn) })}
         </span>
       </span>

@@ -271,3 +271,36 @@ describe('connectLive: cleanup', () => {
     stop = null
   })
 })
+
+describe('connectLive: a socket stuck in CONNECTING (audit 2026-10, #12)', () => {
+  /* The watchdog only looks at a link it believes connected, and the
+   * reconnect only starts from `onclose`. A handshake that never completes
+   * (a captive portal, a proxy holding the upgrade) fired neither: the tab
+   * sat on "RECONNECTING" forever and never tried again. */
+  it('gives up on a handshake after 10 s and tries again', () => {
+    stop = connectLive()
+    const stuck = lastSocket()
+    // never opens, never closes, never errors
+    vi.advanceTimersByTime(9_999)
+    expect(FakeWebSocket.instances).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(stuck.closeCalls).toBe(1)
+    expect(useStore.getState().connected).toBe(false)
+    // then the ordinary backoff: first step, 1 s
+    expectReconnectAfter(1000)
+  })
+
+  it('leaves a socket that opened in time alone', () => {
+    stop = connectLive()
+    const socket = lastSocket()
+    vi.advanceTimersByTime(3_000)
+    socket.open()
+    socket.message(tick())
+    for (let i = 0; i < 4; i += 1) {
+      vi.advanceTimersByTime(5_000)
+      socket.message(tick())
+    }
+    expect(socket.closeCalls).toBe(0)
+    expect(FakeWebSocket.instances).toHaveLength(1)
+  })
+})
