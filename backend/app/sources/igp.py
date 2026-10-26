@@ -315,13 +315,17 @@ class IgpSource(Source):
                 # successes is not `ok()`, however many years we asked for.
                 successes = 0
                 last_error: Exception | None = None
-                for year in years_to_poll(datetime.now(UTC)):
+                years = years_to_poll(datetime.now(UTC))
+                self.health.keep_feeds({str(year) for year in years})
+                for year in years:
                     try:
                         batch = await self.fetch_year(client, year)
                     except Exception as exc:
                         last_error = exc
+                        self.health.feed_failed(str(year), exc)
                         log.warning("%s: %s (%d)", self.name, exc, year)
                         continue
+                    self.health.feed_ok(str(year))
                     if batch is not None:
                         successes += 1
                         events.extend(batch)

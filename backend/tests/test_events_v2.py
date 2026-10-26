@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.models.event import Severity, utcnow
+from tests.conftest import make_event
 
 TOKYO = (35.6762, 139.6503)
 YOKOHAMA = (35.4437, 139.6380)
@@ -153,6 +154,19 @@ class TestCursor:
         emit(v2, ev("adv", *YOKOHAMA, expires=utcnow() - timedelta(minutes=1)))
         delta = client.get(f"/api/events?{NEAR_TOKYO}&since={body['cursor']}").json()
         assert delta["events"] == [] and delta["removed"] == ["test:adv"]
+
+    def test_a_warning_whose_box_leaves_the_zone_is_a_removal(self, v2, client):
+        # Matched by its box (centre ~200 km away, zone 20 km), then revised to
+        # a smaller area that no longer reaches Tokyo: the change log must
+        # judge the PREVIOUS state with its box too, or nothing is removed.
+        near = "lat=35.6762&lon=139.6503&radius_km=20"
+        wide = make_event("w", 34.6, 137.6, bbox=(137.5, 34.5, 141.0, 36.0))
+        emit(v2, wide)
+        body = client.get(f"/api/events?{near}&since=").json()
+        assert [e["id"] for e in body["events"]] == ["test:w"]
+        emit(v2, make_event("w", 34.6, 137.6, bbox=(137.5, 34.5, 138.5, 35.0)))
+        delta = client.get(f"/api/events?{near}&since={body['cursor']}").json()
+        assert delta["events"] == [] and delta["removed"] == ["test:w"]
 
     def test_changes_the_client_never_held_are_not_listed_as_removals(self, v2, client, ev):
         body, _ = self.full_read(client)

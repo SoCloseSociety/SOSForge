@@ -1,0 +1,2160 @@
+{
+ "_captured": "2026-10-26 between 18:55 and 19:40 UTC; every value below is one object copied unmodified from the named endpoint",
+ "emsc_fdsn_bonin_m65_490km": {
+  "type": "Feature",
+  "geometry": {
+   "type": "Point",
+   "coordinates": [
+    139.6148,
+    27.8359,
+    -490.3
+   ]
+  },
+  "id": "20261025_0000031",
+  "properties": {
+   "source_id": "2080196",
+   "source_catalog": "EMSC-RTS",
+   "lastupdate": "2026-10-25T07:43:48.661528Z",
+   "time": "2026-10-25T02:09:23.83Z",
+   "flynn_region": "BONIN ISLANDS, JAPAN REGION",
+   "lat": 27.8359,
+   "lon": 139.6148,
+   "depth": 490.3,
+   "evtype": "ke",
+   "auth": "EMSC",
+   "mag": 6.5,
+   "magtype": "mw",
+   "unid": "20261025_0000031"
+  }
+ },
+ "jma_quake_list_ogasawara_m70_470km": {
+  "ctt": "20261025111715",
+  "eid": "20261025111028",
+  "rdt": "2026-10-25T11:17:00+09:00",
+  "ttl": "震源・震度情報",
+  "ift": "発表",
+  "ser": "1",
+  "at": "2026-10-25T11:10:00+09:00",
+  "anm": "小笠原諸島西方沖",
+  "acd": "916",
+  "cod": "+28.0+139.9-470000/",
+  "mag": "7.0",
+  "maxi": "3",
+  "int": [
+   {
+    "code": "13",
+    "maxi": "3",
+    "city": [
+     {
+      "code": "1342100",
+      "maxi": "3"
+     },
+     {
+      "code": "1310100",
+      "maxi": "2"
+     },
+     {
+      "code": "1310200",
+      "maxi": "1"
+     },
+     {
+      "code": "1310300",
+      "maxi": "1"
+     },
+     {
+      "code": "1310400",
+      "maxi": "1"
+     },
+     {
+      "code": "1310500",
+      "maxi": "1"
+     },
+     {
+      "code": "1310600",
+      "maxi": "1"
+     },
+     {
+      "code": "1310700",
+      "maxi": "1"
+     },
+     {
+      "code": "1310800",
+      "maxi": "1"
+     },
+     {
+      "code": "1310900",
+      "maxi": "1"
+     },
+     {
+      "code": "1311000",
+      "maxi": "1"
+     },
+     {
+      "code": "1311100",
+      "maxi": "1"
+     },
+     {
+      "code": "1311200",
+      "maxi": "1"
+     },
+     {
+      "code": "1311300",
+      "maxi": "1"
+     },
+     {
+      "code": "1311400",
+      "maxi": "1"
+     },
+     {
+      "code": "1311500",
+      "maxi": "1"
+     },
+     {
+      "code": "1311600",
+      "maxi": "1"
+     },
+     {
+      "code": "1311700",
+      "maxi": "1"
+     },
+     {
+      "code": "1311800",
+      "maxi": "1"
+     },
+     {
+      "code": "1311900",
+      "maxi": "1"
+     },
+     {
+      "code": "1312000",
+      "maxi": "1"
+     },
+     {
+      "code": "1312100",
+      "maxi": "1"
+     },
+     {
+      "code": "1312200",
+      "maxi": "1"
+     },
+     {
+      "code": "1312300",
+      "maxi": "1"
+     },
+     {
+      "code": "1340200",
+      "maxi": "2"
+     },
+     {
+      "code": "1340100",
+      "maxi": "1"
+     },
+     {
+      "code": "1320100",
+      "maxi": "1"
+     },
+     {
+      "code": "1320800",
+      "maxi": "1"
+     },
+     {
+      "code": "1320900",
+      "maxi": "1"
+     },
+     {
+      "code": "1321200",
+      "maxi": "1"
+     },
+     {
+      "code": "1321400",
+      "maxi": "1"
+     },
+     {
+      "code": "1322900",
+      "maxi": "1"
+     },
+     {
+      "code": "1336300",
+      "maxi": "1"
+     },
+     {
+      "code": "1338100",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "04",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "0420800",
+      "maxi": "2"
+     },
+     {
+      "code": "0421100",
+      "maxi": "2"
+     },
+     {
+      "code": "0434100",
+      "maxi": "2"
+     },
+     {
+      "code": "0420600",
+      "maxi": "1"
+     },
+     {
+      "code": "0430100",
+      "maxi": "1"
+     },
+     {
+      "code": "0432100",
+      "maxi": "1"
+     },
+     {
+      "code": "0432400",
+      "maxi": "1"
+     },
+     {
+      "code": "0436100",
+      "maxi": "1"
+     },
+     {
+      "code": "0436200",
+      "maxi": "1"
+     },
+     {
+      "code": "0421200",
+      "maxi": "1"
+     },
+     {
+      "code": "0421300",
+      "maxi": "1"
+     },
+     {
+      "code": "0421500",
+      "maxi": "1"
+     },
+     {
+      "code": "0444400",
+      "maxi": "1"
+     },
+     {
+      "code": "0444500",
+      "maxi": "1"
+     },
+     {
+      "code": "0450100",
+      "maxi": "1"
+     },
+     {
+      "code": "0450500",
+      "maxi": "1"
+     },
+     {
+      "code": "0410200",
+      "maxi": "1"
+     },
+     {
+      "code": "0420200",
+      "maxi": "1"
+     },
+     {
+      "code": "0421400",
+      "maxi": "1"
+     },
+     {
+      "code": "0440100",
+      "maxi": "1"
+     },
+     {
+      "code": "0440600",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "06",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "0630200",
+      "maxi": "2"
+     },
+     {
+      "code": "0620700",
+      "maxi": "1"
+     },
+     {
+      "code": "0620800",
+      "maxi": "1"
+     },
+     {
+      "code": "0621000",
+      "maxi": "1"
+     },
+     {
+      "code": "0640200",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "07",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "0720300",
+      "maxi": "2"
+     },
+     {
+      "code": "0721100",
+      "maxi": "2"
+     },
+     {
+      "code": "0730300",
+      "maxi": "2"
+     },
+     {
+      "code": "0746100",
+      "maxi": "2"
+     },
+     {
+      "code": "0746400",
+      "maxi": "2"
+     },
+     {
+      "code": "0750200",
+      "maxi": "2"
+     },
+     {
+      "code": "0720100",
+      "maxi": "1"
+     },
+     {
+      "code": "0720500",
+      "maxi": "1"
+     },
+     {
+      "code": "0720700",
+      "maxi": "1"
+     },
+     {
+      "code": "0732200",
+      "maxi": "1"
+     },
+     {
+      "code": "0734200",
+      "maxi": "1"
+     },
+     {
+      "code": "0734400",
+      "maxi": "1"
+     },
+     {
+      "code": "0748100",
+      "maxi": "1"
+     },
+     {
+      "code": "0750400",
+      "maxi": "1"
+     },
+     {
+      "code": "0750500",
+      "maxi": "1"
+     },
+     {
+      "code": "0721200",
+      "maxi": "2"
+     },
+     {
+      "code": "0754600",
+      "maxi": "2"
+     },
+     {
+      "code": "0754700",
+      "maxi": "2"
+     },
+     {
+      "code": "0720400",
+      "maxi": "1"
+     },
+     {
+      "code": "0720900",
+      "maxi": "1"
+     },
+     {
+      "code": "0754100",
+      "maxi": "1"
+     },
+     {
+      "code": "0754400",
+      "maxi": "1"
+     },
+     {
+      "code": "0754500",
+      "maxi": "1"
+     },
+     {
+      "code": "0756100",
+      "maxi": "1"
+     },
+     {
+      "code": "0740800",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "08",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "0821200",
+      "maxi": "2"
+     },
+     {
+      "code": "0821500",
+      "maxi": "2"
+     },
+     {
+      "code": "0821600",
+      "maxi": "2"
+     },
+     {
+      "code": "0830200",
+      "maxi": "2"
+     },
+     {
+      "code": "0820100",
+      "maxi": "1"
+     },
+     {
+      "code": "0820200",
+      "maxi": "1"
+     },
+     {
+      "code": "0821400",
+      "maxi": "1"
+     },
+     {
+      "code": "0822100",
+      "maxi": "1"
+     },
+     {
+      "code": "0822500",
+      "maxi": "1"
+     },
+     {
+      "code": "0823600",
+      "maxi": "1"
+     },
+     {
+      "code": "0834100",
+      "maxi": "1"
+     },
+     {
+      "code": "0820400",
+      "maxi": "2"
+     },
+     {
+      "code": "0821100",
+      "maxi": "2"
+     },
+     {
+      "code": "0821700",
+      "maxi": "2"
+     },
+     {
+      "code": "0822700",
+      "maxi": "2"
+     },
+     {
+      "code": "0823500",
+      "maxi": "2"
+     },
+     {
+      "code": "0820300",
+      "maxi": "1"
+     },
+     {
+      "code": "0820500",
+      "maxi": "1"
+     },
+     {
+      "code": "0821000",
+      "maxi": "1"
+     },
+     {
+      "code": "0822000",
+      "maxi": "1"
+     },
+     {
+      "code": "0822200",
+      "maxi": "1"
+     },
+     {
+      "code": "0822300",
+      "maxi": "1"
+     },
+     {
+      "code": "0822400",
+      "maxi": "1"
+     },
+     {
+      "code": "0822800",
+      "maxi": "1"
+     },
+     {
+      "code": "0822900",
+      "maxi": "1"
+     },
+     {
+      "code": "0823100",
+      "maxi": "1"
+     },
+     {
+      "code": "0823400",
+      "maxi": "1"
+     },
+     {
+      "code": "0844700",
+      "maxi": "1"
+     },
+     {
+      "code": "0856400",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "09",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "0921000",
+      "maxi": "2"
+     },
+     {
+      "code": "0920600",
+      "maxi": "1"
+     },
+     {
+      "code": "0940700",
+      "maxi": "1"
+     },
+     {
+      "code": "0920300",
+      "maxi": "2"
+     },
+     {
+      "code": "0920400",
+      "maxi": "2"
+     },
+     {
+      "code": "0920500",
+      "maxi": "2"
+     },
+     {
+      "code": "0938600",
+      "maxi": "2"
+     },
+     {
+      "code": "0920100",
+      "maxi": "1"
+     },
+     {
+      "code": "0920200",
+      "maxi": "1"
+     },
+     {
+      "code": "0920800",
+      "maxi": "1"
+     },
+     {
+      "code": "0920900",
+      "maxi": "1"
+     },
+     {
+      "code": "0921600",
+      "maxi": "1"
+     },
+     {
+      "code": "0934200",
+      "maxi": "1"
+     },
+     {
+      "code": "0934400",
+      "maxi": "1"
+     },
+     {
+      "code": "0936400",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "11",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "1120200",
+      "maxi": "2"
+     },
+     {
+      "code": "1121000",
+      "maxi": "2"
+     },
+     {
+      "code": "1121700",
+      "maxi": "2"
+     },
+     {
+      "code": "1123200",
+      "maxi": "2"
+     },
+     {
+      "code": "1120600",
+      "maxi": "1"
+     },
+     {
+      "code": "1121100",
+      "maxi": "1"
+     },
+     {
+      "code": "1121200",
+      "maxi": "1"
+     },
+     {
+      "code": "1121600",
+      "maxi": "1"
+     },
+     {
+      "code": "1134700",
+      "maxi": "1"
+     },
+     {
+      "code": "1138100",
+      "maxi": "1"
+     },
+     {
+      "code": "1110300",
+      "maxi": "2"
+     },
+     {
+      "code": "1110900",
+      "maxi": "2"
+     },
+     {
+      "code": "1120300",
+      "maxi": "2"
+     },
+     {
+      "code": "1121400",
+      "maxi": "2"
+     },
+     {
+      "code": "1124000",
+      "maxi": "2"
+     },
+     {
+      "code": "1144200",
+      "maxi": "2"
+     },
+     {
+      "code": "1110100",
+      "maxi": "1"
+     },
+     {
+      "code": "1110200",
+      "maxi": "1"
+     },
+     {
+      "code": "1110400",
+      "maxi": "1"
+     },
+     {
+      "code": "1110500",
+      "maxi": "1"
+     },
+     {
+      "code": "1110600",
+      "maxi": "1"
+     },
+     {
+      "code": "1110700",
+      "maxi": "1"
+     },
+     {
+      "code": "1110800",
+      "maxi": "1"
+     },
+     {
+      "code": "1121500",
+      "maxi": "1"
+     },
+     {
+      "code": "1121900",
+      "maxi": "1"
+     },
+     {
+      "code": "1122100",
+      "maxi": "1"
+     },
+     {
+      "code": "1122200",
+      "maxi": "1"
+     },
+     {
+      "code": "1122300",
+      "maxi": "1"
+     },
+     {
+      "code": "1122400",
+      "maxi": "1"
+     },
+     {
+      "code": "1122700",
+      "maxi": "1"
+     },
+     {
+      "code": "1122800",
+      "maxi": "1"
+     },
+     {
+      "code": "1122900",
+      "maxi": "1"
+     },
+     {
+      "code": "1123000",
+      "maxi": "1"
+     },
+     {
+      "code": "1123100",
+      "maxi": "1"
+     },
+     {
+      "code": "1123400",
+      "maxi": "1"
+     },
+     {
+      "code": "1123500",
+      "maxi": "1"
+     },
+     {
+      "code": "1123700",
+      "maxi": "1"
+     },
+     {
+      "code": "1123800",
+      "maxi": "1"
+     },
+     {
+      "code": "1124100",
+      "maxi": "1"
+     },
+     {
+      "code": "1124300",
+      "maxi": "1"
+     },
+     {
+      "code": "1124600",
+      "maxi": "1"
+     },
+     {
+      "code": "1130100",
+      "maxi": "1"
+     },
+     {
+      "code": "1132400",
+      "maxi": "1"
+     },
+     {
+      "code": "1132600",
+      "maxi": "1"
+     },
+     {
+      "code": "1134600",
+      "maxi": "1"
+     },
+     {
+      "code": "1146500",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "12",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "1223600",
+      "maxi": "2"
+     },
+     {
+      "code": "1242200",
+      "maxi": "2"
+     },
+     {
+      "code": "1221300",
+      "maxi": "1"
+     },
+     {
+      "code": "1221500",
+      "maxi": "1"
+     },
+     {
+      "code": "1223500",
+      "maxi": "1"
+     },
+     {
+      "code": "1223700",
+      "maxi": "1"
+     },
+     {
+      "code": "1223900",
+      "maxi": "1"
+     },
+     {
+      "code": "1234200",
+      "maxi": "1"
+     },
+     {
+      "code": "1234700",
+      "maxi": "1"
+     },
+     {
+      "code": "1234900",
+      "maxi": "1"
+     },
+     {
+      "code": "1240300",
+      "maxi": "1"
+     },
+     {
+      "code": "1241000",
+      "maxi": "1"
+     },
+     {
+      "code": "1242100",
+      "maxi": "1"
+     },
+     {
+      "code": "1242300",
+      "maxi": "1"
+     },
+     {
+      "code": "1242400",
+      "maxi": "1"
+     },
+     {
+      "code": "1242700",
+      "maxi": "1"
+     },
+     {
+      "code": "1210100",
+      "maxi": "2"
+     },
+     {
+      "code": "1210600",
+      "maxi": "2"
+     },
+     {
+      "code": "1221900",
+      "maxi": "2"
+     },
+     {
+      "code": "1222700",
+      "maxi": "2"
+     },
+     {
+      "code": "1210200",
+      "maxi": "1"
+     },
+     {
+      "code": "1210300",
+      "maxi": "1"
+     },
+     {
+      "code": "1210400",
+      "maxi": "1"
+     },
+     {
+      "code": "1210500",
+      "maxi": "1"
+     },
+     {
+      "code": "1220300",
+      "maxi": "1"
+     },
+     {
+      "code": "1220400",
+      "maxi": "1"
+     },
+     {
+      "code": "1220700",
+      "maxi": "1"
+     },
+     {
+      "code": "1220800",
+      "maxi": "1"
+     },
+     {
+      "code": "1221200",
+      "maxi": "1"
+     },
+     {
+      "code": "1221700",
+      "maxi": "1"
+     },
+     {
+      "code": "1222100",
+      "maxi": "1"
+     },
+     {
+      "code": "1223100",
+      "maxi": "1"
+     },
+     {
+      "code": "1220500",
+      "maxi": "2"
+     },
+     {
+      "code": "1222300",
+      "maxi": "2"
+     },
+     {
+      "code": "1222500",
+      "maxi": "2"
+     },
+     {
+      "code": "1223400",
+      "maxi": "2"
+     },
+     {
+      "code": "1223800",
+      "maxi": "2"
+     },
+     {
+      "code": "1246300",
+      "maxi": "2"
+     },
+     {
+      "code": "1220600",
+      "maxi": "1"
+     },
+     {
+      "code": "1221800",
+      "maxi": "1"
+     },
+     {
+      "code": "1222600",
+      "maxi": "1"
+     },
+     {
+      "code": "1222900",
+      "maxi": "1"
+     },
+     {
+      "code": "1244100",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "14",
+    "maxi": "2",
+    "city": [
+     {
+      "code": "1410400",
+      "maxi": "2"
+     },
+     {
+      "code": "1410900",
+      "maxi": "2"
+     },
+     {
+      "code": "1411000",
+      "maxi": "2"
+     },
+     {
+      "code": "1413100",
+      "maxi": "2"
+     },
+     {
+      "code": "1410200",
+      "maxi": "1"
+     },
+     {
+      "code": "1410600",
+      "maxi": "1"
+     },
+     {
+      "code": "1411300",
+      "maxi": "1"
+     },
+     {
+      "code": "1413200",
+      "maxi": "1"
+     },
+     {
+      "code": "1413300",
+      "maxi": "1"
+     },
+     {
+      "code": "1413600",
+      "maxi": "1"
+     },
+     {
+      "code": "1420100",
+      "maxi": "1"
+     },
+     {
+      "code": "1420300",
+      "maxi": "1"
+     },
+     {
+      "code": "1420500",
+      "maxi": "1"
+     },
+     {
+      "code": "1420700",
+      "maxi": "1"
+     },
+     {
+      "code": "1421500",
+      "maxi": "1"
+     },
+     {
+      "code": "1415100",
+      "maxi": "1"
+     },
+     {
+      "code": "1421100",
+      "maxi": "1"
+     },
+     {
+      "code": "1421200",
+      "maxi": "1"
+     },
+     {
+      "code": "1438400",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "02",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "0244600",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "03",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "0320100",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "10",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "1020600",
+      "maxi": "1"
+     },
+     {
+      "code": "1020100",
+      "maxi": "1"
+     },
+     {
+      "code": "1020200",
+      "maxi": "1"
+     },
+     {
+      "code": "1020300",
+      "maxi": "1"
+     },
+     {
+      "code": "1020500",
+      "maxi": "1"
+     },
+     {
+      "code": "1020700",
+      "maxi": "1"
+     },
+     {
+      "code": "1020800",
+      "maxi": "1"
+     },
+     {
+      "code": "1021100",
+      "maxi": "1"
+     },
+     {
+      "code": "1052100",
+      "maxi": "1"
+     },
+     {
+      "code": "1052200",
+      "maxi": "1"
+     },
+     {
+      "code": "1052300",
+      "maxi": "1"
+     },
+     {
+      "code": "1052500",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "15",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "1522600",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "19",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "1942400",
+      "maxi": "1"
+     },
+     {
+      "code": "1942500",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "20",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "2020600",
+      "maxi": "1"
+     },
+     {
+      "code": "2021700",
+      "maxi": "1"
+     },
+     {
+      "code": "2030500",
+      "maxi": "1"
+     }
+    ]
+   },
+   {
+    "code": "22",
+    "maxi": "1",
+    "city": [
+     {
+      "code": "2222200",
+      "maxi": "1"
+     },
+     {
+      "code": "2230500",
+      "maxi": "1"
+     }
+    ]
+   }
+  ],
+  "json": "20261025111715_20261025111028_VXSE5k_1.json",
+  "en_ttl": "Earthquake and Seismic Intensity Information",
+  "en_anm": "Off the west Coast of Ogasawara Islands"
+ },
+ "cenc_bonin_m65_480km": {
+  "No20": {
+   "type": "reviewed",
+   "EventID": "AU.20261025100926.6",
+   "time": "2026-10-25 10:09:24",
+   "ReportTime": "2026-10-25 10:32:02",
+   "location": "日本小笠原群岛地区",
+   "placeName": "日本小笠原群岛地区",
+   "magnitude": "6.5",
+   "depth": "480",
+   "latitude": "27.90",
+   "longitude": "140.05",
+   "intensity": "5"
+  }
+ },
+ "geofon_bonin_m65_501km": {
+  "id": "gfz2026uwur",
+  "type": "Feature",
+  "geometry": {
+   "type": "Point",
+   "coordinates": [
+    139.59,
+    27.82,
+    501
+   ]
+  },
+  "properties": {
+   "evtype": "big",
+   "hasMT": "yes",
+   "mag": 6.5,
+   "magType": "Mw",
+   "place": "Bonin Islands, Japan Region",
+   "status": "C:confirmed",
+   "time": "2026-10-25T02:09:24.620",
+   "url": "https://geofon.gfz.de/eqinfo/event.php?id=gfz2026uwur"
+  }
+ },
+ "jma_eew_latest": {
+  "Title": "緊急地震速報（予報）",
+  "CodeType": "Ｍ、最大予測震度及び主要動到達予測時刻の緊急地震速報",
+  "Issue": {
+   "Source": "東京",
+   "Status": "通常"
+  },
+  "EventID": "20261026131230",
+  "Serial": 3,
+  "AnnouncedTime": "2026/10/26 13:13:12",
+  "OriginTime": "2026/10/26 13:12:22",
+  "Hypocenter": "岩手県沖",
+  "Latitude": 40.4,
+  "Longitude": 142.2,
+  "Magunitude": 3.7,
+  "Magnitude": 3.7,
+  "Depth": 50,
+  "MaxIntensity": "2",
+  "Accuracy": {
+   "Epicenter": "IPF 法（5 点以上）",
+   "Depth": "IPF 法（5 点以上）",
+   "Magnitude": "速度マグニチュード"
+  },
+  "MaxIntChange": {
+   "String": "ほとんど変化なし",
+   "Reason": "変化なし"
+  },
+  "WarnArea": [],
+  "isSea": true,
+  "isTraining": false,
+  "isAssumption": false,
+  "isWarn": false,
+  "isFinal": true,
+  "isCancel": false,
+  "OriginalText": "37 03 00 261026131312 C11 261026131222 ND20261026131230 NCN903 JD////////////// JN/// 286 N404 E1422 050 37 02 RK44209 RT10/// RC00/// 9999=",
+  "Pond": "1"
+ },
+ "jma_tsunami_row_2026-10-10_forecast": {
+  "ctt": "20261010033742",
+  "eid": "20261010025608",
+  "rdt": "2026-10-10T03:37:00+09:00",
+  "ttl": "津波予報",
+  "ift": "発表",
+  "ser": 0,
+  "at": "2026-10-10T02:56:00+09:00",
+  "anm": "中米",
+  "acd": "945",
+  "cod": "+07.5-080.8/",
+  "mag": "8.0",
+  "kind": [
+   {
+    "code": "100",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "101",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "102",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "201",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "210",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "220",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "250",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "300",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "310",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "311",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "320",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "321",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "330",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "380",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "390",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "391",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "400",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "530",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "580",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "600",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "610",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "760",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "770",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "771",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "772",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "800",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "801",
+    "kind": "津波予報（若干の海面変動）"
+   },
+   {
+    "code": "802",
+    "kind": "津波予報（若干の海面変動）"
+   }
+  ],
+  "json": "20261010033742_20261010025608_VTSE41_0.json",
+  "en_ttl": "Tsunami Forecast",
+  "en_anm": "Central America"
+ },
+ "swpc_alert_wark07_serial153": {
+  "product_id": "K07W",
+  "issue_datetime": "2026-10-10 17:42:57.273",
+  "message": "Space Weather Message Code: WARK07\r\nSerial Number: 153\r\nIssue Time: 2026 Oct 10 1742 UTC\r\n\r\nWARNING: Geomagnetic K-index of 7 or greater expected \nValid From: 2026 Oct 10 1742 UTC\nValid To: 2026 Oct 10 2359 UTC\nWarning Conditions: Onset\nNoaa Scale: G3 - Greater\nComment: \r\n\r\nNOAA Scale: G3 - Greater"
+ },
+ "wmo_co_landslide_cap_alert": {
+  "id": "2.49.0.0.170.1.CO.261026160502.J0sH1uREX0xhEhT1sddh",
+  "event": "Landslide warning",
+  "headline": "CAP Alert",
+  "sent": "2026-10-26 16:05:02",
+  "expires": "2026-10-29 16:00:00",
+  "areaDesc": "Antioquia (Dabeiba, Murindó, Remedios, Segovia, Turbo), Arauca (Saravena), Bolívar (Arenal, Cantagallo, Morales, Río Viejo, San Pablo, Santa Rosa Del Sur), Boyacá (Cubará, Santa María), Caldas (Samaná, Victoria), Cauca (Argelia, El Tambo, Guapi, López De Micay, Patía, Timbiquí), Chocó (Alto Baudó, Bagadó, Bahía Solano, Bajo Baudó, Bojayá, Carmen Del Darién, El Cantón Del San Pablo, El Carmen De Atrato, Istmina, Lloró, Medio Atrato, Nuquí, Nóvita, Quibdó, Riosucio, Río Iró, Río Quito, Tadó), Magdalena (Ciénaga, Santa Marta), Nariño (Barbacoas, El Charco, Francisco Pizarro, La Llanada, Los Andes, Magüí, Mallama, Ricaurte, Roberto Payán, Samaniego, San Andrés De Tumaco, Santacruz), Norte De Santander (Teorama, Toledo), Santander (Jesús María, Oiba, Rionegro, San Andrés, San Vicente De Chucurí, Suaita, Sucre), Sucre (Chalán, Colosó, San José De Toluviejo), Tolima (Ibagué, San Sebastián De Mariquita), Valle Del Cauca (Buenaventura, Bugalagrande)",
+  "mid": "057",
+  "ra": "3",
+  "s": 4,
+  "u": 2,
+  "c": 3,
+  "url": "co-ideam-es/2026/10/26/16/05/02-745fb3890b6998b301aa529e14c443ca.xml",
+  "effective": "2026-10-26 16:05:02"
+ },
+ "wmo_us_hurricane_force_wind": {
+  "id": "urn:oid:2.49.0.1.840.0.c62dad18688fd8f1e3ffaf4d02dea7fb551444bc.002.1",
+  "event": "Hurricane Force Wind Warning",
+  "headline": "Hurricane Force Wind Warning issued October 26 at 3:42AM AKDT until October 26 at 5:00PM AKDT by NWS Anchorage AK",
+  "sent": "2026-10-26 11:42:00",
+  "expires": "2026-10-27 01:30:00",
+  "areaDesc": "Bering Sea Offshore  West of 180 and East of the International Date Line",
+  "mid": "093",
+  "ra": "4",
+  "s": 4,
+  "u": 4,
+  "c": 4,
+  "capURL": "us-noaa-nws-en-marine/2026/10/26/11/42/00-a943cf95bd0c20c0185108981ab631dd.xml",
+  "effective": "2026-10-26 11:42:00"
+ },
+ "meteoalarm_greece_amp": {
+  "alert": {
+   "identifier": "2.49.0.0.300.0.GR.261025141000.020000003",
+   "incidents": "Update",
+   "info": [
+    {
+     "area": [
+      {
+       "areaDesc": "East Sterea &amp; Evvoia",
+       "geocode": [
+        {
+         "value": "GR003",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Locally thunderstorms. BE AWARE that thunderstorms may occur.  Take extra care in exposed areas, like mountains, forest and open terrain. Disruption to outdoor activities is possible.",
+     "effective": "2026-10-25T14:10:00+00:00",
+     "event": "Moderate Thunderstorm warning",
+     "expires": "2026-10-25T21:00:00+00:00",
+     "headline": "Yellow Thunderstorm for East Sterea &amp; Evvoia",
+     "language": "en-GB",
+     "onset": "2026-10-25T11:00:00+00:00",
+     "parameter": [
+      {
+       "value": "3; Thunderstorm",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "2; Yellow; Moderate",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Moderate",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    },
+    {
+     "area": [
+      {
+       "areaDesc": "Ανατολική Στερεά &amp; Έυβοια",
+       "geocode": [
+        {
+         "value": "GR003",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Τοπικές καταιγίδες. ΕΝΗΜΕΡΩΘΕΙΤΕ. Ιδιαίτερη προσοχή σε εκτεθειμένες περιοχές, όπως τα βουνά, τα δάση και όλοι οι ανοιχτοί χώροι. Είναι δυνατόν να δημιουργηθούν προβλήματα σε υπαίθριες δραστηριότητες.",
+     "effective": "2026-10-25T14:10:00+00:00",
+     "event": "Προειδοποίηση για καταγίδιες",
+     "expires": "2026-10-25T21:00:00+00:00",
+     "headline": "Κίτρινη προειδοποίηση για Ανατολική Στερεά &amp; Έυβοια",
+     "language": "el-GR",
+     "onset": "2026-10-25T11:00:00+00:00",
+     "parameter": [
+      {
+       "value": "3; Thunderstorm",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "2; Yellow; Moderate",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Moderate",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    }
+   ],
+   "msgType": "Update",
+   "references": "emk@hnms.gr,2.49.0.0.300.0.GR.261024114900.010000003,2026-10-24T11:49:00+00:00",
+   "scope": "Public",
+   "sender": "emk@hnms.gr",
+   "sent": "2026-10-25T14:10:00+00:00",
+   "status": "Actual"
+  },
+  "uuid": "fe5ed6d4-2233-4c83-8fe9-ba674b8d39eb"
+ },
+ "meteoalarm_germany_expired_orange": {
+  "alert": {
+   "code": [
+    "id:2.49.0.0.276.0.DWD.PVW.1792835820000.f90a7d4a-afd9-4d25-93aa-cf12bd8487c4",
+    "MCP:v2.0"
+   ],
+   "identifier": "2.49.0.0.276.0.DWD.PVW.1792835820000.f90a7d4a-afd9-4d25-93aa-cf12bd8487c4.MUL",
+   "incidents": "Alert",
+   "info": [
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Es tritt Dauerregen auf. Dabei werden Niederschlagsmengen um 30 l/m² erwartet.",
+     "event": "DAUERREGEN",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "Amtliche WARNUNG vor DAUERREGEN",
+     "instruction": "Gefahr durch: vereinzelte Überflutungen von Straßen/Unterführungen. \nHandlungsempfehlungen: \nVerhalten im Straßenverkehr anpassen; überflutete Abschnitte meiden",
+     "language": "de-DE",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "vereinzelte Überflutungen von Straßen/Unterführungen",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "There is a risk of persistent rain (level 2 of 4).\nPrecipitation amounts: ~ 30 l/m²",
+     "event": "persistent rain",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "Official WARNING of PERSISTANT RAIN",
+     "instruction": "Hazard(s) caused by: isolated flooding of roads and subways. \nRecommendations for what to do: \nAdapt your behaviour in road traffic. Avoid flooded areas.",
+     "language": "en",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "isolated flooding of roads and subways",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Il y a un risque de pluies persistantes (Niveau 2 sur 4).\nVolume de précipitations: ~ 30 l/m²",
+     "event": "Pluies persistantes",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "ALERTE officielle INTEMPÉRIES PRONONCÉES pour PLUIES PERSISTANTES",
+     "instruction": "Danger en raison de : inondations de routes et de passages souterrains survenant par endroits. \nRecommandations d'action : \nAdaptez votre conduite aux conditions de circulation ; Évitez les secteurs inondés",
+     "language": "fr",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "inondations de routes et de passages souterrains survenant par endroits",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Existe el riesgo de que se produzca lluvia persistente. (Nivel 2 de 4)\nPluviosidad: ~ 30 l/m²",
+     "event": "lluvia persistente",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "AVISO oficial de LLUVIA PERSISTENTE",
+     "instruction": "Peligro por: inundaciones puntuales de calles y pasos subterráneos. \nRecomendaciones de acción: \nadaptar la conducción; evitar zonas inundadas",
+     "language": "es",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "inundaciones puntuales de calles y pasos subterráneos",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "هناك خطر من حدوث  أمطار متواصلة (الدرجة 2 من 4)\nكمية الٲمطار: ~ 30 لتر / م²",
+     "event": "أمطار متواصلة",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "تحذير رسمي من أمطار متواصلة",
+     "instruction": "الخطر (المخاطر) الناجمة عن: فيضانات تؤدي إلى عزل الطرق وأنفاق المترو. \nالتوصيات التي يجب اتباعها: \nتكيف سلوكيًا مع حركة المرور.; تجنب الأماكن المغمورة بالمياه",
+     "language": "ar",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "فيضانات تؤدي إلى عزل الطرق وأنفاق المترو",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Существует риск от: Обложной дождь (уровень 2 из 4).\nКоличество осадков: ~ 30 л / м²",
+     "event": "Обложной дождь",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "Официальное предупреждение о значительных погодных явлениях: Обложной дождь",
+     "instruction": "Опасность из-за: местами затопления дорог и путепроводов. \nПоведенческие рекомендации: \nадаптироваться к условиям уличного движения; избегать затопленных участков",
+     "language": "ru",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "местами затопления дорог и путепроводов",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Kesintisiz yağmur bekleniyor (Seviye 2 / 4).\nYağış miktarı: ~ 30 l/m²",
+     "event": "kesintisiz yağmur",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "KESİNTİSİZ YAĞMURA karşı resmi UYARI",
+     "instruction": "…kaynaklı tehlike(ler): yollar ve metrolarda münferit  su baskını. \nNe yapılması gerektiğine dair tavsiyeler: \nhareket tarzınızı karayolu trafiğine uyarlayın. Su basmış alanlardanuzak durun.",
+     "language": "tr",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "yollar ve metrolarda münferit  su baskını",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    },
+    {
+     "area": [
+      {
+       "altitude": 0.0,
+       "areaDesc": "Kreis Miltenberg",
+       "ceiling": 9842.5197,
+       "geocode": [
+        {
+         "value": "DE266",
+         "valueName": "EMMA_ID"
+        },
+        {
+         "value": "109676000",
+         "valueName": "WARNCELLID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "Deutscher Wetterdienst",
+     "description": "Istnieje ryzyko wystąpienia: Długotrwałe opady deszczu (stopień 2 z 4).\nWielkość opadów ~ 30 l/m²",
+     "event": "Długotrwałe opady deszczu",
+     "eventCode": [
+      {
+       "value": "2.1.14",
+       "valueName": "PROFILE_VERSION"
+      },
+      {
+       "value": "© GeoBasis-DE / BKG 2021 (Daten modifiziert)",
+       "valueName": "LICENSE"
+      },
+      {
+       "value": "63",
+       "valueName": "II"
+      },
+      {
+       "value": "RAIN",
+       "valueName": "GROUP"
+      },
+      {
+       "value": "251 140 0",
+       "valueName": "AREA_COLOR"
+      }
+     ],
+     "expires": "2026-10-25T14:00:00+01:00",
+     "headline": "Oficjalne OSTRZEŻENIE METEOROLOGICZNE (2. STOPNIA) przed DŁUGOTRWAŁYMI OPADAMI DESZCZU",
+     "instruction": "Zagrożenie: miejscami zalania ulic i przejść podziemnych. \nZalecenia, jak się zachować: \nDostosuj swoje zachowanie w ruchu drogowym. Unikaj terenów zalanych.",
+     "language": "pl",
+     "onset": "2026-10-24T22:00:00+02:00",
+     "parameter": [
+      {
+       "value": "~30 [l/m²]",
+       "valueName": "precipitation"
+      },
+      {
+       "value": "miejscami zalania ulic i przejść podziemnych",
+       "valueName": "impacts"
+      },
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Prepare"
+     ],
+     "senderName": "Deutscher Wetterdienst",
+     "severity": "Moderate",
+     "urgency": "Immediate",
+     "web": "https://dwd.de/warnungen"
+    }
+   ],
+   "msgType": "Alert",
+   "scope": "Public",
+   "sender": "opendata@dwd.de",
+   "sent": "2026-10-24T11:57:00+02:00",
+   "source": "PVW",
+   "status": "Actual"
+  },
+  "uuid": "9a79d156-f1e3-4fa1-be23-50cd05b390fc"
+ }
+}

@@ -1,3 +1,7 @@
+# API port: `make dev-api smoke stop-api PORT=8320` lets parallel work share the
+# machine without stepping on the main dev server.
+PORT ?= 8300
+
 .PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean agent-setup agent-test agent-check agent-run agent-install
 
 VENV := backend/.venv
@@ -14,24 +18,24 @@ install: ## create the backend venv and install the frontend
 dev: ## run API + frontend (two terminals: dev-api / dev-web)
 	@echo "make dev-api  puis  make dev-web"
 
-dev-api: ## FastAPI with auto-reload on :8300
-	cd backend && .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8300
+dev-api: ## FastAPI with auto-reload on :$(PORT) (default 8300)
+	cd backend && .venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port $(PORT)
 
 # NEVER stop this API by process pattern. Every SuiteForge product runs
 # "uvicorn app.main:app": a `pkill -f "uvicorn app.main:app"` also kills
 # ScanGithub (:8894) and the others, and that mistake has already cost another
 # session its in-flight sweeps. The port, on the other hand, is ours alone.
-# -sTCP:LISTEN est obligatoire: sans lui, `lsof -ti tcp:8300` renvoie AUSSI les
-# sockets CLIENTES connectees a ce port (onglet navigateur, proxy Vite de
-# dev-web, Sentinel...), et le kill tuait ces clients au lieu du serveur.
-# Mesure 2026-10-01 sur :8888 -- seul resultat = Sentinel (connexion sortante).
+# -sTCP:LISTEN is mandatory: without it, `lsof -ti tcp:8300` ALSO returns the
+# CLIENT sockets connected to that port (a browser tab, dev-web's Vite proxy,
+# Sentinel...), and the kill hit those clients instead of the server.
+# Measured 2026-10-01 on :8888 -- the only result was Sentinel (outbound).
 stop-api: ## stop ONLY the SOSForge API, by its port
-	@lsof -ti tcp:8300 -sTCP:LISTEN | xargs kill 2>/dev/null || echo "no SOSForge API on :8300"
+	@lsof -ti tcp:$(PORT) -sTCP:LISTEN | xargs kill 2>/dev/null || echo "no SOSForge API on :$(PORT)"
 
 restart-api: stop-api ## restart the SOSForge API cleanly
 	@sleep 1
 	cd backend && SOS_DATA_DIR=./data .venv/bin/python -m uvicorn app.main:app \
-		--host 127.0.0.1 --port 8300
+		--host 127.0.0.1 --port $(PORT)
 
 dev-web: ## Vite frontend on :5380 (proxies /api and /ws to :8300)
 	cd frontend && npm run dev
@@ -72,8 +76,8 @@ responsive: ## measure the layout in a real browser at every breakpoint (needs m
 	@backend/.venv/bin/python tools/responsive.py
 
 smoke: ## check the API is up and the sources respond
-	@curl -sf http://127.0.0.1:8300/healthz | python3 -m json.tool
-	@curl -sf http://127.0.0.1:8300/api/sources | python3 -c "import json,sys;[print(f\"{s['name']:9} up={s['connected']} vus={s['events_seen']}\") for s in json.load(sys.stdin)['sources']]"
+	@curl -sf http://127.0.0.1:$(PORT)/healthz | python3 -m json.tool
+	@curl -sf http://127.0.0.1:$(PORT)/api/sources | python3 -c "import json,sys;[print(f\"{s['name']:9} up={s['connected']} vus={s['events_seen']}\") for s in json.load(sys.stdin)['sources']]"
 
 clean:
 	rm -rf backend/data backend/.venv frontend/node_modules frontend/dist

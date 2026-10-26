@@ -62,6 +62,7 @@ from app.sources.regional import (
     IngvSource,
     JmaSource,
 )
+from app.sources.registry import extra_sources
 from app.sources.space import SpaceWeatherSource
 from app.sources.ssn import SsnSource
 from app.sources.tsunami import TsunamiSource
@@ -205,6 +206,9 @@ def build_sources() -> list[Source]:
                 min_level=settings.geonet_volcano_min_level,
             )
         )
+    # Lane C's four sources (IMO quakes and volcanoes, JMA volcanic warnings,
+    # NCS India) carry their own SOS_ settings in the registry.
+    built.extend(extra_sources())
     return built
 
 
@@ -486,7 +490,7 @@ def _was_in(
     if primary_only and not prev.primary:
         return False
     return scope is None or scope.matches_fields(
-        prev.lat, prev.lon, prev.severity, prev.kind, prev.country_code
+        prev.lat, prev.lon, prev.severity, prev.kind, prev.country_code, prev.bbox
     )
 
 

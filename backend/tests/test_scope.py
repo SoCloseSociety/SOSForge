@@ -134,6 +134,50 @@ class TestMatching:
         scope = Scope(zones=(Zone(-17.7, 178.4, 300),))
         assert scope.matches(event("f", -17.0, -179.9))
 
+
+class TestBoundingBox:
+    """Area warnings carry `bbox` (west, south, east, north) since lane C. A
+    zone must catch a warning that COVERS it even when the warning's centre
+    is far away: matching the centroid alone was a silent false negative."""
+
+    # A coastal warning from Shizuoka to Chiba: centroid ~200 km from Tokyo,
+    # but the box covers Tokyo itself.
+    WIDE = (137.5, 34.5, 141.0, 36.0)
+
+    def test_a_warning_that_covers_the_zone_matches_though_its_centre_is_far(self):
+        scope = Scope(zones=(Zone(*TOKYO, 20),))
+        warning = event("w", 34.6, 137.6, bbox=self.WIDE)
+        assert haversine_km(*TOKYO, 34.6, 137.6) > 200
+        assert scope.matches(warning)
+        assert scope.matches_public(warning.public())
+
+    def test_without_a_box_the_same_warning_is_missed(self):
+        scope = Scope(zones=(Zone(*TOKYO, 20),))
+        assert not scope.matches(event("w", 34.6, 137.6))
+
+    def test_a_box_beyond_the_radius_does_not_match(self):
+        scope = Scope(zones=(Zone(*SAPPORO, 100),))
+        assert not scope.matches(event("w", 34.6, 137.6, bbox=self.WIDE))
+
+    def test_the_gap_to_the_box_counts_not_the_gap_to_its_centre(self):
+        # Box edge 1 degree of latitude (~111 km) north of the zone
+        box = (139.0, 36.6762, 140.0, 38.0)
+        assert Scope(zones=(Zone(*TOKYO, 120),)).matches(event("n", 37.3, 139.5, bbox=box))
+        assert not Scope(zones=(Zone(*TOKYO, 100),)).matches(event("n", 37.3, 139.5, bbox=box))
+
+    def test_a_box_across_the_antimeridian(self):
+        # An ash SIGMET split at 180: west 179.5, east -179.5
+        box = (179.5, -38.0, -179.5, -36.0)
+        assert Scope(zones=(Zone(-37.0, 179.9, 10),)).matches(event("a", -37.0, 180.0, bbox=box))
+        assert Scope(zones=(Zone(-37.0, -179.8, 10),)).matches(event("a", -37.0, 180.0, bbox=box))
+        assert not Scope(zones=(Zone(-37.0, 0.0, 1000),)).matches(
+            event("a", -37.0, 180.0, bbox=box)
+        )
+
+    def test_the_severity_floor_still_applies_to_a_box(self):
+        scope = Scope(zones=(Zone(*TOKYO, 20),), min_severity=3)
+        assert not scope.matches(event("w", 34.6, 137.6, bbox=self.WIDE))
+
     def test_severity_floor_and_kinds(self):
         scope = Scope(min_severity=3, kinds=frozenset({"earthquake"}))
         assert not scope.matches(
