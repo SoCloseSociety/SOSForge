@@ -134,21 +134,26 @@ from HTTP to HTTPS.
 | Route | What it returns |
 |---|---|
 | `GET /healthz` | service state, connected clients, ingested events |
-| `GET /api/events` | recent feed. Filters: `limit`, `kind`, `min_magnitude`, `hours`, `primary_only` |
-| `GET /api/events/{id}` | one event with its raw source payload |
+| `GET /readyz` | ready once the sources are up: `sources_up`, `sources_total`, `down` |
+| `GET /api/version` | `{api, features[]}`: what this server supports, for clients to detect |
+| `GET /api/events` | recent feed. Filters: `limit`, `kind`, `min_magnitude`, `hours`, `primary_only`. Zone: `lat` + `lon` + `radius_km`, or the websocket scope parameters below. `since=<cursor>` returns only what changed (new, revised, `removed`), with ETag / 304 |
+| `GET /api/events/{id}` | one event (the raw source payload is deliberately left out) |
 | `GET /api/events/{id}/nearby` | live views of the area: deep links + webcams |
 | `GET /api/geocode?q=` | area search (Nominatim proxy, rate-limited and cached) |
 | `GET /api/stats` | counters for the last hour |
 | `GET /api/sources` | health of every source (connected, events seen, last error) |
-| `WS /ws` | snapshot on connect, then `event` / `update` / `tick` (1/s) |
+| `GET /api/guidance?lang=` | what to do before / during / after, per hazard, each line with its official source |
+| `WS /ws` | snapshot on connect, then `event` / `update` / `purge` / `tick` (1/s). Optional scope: `zones=lat,lon,radius_km;...`, `min_severity`, `kinds`, `unplaced` |
 
 Websocket messages:
 
 ```jsonc
 {"type": "snapshot", "events": [...], "stats": {...}, "sources": [...]}
-{"type": "event",    "event": {...}, "primary": true, "breaking": true}   // new event
-{"type": "update",   "event": {...}, "primary": true, "breaking": false}  // revision of a known event
-{"type": "tick",     "server_time": "...", "stats": {...}}                // heartbeat, every second
+{"type": "event",    "event": {...}, "primary": true, "breaking": true,  "escalated": false} // new event
+{"type": "update",   "event": {...}, "primary": true, "breaking": false, "escalated": true}  // revision; escalated = got worse inside the breaking window
+{"type": "purge",    "ids": [...], "reason": "stale|cancelled|lifted|expired|out_of_scope"}  // gone: remove it
+{"type": "tick",     "server_time": "...", "stats": {...}}                                  // heartbeat, every second
+{"type": "error",    "code": "bad_zones", "reason": "..."}                                  // scope refused, then close 1008
 ```
 
 ## The interface

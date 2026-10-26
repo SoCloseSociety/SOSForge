@@ -551,7 +551,13 @@ vitest.config.ts. The VPS is untouched: production does not use Vite.
 
 - [x] baseline gates recorded before any merge: pytest 486 passed, vitest
       166 passed (19 files), ruff clean, mypy clean (40 files)
-- [ ] lane B merged, gates green
+- [x] lane B merged, gates green (f93acd6), then lane F (3c25a60). One
+      interaction caught and pinned (4f3b22f): an alert re-listed past
+      `expires` is retracted by the pipeline (F) and must reach the phone's
+      cursor `removed` (B). 635 backend tests, agent 43, ruff + mypy clean.
+      The pinned snapshot grew 331 -> 879 KiB; JSON deflates ~8.5x and
+      uvicorn negotiates permessage-deflate by default, so ~100 KiB on the
+      wire. Accepted.
 - [ ] lane C merged, `make smoke` shows every source `up` with events seen
 - [ ] lane D merged, screenshots at 390 / 1440 px, both themes, measured
 - [ ] lane A rebuilt against the merged backend, emulator run of every funnel
