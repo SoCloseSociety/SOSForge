@@ -7,11 +7,11 @@
 **Live at <https://sosforge.soclose.co>**
 
 Real-time tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster
-alerts. **Twenty-six official sources** merged into a single normalized feed and
+alerts. **Thirty-two official sources** merged into a single normalized feed and
 pushed to the browser over a websocket with a one-second heartbeat. Interface in
 five languages.
 
-No API key is required: all twenty-six sources are public and open.
+No API key is required: all thirty-two sources are public and open.
 
 ![screenshot](docs/screenshot.png)
 
@@ -45,7 +45,7 @@ located, without waiting for a cycle. The others are polled at a rate matched to
 how often they actually publish -- polling USGS faster than it regenerates would
 return nothing new.
 
-## The twenty-six sources (no API key required)
+## The thirty-two sources (no API key required)
 
 **Worldwide**
 
@@ -60,6 +60,8 @@ return nothing new.
 | NHC | `nhc.noaa.gov/CurrentStorms.json` | poll 300 s | Atlantic and Pacific tropical cyclones: position, winds, category, advisory |
 | NASA EONET | `eonet.gsfc.nasa.gov/api/v3/events` | poll 600 s | ongoing natural events seen from space: **wildfires tracked as events** |
 | WMO CAP aggregate | `severeweather.wmo.int/json/wmo_all.json` | poll 300 s | official alerts for the rest of the world in a single call |
+| USGS aftershock forecasts | `earthquake.usgs.gov/fdsnws/event/1/query?producttype=oaf` | poll 600 s | the official probability of a damaging aftershock, valid until its own `expireTime` |
+| NOAA SWPC | `services.swpc.noaa.gov/products/noaa-scales.json` + Kp + alerts | poll 600 s | geomagnetic storm outlook and watch/warning bulletins |
 
 **National and regional** -- they are not here for redundancy. Each one adds
 something EMSC does not have.
@@ -68,7 +70,7 @@ something EMSC does not have.
 |---|---|---|---|
 | JMA early warning | `api.wolfx.jp/jma_eew.json` | poll 5 s | **the only feed issued WHILE the waves are still travelling** |
 | JMA (Japan) | `jma.go.jp/bosai/quake/data/list.json` | poll 45 s | **shindo**, the intensity felt at ground level -- what matters in Japan, and it exists nowhere else |
-| BMKG (Indonesia) | `data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json` | poll 60 s | the **official Indonesian tsunami-potential flag**, published before the PTWC bulletins |
+| BMKG (Indonesia) | `data.bmkg.go.id/DataMKG/TEWS/` `gempaterkini` + `autogempa` + `gempadirasakan` | poll 60 s | the **official Indonesian tsunami-potential flag**, published before the PTWC bulletins, and every quake people felt, with its intensity |
 | CENC (China) | `api.wolfx.jp/cenc_eqlist.json` | poll 120 s | mainland China, with no other coverage here |
 | GeoNet (New Zealand) | `api.geonet.org.nz/quake?MMI=3` | poll 60 s | very low local detection threshold on a very active zone |
 | INGV (Italy) | `webservices.ingv.it/fdsnws/event/1/query` | poll 60 s | same, in the standard FDSN format (the same contract as USGS) |
@@ -82,10 +84,16 @@ something EMSC does not have.
 | NOA (Greece) | `eida.gein.noa.gr/fdsnws/event/1/query` | poll 60 s | **96% exist nowhere else.** The most seismically active country in Europe |
 | GeoNet volcanoes (NZ) | `api.geonet.org.nz/volcano/val` | poll 300 s | volcanic alert levels outside the US. Whakaari killed tourists in 2019 at level 2 |
 | EMSC felt reports | `seismicportal.eu/testimonies-ws/api/search` | poll 120 s | how many people reported feeling it -- applied as a revision, not as a new event |
+| PHIVOLCS (Philippines) | `earthquake.phivolcs.dost.gov.ph` | poll 120 s | 84% of its events are in neither USGS nor EMSC |
+| IGP (Peru) | `ultimosismo.igp.gob.pe/api/ultimo-sismo/ajaxb/{year}` | poll 60 s | a subduction margin where depth decides everything; 88% exist nowhere else here |
+| IMO (Iceland) | `api.vedur.is/quakes/events` | poll 120 s | the swarms that precede Icelandic eruptions: over 80 h, **0** Icelandic events in EMSC, 31 at M1+ here |
+| IMO volcanoes (Iceland) | `api.vedur.is/volcanoes/volcanoes` | poll 600 s | ground alert level and aviation colour of every Icelandic volcano (Reykjanes orange) |
+| JMA volcanoes (Japan) | `jma.go.jp/bosai/volcano/data/warning.json` | poll 300 s | the five-level alert that orders evacuations in Japan; until now a Japanese volcano appeared only once its ash reached an aviation advisory |
+| NCS (India) | `riseq.seismo.gov.in` (event list in the page) | poll 180 s | the Himalaya, Hindu Kush and Indo-Burman ranges: 35% of its events are in neither USGS nor EMSC |
 
 ### One source is of a different nature: early warning
 
-The other eighteen publish **after** the fact: an earthquake happened, an agency
+The others publish **after** the fact: an earthquake happened, an agency
 located it, we display it. Japan's earthquake early warning is emitted **while
 the waves are propagating**, seconds after the nearest stations detect them. It
 is the only information in this product that can still be used to take cover.
@@ -236,7 +244,9 @@ Websocket messages:
   rather than slowing down ingestion, and its socket is closed rather than left
   silently open.
 - **A failing source.** A source whose every feed fails cannot show as green. The
-  footer shows the real state of all twenty-six.
+  footer shows the real state of all thirty-two, and a source with one dead
+  feed out of several (one tsunami centre, one Meteoalarm country) is shown
+  **degraded**, naming the feed, rather than green.
 - **No WebGL.** The map degrades cleanly and the alert feed keeps running.
 
 ## Verification
@@ -245,7 +255,7 @@ Websocket messages:
 make test        # 95 backend tests + 77 frontend tests
 make lint
 make typecheck   # tsc + mypy
-make smoke       # live state of the twenty-six sources
+make smoke       # live state of the thirty-two sources
 ```
 
 Backend fixtures are **verbatim** excerpts of real responses. A unit test on an
@@ -267,14 +277,22 @@ label, so it stays readable with colour-vision deficiency and in black and white
 NRT latency and no event identifier -- "fire to the second" does not exist
 anywhere. SeedLink and Raspberry Shake: waveforms, not events. GloFAS and
 Copernicus EMS: key required, and GDACS already republishes the essentials. The
-BOM (Australia) API works but its own payload forbids reuse.
+BOM (Australia) API works but its own payload forbids reuse. Checked on
+2026-10-26 and left out: Chile CSN (HTML only, fully relayed by EMSC, reuse
+limited to academic use), KOERI (non-commercial clause; AFAD covers Turkey),
+Geoscience Australia (every event already in EMSC), IGEPN (page frozen since
+June), MAGMA Indonesia (API answering 500), ReliefWeb (approved appname now
+required), Taiwan CWA and Korea KMA (key required), Colombia SGC (403).
 
 ## Sources and attribution
 
-Data: EMSC/CSEM, USGS, NOAA (NWS, NTWC, PTWC, NHC, Aviation Weather Center),
-GDACS (European Commission and UN), Smithsonian Institution Global Volcanism
-Program, JMA (Japan), BMKG (Indonesia), CENC (China), GNS Science / GeoNet (New
-Zealand), INGV (Italy), AFAD (Turkey), GFZ GEOFON, NASA EONET, Meteoalarm, WMO.
+Data: EMSC/CSEM, USGS, NOAA (NWS, NTWC, PTWC, NHC, SWPC, Aviation Weather
+Center), GDACS (European Commission and UN), Smithsonian Institution Global
+Volcanism Program, JMA (Japan; 出典：気象庁ホームページ), BMKG (Indonesia), CENC
+(China), GNS Science / GeoNet (New Zealand), INGV (Italy), AFAD (Turkey), GFZ
+GEOFON, NASA EONET, Meteoalarm, WMO, SSN UNAM (Mexico), NRCan (Canada), NOA
+(Greece), PHIVOLCS (Philippines), IGP (Peru), the Icelandic Meteorological
+Office (CC BY 4.0), and the National Center for Seismology (India).
 Basemap by OpenStreetMap, OpenMapTiles and OpenFreeMap. These feeds are public; they belong to their
 producers.
 

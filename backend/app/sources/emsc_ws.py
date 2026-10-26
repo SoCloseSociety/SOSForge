@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 
 import websockets
 
-from app.models.event import Event, Kind, severity_from_magnitude
+from app.models.event import Event, Kind, severity_for_quake
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -63,6 +63,7 @@ def parse_message(payload: dict) -> Event | None:
 
     mag = props.get("mag")
     region = props.get("flynn_region") or props.get("region") or "unknown region"
+    depth_km = abs(depth) if depth is not None else None
 
     return Event(
         id=f"emsc:{unid}",
@@ -73,12 +74,15 @@ def parse_message(payload: dict) -> Event | None:
         updated_at=_parse_time(props.get("lastupdate")),
         lat=lat,
         lon=lon,
-        depth_km=abs(depth) if depth is not None else None,
+        depth_km=depth_km,
         magnitude=mag,
         mag_type=props.get("magtype"),
         place=region,
         region=region,
-        severity=severity_from_magnitude(mag),
+        # The depth rule, like every other quake source. EMSC pushes first, so
+        # its solution is usually the one on screen: rating it on magnitude
+        # alone put a harmless M6 at 600 km above a shallow M5 under a city.
+        severity=severity_for_quake(mag, depth_km),
         title=f"M {mag} -- {region}" if mag is not None else region,
         url=f"https://www.seismicportal.eu/eventdetails.html?unid={unid}",
         raw=payload,

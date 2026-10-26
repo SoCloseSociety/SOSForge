@@ -29,7 +29,7 @@ from typing import Any
 
 import httpx
 
-from app.models.event import Event, Kind, Severity, severity_from_magnitude, to_utc
+from app.models.event import Event, Kind, Severity, severity_for_quake, to_utc
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -153,7 +153,7 @@ class JmaSource(JsonPollSource):
             place = row.get("en_anm") or row.get("anm") or "Japan"
             distant = row.get("ttl") == JMA_DISTANT_TITLE
             shindo = row.get("maxi") or None
-            severity = severity_from_magnitude(magnitude)
+            severity = severity_for_quake(magnitude, depth)
             if shindo in SHINDO_SEVERITY:
                 # felt intensity beats magnitude when it is strong
                 severity = max(
@@ -191,15 +191,76 @@ class JmaSource(JsonPollSource):
 # -------------------------------------------------------------------------- BMKG
 
 
+BMKG_BASE = "https://data.bmkg.go.id/DataMKG/TEWS/"
+# Read in this order, and for a quake present in several, the FIRST one wins
+# for place and tsunami potential: `gempaterkini` (the 15 latest M5+, always
+# with a tsunami statement), `autogempa` (the single latest event, with a
+# shakemap), `gempadirasakan` (the 15 latest FELT quakes, any magnitude).
+BMKG_FEEDS = ("gempaterkini", "autogempa", "gempadirasakan")
+
+RE_BMKG_PLACE_PREFIX = re.compile(r"^\s*Pusat gempa berada di (?:laut|darat)\s+", re.IGNORECASE)
+ROMAN = {"I": 1, "II": 2, "III": 3, "IV": 4, "V": 5, "VI": 6, "VII": 7, "VIII": 8, "IX": 9,
+         "X": 10, "XI": 11, "XII": 12}  # fmt: skip
+RE_ROMAN = re.compile(r"\b(XII|XI|X|IX|VIII|VII|VI|V|IV|III|II|I)\b")
+
+
+def bmkg_tsunami(potensi: str | None) -> bool:
+    """The tsunami-potential flag, from BMKG's own sentence.
+
+    `gempaterkini` always states it ("Tidak berpotensi tsunami" = no
+    potential). `autogempa` reuses the SAME field for something else: on
+    2026-10-26 it read "Gempa ini dirasakan untuk diteruskan pada masyarakat"
+    ("this quake was felt; pass it on to the public"). The old rule -- any
+    wording but "tidak berpotensi" is an alert -- would have published that
+    felt M4.9 as an EXTREME tsunami. The word has to be there.
+    """
+    text = (potensi or "").strip().lower()
+    return "tsunami" in text and "tidak berpotensi" not in text
+
+
+def bmkg_felt(dirasakan: str | None) -> int | None:
+    """Highest MMI in "III Bajawa, III Maumere, II - III Ruteng" -> 3."""
+    levels = [ROMAN[m] for m in RE_ROMAN.findall(dirasakan or "")]
+    return max(levels) if levels else None
+
+
 class BmkgSource(JsonPollSource):
+    """BMKG (Indonesia): three feeds, one event per quake.
+
+    `gempaterkini` alone lists only the 15 latest M5+ quakes. On 2026-10-26
+    the newest of them was 4.4 days old, so the ingestion horizon dropped all
+    15 and BMKG contributed NOTHING -- 30 seen, 0 ingested -- for as long as
+    Indonesia had no M5. The felt-quake feed (`gempadirasakan`) carries every
+    quake people felt, whatever its magnitude: three of its fifteen were
+    inside the horizon that day. All three feeds key a quake by the same
+    `DateTime`, so one quake is one event however many feeds list it.
+    """
+
     name = "bmkg"
     kind = "poll"
-    url = "https://data.bmkg.go.id/DataMKG/TEWS/gempaterkini.json"
+    url = BMKG_BASE + "gempaterkini.json"
+
+    def merge(self, payloads: dict[str, Any]) -> list[dict]:
+        rows: dict[str, dict] = {}
+        for feed in BMKG_FEEDS:
+            data = payloads.get(feed)
+            gempa = ((data or {}).get("Infogempa") or {}).get("gempa") or []
+            for row in gempa if isinstance(gempa, list) else [gempa]:
+                if not isinstance(row, dict) or not row.get("DateTime"):
+                    continue
+                merged = rows.setdefault(row["DateTime"], {"_feeds": []})
+                merged["_feeds"].append(feed)
+                for key, value in row.items():
+                    merged.setdefault(key, value)
+        return list(rows.values())
 
     def parse_payload(self, data: Any) -> list[Event]:
-        rows = ((data or {}).get("Infogempa") or {}).get("gempa") or []
+        # One feed alone (gempaterkini's shape), or a {feed: payload} mapping.
+        payloads = (
+            data if isinstance(data, dict) and "Infogempa" not in data else {"gempaterkini": data}
+        )
         events: list[Event] = []
-        for row in rows:
+        for row in self.merge(payloads):
             time = to_utc(row.get("DateTime"))
             if time is None:
                 continue
@@ -213,7 +274,7 @@ class BmkgSource(JsonPollSource):
                     lat = lon = None
 
             try:
-                magnitude = float(row.get("Magnitude"))
+                magnitude = float(row.get("Magnitude") or "")
             except (TypeError, ValueError):
                 magnitude = None
 
@@ -222,13 +283,11 @@ class BmkgSource(JsonPollSource):
             if depth_match:
                 depth = float(depth_match.group(1))
 
-            # "Tidak berpotensi tsunami" = no potential. Any other wording
-            # ("Berpotensi tsunami...") is an alert, and it arrives before the
-            # PTWC.
             potential = (row.get("Potensi") or "").strip()
-            tsunami = bool(potential) and "tidak berpotensi" not in potential.lower()
+            tsunami = bmkg_tsunami(potential)
+            felt = bmkg_felt(row.get("Dirasakan"))
 
-            place = row.get("Wilayah") or "Indonesia"
+            place = RE_BMKG_PLACE_PREFIX.sub("", row.get("Wilayah") or "").strip() or "Indonesia"
             events.append(
                 Event(
                     id=f"bmkg:{row.get('DateTime')}",
@@ -243,14 +302,49 @@ class BmkgSource(JsonPollSource):
                     mag_type="M",
                     place=place,
                     country="Indonesia",
-                    severity=severity_from_magnitude(magnitude, tsunami),
+                    # BMKG's own tsunami-potential flag outranks everything,
+                    # depth included: it is the agency saying the sea may move.
+                    severity=Severity.EXTREME if tsunami else severity_for_quake(magnitude, depth),
                     tsunami=tsunami,
+                    alert=f"felt MMI {felt}" if felt else None,
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url="https://www.bmkg.go.id/gempabumi/gempabumi-terkini.bmkg",
-                    raw={"potensi": potential, "dirasakan": row.get("Dirasakan")},
+                    raw={
+                        "potensi": potential,
+                        "dirasakan": row.get("Dirasakan"),
+                        "feeds": row.get("_feeds"),
+                    },
                 )
             )
+        events.sort(key=lambda e: e.time, reverse=True)
         return events
+
+    async def run(self, emit: Emit) -> None:
+        headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        async with httpx.AsyncClient(
+            timeout=30.0, headers=headers, follow_redirects=True
+        ) as client:
+            while True:
+                payloads: dict[str, Any] = {}
+                last_error: Exception | None = None
+                for feed in BMKG_FEEDS:
+                    try:
+                        resp = await client.get(f"{BMKG_BASE}{feed}.json")
+                        resp.raise_for_status()
+                        payloads[feed] = resp.json()
+                        self.health.feed_ok(feed)
+                    except Exception as exc:
+                        last_error = exc
+                        self.health.feed_failed(feed, exc)
+                        log.warning("bmkg %s: %s", feed, exc)
+                if payloads:
+                    events = self.parse_payload(payloads)
+                    for event in events:
+                        await emit(event)
+                    self.health.ok(len(events))
+                elif last_error is not None:
+                    self.health.fail(last_error)
+                await asyncio.sleep(self.poll_seconds)
 
 
 # ------------------------------------------------------------------------ GeoNet
@@ -289,6 +383,7 @@ class GeonetSource(JsonPollSource):
             lat = coords[1] if len(coords) > 1 else None
 
             magnitude = props.get("magnitude")
+            depth = props.get("depth")
             place = props.get("locality") or "New Zealand"
             events.append(
                 Event(
@@ -299,12 +394,14 @@ class GeonetSource(JsonPollSource):
                     time=time,
                     lat=lat,
                     lon=lon,
-                    depth_km=props.get("depth"),
+                    depth_km=depth,
                     magnitude=round(magnitude, 1) if isinstance(magnitude, (int, float)) else None,
                     mag_type="M",
                     place=place,
                     country="New Zealand",
-                    severity=severity_from_magnitude(magnitude),
+                    severity=severity_for_quake(
+                        magnitude, depth if isinstance(depth, (int, float)) else None
+                    ),
                     alert=f"MMI {props.get('mmi')}" if props.get("mmi") is not None else None,
                     title=f"M {magnitude:.1f} -- {place}" if magnitude else place,
                     url=f"https://www.geonet.org.nz/earthquake/{public_id}",
@@ -358,7 +455,7 @@ class IngvSource(JsonPollSource):
                     mag_type=props.get("magType"),
                     place=place,
                     country="Italy",
-                    severity=severity_from_magnitude(magnitude),
+                    severity=severity_for_quake(magnitude, depth),
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url=f"https://terremoti.ingv.it/event/{event_id}",
                     raw={"author": props.get("author"), "type": props.get("type")},
@@ -429,6 +526,7 @@ class AfadSource(JsonPollSource):
                 continue
 
             place = row.get("location") or "Türkiye"
+            depth = number(row.get("depth"))
             events.append(
                 Event(
                     id=f"afad:{event_id}",
@@ -438,12 +536,12 @@ class AfadSource(JsonPollSource):
                     time=time,
                     lat=lat,
                     lon=lon,
-                    depth_km=number(row.get("depth")),
+                    depth_km=depth,
                     magnitude=magnitude,
                     mag_type=row.get("type"),
                     place=place,
                     country=row.get("country") or "Türkiye",
-                    severity=severity_from_magnitude(magnitude),
+                    severity=severity_for_quake(magnitude, depth),
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url=f"https://deprem.afad.gov.tr/event-detail/{event_id}",
                     raw={
@@ -519,7 +617,7 @@ class GeofonSource(JsonPollSource):
                     magnitude=magnitude,
                     mag_type=props.get("magType"),
                     place=place,
-                    severity=severity_from_magnitude(magnitude),
+                    severity=severity_for_quake(magnitude, depth),
                     # "C:confirmed" vs "A:automatic": a solution reviewed by
                     # an analyst is not the same thing as an automatic
                     # detection. Careful with the real value -- it is

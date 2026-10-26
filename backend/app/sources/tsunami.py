@@ -221,6 +221,7 @@ class TsunamiSource(Source):
             while True:
                 seen = 0
                 alive = 0
+                last_error: Exception | None = None
                 for center, url in self.feeds.items():
                     try:
                         resp = await client.get(url)
@@ -244,12 +245,19 @@ class TsunamiSource(Source):
                                 )
                             seen += 1
                             await emit(event)
+                        self.health.feed_ok(center)
                     except Exception as exc:
-                        self.health.fail(exc)
+                        last_error = exc
+                        # Remembered per centre: PTWC down while NTWC answers
+                        # used to show green with no error at all.
+                        self.health.feed_failed(center, exc)
                         log.warning("tsunami %s: %s", center, exc)
                 # NEVER declare good health if no feed responded: a tsunami
                 # alert source shown green while it is dead is exactly the lie
-                # this product forbids itself.
+                # this product forbids itself. One centre out of two is
+                # `degraded`, and the footer says which one.
                 if alive:
                     self.health.ok(seen)
+                elif last_error is not None:
+                    self.health.fail(last_error)
                 await asyncio.sleep(self.poll_seconds)

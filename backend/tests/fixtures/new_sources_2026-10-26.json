@@ -1,0 +1,2051 @@
+{
+ "_captured": "2026-10-26 between 19:40 and 20:10 UTC; every value below is copied unmodified from the named endpoint",
+ "imo_quakes": {
+  "type": "FeatureCollection",
+  "features": [
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -23.550991,
+      63.600204
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026vashiz",
+     "time": "2026-10-25T19:55:07.152771Z",
+     "magnitude": 1.859751,
+     "depth": 10.0,
+     "region": "Reykjaneshryggur",
+     "type": "earthquake",
+     "evaluation_mode": "manual",
+     "updated_time": "2026-10-26T08:34:46.825882Z"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -22.00922,
+      63.913158
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026vceayg",
+     "time": "2026-10-26T14:54:19.508946Z",
+     "magnitude": -0.349913,
+     "depth": 4.084311,
+     "region": "Kleifarvatn",
+     "type": null,
+     "evaluation_mode": "automatic",
+     "updated_time": "2026-10-26T14:55:05.296008Z"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -16.809849,
+      65.696373
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026uzeifz",
+     "time": "2026-10-24T23:49:22.094947Z",
+     "magnitude": -0.42776,
+     "depth": 0.0,
+     "region": "Mývatn",
+     "type": "not locatable",
+     "evaluation_mode": "automatic",
+     "updated_time": "2026-10-25T11:05:31.277351Z"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -22.782459,
+      63.940041
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026thdfid",
+     "time": "2026-09-30T23:58:53.474048Z",
+     "magnitude": 0.627916,
+     "depth": 2.800897,
+     "region": "Reykjanes",
+     "type": "not existing",
+     "evaluation_mode": "manual",
+     "updated_time": "2026-10-01T11:08:51.647954Z"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -21.562408,
+      65.275719
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026thendk",
+     "time": "2026-10-01T00:38:07.639906Z",
+     "magnitude": 1.723078,
+     "depth": 0.0,
+     "region": "Vestfirðir",
+     "type": "anthropogenic event",
+     "evaluation_mode": "manual",
+     "updated_time": "2026-10-01T08:20:39.525924Z"
+    }
+   },
+   {
+    "type": "Feature",
+    "geometry": {
+     "type": "Point",
+     "coordinates": [
+      -18.225586,
+      65.744255
+     ]
+    },
+    "properties": {
+     "event_id": "IMO2026uvbmws",
+     "time": "2026-10-22T18:06:08.500228Z",
+     "magnitude": 1.243654,
+     "depth": 0.741885,
+     "region": "Norðurland",
+     "type": "explosion",
+     "evaluation_mode": "manual",
+     "updated_time": "2026-10-22T20:44:15.05504Z"
+    }
+   }
+  ]
+ },
+ "imo_volcanoes": [
+  {
+   "code": "BEE",
+   "name": "Beerenberg",
+   "si_name": "Beerenberg",
+   "si_code": "376010",
+   "country": {
+    "iso_code": "NO",
+    "name_is": "Noregur",
+    "name_en": "Norway"
+   },
+   "zone": null,
+   "height": 2085,
+   "alt_name": "Volcano Beerenberg on Jan Mayen",
+   "geom_point": {
+    "type": "Point",
+    "coordinates": [
+     -8.133,
+     71.083
+    ]
+   },
+   "min_plume_height": 3,
+   "max_plume_height": 15,
+   "possible_max_plume_height": 25,
+   "predominant_activity_stage_one": null,
+   "predominant_activity_stage_two": null,
+   "prob_duration_effusive": null,
+   "prob_duration_explosive": null,
+   "sulfur_emission_potential_silicic": null,
+   "sulfur_emission_potential_basaltic": null,
+   "iwxxm_identifier": "b70a75c0-7b64-4489-a926-882491fa98ab",
+   "bulletin_identifier": "20",
+   "vona": {
+    "current": null,
+    "previous": null,
+    "total_actual": 0,
+    "history": []
+   },
+   "vals": {
+    "current": null,
+    "previous": null,
+    "total_actual": 0,
+    "history": []
+   }
+  },
+  {
+   "code": "BAR",
+   "name": "Bárðarbunga",
+   "si_name": "Bardarbunga",
+   "si_code": "373030",
+   "country": {
+    "iso_code": "IS",
+    "name_is": "Ísland",
+    "name_en": "Iceland"
+   },
+   "zone": {
+    "marker": "EVZ",
+    "name_is": "Austurgosbelti",
+    "name_en": "Eastern Volcanic Zone"
+   },
+   "height": 2000,
+   "alt_name": "Veiðivötn",
+   "geom_point": {
+    "type": "Point",
+    "coordinates": [
+     -17.5,
+     64.633
+    ]
+   },
+   "min_plume_height": 3,
+   "max_plume_height": 12,
+   "possible_max_plume_height": 25,
+   "predominant_activity_stage_one": "Effusive",
+   "predominant_activity_stage_two": "Explosive",
+   "prob_duration_effusive": "weeks to months",
+   "prob_duration_explosive": "hours to weeks",
+   "sulfur_emission_potential_silicic": null,
+   "sulfur_emission_potential_basaltic": 1400,
+   "iwxxm_identifier": "9e2b3dfe-8571-4a67-9830-482ce2fd44d3",
+   "bulletin_identifier": "02",
+   "vona": {
+    "current": {
+     "id": 594,
+     "volcano_code": "BAR",
+     "published_at": "2025-01-16T16:05:07.792000Z",
+     "aviation_color": {
+      "code": "GREEN",
+      "code_is": "GRÆNT",
+      "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+      "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+     },
+     "notice_number": 4
+    },
+    "previous": {
+     "id": 592,
+     "volcano_code": "BAR",
+     "published_at": "2025-01-15T09:45:05.764000Z",
+     "aviation_color": {
+      "code": "YELLOW",
+      "code_is": "GULT",
+      "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+      "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+     },
+     "notice_number": 3
+    },
+    "total_actual": 5,
+    "history": [
+     {
+      "id": 594,
+      "volcano_code": "BAR",
+      "published_at": "2025-01-16T16:05:07.792000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 4
+     },
+     {
+      "id": 592,
+      "volcano_code": "BAR",
+      "published_at": "2025-01-15T09:45:05.764000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 588,
+      "volcano_code": "BAR",
+      "published_at": "2025-01-14T14:18:15.338000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 587,
+      "volcano_code": "BAR",
+      "published_at": "2025-01-14T07:05:39.490000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 3,
+      "volcano_code": "BAR",
+      "published_at": "2015-03-01T00:00:00Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 1
+     }
+    ]
+   },
+   "vals": {
+    "current": {
+     "id": 43,
+     "volcano_code": "BAR",
+     "published_at": "2025-02-01T00:00:00Z",
+     "alert_level_info": {
+      "level": 1,
+      "code_is": "Gult",
+      "code_en": "Yellow",
+      "description_is": "Aukin virkni",
+      "description_en": "Volcanic unrest"
+     }
+    },
+    "previous": {
+     "id": 3,
+     "volcano_code": "BAR",
+     "published_at": "2025-01-01T00:00:00Z",
+     "alert_level_info": {
+      "level": 0,
+      "code_is": "Grænt",
+      "code_en": "Green",
+      "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+      "description_en": "Normal background"
+     }
+    },
+    "total_actual": 2,
+    "history": [
+     {
+      "id": 43,
+      "volcano_code": "BAR",
+      "published_at": "2025-02-01T00:00:00Z",
+      "alert_level_info": {
+       "level": 1,
+       "code_is": "Gult",
+       "code_en": "Yellow",
+       "description_is": "Aukin virkni",
+       "description_en": "Volcanic unrest"
+      }
+     },
+     {
+      "id": 3,
+      "volcano_code": "BAR",
+      "published_at": "2025-01-01T00:00:00Z",
+      "alert_level_info": {
+       "level": 0,
+       "code_is": "Grænt",
+       "code_en": "Green",
+       "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+       "description_en": "Normal background"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "code": "REY",
+   "name": "Reykjanes",
+   "si_name": "Reykjanes",
+   "si_code": "371020",
+   "country": {
+    "iso_code": "IS",
+    "name_is": "Ísland",
+    "name_en": "Iceland"
+   },
+   "zone": {
+    "marker": "NRR",
+    "name_is": "Norður Reykjaneshryggur",
+    "name_en": "Northern Reykjanes Ridge"
+   },
+   "height": 140,
+   "alt_name": null,
+   "geom_point": {
+    "type": "Point",
+    "coordinates": [
+     -22.717,
+     63.817
+    ]
+   },
+   "min_plume_height": 3,
+   "max_plume_height": 10,
+   "possible_max_plume_height": 15,
+   "predominant_activity_stage_one": "Effusive",
+   "predominant_activity_stage_two": "Explosive",
+   "prob_duration_effusive": "weeks to months",
+   "prob_duration_explosive": "days to weeks",
+   "sulfur_emission_potential_silicic": null,
+   "sulfur_emission_potential_basaltic": 1300,
+   "iwxxm_identifier": "3c0f9305-2a98-4b14-95ad-37e293aae2fb",
+   "bulletin_identifier": "07",
+   "vona": {
+    "current": {
+     "id": 636,
+     "volcano_code": "REY",
+     "published_at": "2025-08-05T13:20:37.947000Z",
+     "aviation_color": {
+      "code": "YELLOW",
+      "code_is": "GULT",
+      "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+      "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+     },
+     "notice_number": 16
+    },
+    "previous": {
+     "id": 635,
+     "volcano_code": "REY",
+     "published_at": "2025-08-05T13:17:40.769000Z",
+     "aviation_color": {
+      "code": "YELLOW",
+      "code_is": "GULT",
+      "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+      "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+     },
+     "notice_number": 15
+    },
+    "total_actual": 86,
+    "history": [
+     {
+      "id": 636,
+      "volcano_code": "REY",
+      "published_at": "2025-08-05T13:20:37.947000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 16
+     },
+     {
+      "id": 635,
+      "volcano_code": "REY",
+      "published_at": "2025-08-05T13:17:40.769000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 15
+     },
+     {
+      "id": 634,
+      "volcano_code": "REY",
+      "published_at": "2025-07-30T10:50:45.258000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 14
+     },
+     {
+      "id": 633,
+      "volcano_code": "REY",
+      "published_at": "2025-07-22T14:18:10.637000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 13
+     },
+     {
+      "id": 632,
+      "volcano_code": "REY",
+      "published_at": "2025-07-16T04:35:11.776000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 12
+     },
+     {
+      "id": 631,
+      "volcano_code": "REY",
+      "published_at": "2025-07-16T04:05:11.124000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 11
+     },
+     {
+      "id": 630,
+      "volcano_code": "REY",
+      "published_at": "2025-07-16T02:24:06.437000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 10
+     },
+     {
+      "id": 629,
+      "volcano_code": "REY",
+      "published_at": "2025-07-16T01:06:37.636000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 9
+     },
+     {
+      "id": 612,
+      "volcano_code": "REY",
+      "published_at": "2025-04-03T12:12:28Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 8
+     },
+     {
+      "id": 611,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T17:31:31.326000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 7
+     },
+     {
+      "id": 610,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T10:54:23.458000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 6
+     },
+     {
+      "id": 609,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T10:35:56.223000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 5
+     },
+     {
+      "id": 608,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T10:34:38.086000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 4
+     },
+     {
+      "id": 607,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T10:24:47.760000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 606,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T09:45:06.971000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 605,
+      "volcano_code": "REY",
+      "published_at": "2025-04-01T06:57:55.955000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 582,
+      "volcano_code": "REY",
+      "published_at": "2024-12-09T16:37:12.753000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 45
+     },
+     {
+      "id": 581,
+      "volcano_code": "REY",
+      "published_at": "2024-11-29T13:27:29.551000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 44
+     },
+     {
+      "id": 579,
+      "volcano_code": "REY",
+      "published_at": "2024-11-27T11:44:46.946000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 43
+     },
+     {
+      "id": 578,
+      "volcano_code": "REY",
+      "published_at": "2024-11-21T15:51:56.766000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 42
+     },
+     {
+      "id": 577,
+      "volcano_code": "REY",
+      "published_at": "2024-11-21T00:04:18.522000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 41
+     },
+     {
+      "id": 576,
+      "volcano_code": "REY",
+      "published_at": "2024-11-20T23:54:22.347000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 40
+     },
+     {
+      "id": 575,
+      "volcano_code": "REY",
+      "published_at": "2024-11-20T23:39:19.117000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 39
+     },
+     {
+      "id": 573,
+      "volcano_code": "REY",
+      "published_at": "2024-11-20T23:19:03.290000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 38
+     },
+     {
+      "id": 572,
+      "volcano_code": "REY",
+      "published_at": "2024-11-20T23:00:48.187000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 37
+     },
+     {
+      "id": 563,
+      "volcano_code": "REY",
+      "published_at": "2024-09-06T23:46:03.223000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 36
+     },
+     {
+      "id": 562,
+      "volcano_code": "REY",
+      "published_at": "2024-09-06T19:20:37.988000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 35
+     },
+     {
+      "id": 561,
+      "volcano_code": "REY",
+      "published_at": "2024-09-06T16:20:49.510000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 34
+     },
+     {
+      "id": 545,
+      "volcano_code": "REY",
+      "published_at": "2024-08-23T11:41:03.183000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 33
+     },
+     {
+      "id": 544,
+      "volcano_code": "REY",
+      "published_at": "2024-08-22T21:45:09.978000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 32
+     },
+     {
+      "id": 543,
+      "volcano_code": "REY",
+      "published_at": "2024-08-22T21:30:27.042000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 31
+     },
+     {
+      "id": 542,
+      "volcano_code": "REY",
+      "published_at": "2024-08-22T21:11:29.759000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 30
+     },
+     {
+      "id": 539,
+      "volcano_code": "REY",
+      "published_at": "2024-06-25T14:10:23.921000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 29
+     },
+     {
+      "id": 533,
+      "volcano_code": "REY",
+      "published_at": "2024-05-30T11:26:45.521000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 28
+     },
+     {
+      "id": 532,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T21:32:51.458000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 27
+     },
+     {
+      "id": 531,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T16:06:05.722000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 26
+     },
+     {
+      "id": 530,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T13:13:58.992000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 25
+     },
+     {
+      "id": 529,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T12:55:01.418000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 24
+     },
+     {
+      "id": 528,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T11:15:58.948000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 23
+     },
+     {
+      "id": 527,
+      "volcano_code": "REY",
+      "published_at": "2024-05-29T11:09:11.368000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 22
+     },
+     {
+      "id": 526,
+      "volcano_code": "REY",
+      "published_at": "2024-05-09T08:28:22.286000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 21
+     },
+     {
+      "id": 522,
+      "volcano_code": "REY",
+      "published_at": "2024-03-25T13:03:40.064000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 20
+     },
+     {
+      "id": 521,
+      "volcano_code": "REY",
+      "published_at": "2024-03-20T11:00:27.082000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 19
+     },
+     {
+      "id": 520,
+      "volcano_code": "REY",
+      "published_at": "2024-03-18T12:45:21.785000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 18
+     },
+     {
+      "id": 519,
+      "volcano_code": "REY",
+      "published_at": "2024-03-17T11:50:50.192000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 17
+     },
+     {
+      "id": 518,
+      "volcano_code": "REY",
+      "published_at": "2024-03-16T21:22:47.363000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 16
+     },
+     {
+      "id": 517,
+      "volcano_code": "REY",
+      "published_at": "2024-03-16T20:40:58.960000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 15
+     },
+     {
+      "id": 516,
+      "volcano_code": "REY",
+      "published_at": "2024-03-16T20:39:50.557000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 14
+     },
+     {
+      "id": 515,
+      "volcano_code": "REY",
+      "published_at": "2024-03-16T20:26:52.834000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 13
+     },
+     {
+      "id": 514,
+      "volcano_code": "REY",
+      "published_at": "2024-03-03T08:12:09.565000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 12
+     },
+     {
+      "id": 513,
+      "volcano_code": "REY",
+      "published_at": "2024-03-02T16:51:13.688000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 11
+     },
+     {
+      "id": 512,
+      "volcano_code": "REY",
+      "published_at": "2024-02-09T17:13:06.920000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 10
+     },
+     {
+      "id": 511,
+      "volcano_code": "REY",
+      "published_at": "2024-02-08T14:30:06.825000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 9
+     },
+     {
+      "id": 510,
+      "volcano_code": "REY",
+      "published_at": "2024-02-08T07:10:02.375000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 8
+     },
+     {
+      "id": 509,
+      "volcano_code": "REY",
+      "published_at": "2024-02-08T06:26:43.447000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 7
+     },
+     {
+      "id": 508,
+      "volcano_code": "REY",
+      "published_at": "2024-02-08T06:08:43.515000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 6
+     },
+     {
+      "id": 506,
+      "volcano_code": "REY",
+      "published_at": "2024-01-16T21:05:58.763000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 5
+     },
+     {
+      "id": 505,
+      "volcano_code": "REY",
+      "published_at": "2024-01-14T09:09:20.482000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 4
+     },
+     {
+      "id": 504,
+      "volcano_code": "REY",
+      "published_at": "2024-01-14T08:26:22.897000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 503,
+      "volcano_code": "REY",
+      "published_at": "2024-01-14T08:03:34.678000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 502,
+      "volcano_code": "REY",
+      "published_at": "2024-01-14T04:11:13.796000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 498,
+      "volcano_code": "REY",
+      "published_at": "2023-12-22T14:59:07.682000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 13
+     },
+     {
+      "id": 497,
+      "volcano_code": "REY",
+      "published_at": "2023-12-19T02:20:05.619000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 12
+     },
+     {
+      "id": 496,
+      "volcano_code": "REY",
+      "published_at": "2023-12-18T23:42:59.531000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 11
+     },
+     {
+      "id": 495,
+      "volcano_code": "REY",
+      "published_at": "2023-12-18T23:32:51.564000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 10
+     },
+     {
+      "id": 494,
+      "volcano_code": "REY",
+      "published_at": "2023-12-18T23:05:48.515000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 9
+     },
+     {
+      "id": 493,
+      "volcano_code": "REY",
+      "published_at": "2023-12-18T22:38:14.444000Z",
+      "aviation_color": {
+       "code": "RED",
+       "code_is": "RAUTT",
+       "description_is": "Eldgos er yfirvofandi eða hafið – líklegt er að aska berist upp í lofthjúpinn. Eða, eldgos stendur yfir og veruleg aska berst upp í andrúmsloftið.",
+       "description_en": "Eruption is ongoing with significant emission of ash into the atmosphere."
+      },
+      "notice_number": 8
+     },
+     {
+      "id": 492,
+      "volcano_code": "REY",
+      "published_at": "2023-11-22T18:16:03.158000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 7
+     },
+     {
+      "id": 485,
+      "volcano_code": "REY",
+      "published_at": "2023-11-15T12:02:49.432000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 6
+     },
+     {
+      "id": 484,
+      "volcano_code": "REY",
+      "published_at": "2023-11-11T19:54:36.463000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 5
+     },
+     {
+      "id": 483,
+      "volcano_code": "REY",
+      "published_at": "2023-11-11T13:04:44.282000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 4
+     },
+     {
+      "id": 482,
+      "volcano_code": "REY",
+      "published_at": "2023-11-10T17:09:56.812000Z",
+      "aviation_color": {
+       "code": "ORANGE",
+       "code_is": "APPELSÍNUGULT",
+       "description_is": "Eldstöðin sýnir aukna virkni og vaxandi líkur á eldgosi. Eða, eldgos er í gangi, þó með lítilli eða engri öskuframleiðslu.",
+       "description_en": "Volcano is exhibiting heightened unrest with increased likelihood of eruption. or, volcanic eruption is underway with no or minor ash emission."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 481,
+      "volcano_code": "REY",
+      "published_at": "2023-11-09T14:50:34.903000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 480,
+      "volcano_code": "REY",
+      "published_at": "2023-10-28T15:18:21.430000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 375,
+      "volcano_code": "REY",
+      "published_at": "2022-06-02T11:49:38.513000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 374,
+      "volcano_code": "REY",
+      "published_at": "2022-05-16T09:40:06.217000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 184,
+      "volcano_code": "REY",
+      "published_at": "2020-05-04T09:34:32.460000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 9
+     },
+     {
+      "id": 183,
+      "volcano_code": "REY",
+      "published_at": "2020-05-04T09:12:23.589000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 8
+     },
+     {
+      "id": 181,
+      "volcano_code": "REY",
+      "published_at": "2020-04-01T14:16:21.367000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 7
+     },
+     {
+      "id": 176,
+      "volcano_code": "REY",
+      "published_at": "2020-03-18T15:57:49.308000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 6
+     },
+     {
+      "id": 175,
+      "volcano_code": "REY",
+      "published_at": "2020-02-26T10:53:44.971000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 5
+     },
+     {
+      "id": 167,
+      "volcano_code": "REY",
+      "published_at": "2020-02-15T16:05:24.467000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 4
+     },
+     {
+      "id": 166,
+      "volcano_code": "REY",
+      "published_at": "2020-02-07T11:08:53.509000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 165,
+      "volcano_code": "REY",
+      "published_at": "2020-01-29T17:12:02.440000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 164,
+      "volcano_code": "REY",
+      "published_at": "2020-01-26T17:15:09.099000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 23,
+      "volcano_code": "REY",
+      "published_at": "2015-03-01T00:00:00Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 1
+     }
+    ]
+   },
+   "vals": {
+    "current": {
+     "id": 36,
+     "volcano_code": "REY",
+     "published_at": "2025-10-15T16:13:52.452639Z",
+     "alert_level_info": {
+      "level": 2,
+      "code_is": "Appelsínugult",
+      "code_en": "Orange",
+      "description_is": "Töluvert aukin virkni",
+      "description_en": "Heightened volcanic unrest"
+     }
+    },
+    "previous": {
+     "id": 21,
+     "volcano_code": "REY",
+     "published_at": "2025-01-01T00:00:00Z",
+     "alert_level_info": {
+      "level": 0,
+      "code_is": "Grænt",
+      "code_en": "Green",
+      "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+      "description_en": "Normal background"
+     }
+    },
+    "total_actual": 2,
+    "history": [
+     {
+      "id": 36,
+      "volcano_code": "REY",
+      "published_at": "2025-10-15T16:13:52.452639Z",
+      "alert_level_info": {
+       "level": 2,
+       "code_is": "Appelsínugult",
+       "code_en": "Orange",
+       "description_is": "Töluvert aukin virkni",
+       "description_en": "Heightened volcanic unrest"
+      }
+     },
+     {
+      "id": 21,
+      "volcano_code": "REY",
+      "published_at": "2025-01-01T00:00:00Z",
+      "alert_level_info": {
+       "level": 0,
+       "code_is": "Grænt",
+       "code_en": "Green",
+       "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+       "description_en": "Normal background"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "code": "ASK",
+   "name": "Askja",
+   "si_name": "Askja",
+   "si_code": "373060",
+   "country": {
+    "iso_code": "IS",
+    "name_is": "Ísland",
+    "name_en": "Iceland"
+   },
+   "zone": {
+    "marker": "NVZ",
+    "name_is": "Norðurgosbelti",
+    "name_en": "Northern Volcanic Zone"
+   },
+   "height": 1516,
+   "alt_name": "Askja-Dyngjufjöll, Askja-Hrúthálsar",
+   "geom_point": {
+    "type": "Point",
+    "coordinates": [
+     -16.783,
+     65.05
+    ]
+   },
+   "min_plume_height": 3,
+   "max_plume_height": 12,
+   "possible_max_plume_height": 35,
+   "predominant_activity_stage_one": "Effusive",
+   "predominant_activity_stage_two": "Explosive",
+   "prob_duration_effusive": "weeks to months",
+   "prob_duration_explosive": "hours to weeks",
+   "sulfur_emission_potential_silicic": 100,
+   "sulfur_emission_potential_basaltic": 1200,
+   "iwxxm_identifier": "44c0d8de-ce19-4533-a598-65a5298a38da",
+   "bulletin_identifier": "01",
+   "vona": {
+    "current": {
+     "id": 407,
+     "volcano_code": "ASK",
+     "published_at": "2022-11-09T07:54:42.992000Z",
+     "aviation_color": {
+      "code": "GREEN",
+      "code_is": "GRÆNT",
+      "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+      "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+     },
+     "notice_number": 1
+    },
+    "previous": {
+     "id": 317,
+     "volcano_code": "ASK",
+     "published_at": "2021-09-09T16:33:34.079000Z",
+     "aviation_color": {
+      "code": "YELLOW",
+      "code_is": "GULT",
+      "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+      "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+     },
+     "notice_number": 3
+    },
+    "total_actual": 5,
+    "history": [
+     {
+      "id": 407,
+      "volcano_code": "ASK",
+      "published_at": "2022-11-09T07:54:42.992000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 317,
+      "volcano_code": "ASK",
+      "published_at": "2021-09-09T16:33:34.079000Z",
+      "aviation_color": {
+       "code": "YELLOW",
+       "code_is": "GULT",
+       "description_is": "Eldstöðin sýnir merki um virkni, umfram venjulegt ástand. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot hafa minnkað markvert en vel er fylgst með, ef vera kynni að þau aukist á ný.",
+       "description_en": "Volcano is experiencing signs of elevated unrest above known background levels. or, after a change from higher alert level: Volcanic activity has decreased significantly but continues to be closely monitored for possible renewed increase."
+      },
+      "notice_number": 3
+     },
+     {
+      "id": 316,
+      "volcano_code": "ASK",
+      "published_at": "2021-09-03T18:10:52.779000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 2
+     },
+     {
+      "id": 315,
+      "volcano_code": "ASK",
+      "published_at": "2021-09-03T17:55:21.001000Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 1
+     },
+     {
+      "id": 2,
+      "volcano_code": "ASK",
+      "published_at": "2015-03-01T00:00:00Z",
+      "aviation_color": {
+       "code": "GREEN",
+       "code_is": "GRÆNT",
+       "description_is": "Virk eldstöð, engar vísbendingar um að gos sé væntanlegt. eða, eftir að virknin hefur verið lækkuð frá hærra stigi: Umbrot eru talin afstaðin og engar vísbendingar um að gos sé væntanlegt.",
+       "description_en": "Volcano is in normal, non-eruptive state. or, after a change from a higher alert level: Volcanic activity considered to have ceased, and volcano reverted to its normal, non-eruptive state."
+      },
+      "notice_number": 1
+     }
+    ]
+   },
+   "vals": {
+    "current": {
+     "id": 41,
+     "volcano_code": "ASK",
+     "published_at": "2026-08-26T11:11:07.939845Z",
+     "alert_level_info": {
+      "level": 0,
+      "code_is": "Grænt",
+      "code_en": "Green",
+      "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+      "description_en": "Normal background"
+     }
+    },
+    "previous": {
+     "id": 35,
+     "volcano_code": "ASK",
+     "published_at": "2025-10-15T16:06:21.368183Z",
+     "alert_level_info": {
+      "level": 1,
+      "code_is": "Gult",
+      "code_en": "Yellow",
+      "description_is": "Aukin virkni",
+      "description_en": "Volcanic unrest"
+     }
+    },
+    "total_actual": 3,
+    "history": [
+     {
+      "id": 41,
+      "volcano_code": "ASK",
+      "published_at": "2026-08-26T11:11:07.939845Z",
+      "alert_level_info": {
+       "level": 0,
+       "code_is": "Grænt",
+       "code_en": "Green",
+       "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+       "description_en": "Normal background"
+      }
+     },
+     {
+      "id": 35,
+      "volcano_code": "ASK",
+      "published_at": "2025-10-15T16:06:21.368183Z",
+      "alert_level_info": {
+       "level": 1,
+       "code_is": "Gult",
+       "code_en": "Yellow",
+       "description_is": "Aukin virkni",
+       "description_en": "Volcanic unrest"
+      }
+     },
+     {
+      "id": 19,
+      "volcano_code": "ASK",
+      "published_at": "2025-01-01T00:00:00Z",
+      "alert_level_info": {
+       "level": 0,
+       "code_is": "Grænt",
+       "code_en": "Green",
+       "description_is": "Engin aukin virkni - venjulegt bakgrunnsvirkni",
+       "description_en": "Normal background"
+      }
+     }
+    ]
+   }
+  }
+ ],
+ "jma_volcano_warning": [
+  {
+   "reportDatetime": "2007-12-01T10:01:00+09:00",
+   "eventId": "329",
+   "areas": [
+    "1342100"
+   ],
+   "volcanoInfos": [
+    {
+     "type": "噴火警報・予報（対象火山）",
+     "items": [
+      {
+       "name": "火口周辺危険",
+       "code": "22",
+       "lastCode": "22",
+       "condition": "継続",
+       "areas": [
+        {
+         "name": "硫黄島",
+         "code": "329"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村等）",
+     "items": [
+      {
+       "name": "火口周辺警報",
+       "code": "02",
+       "lastCode": "02",
+       "condition": "切替",
+       "areas": [
+        {
+         "name": "東京都小笠原村",
+         "code": "1342100"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村の防災対応等）",
+     "items": [
+      {
+       "name": "火口周辺警報：火口周辺警戒",
+       "code": "49",
+       "lastCode": "49",
+       "condition": "継続",
+       "areas": [
+        {
+         "name": "東京都小笠原村",
+         "code": "1342100"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "reportDatetime": "2021-08-16T14:00:00+09:00",
+   "eventId": "331",
+   "areas": [
+    "1342100"
+   ],
+   "volcanoInfos": [
+    {
+     "type": "噴火警報・予報（対象火山）",
+     "items": [
+      {
+       "name": "周辺海域警戒",
+       "code": "36",
+       "lastCode": "36",
+       "condition": "継続",
+       "areas": [
+        {
+         "name": "福徳岡ノ場",
+         "code": "331"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村等）",
+     "items": [
+      {
+       "name": "噴火警報（周辺海域）",
+       "code": "03",
+       "lastCode": "03",
+       "condition": "切替",
+       "areas": [
+        {
+         "name": "東京都小笠原村",
+         "code": "1342100"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村の防災対応等）",
+     "items": [
+      {
+       "name": "噴火警報（周辺海域）：周辺海域警戒",
+       "code": "44",
+       "lastCode": "44",
+       "condition": "継続",
+       "areas": [
+        {
+         "name": "東京都小笠原村",
+         "code": "1342100"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "reportDatetime": "2022-07-27T20:00:00+09:00",
+   "eventId": "506",
+   "areas": [
+    "4620100"
+   ],
+   "volcanoInfos": [
+    {
+     "type": "噴火警報・予報（対象火山）",
+     "items": [
+      {
+       "name": "レベル３（入山規制）",
+       "code": "13",
+       "lastCode": "15",
+       "condition": "引下げ",
+       "areas": [
+        {
+         "name": "桜島",
+         "code": "506"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村等）",
+     "items": [
+      {
+       "name": "火口周辺警報",
+       "code": "02",
+       "lastCode": "01",
+       "condition": "発表",
+       "areas": [
+        {
+         "name": "鹿児島県鹿児島市",
+         "code": "4620100"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村の防災対応等）",
+     "items": [
+      {
+       "name": "火口周辺警報：入山規制等",
+       "code": "43",
+       "lastCode": "41",
+       "condition": "引下げ",
+       "areas": [
+        {
+         "name": "鹿児島県鹿児島市",
+         "code": "4620100"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "reportDatetime": "2026-09-28T11:00:00+09:00",
+   "eventId": "509",
+   "areas": [
+    "4650500"
+   ],
+   "volcanoInfos": [
+    {
+     "type": "噴火警報・予報（対象火山）",
+     "items": [
+      {
+       "name": "レベル１（活火山であることに留意）",
+       "code": "11",
+       "lastCode": "12",
+       "condition": "引下げ",
+       "areas": [
+        {
+         "name": "口永良部島",
+         "code": "509"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村等）",
+     "items": [
+      {
+       "name": "噴火予報：警報解除",
+       "code": "04",
+       "lastCode": "02",
+       "condition": "解除",
+       "areas": [
+        {
+         "name": "鹿児島県屋久島町",
+         "code": "4650500"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村の防災対応等）",
+     "items": [
+      {
+       "name": "活火山であることに留意",
+       "code": "45",
+       "lastCode": "43",
+       "condition": "解除",
+       "areas": [
+        {
+         "name": "鹿児島県屋久島町",
+         "code": "4650500"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "reportDatetime": "2026-10-08T11:00:00+09:00",
+   "eventId": "323",
+   "areas": [
+    "1340000"
+   ],
+   "volcanoInfos": [
+    {
+     "type": "噴火警報・予報（対象火山）",
+     "items": [
+      {
+       "name": "活火山であることに留意（海底火山）",
+       "code": "35",
+       "lastCode": "36",
+       "condition": "引下げ",
+       "areas": [
+        {
+         "name": "ベヨネース列岩",
+         "code": "323"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村等）",
+     "items": [
+      {
+       "name": "噴火予報：警報解除",
+       "code": "04",
+       "lastCode": "03",
+       "condition": "解除",
+       "areas": [
+        {
+         "name": "東京都八丈支庁",
+         "code": "1340000"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "噴火警報・予報（対象市町村の防災対応等）",
+     "items": [
+      {
+       "name": "活火山であることに留意",
+       "code": "45",
+       "lastCode": "44",
+       "condition": "解除",
+       "areas": [
+        {
+         "name": "東京都八丈支庁",
+         "code": "1340000"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "jma_volcano_list": [
+  {
+   "code": "323",
+   "latlon": [
+    "31.888",
+    "139.918"
+   ],
+   "name_jp": "ベヨネース列岩",
+   "name_en": "Beyonesu Rocks"
+  },
+  {
+   "code": "329",
+   "latlon": [
+    "24.751",
+    "141.289"
+   ],
+   "name_jp": "硫黄島",
+   "name_en": "Ioto"
+  },
+  {
+   "code": "331",
+   "latlon": [
+    "24.285",
+    "141.481"
+   ],
+   "name_jp": "福徳岡ノ場",
+   "name_en": "Fukutoku-Oka-no-Ba"
+  },
+  {
+   "code": "506",
+   "latlon": [
+    "31.593",
+    "130.657"
+   ],
+   "pointShift": [
+    -7,
+    0
+   ],
+   "pointShift18": [
+    -20,
+    0
+   ],
+   "name_jp": "桜島",
+   "name_en": "Sakurajima",
+   "levelOperation": true
+  },
+  {
+   "code": "509",
+   "latlon": [
+    "30.443",
+    "130.217"
+   ],
+   "name_jp": "口永良部島",
+   "name_en": "Kuchinoerabujima",
+   "levelOperation": true
+  }
+ ]
+}

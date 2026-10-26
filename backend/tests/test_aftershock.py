@@ -666,3 +666,13 @@ async def test_cycle_drops_expired_forecast_from_cache():
 
     assert source._cache == {}
     assert emitted == []
+
+
+def test_build_event_carries_the_forecast_expiry():
+    """USGS states the end of every forecast; it was parsed and then left out
+    of the event, so the store had to guess an end it had already been given."""
+    mainshock = _ende_mainshock()
+    forecast = parse_forecast(FORECAST_RESPONSE_TKT2)
+    event = build_event(mainshock, forecast, datetime(2026, 8, 18, 12, 0, tzinfo=UTC))
+    assert event is not None
+    assert event.expires == forecast.expire_time

@@ -72,8 +72,13 @@ class VolcanoSource(Source):
                     continue
                 self._catalog[str(vnum)] = (float(lat), float(lon), props.get("Country"))
             log.info("volcano catalog loaded: %d entries", len(self._catalog))
+            self.health.feed_ok("gvp-catalogue")
         except Exception as exc:
             # without the catalog we lose the coordinates, not the alert itself
+            # -- but every volcano then lands off the map while the source
+            # shows green, so it is reported, and retried every cycle until it
+            # loads (it used to be tried once, at startup, and never again).
+            self.health.feed_failed("gvp-catalogue", exc)
             log.warning("volcano catalog unavailable (%s), alerts without position", exc)
 
     def parse(self, row: dict) -> Event | None:
@@ -122,8 +127,9 @@ class VolcanoSource(Source):
         async with httpx.AsyncClient(
             timeout=30.0, headers=headers, follow_redirects=True
         ) as client:
-            await self._load_catalog(client)
             while True:
+                # a no-op once loaded
+                await self._load_catalog(client)
                 try:
                     resp = await client.get(HANS_URL)
                     resp.raise_for_status()

@@ -27,7 +27,7 @@ from datetime import UTC, datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from app.models.event import Event, Kind, Severity, severity_from_magnitude
+from app.models.event import Event, Kind, Severity, severity_for_quake
 from app.sources.regional import SHINDO_SEVERITY, JsonPollSource
 
 log = logging.getLogger(__name__)
@@ -78,8 +78,19 @@ class JmaEewSource(JsonPollSource):
         if not event_id:
             return []
 
+        # A DRILL. The relay carries JMA's training flag on every message
+        # (`"isTraining": false` on the live payload of 2026-10-26); no true
+        # value has been observed yet, but the field says exactly what it is,
+        # and publishing a rehearsal as a real early warning -- banner, sound,
+        # "take cover" -- is the one mistake this source must never make.
+        if data.get("isTraining") is True:
+            log.info("JMA EEW %s is a training message, ignored", event_id)
+            return []
+
         status = ((data.get("Issue") or {}).get("Status")) or ""
-        if JMA_CANCELLED in status:
+        # Two ways the relay says "withdrawn": the Japanese status text, and
+        # its own boolean (present on the same payload). Either one is enough.
+        if JMA_CANCELLED in status or data.get("isCancel") is True:
             # Returning [] is how the store hears "nothing new", not "this
             # never happened": the withdrawn warning stayed on the map, red,
             # forever. A cancelled EEW is the one alert that MUST disappear --
@@ -100,8 +111,16 @@ class JmaEewSource(JsonPollSource):
         place = data.get("Hypocenter") or "Japan"
         title = data.get("Title") or ""
 
-        severity = severity_from_magnitude(
-            float(magnitude) if isinstance(magnitude, (int, float)) else None
+        depth = data.get("Depth")
+        # Depth first, then the expected intensity. A M7.5 at 530 km under the
+        # Sea of Japan is a long sway that breaks nothing, and rated on
+        # magnitude alone it fired the major banner and the sound. The
+        # forecast shindo still promotes: if JMA expects 5- at the surface,
+        # the depth has already been accounted for by the one model that
+        # knows the ground.
+        severity = severity_for_quake(
+            float(magnitude) if isinstance(magnitude, (int, float)) else None,
+            float(depth) if isinstance(depth, (int, float)) else None,
         )
         if shindo in SHINDO_SEVERITY:
             # the expected ground intensity wins: it is what says whether to
@@ -125,7 +144,7 @@ class JmaEewSource(JsonPollSource):
                 time=time,
                 lat=data.get("Latitude"),
                 lon=data.get("Longitude"),
-                depth_km=data.get("Depth"),
+                depth_km=depth,
                 magnitude=float(magnitude) if isinstance(magnitude, (int, float)) else None,
                 mag_type="Mj",
                 place=place,
@@ -226,6 +245,7 @@ class CencSource(JsonPollSource):
             lat, lon = number(row.get("latitude")), number(row.get("longitude"))
             place = row.get("placeName") or row.get("location") or "China"
             domestic = _is_chinese_mainland(lat, lon, place)
+            depth = number(row.get("depth"))
 
             events.append(
                 Event(
@@ -236,14 +256,14 @@ class CencSource(JsonPollSource):
                     time=time,
                     lat=lat,
                     lon=lon,
-                    depth_km=number(row.get("depth")),
+                    depth_km=depth,
                     magnitude=magnitude,
                     mag_type="M",
                     place=place,
                     # Only when it really is in China: see above.
                     country="China" if domestic else None,
                     country_code="CN" if domestic else None,
-                    severity=severity_from_magnitude(magnitude),
+                    severity=severity_for_quake(magnitude, depth),
                     # "reviewed" (checked by an analyst) vs "automatic"
                     alert=row.get("type"),
                     title=f"M {magnitude} -- {place}" if magnitude else place,
