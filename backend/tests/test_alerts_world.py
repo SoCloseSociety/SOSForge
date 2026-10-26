@@ -6,6 +6,7 @@ Fixtures: verbatim excerpts from the feeds captured on 2026-08-17.
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import UTC, datetime
 
 from app.models.event import Kind, Severity
 from app.sources.alerts_world import (
@@ -483,7 +484,9 @@ def test_a_position_read_from_the_cap_reaches_the_event():
 def test_the_source_places_what_its_cache_already_knows():
     source = WmoCapSource(max_severity_rank=1)
     source.areas._positions[EXTREME_ITEM["url"]] = (11.7, 92.7)
-    (event,) = source.parse_payload({"items": [EXTREME_ITEM, MINOR_ITEM]})
+    # replayed while the alert was in force (it expires 2026-08-26 12:56 UTC)
+    during = datetime(2026, 8, 26, 8, 0, tzinfo=UTC)
+    (event,) = source.parse_payload({"items": [EXTREME_ITEM, MINOR_ITEM]}, now=during)
     assert (event.lat, event.lon) == (11.7, 92.7)
 
 

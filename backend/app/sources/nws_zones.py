@@ -25,6 +25,8 @@ from pathlib import Path
 
 import httpx
 
+from app.sources import geometry
+
 log = logging.getLogger(__name__)
 
 # How many unknown zones to resolve per polling cycle. NWS re-publishes its
@@ -37,6 +39,11 @@ ZONES_PER_CYCLE = 25
 class ZoneResolver:
     def __init__(self, cache_path: Path | None = None):
         self._centroids: dict[str, tuple[float, float] | None] = {}
+        # The extent of each zone, for "does this alert cover me". Zones cached
+        # before extents were kept are `_legacy`: re-read, ZONES_PER_CYCLE at a
+        # time, exactly like an unknown zone (511 zones: a few minutes).
+        self._extents: dict[str, geometry.BBox | None] = {}
+        self._legacy: set[str] = set()
         self._cache_path = cache_path
         self._load()
 
@@ -46,7 +53,12 @@ class ZoneResolver:
         try:
             data = json.loads(self._cache_path.read_text(encoding="utf-8"))
             for key, value in data.items():
-                self._centroids[key] = tuple(value) if value else None
+                self._centroids[key] = (float(value[0]), float(value[1])) if value else None
+                if value and len(value) == 6:
+                    west, south, east, north = (float(v) for v in value[2:])
+                    self._extents[key] = (west, south, east, north)
+                elif value:
+                    self._legacy.add(key)
             log.info("nws zones: %d positions restored from cache", len(self._centroids))
         except (OSError, ValueError) as exc:
             log.warning("nws zone cache unreadable (%s), starting empty", exc)
@@ -56,18 +68,22 @@ class ZoneResolver:
             return
         try:
             self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-            self._cache_path.write_text(
-                json.dumps({k: list(v) if v else None for k, v in self._centroids.items()}),
-                encoding="utf-8",
-            )
+            data = {}
+            for key, value in self._centroids.items():
+                extent = self._extents.get(key)
+                data[key] = (list(value) + (list(extent) if extent else [])) if value else None
+            self._cache_path.write_text(json.dumps(data), encoding="utf-8")
         except OSError as exc:  # a cache is an optimisation, never a dependency
             log.warning("could not write the nws zone cache: %s", exc)
 
     def known(self, zone_url: str) -> tuple[float, float] | None:
         return self._centroids.get(zone_url)
 
+    def extent(self, zone_url: str) -> geometry.BBox | None:
+        return self._extents.get(zone_url)
+
     def has(self, zone_url: str) -> bool:
-        return zone_url in self._centroids
+        return zone_url in self._centroids and zone_url not in self._legacy
 
     async def resolve(self, client: httpx.AsyncClient, zone_urls: list[str]) -> int:
         """Fetches up to ZONES_PER_CYCLE unknown zones. Returns how many it learned."""
@@ -77,17 +93,37 @@ class ZoneResolver:
             try:
                 response = await client.get(url)
                 response.raise_for_status()
-                centroid = _centroid_of(response.json().get("geometry"))
+                zone_geometry = response.json().get("geometry")
+                centroid = _centroid_of(zone_geometry)
+                extent = geometry.extent(_outer_points(zone_geometry)) if centroid else None
             except Exception as exc:
                 # A zone that will not resolve is remembered as unresolvable,
-                # so we do not ask again on every single cycle forever.
+                # so we do not ask again on every single cycle forever -- a
+                # legacy entry keeps the centroid it already had.
                 log.debug("nws zone %s did not resolve (%s)", url, exc)
-                centroid = None
+                centroid, extent = self._centroids.get(url), None
             self._centroids[url] = centroid
+            self._extents[url] = extent
+            self._legacy.discard(url)
             learned += 1
         if learned:
             self._save()
         return learned
+
+
+def _outer_points(zone_geometry: dict | None) -> list[tuple[float, float]]:
+    """(lat, lon) of the outer ring(s) of a zone Polygon / MultiPolygon."""
+    if not zone_geometry:
+        return []
+    coordinates = zone_geometry.get("coordinates") or []
+    kind = zone_geometry.get("type")
+    if kind == "Polygon":
+        rings = coordinates[:1]
+    elif kind == "MultiPolygon":
+        rings = [polygon[0] for polygon in coordinates if polygon]
+    else:
+        return []
+    return [(point[1], point[0]) for ring in rings for point in ring if len(point) >= 2]
 
 
 def _centroid_of(geometry: dict | None) -> tuple[float, float] | None:

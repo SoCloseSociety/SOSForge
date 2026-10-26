@@ -300,6 +300,11 @@ def build_event(
         # AftershockSource._cycle) and the store's own staleness sweep
         # removes it a few hours later, same as any other ongoing alert.
         ongoing=True,
+        # ...and the end is the forecast's OWN `expireTime`, not six hours of
+        # silence after it. USGS states it on every forecast; it was parsed,
+        # checked above, and then left out of the event, so the store had to
+        # guess an end the source had already given.
+        expires=forecast.expire_time,
         title=title,
         url=f"https://earthquake.usgs.gov/earthquakes/eventpage/{mainshock.id}/oaf/forecast",
         raw={

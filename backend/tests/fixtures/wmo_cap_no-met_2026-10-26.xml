@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<alert xmlns="urn:oasis:names:tc:emergency:cap:1.2">
+  <identifier>2.49.0.1.578.0.20261026192509.094</identifier>
+  <sender>meteorologi@met.no</sender>
+  <sent>2026-10-26T19:26:01+00:00</sent>
+  <status>Actual</status>
+  <msgType>Update</msgType>
+  <scope>Public</scope>
+  <code>profile:cap:https://git.smhi.se/metcoop/metcoop-cap-profile/blob/version-1.0/metcoop-cap-profile.md</code>
+  <references>meteorologi@met.no,2.49.0.1.578.0.20261026081330.059,2026-10-26T12:53:42+00:00</references>
+  <info>
+    <language>no</language>
+    <category>Met</category>
+    <event>Kuling</event>
+    <responseType>Monitor</responseType>
+    <urgency>Future</urgency>
+    <severity>Moderate</severity>
+    <certainty>Likely</certainty>
+    <eventCode>
+        <valueName>OET:v1.0</valueName>
+        <value>OET-221</value>
+    </eventCode>
+    <eventCode>
+        <valueName>eventType</valueName>
+        <value>gale</value>
+    </eventCode>
+    <onset>2026-10-26T21:00:00+00:00</onset>
+    <expires>2026-10-27T13:00:00+00:00</expires>
+    <senderName>Meteorologisk Institutt</senderName>
+    <headline>Storm, gult nivå, Stad - Svinøy, 2026-10-26T21:00:00+00:00, 2026-10-27T13:00:00+00:00</headline>
+    <description>Fra mandag kveld økende til sørlig sterk kuling 20 m/s. Natt til tirsdag dreiende sørøst. Tirsdag morgen økende til sørlig full storm 25 ved Stad. Tirsdag ettermiddag sterk storm 30 ved Stad</description>
+    <instruction>Ikke dra ut i småbåt: Det er farlig å være ute i småbåt. Ikke dra ut i småbåt: Det er farlig å være ute i småbåt. Ved motorstopp kan man drive raskt mot land. </instruction>
+    <web>https://www.met.no/vaer-og-klima/ekstremvaervarsler-og-andre-farevarsler/vaerfenomener-som-kan-gi-farevarsel-fra-met/kuling-stormvarsel-for-kyst-og-naere-fiskebanker</web>
+    <contact>https://www.met.no/kontakt-oss</contact>
+    <parameter>
+        <valueName>consequences</valueName>
+        <value>Sjøen bygger seg opp: Det er farlig å være ute i småbåt. Meget høye bølger: Rullingen blir tung og støtende. Synsvidden nedsettes. </value>
+    </parameter>
+    <parameter>
+        <valueName>eventAwarenessName</valueName>
+        <value>Storm</value>
+    </parameter>
+    <parameter>        
+        <valueName>awareness_level</valueName>
+        <value>2; yellow; Moderate</value>
+    </parameter>
+    <parameter>
+    <valueName>riskMatrixColor</valueName>
+    <value>Yellow</value>
+    </parameter>
+    <parameter>
+        <valueName>awarenessSeriousness</valueName>
+        <value>Utfordrende situasjon</value>
+    </parameter>
+    <parameter>
+        <valueName>awareness_type</valueName>
+        <value>1; Wind</value>
+    </parameter>
+    <parameter>
+        <valueName>triggerLevel</valueName>
+        <value>24.5m/s</value>
+    </parameter>
+    <parameter>
+        <valueName>awarenessResponse</valueName>
+        <value>Følg med</value>
+    </parameter>
+    <parameter>
+        <valueName>geographicDomain</valueName>
+        <value>marine</value>
+    </parameter>
+    <area>
+      <areaDesc>Stad - Svinøy</areaDesc>
+      
+          <polygon>62.201,5.0323 62.1837,5.1408 62.2653,5.446 62.351,5.2447 62.3473,5.2375 62.3465,5.236 62.345,5.2337 62.201,5.0323 62.201,5.0323</polygon>
+    <altitude>0</altitude>
+    <ceiling>900</ceiling>
+    </area>
+  </info>
+  <info>
+    <language>en-GB</language>
+    <category>Met</category>
+    <event>Gale</event>
+    <responseType>Monitor</responseType>
+    <urgency>Future</urgency>
+    <severity>Moderate</severity>
+    <certainty>Likely</certainty>
+    <eventCode>
+        <valueName>OET:v1.0</valueName>
+        <value>OET-221</value>
+    </eventCode>
+    <eventCode>
+        <valueName>eventType</valueName>
+        <value>gale</value>
+    </eventCode>
+    <onset>2026-10-26T21:00:00+00:00</onset>
+    <expires>2026-10-27T13:00:00+00:00</expires>
+    <senderName>MET Norway</senderName>
+    <headline>Storm, yellow level, Stad - Svinoey, 2026-10-26T21:00:00+00:00, 2026-10-27T13:00:00+00:00</headline>
+    <description>From Monday evening south increasing to gale force 8. Early Tuesday morning backing southeast. Tuesday morning increasing to south storm force 10 near Stad. Tuesday afternoon violent storm force 11 near Stad.</description>
+    <instruction>Do not go out in a small boat: High risk of dangerous situations when in a small boat at sea. Do not go out in a small boat: High risk of dangerous situations when in a small boat at sea. If the engine stops you can float towards land. </instruction>
+    <web>https://www.met.no/vaer-og-klima/ekstremvaervarsler-og-andre-farevarsler/vaerfenomener-som-kan-gi-farevarsel-fra-met/kuling-stormvarsel-for-kyst-og-naere-fiskebanker</web>
+    <contact>https://www.met.no/en/contact-us</contact>
+    <parameter>
+        <valueName>consequences</valueName>
+        <value>Moderate waves: Risk of dangerous situations when in a small boat at sea. Very high waves: Considerable tumbling of waves with heavy impact. Reduced visibility. </value>
+    </parameter>
+    <parameter>
+        <valueName>eventAwarenessName</valueName>
+        <value>Storm</value>
+    </parameter>
+    <parameter>        
+        <valueName>awareness_level</valueName>
+        <value>2; yellow; Moderate</value>
+    </parameter>
+    <parameter>
+    <valueName>riskMatrixColor</valueName>
+    <value>Yellow</value>
+    </parameter>
+    <parameter>
+        <valueName>awarenessSeriousness</valueName>
+        <value>Challenging situation</value>
+    </parameter>
+    <parameter>
+        <valueName>awareness_type</valueName>
+        <value>1; Wind</value>
+    </parameter>
+    <parameter>
+        <valueName>triggerLevel</valueName>
+        <value>24.5m/s</value>
+    </parameter>
+    <parameter>
+        <valueName>awarenessResponse</valueName>
+        <value>Be aware</value>
+    </parameter>
+    <parameter>
+        <valueName>geographicDomain</valueName>
+        <value>marine</value>
+    </parameter>
+    <area>
+      <areaDesc>Stad - Svinoey</areaDesc>
+      
+          <polygon>62.201,5.0323 62.1837,5.1408 62.2653,5.446 62.351,5.2447 62.3473,5.2375 62.3465,5.236 62.345,5.2337 62.201,5.0323 62.201,5.0323</polygon>
+    <altitude>0</altitude>
+    <ceiling>900</ceiling>
+    </area>
+  </info>
+</alert>

@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
 
 from app.models.event import Event, Kind, Severity, to_utc, utcnow
+from app.sources import geometry
 from app.sources.base import Emit
 from app.sources.regional import USER_AGENT, JsonPollSource
 
@@ -170,7 +172,10 @@ class NhcSource(JsonPollSource):
                     # already built and will be emitted regardless.
                     try:
                         await self._attach_forecast_tracks(client, events, data)
+                        self.health.feed_ok("forecast-tracks")
                     except Exception as exc:
+                        # the storms are still published, without their track
+                        self.health.feed_failed("forecast-tracks", exc)
                         log.warning("%s: forecast tracks failed: %s", self.name, exc)
                     for event in events:
                         await emit(event)
@@ -319,6 +324,46 @@ class NhcSource(JsonPollSource):
 # ---------------------------------------------------------------------- ash (VA)
 
 
+# Leading words of `qualifier` that are not the volcano's name. Measured on
+# three captures (2026-10-25/26, 49 SIGMETs): "FUEGO", "ERUPTION MT REVENTADOR",
+# "CLD MT VOLCAN PURACE", "MT VOLCAN PURACE" -- and a bare "MT" on every New
+# Zealand one, whose volcano is named only in the raw text.
+ASH_QUALIFIER_NOISE = {"ERUPTION", "CLD", "VA", "MT", "MOUNT"}
+RE_ASH_RAW_NAME = re.compile(r"\bERUPTION\s+MT\s+(.+?)\s+(?:PSN|LOC|VA\s+CLD|OBS|FCST|SFC)\b")
+
+
+def ash_volcano_name(qualifier: str | None, raw_sigmet: str | None) -> str | None:
+    words = (qualifier or "").split()
+    while words and words[0].upper() in ASH_QUALIFIER_NOISE:
+        words.pop(0)
+    if words:
+        return " ".join(words).title()
+    match = RE_ASH_RAW_NAME.search(" ".join((raw_sigmet or "").split()))
+    return match.group(1).title() if match else None
+
+
+def ash_points(coords: Any) -> list[tuple[float, float]]:
+    """Every vertex of a SIGMET area, as (lat, lon).
+
+    Two shapes are in the wild, told apart by `geom`: `"AREA"` is ONE ring, a
+    list of `{lat, lon}`; `"AREAS"` is a LIST of rings. The second one took
+    this source down for 15.6 hours (2026-10-25 17:21 -> 10-26 08:58 UTC,
+    "'list' object has no attribute 'get'"): a Whakaari plume that AWC split
+    at the antimeridian into two rings -- one of them written with lon 180.3.
+    Both shapes are read, and anything else is ignored vertex by vertex.
+    """
+    rings = coords if coords and isinstance(coords[0], list) else [coords or []]
+    points: list[tuple[float, float]] = []
+    for ring in rings:
+        for vertex in ring if isinstance(ring, list) else []:
+            if not isinstance(vertex, dict):
+                continue
+            lat, lon = vertex.get("lat"), vertex.get("lon")
+            if isinstance(lat, (int, float)) and isinstance(lon, (int, float)):
+                points.append((float(lat), float(lon)))
+    return points
+
+
 class AshSource(JsonPollSource):
     """International volcanic ash SIGMETs (Aviation Weather Center).
 
@@ -331,9 +376,12 @@ class AshSource(JsonPollSource):
     kind = "poll"
     url = "https://aviationweather.gov/api/data/isigmet?format=json&hazard=VA"
 
-    def parse_payload(self, data) -> list[Event]:
+    def parse_payload(self, data, now: datetime | None = None) -> list[Event]:
+        now = now or utcnow()
         events: list[Event] = []
         for sigmet in data or []:
+            if not isinstance(sigmet, dict):
+                continue
             fir = sigmet.get("firId") or sigmet.get("icaoId")
             series = sigmet.get("seriesId") or "0"
             valid_from = sigmet.get("validTimeFrom")
@@ -346,34 +394,46 @@ class AshSource(JsonPollSource):
             except (TypeError, ValueError, OSError):
                 continue
 
-            # the polygon gives the cloud's extent; we place the point at its center
-            coords = sigmet.get("coords") or []
-            lat = lon = None
-            if coords:
-                lats = [c.get("lat") for c in coords if c.get("lat") is not None]
-                lons = [c.get("lon") for c in coords if c.get("lon") is not None]
-                if lats and lons:
-                    lat = sum(lats) / len(lats)
-                    lon = sum(lons) / len(lons)
+            # the polygon gives the cloud's extent; the point is its centre
+            points = ash_points(sigmet.get("coords"))
+            middle = geometry.center(points)
+            lat, lon = middle if middle else (None, None)
+            # SIGMETs are issued for a fixed window (always 6 h on the live
+            # feed): the source's own end, so a cloud is not left on the map
+            # for the six hours of silence the sweep would otherwise wait.
+            try:
+                expires = datetime.fromtimestamp(float(sigmet["validTimeTo"]), tz=UTC)
+            except (KeyError, TypeError, ValueError, OSError):
+                expires = None
 
-            volcano = sigmet.get("qualifier") or "unnamed volcano"
+            event_id = f"ash:{fir}:{series}:{int(float(valid_from))}"
+            if expires is not None and expires <= now:
+                self.expirations.append(event_id)
+                continue
+
+            volcano = (
+                ash_volcano_name(sigmet.get("qualifier"), sigmet.get("rawSigmet"))
+                or "unnamed volcano"
+            )
             top_ft = sigmet.get("top")
             # a plume that rises high is a dangerous plume
             severity = Severity.SEVERE if (top_ft or 0) >= 25000 else Severity.MODERATE
 
             events.append(
                 Event(
-                    id=f"ash:{fir}:{series}:{int(float(valid_from))}",
+                    id=event_id,
                     source="ash",
                     source_id=f"{fir}-{series}",
                     kind=Kind.VOLCANO,
                     time=time,
                     lat=lat,
                     lon=lon,
-                    place=volcano.title(),
+                    bbox=geometry.extent(points),
+                    place=volcano,
                     severity=severity,
+                    expires=expires,
                     alert="ash",
-                    title=f"Volcanic ash -- {volcano.title()}",
+                    title=f"Volcanic ash -- {volcano}",
                     url="https://aviationweather.gov/gfa/#sigmet",
                     raw={
                         "fir": sigmet.get("firName"),

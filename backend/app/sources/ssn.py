@@ -51,7 +51,7 @@ from datetime import UTC, datetime, timedelta, timezone, tzinfo
 
 import httpx
 
-from app.models.event import Event, Kind, severity_from_magnitude
+from app.models.event import Event, Kind, severity_for_quake
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -194,7 +194,7 @@ def parse_item(item: ET.Element, tz: tzinfo) -> Event | None:
         mag_type="M",
         place=place,
         country=_country(place),
-        severity=severity_from_magnitude(magnitude),
+        severity=severity_for_quake(magnitude, depth),
         title=f"M {magnitude} -- {place}" if magnitude is not None else place,
         url=PAGE_URL,
         raw={"local_time": date_match.group(1), "local_zone": "America/Mexico_City"},

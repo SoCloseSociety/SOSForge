@@ -184,6 +184,33 @@ class GdacsSource(Source):
         self.poll_seconds = poll_seconds
         self.max_age_days = max_age_days
 
+    def select(self, items: list[ET.Element]) -> list[Event]:
+        """The items this source publishes.
+
+        An item GDACS itself marks `iscurrent=false` is over, and is withdrawn
+        rather than published. `is_relevant` keeps every orange and red item
+        whatever its age, and the pipeline lets a severe non-quake past the
+        horizon -- so on 2026-10-26 four ORANGE droughts GDACS had closed on
+        the 24th (one open since December 2025) were displayed as severe and
+        ongoing, re-listed every cycle, and never swept. Measured on that
+        feed (341 items): every one of the 43 `iscurrent=false` items has a
+        `todate` in the past. Of the 76 the old rule published, this removes
+        11 and nothing else: those four droughts, six green fires GDACS had
+        closed, and the closed red M7 in China (which the pipeline then cut
+        anyway, as a quake past the horizon).
+        """
+        events: list[Event] = []
+        for item in items:
+            event = parse_item(item)
+            if event is None:
+                continue
+            if (event.raw.get("iscurrent") or "").strip().lower() == "false":
+                self.expirations.append(event.id)
+                continue
+            if is_relevant(event, self.max_age_days):
+                events.append(event)
+        return events
+
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
         # gdacs.org serves 1.2 MB of RSS and regularly takes 60s to respond:
@@ -197,14 +224,12 @@ class GdacsSource(Source):
                     resp.raise_for_status()
                     root = ET.fromstring(resp.text)
                     items = root.findall(".//item")
-                    kept = 0
-                    for item in items:
-                        event = parse_item(item)
-                        if event and is_relevant(event, self.max_age_days):
-                            kept += 1
-                            await emit(event)
-                    self.health.ok(kept)
-                    log.debug("gdacs: %d items, %d kept", len(items), kept)
+                    events = self.select(items)
+                    for event in events:
+                        await emit(event)
+                    await self.flush_retractions()
+                    self.health.ok(len(events))
+                    log.debug("gdacs: %d items, %d kept", len(items), len(events))
                 except Exception as exc:
                     self.health.fail(exc)
                     log.warning("gdacs poll: %s", exc)
