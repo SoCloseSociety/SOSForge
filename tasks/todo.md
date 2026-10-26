@@ -472,3 +472,55 @@ from 233 events, none of them a measured disaster, to one: AEMET reporting
 - **The ash SIGMET threshold** (`SEVERE` above 25000 ft): all nine live SIGMETs
   are below it, so no measurement could say whether moving it helps.
 - **`cyclone_severity`**: already anchored on Saffir-Simpson, i.e. on harm.
+
+## Alerting contract v2 for the native app (2026-10-26, lane B)
+
+Additive. With no new parameter, `/ws` and `/api/events` answer with the
+same messages and the same body keys as before; the only change a legacy
+client sees is the snapshot composition (below), asked for by the
+orchestrator after the production audit. `hub.py` keeps its slow-client
+eviction policy untouched: a scoped client gets a narrowed message (or
+none) and then goes through the same bounded queue and the same eviction.
+
+- [x] `app/scope.py`: `zones` (<= 10, lat/lon bounded, radius 1..2000 km),
+      `min_severity`, `kinds`, `unplaced` (`drop` | `all` | ISO country
+      list). Great-circle match on the event's POINT: the `Event` model
+      carries no shape (every source reduces its polygon to a centroid
+      before building the event), so there is nothing to intersect here.
+      Events with no position: dropped by default and COUNTED
+      (`unplaced.dropped`), or delivered by country / all on request.
+- [x] Snapshot composition (`scope.compose`): latest N primaries + every
+      older primary that is ongoing, severe-or-above or tsunami; the zone
+      filter runs BEFORE the cut. Same composition for v2 full REST reads.
+- [x] `app/hub.py`: `Client.scope` + held ids; tick always passes; an
+      event/update that stops matching a held id becomes
+      `purge reason=out_of_scope`; purges narrowed to held ids; snapshot
+      ids held before the first await. `changelog.record` cannot break the
+      fan-out.
+- [x] `app/changelog.py`: in-memory log with, per entry, the event's
+      matching fields BEFORE the change, so a REST delta can tell "left
+      your scope" from "never was in it". Seeded from the store after the
+      journal replay and backfill. Opaque cursor `<epoch>:<seq>`.
+- [x] `app/main.py`: `/ws` params (refused with an `error` message, then
+      close 1008), `/api/events` v2 (`lat`/`lon`/`radius_km`, the ws scope
+      params, `since`, ETag + `Cache-Control: no-cache`, 304), legacy path
+      byte-for-byte (and deliberately no ETag), `/api/version`,
+      `/api/guidance`.
+- [x] `app/guidance.py` + `app/data/guidance.json`: 13 kinds x 3 phases x
+      5 languages, 753 lines, each with source URL, source language and the
+      verbatim excerpt it paraphrases. Every excerpt re-checked as a
+      substring of the fetched page (680 on a fresh fetch, 73 against the
+      saved page where the site refuses plain curl).
+- [x] Tests: test_scope, test_changelog, test_ws_contract,
+      test_events_v2, test_guidance (113 new; mutation-checked).
+- [x] Live measurement on :8310 (review below).
+
+### Not done, on purpose
+
+- **Shape matching.** Needs a shape on the event: an optional bbox or
+  simplified polygon on `Event` (models) filled by the NWS, CAP, Meteoalarm
+  UK and ash SIGMET normalizers (lane C). `scope.py` would then match on
+  distance to the shape instead of the centroid. Until then a zone must be
+  wider than the warning areas it should catch.
+- **A magnitude-dependent reach** for earthquakes (the local agent's felt
+  radius): the zone is the client's own radius, by contract.
