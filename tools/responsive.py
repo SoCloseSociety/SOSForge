@@ -263,7 +263,7 @@ def verdict(label: str, width: int, m: dict) -> list[str]:
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default="http://localhost:5273/")
+    ap.add_argument("--url", default="http://localhost:5380/")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 

@@ -157,7 +157,7 @@ port, so the kill hits the browser tab or the Vite proxy instead of the API).
 ```bash
 make install      # backend venv + npm install
 make dev-api      # API on :8300
-make dev-web      # UI on :5273
+make dev-web      # UI on :5380
 make test         # backend + frontend tests
 make lint typecheck
 make stop-api     # stop by PORT, never by process pattern

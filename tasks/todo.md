@@ -472,3 +472,116 @@ from 233 events, none of them a measured disaster, to one: AEMET reporting
 - **The ash SIGMET threshold** (`SEVERE` above 25000 ft): all nine live SIGMETs
   are below it, so no measurement could say whether moving it helps.
 - **`cyclone_severity`**: already anchored on Saffir-Simpson, i.e. on harm.
+
+---
+
+# Upgrade 2026-10-26 -- native app, alerting, sources, design
+
+## What the owner asked (2026-10-26)
+
+Upgrade the whole project with Fable; use every tool and access we already
+have; use ScanGithub; liaise with the other agents; adopt the SentinelHouse
+design; take the whole system and structure back in hand; build the SOSForge
+APK -- native, NOT a WebView, with real mobile funnels; perfect the sources,
+the notification system, prevention and alerting; widen, perfect, complete
+on every point.
+
+## Decisions taken by default (the owner can overturn any of them)
+
+- **Native stack**: Kotlin + Jetpack Compose, same pins, scaffold and
+  `build.sh` shape as `SuiteForge/GSTATSFORGE/android` (the fleet's proven
+  native app), Sentinel House kit (Lunar / Soft, IBM Plex, the mint thread,
+  Fold 600 dp rule, 4 text sizes). No WebView anywhere. Package
+  `co.soclose.sosforge`, minSdk 26, targetSdk 36. Lives in `android/`.
+- **Map**: MapLibre Native Android, same OpenFreeMap style as the web. A map
+  that cannot start degrades, the feed keeps running (same rule as the web).
+- **Background alerts without Firebase in v1**: an opt-in "Watch" foreground
+  service holding a zone-filtered websocket, plus a WorkManager fallback.
+  FCM needs a Firebase project (an owner account action) and routes every
+  alert through Google; the product is key-free. The app must say plainly
+  when the watch is NOT running (battery optimisation, permission refused,
+  socket dead): the freshness rule applies to alerts exactly as to the feed.
+- **Release key outside the repo**: `~/.soclose/android/sosforge.properties`
+  + `sosforge-release.jks`, like GStats. The APK goes to
+  `VsCodeN30/_apk-drops/sosforge/` with a CHECKLIST.
+- **Not done without the owner's go**: production deploy to the helper VPS,
+  Play Store, installing on the owner's Fold.
+
+## Contract between the backend and the app (additive: the web is unchanged)
+
+- `/ws?zones=lat,lon,radius_km;...&min_severity=...&kinds=...` -- snapshot
+  and deltas filtered server-side, `tick` ALWAYS sent. No parameter = today's
+  behaviour, byte for byte.
+- `GET /api/events` gains `lat`, `lon`, `radius_km`.
+- `GET /api/guidance?lang=` -- prevention catalogue per hazard kind (before,
+  during, after), short imperative lines, every line carrying the official
+  source it comes from. One catalogue so the web and the app never disagree
+  on what to do in an emergency.
+- `GET /api/version` -- `{api, features[]}` so the app can detect a server
+  that predates the contract and fall back to client-side filtering.
+- The client ALWAYS re-filters what it receives (defence in depth: a server
+  that ignored the filter must not flood the phone with the world).
+
+## Lanes (Fable subagents, one git worktree each, disjoint files)
+
+| Lane | Scope | Files |
+|---|---|---|
+| A -- app | native Android app, funnels, watch service, notifications, signed APK | `android/` only |
+| B -- alerting API | the contract above, zone relevance, guidance catalogue | `backend/app/main.py`, `hub.py` (critical), new modules, tests |
+| C -- sources | audit every source live, ScanGithub research, add only what runs against the real API | `backend/app/sources/`, registry, tests |
+| D -- web | SentinelHouse charte on the web UI, notification and watch funnel | `frontend/` only |
+| E -- system audit | read-only review of the whole system and structure | none (report) |
+
+Critical files touched by lane B (`hub.py`, `main.py`) and lane C
+(`sources/*.py`): this section is their written plan. `pipeline.py`,
+`dedupe.py` and `store/ring.py` are NOT in any lane's scope; a finding there
+comes back to me first.
+
+## Port move 5273 -> 5380 (flagged by adsagent)
+
+5273 is AdsForge's declared Vite port (its CLAUDE.md, vite.config.ts,
+scripts/dev.sh): two dev servers would fight for it, or an agent would test
+the other product's UI for an hour. SOSForge moves to 5380 (free, undeclared,
+next to its 8300 / 8380). Me: Makefile, README, CLAUDE.md, .env.example,
+tools/responsive.py, and the CORS default in `backend/app/core/config.py`
+(one line). Lane D: frontend/vite.config.ts (with strictPort) and
+vitest.config.ts. The VPS is untouched: production does not use Vite.
+
+## Integration (me)
+
+- [x] baseline gates recorded before any merge: pytest 486 passed, vitest
+      166 passed (19 files), ruff clean, mypy clean (40 files)
+- [ ] lane B merged, gates green
+- [ ] lane C merged, `make smoke` shows every source `up` with events seen
+- [ ] lane D merged, screenshots at 390 / 1440 px, both themes, measured
+- [ ] lane A rebuilt against the merged backend, emulator run of every funnel
+      step, signed APK dropped with its CHECKLIST
+- [ ] lane E findings reproduced one by one before any fix (lesson 25)
+- [ ] commits by explicit paths only (lesson 26)
+- [ ] review section written here, lessons captured
+
+## Liaison
+
+The 12 peer sessions are told what SOSForge is doing. Asked specifically:
+`sentinelhouse-e3` (which design files are canonical), `gstatsforge-6a`
+(native scaffold and build pitfalls), `agentfarm` (device-farm test protocol).
+
+Answers received and relayed to the lanes:
+
+- **agentfarm**: emulators 5584 / 5590 for the full functional test, every
+  adb call through `adb_file.py` with the per-serial lock. The Fold only with
+  a slot and its GO. Farm production phones (192.168.8.x and the four USB
+  serials) never: live social accounts.
+- **sentinelhouse-e3**: `charte.css` is the token source (Lunaire `:root`,
+  Doux `[data-theme="doux"]`), align with `sentinel.css`, never fork it.
+  Frontiers 599/600 and 779/780 only. Severity hues fixed across themes,
+  a glyph of a different shape per severity, AA measured on both themes.
+- **gstatsforge-6a**: copy the kit from the CURRENT tree (0.2.4) and note
+  the source commit; TileRow, text heights, screenshot method, live-stream
+  single source. No shared kit library exists yet (owner decision).
+- **ebookforge-84**: JDK 21, release gate (permissions allowlist, 16 KB
+  aligned .so, signer sha256, no dev host).
+- **agentkr**: cursor + ETag/304 polling, quiet-hours rules (an extreme
+  alert near the user is never held).
+- **aiblog-c5, clip-generator-local-67**: auth handoff and Glance widgets,
+  not needed for a key-free app.

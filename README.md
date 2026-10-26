@@ -102,7 +102,7 @@ reject non-browser clients (403 Cloudflare), hence the polling. Turn it off with
 cp .env.example .env      # nothing to fill in: everything is public
 make install              # backend venv + npm install
 make dev-api              # terminal 1 -- API on :8300
-make dev-web              # terminal 2 -- UI on :5273
+make dev-web              # terminal 2 -- UI on :5380
 ```
 
 With Docker: `make up`, then <http://localhost:8380>.

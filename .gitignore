@@ -27,3 +27,6 @@ __pycache__/
 
 # dumps de payload captures pour analyse, jamais du code
 /backend/*.json
+
+# Claude Code session state and agent worktrees (never product source)
+/.claude/

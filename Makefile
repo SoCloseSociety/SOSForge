@@ -33,7 +33,7 @@ restart-api: stop-api ## restart the SOSForge API cleanly
 	cd backend && SOS_DATA_DIR=./data .venv/bin/python -m uvicorn app.main:app \
 		--host 127.0.0.1 --port 8300
 
-dev-web: ## Vite frontend on :5273 (proxies /api and /ws to :8300)
+dev-web: ## Vite frontend on :5380 (proxies /api and /ws to :8300)
 	cd frontend && npm run dev
 
 test: ## backend + frontend tests

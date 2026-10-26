@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     port: int = 8300
     log_level: str = "INFO"
 
-    cors_origins: str = "http://localhost:5273,http://127.0.0.1:5273"
+    cors_origins: str = "http://localhost:5380,http://127.0.0.1:5380"
 
     # --- storage ---
     data_dir: Path = Path("./data")
