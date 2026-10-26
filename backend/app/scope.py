@@ -5,13 +5,14 @@ strictly, and then asked one question per event: is this in scope. The same
 object serves the websocket fan-out, the opening snapshot and `/api/events`,
 so a phone polling as a fallback sees exactly what its socket would send.
 
-Position matching is a great-circle distance to the event's POINT. That is
-the only geometry an `Event` carries: every source that publishes a shape (an
-NWS polygon, a UGC zone, a CAP `<area><polygon>`, an ash SIGMET) reduces it to
-a centroid before building the event, so there is no shape left here to
-intersect. The consequence is stated rather than hidden: a county-wide
-warning matches a zone by its centre, so a zone must be wider than the
-smallest warning area it should catch.
+Position matching is a great-circle distance to the event's POINT, and,
+when the source published a shape, to its bounding box (`Event.bbox`: west,
+south, east, north; `west > east` crosses the antimeridian). A warning area
+whose centre is 400 km away can still cover a watched place; matching the
+centroid alone missed it. The box is filled by the NWS, WMO CAP, UK
+Meteoalarm and ash normalizers; GDACS is left out on purpose (its box is a
+fixed square around the point, not a footprint). An event without a box
+still matches by its point only.
 
 An event with NO position cannot be matched by distance at all (a Meteoalarm
 warning, most of the WMO aggregate). What a zoned client gets for those is
@@ -33,7 +34,7 @@ from __future__ import annotations
 
 import math
 import re
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -79,8 +80,34 @@ class Zone:
     def contains(self, lat: float, lon: float) -> bool:
         return haversine_km(self.lat, self.lon, lat, lon) <= self.radius_km
 
+    def touches(self, bbox: Sequence[float]) -> bool:
+        """Does this zone reach the box (west, south, east, north)?
+
+        The nearest point of the box is taken by clamping latitude and
+        longitude separately. That is exact across the north and south edges
+        and slightly overstates the gap to an east or west edge far from the
+        equator (the parallel is not a great circle): a few tens of km at the
+        largest radius, never a box that contains the zone's centre."""
+        west, south, east, north = bbox
+        lat = min(max(self.lat, south), north)
+        if _lon_within(self.lon, west, east):
+            lon = self.lon
+        else:
+            lon = west if _lon_gap(self.lon, west) <= _lon_gap(self.lon, east) else east
+        return haversine_km(self.lat, self.lon, lat, lon) <= self.radius_km
+
     def public(self) -> dict[str, float]:
         return {"lat": self.lat, "lon": self.lon, "radius_km": self.radius_km}
+
+
+def _lon_within(lon: float, west: float, east: float) -> bool:
+    if west <= east:
+        return west <= lon <= east
+    return lon >= west or lon <= east  # the box crosses the antimeridian
+
+
+def _lon_gap(a: float, b: float) -> float:
+    return abs((a - b + 180.0) % 360.0 - 180.0)
 
 
 @dataclass(frozen=True)
@@ -114,7 +141,12 @@ class Scope:
 
     def matches(self, event: Event) -> bool:
         return self.matches_fields(
-            event.lat, event.lon, event.severity.value, event.kind.value, event.country_code
+            event.lat,
+            event.lon,
+            event.severity.value,
+            event.kind.value,
+            event.country_code,
+            event.bbox,
         )
 
     def matches_public(self, event: dict[str, Any]) -> bool:
@@ -127,6 +159,7 @@ class Scope:
             str(event.get("severity") or "info"),
             str(event.get("kind") or "other"),
             event.get("country_code"),
+            event.get("bbox"),
         )
 
     def passes_filters(self, severity: str, kind: str) -> bool:
@@ -149,13 +182,16 @@ class Scope:
         severity: str,
         kind: str,
         country_code: str | None = None,
+        bbox: Sequence[float] | None = None,
     ) -> bool:
         if not self.passes_filters(severity, kind):
             return False
         if not self.zones:
             return True
+        if bbox is not None and any(z.touches(bbox) for z in self.zones):
+            return True
         if lat is None or lon is None:
-            return self.takes_unplaced(country_code)
+            return bbox is None and self.takes_unplaced(country_code)
         return any(z.contains(lat, lon) for z in self.zones)
 
     def apply(self, events: Iterable[Event]) -> tuple[list[Event], Unplaced]:
@@ -165,7 +201,7 @@ class Scope:
         for event in events:
             if not self.passes_filters(event.severity.value, event.kind.value):
                 continue
-            if self.zoned and (event.lat is None or event.lon is None):
+            if self.zoned and event.bbox is None and (event.lat is None or event.lon is None):
                 if self.takes_unplaced(event.country_code):
                     delivered += 1
                     kept.append(event)

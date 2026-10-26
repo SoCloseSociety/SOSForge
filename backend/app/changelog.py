@@ -24,7 +24,7 @@ from __future__ import annotations
 import re
 import secrets
 from collections import OrderedDict, deque
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -51,6 +51,7 @@ class View:
     country_code: str | None
     magnitude: float | None
     primary: bool
+    bbox: Sequence[float] | None = None
 
     @classmethod
     def of_public(cls, event: dict[str, Any]) -> View:
@@ -63,6 +64,7 @@ class View:
             country_code=event.get("country_code"),
             magnitude=event.get("magnitude"),
             primary=not (cluster and cluster != event.get("id")),
+            bbox=event.get("bbox"),
         )
 
     @classmethod
@@ -75,6 +77,7 @@ class View:
             country_code=event.country_code,
             magnitude=event.magnitude,
             primary=not (event.cluster_id and event.cluster_id != event.id),
+            bbox=event.bbox,
         )
 
 
