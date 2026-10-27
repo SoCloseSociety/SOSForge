@@ -114,6 +114,56 @@ class SosApp : Application() {
     lateinit var watch: Watch private set
     lateinit var offline: co.soclose.sosforge.core.map.OfflineMaps private set
 
+    /**
+     * "Use my location", in the APP scope: a recomposition, the permission dialog, a fold or the
+     * screen being left cannot cancel it (0.1.1 lost its request after 2.7 s on the owner's Fold).
+     * The place is added HERE, when the fix comes, whoever is on screen then; the adder only shows
+     * [locate] and reads its outcome. The wait is bounded ([co.soclose.sosforge.core.sys.LocateRules.TIMEOUT_MS]),
+     * and "Search instead" cancels it, so no place appears long after the person moved on.
+     */
+    sealed interface LocateState {
+        data object Idle : LocateState
+        data class Waiting(val since: Long) : LocateState
+        data class Done(val fix: co.soclose.sosforge.core.sys.Fix, val countryCode: String?) : LocateState
+    }
+
+    private val _locate = MutableStateFlow<LocateState>(LocateState.Idle)
+    val locate: StateFlow<LocateState> = _locate.asStateFlow()
+    private var locateJob: kotlinx.coroutines.Job? = null
+
+    fun startLocate() {
+        if (_locate.value is LocateState.Waiting) return
+        _locate.value = LocateState.Waiting(System.currentTimeMillis())
+        locateJob = scope.launch {
+            val f = co.soclose.sosforge.core.sys.Locate.fix(this@SosApp)
+            val cc = (f as? co.soclose.sosforge.core.sys.Fix.Ok)?.let { co.soclose.sosforge.core.sys.Locate.countryOf(this@SosApp, it.lat, it.lon) }
+            if (f is co.soclose.sosforge.core.sys.Fix.Ok) {
+                prefs.setHere(co.soclose.sosforge.core.Here(f.lat, f.lon, System.currentTimeMillis() - f.ageMs, cc))
+                val now = prefs.places.value
+                if (now.size < co.soclose.sosforge.core.geo.Place.MAX_PLACES) {
+                    val p = co.soclose.sosforge.core.geo.Place(
+                        java.util.UUID.randomUUID().toString(), getString(R.string.place_here), f.lat, f.lon,
+                        co.soclose.sosforge.core.geo.Place.DEFAULT_RADIUS_KM, "here", countryCode = cc,
+                    )
+                    prefs.setPlaces(now + p)
+                    watch.reconcile()
+                }
+            }
+            _locate.value = LocateState.Done(f, cc)
+        }
+    }
+
+    /** "Search instead": the wait stops, and its position (if it was about to come) is not added. */
+    fun cancelLocate() {
+        locateJob?.cancel()
+        locateJob = null
+        _locate.value = LocateState.Idle
+    }
+
+    fun consumeLocate() {
+        if (_locate.value is LocateState.Done) _locate.value = LocateState.Idle
+    }
+
     /** The latest.json verdict (Settings, and the quiet card on Live). */
     private val _update = MutableStateFlow<co.soclose.sosforge.core.update.UpdateState>(co.soclose.sosforge.core.update.UpdateState.NotChecked)
     val update: StateFlow<co.soclose.sosforge.core.update.UpdateState> = _update.asStateFlow()

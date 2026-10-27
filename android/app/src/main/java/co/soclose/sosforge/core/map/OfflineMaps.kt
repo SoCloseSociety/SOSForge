@@ -39,16 +39,24 @@ object MapStyles {
 }
 
 /**
- * Which offline packs should exist, pure (PackPlanTest). Measured on OpenFreeMap on 2026-10-27
- * (sampled tile sizes, scratch tool): the world at zooms 0..4 is about 52 MB (zoom 2 alone is 14 MB,
- * its 16 tiles average 877 KiB); a 300 km place is about 13 to 15 MB at zooms 5..9, 23 to 30 MB at
- * 5..10, 41 to 50 MB at 5..11 (Athens, Tokyo). So: the world at 0..4, and each place down to the
- * deepest zoom whose CUMULATIVE tile count from zoom 5 stays within [PLACE_TILE_BUDGET] (5..9 for
- * 300 km, deeper for a smaller radius, never past [PLACE_MAX_ZOOM]). The two styles share their tiles
- * (one TileJSON), so the second style costs only its style, sprites and glyphs.
+ * Which offline packs should exist, pure (PackPlanTest). Measured in the real MapLibre database of the
+ * fold34 emulator after a full download on 2026-10-27 (files/mbgl-offline.db, 157 MB, read with sqlite):
+ *  - OpenMapTiles vector tiles, per zoom for the whole world: z0 0.05 MB, z1 0.45, z2 6.7, z3 9.0,
+ *    z4 12.8 (so 0..3 = 16 MB, 0..4 = 29 MB); a 300 km place (Tokyo) at 5..9: 171 tiles, 8.1 MB;
+ *  - BOTH OpenFreeMap styles also declare `ne2_shaded`, a Natural Earth relief RASTER that no layer of
+ *    `dark` or `positron` draws, and MapLibre downloads every source of a style: a 256 px raster is
+ *    fetched one zoom deeper, so the world at 0..4 pulled 1364 relief PNGs, 104 MB (z5 alone 72 MB),
+ *    70 % of the database for nothing on screen. At 0..3 the relief is 31 MB.
+ *  - glyphs and sprites, 6.5 MB, shared by every pack.
+ * So: the world at 0..3 (about 54 MB on disk with the glyphs, vector tiles overzoom cleanly to z5),
+ * and each place from zoom 5 down to the deepest zoom whose CUMULATIVE tile count stays within
+ * [PLACE_TILE_BUDGET] (5..9 for 300 km, deeper for a smaller radius, never past [PLACE_MAX_ZOOM]).
+ * The two styles share their tiles (one TileJSON): the second style costs only its style and sprites.
+ * Dropping the unused relief needs a style without it, served from a URL (MapLibre's offline download
+ * reads a style from the network only): reported, not hacked around here.
  */
 object PackPlan {
-    const val WORLD_MAX_ZOOM = 4
+    const val WORLD_MAX_ZOOM = 3
     const val PLACE_MIN_ZOOM = 5
     const val PLACE_MAX_ZOOM = 12
     const val PLACE_TILE_BUDGET = 200
@@ -97,9 +105,21 @@ object PackPlan {
         }
     }
 
-    /** Keys to delete (a removed place, a changed radius) and specs to create. */
-    fun diff(existing: Set<String>, wanted: List<Spec>): Pair<Set<String>, List<Spec>> =
-        (existing - wanted.map { it.key }.toSet()) to wanted.filter { it.key !in existing }
+    /**
+     * Keys to delete (a removed place, a changed radius, or a pack whose definition is no longer the
+     * wanted one: another style URL or zoom range, e.g. the 0.1.2 world going from 0..4 to 0..3) and
+     * specs to create. [existingDefs]: key to [defOf] of the pack on the phone (unknown keys: kept).
+     */
+    fun diff(existing: Set<String>, wanted: List<Spec>, existingDefs: Map<String, String> = emptyMap()): Pair<Set<String>, List<Spec>> {
+        val byKey = wanted.associateBy { it.key }
+        val stale = existing.filter { k -> existingDefs[k]?.let { d -> byKey[k]?.let { defOf(it) } != d } == true }.toSet()
+        val drop = (existing - byKey.keys) + stale
+        return drop to wanted.filter { it.key !in existing || it.key in stale }
+    }
+
+    /** What makes two packs the same download: the style and the zoom range (the bounds follow the key). */
+    fun defOf(spec: Spec): String = defOf(spec.style, spec.minZoom, spec.maxZoom)
+    fun defOf(style: String, minZoom: Int, maxZoom: Int): String = "$style|$minZoom..$maxZoom"
 }
 
 /** One pack as Settings shows it. */
@@ -146,15 +166,19 @@ class OfflineMaps(private val ctx: Context) {
         m.listOfflineRegions(object : OfflineManager.ListOfflineRegionsCallback {
             override fun onList(offlineRegions: Array<OfflineRegion>?) {
                 val byKey = offlineRegions.orEmpty().associateBy { keyOf(it) }
+                val defs = byKey.mapNotNull { (k, r) ->
+                    (r.definition as? OfflineTilePyramidRegionDefinition)?.let { d -> d.styleURL?.let { st -> k to PackPlan.defOf(st, d.minZoom.toInt(), d.maxZoom.toInt()) } }
+                }.toMap()
                 val wanted = PackPlan.wanted(places)
-                val (drop, create) = PackPlan.diff(byKey.keys, wanted)
+                val (drop, create) = PackPlan.diff(byKey.keys, wanted, defs)
                 drop.forEach { k ->
                     byKey[k]?.let { r ->
                         r.setDownloadState(OfflineRegion.STATE_INACTIVE)
+                        if (regions[k] === r) regions.remove(k)
                         r.delete(object : OfflineRegion.OfflineRegionDeleteCallback {
                             override fun onDelete() {
-                                regions.remove(k)
-                                _packs.value = _packs.value - k
+                                // a replaced pack (same key, new definition) is already tracked again: keep that one
+                                if (regions[k] == null) _packs.value = _packs.value - k
                             }
                             override fun onError(error: String) {
                                 _packs.value = _packs.value + (k to (_packs.value[k] ?: PackState(k, null)).copy(error = error))
@@ -177,6 +201,9 @@ class OfflineMaps(private val ctx: Context) {
     }
 
     val allComplete: Boolean get() = _packs.value.isNotEmpty() && _packs.value.values.all { it.complete }
+
+    /** The database on disk (packs + the ambient cache): what Settings says this costs the phone. */
+    val bytesOnDisk: Long get() = runCatching { java.io.File(ctx.filesDir, "mbgl-offline.db").length() }.getOrDefault(0L)
 
     private fun create(m: OfflineManager, spec: PackPlan.Spec) {
         val b = LatLngBounds.from(spec.bounds.north, spec.bounds.east, spec.bounds.south, spec.bounds.west)

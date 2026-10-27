@@ -319,12 +319,15 @@ private fun OfflineSummary(packs: Map<String, co.soclose.sosforge.core.map.PackS
         val done = list.all { it.complete }
         val req = list.sumOf { it.required }.coerceAtLeast(1)
         val got = list.sumOf { it.completed }
-        val mb = list.sumOf { it.bytes } / 1_000_000.0
+        // the dark and light packs of one area share their tiles: the larger one is what it costs, not the sum
+        val mb = list.maxOf { it.bytes } / 1_000_000.0
         return if (done) "%.0f\u00A0MB \u00B7 ok".format(mb) else "%d\u00A0%% \u00B7 %.0f\u00A0MB".format((got * 100 / req).coerceIn(0, 99), mb)
     }
     Text(stringResource(if (unmetered) R.string.offline_rule_now else R.string.offline_rule_waiting), style = Sos.type.small, color = if (unmetered) Sos.colors.t2 else Sos.colors.amber)
     KeyValue(stringResource(R.string.offline_world), line(groups[null].orEmpty()) ?: stringResource(R.string.offline_not_started))
     places.forEach { p -> KeyValue(p.name, line(groups[p.id].orEmpty()) ?: stringResource(R.string.offline_not_started)) }
+    val disk = LocalContext.current.app.offline.bytesOnDisk
+    if (disk > 0) KeyValue(stringResource(R.string.offline_on_disk), "%.0f\u00A0MB".format(disk / 1_000_000.0))
     packs.values.firstOrNull { it.error != null }?.let { Text(it.error!!, style = Sos.type.meta, color = Sos.colors.amber, maxLines = 2) }
 }
 

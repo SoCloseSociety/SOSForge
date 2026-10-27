@@ -116,6 +116,12 @@ abstract class ScreensBase(private val variant: String, private val scale: Float
     @Test fun f4_notify() = shoot("f4_notify") { FunnelScreen(onDone = {}, start = Step.NOTIFY) }
     @Test fun f5_background() = shoot("f5_background") { FunnelScreen(onDone = {}, start = Step.BACKGROUND) }
     @Test fun f6_done() = shoot("f6_done") { FunnelScreen(onDone = {}, start = Step.DONE) }
+
+    /** No place yet (the Fold, 0.1.1): the step must lead back to adding one, not just "Continue". */
+    @Test fun f5b_background_no_place() {
+        app.prefs.setPlaces(emptyList())
+        shoot("f5b_background_no_place") { FunnelScreen(onDone = {}, start = Step.BACKGROUND) }
+    }
     @Test fun s1_live() = shoot("s1_live") { Shell(start = Routes.LIVE, onSetup = {}) }
     @Test fun s2_map() = shoot("s2_map") { Shell(start = Routes.MAP, onSetup = {}) }
     @Test fun s3_places() = shoot("s3_places") { Shell(start = Routes.PLACES, onSetup = {}) }
@@ -197,14 +203,41 @@ object Overflow {
             n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.let { get ->
                 val out = mutableListOf<TextLayoutResult>()
                 if (runCatching { get(out) }.getOrDefault(false)) out.firstOrNull()?.let { t ->
-                    if (!scroller && t.didOverflowWidth) hard += "${label(n)} (cut in width)"
+                    // NOT t.didOverflowWidth: the semantics action re-lays the text out at its MAX width,
+                    // so every wrap-content text shorter than that read as "cut" (288 false failures on the
+                    // first run). A line wider than the box it is drawn in is the real cut, whatever the
+                    // alignment.
+                    val widest = (0 until t.lineCount).maxOfOrNull { t.getLineRight(it) - t.getLineLeft(it) } ?: 0f
+                    if (!scroller && b.width > 0 && widest > b.width + 1) hard += "${label(n)} (cut in width: ${widest.toInt()} px in ${b.width.toInt()})"
                     else if (t.didOverflowHeight) soft += label(n)
+                    brokenWord(t)?.let { hard += "${label(n)} (word broken across lines: $it)" }
                 }
             }
             n.children.forEach { walk(it, scroller) }
         }
         walk(root, false)
         return hard to soft
+    }
+
+    /**
+     * A short word split between two lines ("Liv / e"): a layout too narrow for its words, which no
+     * width check sees (Compose breaks the word instead of overflowing). Long tokens (ids, URLs,
+     * hashes, over 18 characters) may break anywhere (owner rule: overflow-wrap anywhere), and so may
+     * CJK text, which has no spaces.
+     */
+    fun brokenWord(t: TextLayoutResult): String? {
+        val txt = t.layoutInput.text.text
+        fun latin(ch: Char) = ch.isLetterOrDigit() && ch.code < 0x2E80
+        for (i in 0 until t.lineCount - 1) {
+            val end = t.getLineEnd(i, visibleEnd = false)
+            if (end <= 0 || end >= txt.length || !latin(txt[end - 1]) || !latin(txt[end])) continue
+            var a = end
+            while (a > 0 && !txt[a - 1].isWhitespace()) a--
+            var b = end
+            while (b < txt.length && !txt[b].isWhitespace()) b++
+            if (b - a <= 18) return txt.substring(a, end) + " / " + txt.substring(end, b)
+        }
+        return null
     }
 }
 

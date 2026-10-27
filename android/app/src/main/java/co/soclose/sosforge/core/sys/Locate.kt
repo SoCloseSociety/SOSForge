@@ -4,17 +4,11 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
-import android.location.LocationListener
 import android.location.LocationManager
 import android.os.Build
-import android.os.CancellationSignal
-import android.os.Looper
 import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -33,12 +27,20 @@ sealed interface Fix {
 
 /** The choices of [Locate], pure (LocateRulesTest). */
 object LocateRules {
-    /** One overall timeout for a fresh fix, whatever the number of providers. */
-    const val TIMEOUT_MS = 15_000L
-    /** A last-known fix this recent answers at once, without waiting for a fresh one. */
-    const val RECENT_MS = 2 * 60_000L
-    /** Older than this, a last-known fix may be from another city: refused rather than used. */
-    const val STALE_MS = 10 * 60_000L
+    /**
+     * One overall wait for a fresh fix, whatever the number of providers. 30 s, not 15: with an
+     * APPROXIMATE grant Android throttles the request to LOW_POWER (owner's Fold, 2026-10-27: the
+     * fused request became "ProviderRequest[@+10m0s0ms, LOW_POWER]"), and a coarse fix can take time.
+     */
+    const val TIMEOUT_MS = 30_000L
+    /**
+     * A last-known fix this recent answers at once (from ANY provider, the passive one included).
+     * 30 min: for a place with a 50 km radius at least, a coarse position half an hour old is the
+     * same town; older, it may be another city and is refused rather than used.
+     */
+    const val RECENT_MS = 30 * 60_000L
+    /** After the wait, a last-known fix up to this old is still taken (it says its age). */
+    const val STALE_MS = 30 * 60_000L
 
     /** The providers worth asking, in order (fused first when the platform has it). */
     fun providers(sdk: Int, enabled: (String) -> Boolean): List<String> = buildList {
@@ -77,28 +79,18 @@ object Locate {
         val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? LocationManager ?: return Fix.NoFix
         val providers = LocateRules.providers(Build.VERSION.SDK_INT) { p -> runCatching { lm.isProviderEnabled(p) }.getOrDefault(false) }
         if (providers.isEmpty()) return Fix.LocationOff
-        val last = providers.mapNotNull { lastKnown(ctx, lm, it) }.minByOrNull { ageMs(it) }
+        // 1. the last known fix of EVERY provider, the passive one too (it holds what any app received)
+        val last = freshestLastKnown(ctx, lm)
         if (last != null && LocateRules.recentEnough(ageMs(last))) return Fix.Ok(last.latitude, last.longitude, ageMs(last))
-        // every provider at once, the first answer wins, ONE timeout for all (0.1.1 waited 12 s per provider in turn)
-        val fresh = withTimeoutOrNull(timeoutMs) {
-            coroutineScope {
-                val asks = providers.map { p -> async { current(ctx, lm, p) } }
-                var got: Location? = null
-                val pending = asks.toMutableList()
-                while (got == null && pending.isNotEmpty()) {
-                    val (done, value) = select<Pair<kotlinx.coroutines.Deferred<Location?>, Location?>> {
-                        pending.forEach { d -> d.onAwait { d to it } }
-                    }
-                    pending.remove(done)
-                    got = value
-                }
-                pending.forEach { it.cancel() }
-                got
-            }
-        }
+        // 2. continuous updates on every provider at once, the first location wins, ONE wait for all.
+        // Not a single-shot getCurrentLocation: under coarse throttling that one came back EMPTY on the
+        // owner's Fold after 2.7 s (0.1.1), and nothing asked again.
+        val fresh = withTimeoutOrNull(timeoutMs) { firstUpdate(ctx, lm, providers) }
         if (fresh != null) return Fix.Ok(fresh.latitude, fresh.longitude, 0L)
         if (!granted(ctx)) return Fix.Denied
-        if (last != null && LocateRules.usableFallback(ageMs(last))) return Fix.Ok(last.latitude, last.longitude, ageMs(last))
+        // 3. the wait is over: a fix that arrived meanwhile through another app, if it is recent enough
+        val again = freshestLastKnown(ctx, lm) ?: last
+        if (again != null && LocateRules.usableFallback(ageMs(again))) return Fix.Ok(again.latitude, again.longitude, ageMs(again))
         return Fix.NoFix
     }
 
@@ -135,45 +127,53 @@ object Locate {
         }?.takeIf { it.length == 2 }
     }
 
+    private fun freshestLastKnown(ctx: Context, lm: LocationManager): Location? =
+        runCatching { lm.allProviders }.getOrDefault(emptyList<String>())
+            .mapNotNull { lastKnown(ctx, lm, it) }
+            .filter { ageMs(it) >= 0 }
+            .minByOrNull { ageMs(it) }
+
+    /** Updates from every provider until the first location (then every listener is removed). */
+    private suspend fun firstUpdate(ctx: Context, lm: LocationManager, providers: List<String>): Location? {
+        if (!granted(ctx)) return null
+        return suspendCancellableCoroutine { cont ->
+            val listeners = mutableListOf<androidx.core.location.LocationListenerCompat>()
+            fun stop() = listeners.forEach { l ->
+                try {
+                    LocationManagerCompat.removeUpdates(lm, l)
+                } catch (_: SecurityException) {
+                    // revoked meanwhile: the platform already dropped the request
+                }
+            }
+            val req = androidx.core.location.LocationRequestCompat.Builder(1_000L)
+                .setQuality(androidx.core.location.LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY)
+                .setMinUpdateIntervalMillis(0L)
+                .build()
+            for (p in providers) {
+                val l = androidx.core.location.LocationListenerCompat { loc ->
+                    if (cont.isActive) {
+                        stop()
+                        cont.resume(loc)
+                    }
+                }
+                try {
+                    LocationManagerCompat.requestLocationUpdates(lm, p, req, ContextCompat.getMainExecutor(ctx), l)
+                    listeners += l
+                } catch (_: SecurityException) {
+                } catch (_: IllegalArgumentException) {
+                }
+            }
+            if (listeners.isEmpty() && cont.isActive) cont.resume(null)
+            cont.invokeOnCancellation { stop() }
+        }
+    }
+
     private fun lastKnown(ctx: Context, lm: LocationManager, provider: String): Location? {
         if (!granted(ctx)) return null
         return try {
             lm.getLastKnownLocation(provider)
         } catch (_: SecurityException) {
             null
-        }
-    }
-
-    private suspend fun current(ctx: Context, lm: LocationManager, provider: String): Location? {
-        if (!granted(ctx)) return null
-        return suspendCancellableCoroutine { cont ->
-            try {
-                if (Build.VERSION.SDK_INT >= 30) {
-                    val cancel = CancellationSignal()
-                    cont.invokeOnCancellation { cancel.cancel() }
-                    lm.getCurrentLocation(provider, cancel, ContextCompat.getMainExecutor(ctx)) { loc -> if (cont.isActive) cont.resume(loc) }
-                } else {
-                    val l = object : LocationListener {
-                        override fun onLocationChanged(location: Location) {
-                            lm.removeUpdates(this)
-                            if (cont.isActive) cont.resume(location)
-                        }
-
-                        // abstract before API 30: an unimplemented one would crash when Android calls it
-                        @Deprecated("platform callback")
-                        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
-                        override fun onProviderEnabled(provider: String) = Unit
-                        override fun onProviderDisabled(provider: String) = Unit
-                    }
-                    cont.invokeOnCancellation { lm.removeUpdates(l) }
-                    @Suppress("DEPRECATION")
-                    lm.requestSingleUpdate(provider, l, Looper.getMainLooper())
-                }
-            } catch (_: SecurityException) {
-                if (cont.isActive) cont.resume(null)
-            } catch (_: IllegalArgumentException) {
-                if (cont.isActive) cont.resume(null)
-            }
         }
     }
 }

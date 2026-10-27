@@ -139,7 +139,15 @@ fun LiveScreen(onOpen: (String) -> Unit, onPlaces: () -> Unit, onMap: (String) -
             item(key = "hero") {
                 PageHero(
                     title = stringResource(R.string.live_title),
-                    overline = stringResource(if (nearView) R.string.live_overline_near else R.string.live_overline_world),
+                    // the world from the REST list (zoned server) is a "World list"; on a legacy server it is the live socket's own
+                    // full feed, a "World feed"
+                    overline = stringResource(
+                        when {
+                            nearView -> R.string.live_overline_near
+                            worldFromRest -> R.string.live_overline_world
+                            else -> R.string.live_overline
+                        },
+                    ),
                     // the world list on a zoned server is a REST read: it never wears the LIVE pill, it says its age
                     trailing = { if (worldFromRest) StatusPill(stringResource(R.string.live_world_pill), Tone.NEUTRAL) else LinkPill(link) },
                     meta = {

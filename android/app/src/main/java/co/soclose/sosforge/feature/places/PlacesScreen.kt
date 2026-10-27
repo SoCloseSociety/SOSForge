@@ -91,7 +91,7 @@ fun PlacesScreen(onOpen: (String) -> Unit) {
                 PlaceAdder(onAdd = { p ->
                     save(places + p)
                     adding = false
-                })
+                }, onLocated = { adding = false })
                 TextAction(stringResource(R.string.cancel), { adding = false })
             }
         }

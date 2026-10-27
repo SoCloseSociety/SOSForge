@@ -24,6 +24,8 @@ import co.soclose.sosforge.core.net.SourcesReply
  *   v2-ws-error.ndjson      = /ws?zones=95,0,100; its LAST line {"_closed":1008,...} is the close frame
  *                             written by the capture script, not a server message
  *   guidance-en.json, guidance-fr.json = GET /api/guidance?lang=en|fr
+ *   latest-json-spa-fallback.html = GET /download/latest.json on production, 2026-10-27 11:19 UTC
+ *                             (HTTP 200, text/html: the web app's index.html, no release file yet)
  * Tests that need a shape production does not serve yet (lane B's v2) say so where they build it.
  */
 object Fixtures {

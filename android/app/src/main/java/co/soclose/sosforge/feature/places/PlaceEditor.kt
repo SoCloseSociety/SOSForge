@@ -101,7 +101,7 @@ private fun Context.findActivity(): Activity? {
  * server's `/api/geocode` (which holds Nominatim's 1 request per second).
  */
 @Composable
-fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
+fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier, onLocated: () -> Unit = {}) {
     val ctx = LocalContext.current
     val app = ctx.app
     val scope = rememberCoroutineScope()
@@ -111,25 +111,22 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
     var results by remember { mutableStateOf<List<GeoResult>>(emptyList()) }
     var searchNote by remember { mutableStateOf<String?>(null) }
     var searching by remember { mutableStateOf(false) }
-    val here = stringResource(R.string.place_here)
     val noneText = stringResource(R.string.search_none)
     val unreachableText = stringResource(R.string.search_unreachable)
     val failedText = stringResource(R.string.search_failed)
 
-    fun locate() {
-        step = LocateStep.LOCATING
-        scope.launch {
-            val f = Locate.fix(ctx)
-            step = LocateFlow.afterFix(f)
-            if (f is Fix.Ok) {
-                // the country, for country-wide warnings (null when this phone has no geocoder: then none)
-                val cc = Locate.countryOf(ctx, f.lat, f.lon)
-                onAdd(Place(UUID.randomUUID().toString(), here, f.lat, f.lon, Place.DEFAULT_RADIUS_KM, "here", countryCode = cc))
-                // the Live "near me" view uses it at once
-                app.prefs.setHere(co.soclose.sosforge.core.Here(f.lat, f.lon, System.currentTimeMillis() - f.ageMs, cc))
-            }
-        }
+    fun locate() = app.startLocate()
+
+    // the request lives in the app (it survives this composition, and adds the place itself); here we
+    // show the wait and read the outcome
+    val ls by app.locate.collectAsStateWithLifecycle()
+    LaunchedEffect(ls) {
+        val done = ls as? co.soclose.sosforge.SosApp.LocateState.Done ?: return@LaunchedEffect
+        step = LocateFlow.afterFix(done.fix)
+        app.consumeLocate()
+        if (done.fix is Fix.Ok) onLocated()
     }
+    val shown = if (ls is co.soclose.sosforge.SosApp.LocateState.Waiting) LocateStep.LOCATING else step
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         val asked = app.prefs.getLong(co.soclose.sosforge.core.Prefs.K_LOC_ASKED) > 0
@@ -167,7 +164,7 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
     }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.s)) {
-        when (step) {
+        when (shown) {
             LocateStep.RATIONALE -> Card {
                 Text(stringResource(R.string.locate_rationale_title), style = Sos.type.heading, color = Sos.colors.t1)
                 Spacer(Modifier.height(Space.xs))
@@ -180,7 +177,16 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
                     TextAction(stringResource(R.string.not_now), { step = LocateStep.IDLE })
                 }
             }
-            LocateStep.LOCATING -> Text(stringResource(R.string.locate_working), style = Sos.type.small, color = Sos.colors.t2)
+            LocateStep.LOCATING -> {
+                val since = (ls as? co.soclose.sosforge.SosApp.LocateState.Waiting)?.since ?: System.currentTimeMillis()
+                val now = co.soclose.sosforge.ui.kit.rememberNow(1_000L)
+                Card {
+                    Text(stringResource(R.string.locate_working_s, ((now - since) / 1000).coerceAtLeast(0).toInt()), style = Sos.type.small, color = Sos.colors.t1)
+                    Text(stringResource(R.string.locate_working_why), style = Sos.type.meta, color = Sos.colors.t3)
+                    // the search is never blocked by the wait: it stops the wait (no place appears later)
+                    TextAction(stringResource(R.string.locate_search_instead), { app.cancelLocate(); step = LocateStep.IDLE })
+                }
+            }
             LocateStep.DENIED -> Note(stringResource(R.string.locate_denied)) { step = LocateStep.IDLE }
             LocateStep.DENIED_FOREVER -> Note(
                 stringResource(R.string.locate_denied_forever),

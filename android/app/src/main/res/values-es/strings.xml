@@ -163,24 +163,24 @@
     <string name="places_empty_body">Añada uno para recibir alertas cercanas.</string>
     <string name="places_nearest">Cerca ahora mismo</string>
     <string name="places_quiet">Nada a menos de %1$d&#160;km en las últimas 24&#160;h.</string>
-    <string name="places_privacy">Los lugares se quedan en este teléfono. Sin cuenta, sin rastreo.</string>
+    <string name="places_privacy">Sin cuenta. Sus lugares se guardan en este teléfono y se envían al servidor de SOSForge solo como zonas, para filtrar las alertas.</string>
     <string name="place_here">Mi ubicación</string>
     <string name="place_radius">Alertarme en un radio de</string>
     <string name="place_remove">Eliminar %1$s</string>
     <string name="locate_use">Usar mi ubicación</string>
-    <string name="locate_rationale_title">Su ubicación se queda en este teléfono</string>
-    <string name="locate_rationale_body">La leemos una vez para añadir un lugar. Sin rastreo.</string>
+    <string name="locate_rationale_title">Su ubicación elige las alertas cercanas</string>
+    <string name="locate_rationale_body">Se lee con la app abierta, solo aproximada, para añadir un lugar y mostrar lo cercano. Se envía al servidor de SOSForge solo como zona para filtrar alertas. Nunca se lee en segundo plano.</string>
     <string name="locate_allow">Permitir la ubicación</string>
     <string name="locate_working">Buscando su ubicación…</string>
     <string name="locate_denied">Ubicación denegada. Busque un lugar por nombre.</string>
-    <string name="locate_failed">Sin posición en 15 s. Reintente, o busque.</string>
+    <string name="locate_failed">Sin posición en 30 s. Reintente, o busque.</string>
     <string name="search_label">Buscar una ciudad o región</string>
     <string name="search_working">Buscando…</string>
     <string name="search_none">Ningún lugar con este nombre.</string>
     <string name="search_unreachable">Búsqueda inaccesible. Revise la red y reintente.</string>
     <string name="search_failed">La búsqueda falló. Pruebe otro nombre.</string>
 
-    <string name="sources_overline">Diecinueve flujos públicos</string>
+    <string name="sources_overline">Flujos públicos</string>
     <string name="sources_title">Fuentes</string>
     <string name="sources_sentence">%1$d de %2$d fuentes en línea ahora mismo.</string>
     <string name="sources_none">Aún no se recibió el estado de las fuentes.</string>
@@ -252,7 +252,7 @@
     <string name="diag_socket">Socket</string>
     <string name="diag_yes">sí</string>
     <string name="diag_no">no</string>
-    <string name="about_credit">SOSForge por SoClose. Datos públicos de diecinueve agencias. Sin cuenta.</string>
+    <string name="about_credit">SOSForge por SoClose. Datos públicos de agencias oficiales. Sin cuenta.</string>
 
     <string name="watch_mode_live">Vigilancia en directo activa: alertas en segundos.</string>
     <string name="watch_mode_periodic">Comprobación cada 15&#160;min. Las alertas pueden llegar tarde.</string>
@@ -286,9 +286,9 @@
     <string name="funnel_skip_all">Omitir la configuración</string>
     <string name="welcome_title">Alertas para los lugares que le importan</string>
     <string name="welcome_sentence">Sismos, tsunamis, volcanes y avisos oficiales, en directo.</string>
-    <string name="welcome_b1">Diecinueve fuentes públicas, unidas en un solo flujo.</string>
+    <string name="welcome_b1">Fuentes públicas oficiales de todo el mundo, unidas en un solo flujo en directo.</string>
     <string name="welcome_b2">Alertas solo para sus lugares, en segundos.</string>
-    <string name="welcome_b3">Sus lugares nunca salen de este teléfono.</string>
+    <string name="welcome_b3">Sin cuenta. Sus lugares solo se envían para filtrar las alertas cercanas.</string>
     <string name="welcome_go">Empezar</string>
     <string name="fplaces_title">¿Dónde vigilar?</string>
     <string name="fplaces_sentence">Añada casa, familia, viajes. Cada lugar tiene su propio radio.</string>
@@ -402,7 +402,7 @@
     <string name="set_updates">Actualizaciones</string>
     <string name="offline_rule_now">Descarga solo por Wi-Fi. En curso.</string>
     <string name="offline_rule_waiting">Esperando Wi-Fi: nunca usa datos móviles.</string>
-    <string name="offline_world">Mundo (zoom 0 a 4)</string>
+    <string name="offline_world">Mundo (zoom 0 a 3)</string>
     <string name="offline_not_started">sin empezar</string>
     <string name="diag_location">Ubicación</string>
     <string name="diag_location_not_granted">no concedida</string>
@@ -419,4 +419,25 @@
         <item quantity="other">%1$d eventos fuertes o extremos en otros lugares</item>
     </plurals>
     <string name="value_unknown">desconocido</string>
+    <string name="locate_working_s">Buscando su posición aproximada… %1$d s</string>
+    <string name="locate_working_why">La ubicación aproximada puede tardar 30 s en interiores.</string>
+    <string name="locate_search_instead">Buscar en su lugar</string>
+    <string name="funnel_preview">Vista previa</string>
+    <string name="funnel_example">Ejemplo</string>
+    <string name="welcome_preview_caption">La pantalla En directo cerca de usted, capturada del flujo real el 27 de octubre de 2026.</string>
+    <string name="welcome_preview_desc">La pantalla En directo: cerca de usted, 47 eventos graves o extremos en otras partes del mundo, dos sismos moderados frente a Japón.</string>
+    <string name="fnotify_example_caption">Una notificación real de SOSForge, recibida el 26 de octubre de 2026.</string>
+    <string name="fnotify_example_desc">Notificación: Moderado, Sismo M1.6, a 154 km de Mi ubicación.</string>
+    <string name="fbg_example_caption">Mientras la vigilancia en directo funciona, esta notificación se queda.</string>
+    <string name="fbg_example_desc">Notificación: SOSForge está vigilando, 2 lugares, en directo.</string>
+    <string name="fbg_add_place">Añadir un lugar</string>
+    <string name="fbg_continue_without">Continuar sin</string>
+    <string name="fbg_cost_title">Lo que cuesta</string>
+    <string name="fbg_cost_data">Datos, vigilancia en directo</string>
+    <string name="fbg_cost_data_value">unos 5 MB por hora</string>
+    <string name="fbg_cost_data_note">Medido el 27 de octubre de 2026: 4,7 MB por hora, unos 110 MB al día sin Wi-Fi. Con Wi-Fi no toca su plan móvil.</string>
+    <string name="fbg_cost_battery">Batería</string>
+    <string name="fbg_cost_battery_value">una conexión queda abierta</string>
+    <string name="fbg_cost_check_value">cada 15 min aprox., según Android</string>
+    <string name="offline_on_disk">En este teléfono</string>
 </resources>

@@ -19,7 +19,7 @@ import subprocess
 import sys
 import time
 
-PKG = "co.soclose.sosforge"
+PKG = "co.soclose.sosforge"  # --pkg co.soclose.sosforge.debug for the drills' debug build
 REC = re.compile(r"NotificationRecord\(0x[0-9a-f]+: pkg=(\S+) user=\S+ id=(-?\d+) tag=(\S+) importance=(-?\d+)")
 
 
@@ -28,9 +28,25 @@ def dump(serial):
     return parse(out)
 
 
+def section(lines, title):
+    """The lines of one top-level dumpsys section (two-space indent), up to the next one.
+
+    The other sections (Snoozed, Ranking Config, Group summaries, ...) also name NotificationRecords; read
+    together, a snoozed or archived record looked like a standing notification."""
+    out, inside = [], False
+    for ln in lines:
+        top = re.match(r"^  \S.*:$", ln)
+        if top:
+            inside = ln.strip() == title
+            continue
+        if inside:
+            out.append(ln)
+    return out
+
+
 def parse(out):
     """The standing notifications of PKG, keyed by id, from the 'Notification List' section only."""
-    lines = out.splitlines()
+    lines = section(out.splitlines(), "Notification List:")
     res = {}
     cur = None
     in_extras = False
@@ -110,7 +126,12 @@ def summarize(path):
 
 
 def main():
+    global PKG
     a = sys.argv[1:]
+    if "--pkg" in a:
+        i = a.index("--pkg")
+        PKG = a[i + 1]
+        a = a[:i] + a[i + 2:]
     if a and a[0] == "summarize":
         return summarize(a[1])
     serial, cmd = a[0], a[1]

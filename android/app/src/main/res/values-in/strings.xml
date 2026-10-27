@@ -163,24 +163,24 @@
     <string name="places_empty_body">Tambah satu untuk menerima peringatan di dekat Anda.</string>
     <string name="places_nearest">Terjadi di sekitar Anda</string>
     <string name="places_quiet">Tidak ada apa pun dalam %1$d km selama 24 jam terakhir.</string>
-    <string name="places_privacy">Tempat tetap di ponsel ini. Tanpa akun, tanpa pelacakan.</string>
+    <string name="places_privacy">Tanpa akun. Tempat Anda disimpan di ponsel ini dan dikirim ke server SOSForge hanya sebagai zona, untuk menyaring peringatan.</string>
     <string name="place_here">Lokasi saya</string>
     <string name="place_radius">Peringatkan saya dalam radius</string>
     <string name="place_remove">Hapus %1$s</string>
     <string name="locate_use">Gunakan lokasi saya</string>
-    <string name="locate_rationale_title">Posisi Anda tetap di ponsel ini</string>
-    <string name="locate_rationale_body">Kami membacanya sekali untuk menambah tempat. Tidak ada pelacakan.</string>
+    <string name="locate_rationale_title">Posisi Anda memilih peringatan di dekat Anda</string>
+    <string name="locate_rationale_body">Dibaca saat aplikasi terbuka, hanya perkiraan, untuk menambah tempat dan menampilkan yang dekat. Dikirim ke server SOSForge hanya sebagai zona untuk menyaring peringatan. Tidak pernah dibaca di latar belakang.</string>
     <string name="locate_allow">Izinkan lokasi</string>
     <string name="locate_working">Mencari posisi Anda…</string>
     <string name="locate_denied">Lokasi ditolak. Cari tempat sebagai gantinya.</string>
-    <string name="locate_failed">Tidak ada posisi dalam 15 detik. Coba lagi, atau cari.</string>
+    <string name="locate_failed">Tidak ada posisi dalam 30 detik. Coba lagi, atau cari.</string>
     <string name="search_label">Cari kota atau wilayah</string>
     <string name="search_working">Mencari…</string>
     <string name="search_none">Tidak ada tempat dengan nama ini.</string>
     <string name="search_unreachable">Pencarian tidak terjangkau. Periksa jaringan, lalu coba lagi.</string>
     <string name="search_failed">Pencarian gagal. Coba nama lain.</string>
 
-    <string name="sources_overline">Sembilan belas sumber publik</string>
+    <string name="sources_overline">Sumber publik</string>
     <string name="sources_title">Sumber</string>
     <string name="sources_sentence">%1$d dari %2$d sumber aktif saat ini.</string>
     <string name="sources_none">Belum ada status sumber yang diterima.</string>
@@ -252,7 +252,7 @@
     <string name="diag_socket">Soket</string>
     <string name="diag_yes">ya</string>
     <string name="diag_no">tidak</string>
-    <string name="about_credit">SOSForge oleh SoClose. Data publik dari sembilan belas lembaga. Tanpa akun.</string>
+    <string name="about_credit">SOSForge oleh SoClose. Data publik dari lembaga resmi. Tanpa akun.</string>
 
     <string name="watch_mode_live">Pantauan langsung aktif: peringatan dalam hitungan detik.</string>
     <string name="watch_mode_periodic">Memeriksa setiap 15 menit. Peringatan bisa terlambat.</string>
@@ -286,9 +286,9 @@
     <string name="funnel_skip_all">Lewati penyiapan</string>
     <string name="welcome_title">Peringatan untuk tempat yang penting bagi Anda</string>
     <string name="welcome_sentence">Gempa, tsunami, gunung api, dan peringatan resmi, secara langsung.</string>
-    <string name="welcome_b1">Sembilan belas sumber publik, digabung dalam satu aliran.</string>
+    <string name="welcome_b1">Sumber publik resmi dari seluruh dunia, digabung dalam satu aliran langsung.</string>
     <string name="welcome_b2">Peringatan hanya untuk tempat Anda, dalam hitungan detik.</string>
-    <string name="welcome_b3">Tempat Anda tidak pernah meninggalkan ponsel ini.</string>
+    <string name="welcome_b3">Tanpa akun. Tempat Anda hanya dikirim untuk menyaring peringatan di dekatnya.</string>
     <string name="welcome_go">Mulai</string>
     <string name="fplaces_title">Di mana kami perlu memantau?</string>
     <string name="fplaces_sentence">Tambah rumah, keluarga, perjalanan. Tiap tempat punya radiusnya sendiri.</string>
@@ -388,7 +388,7 @@
     <string name="set_updates">Pembaruan</string>
     <string name="offline_rule_now">Unduhan hanya lewat Wi-Fi. Sedang berjalan.</string>
     <string name="offline_rule_waiting">Menunggu Wi-Fi: tidak pernah memakai data seluler.</string>
-    <string name="offline_world">Dunia (zoom 0 sampai 4)</string>
+    <string name="offline_world">Dunia (zoom 0 sampai 3)</string>
     <string name="offline_not_started">belum dimulai</string>
     <string name="diag_location">Lokasi</string>
     <string name="diag_location_not_granted">tidak diizinkan</string>
@@ -403,4 +403,25 @@
         <item quantity="other">%1$d peristiwa kuat atau ekstrem di tempat lain</item>
     </plurals>
     <string name="value_unknown">tidak diketahui</string>
+    <string name="locate_working_s">Mencari posisi perkiraan Anda… %1$d detik</string>
+    <string name="locate_working_why">Lokasi perkiraan bisa butuh 30 detik di dalam ruangan.</string>
+    <string name="locate_search_instead">Cari saja</string>
+    <string name="funnel_preview">Pratinjau</string>
+    <string name="funnel_example">Contoh</string>
+    <string name="welcome_preview_caption">Layar Langsung di dekat Anda, diambil dari aliran nyata pada 27 Oktober 2026.</string>
+    <string name="welcome_preview_desc">Layar Langsung: di dekat Anda, 47 peristiwa parah atau ekstrem di tempat lain, dua gempa sedang di lepas pantai Jepang.</string>
+    <string name="fnotify_example_caption">Notifikasi SOSForge sungguhan, diterima pada 26 Oktober 2026.</string>
+    <string name="fnotify_example_desc">Notifikasi: Sedang, Gempa M1.6, 154 km dari Lokasi saya.</string>
+    <string name="fbg_example_caption">Selama pemantauan langsung berjalan, notifikasi ini tetap tampil.</string>
+    <string name="fbg_example_desc">Notifikasi: SOSForge sedang memantau, 2 tempat, langsung.</string>
+    <string name="fbg_add_place">Tambah tempat</string>
+    <string name="fbg_continue_without">Lanjut tanpa</string>
+    <string name="fbg_cost_title">Biayanya</string>
+    <string name="fbg_cost_data">Data, pemantauan langsung</string>
+    <string name="fbg_cost_data_value">sekitar 5 MB per jam</string>
+    <string name="fbg_cost_data_note">Diukur pada 27 Oktober 2026: 4,7 MB per jam, sekitar 110 MB per hari tanpa Wi-Fi. Dengan Wi-Fi, kuota seluler tidak terpakai.</string>
+    <string name="fbg_cost_battery">Baterai</string>
+    <string name="fbg_cost_battery_value">satu koneksi tetap terbuka</string>
+    <string name="fbg_cost_check_value">sekitar tiap 15 menit, menurut Android</string>
+    <string name="offline_on_disk">Di ponsel ini</string>
 </resources>

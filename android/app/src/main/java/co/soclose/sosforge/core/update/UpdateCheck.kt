@@ -78,6 +78,19 @@ object UpdateRules {
         return UpdateState.Available(r, link)
     }
 
+    /**
+     * What an answer to latest.json says. A 404 is "nothing published yet"; so is a 200 in HTML:
+     * production answers /download/latest.json with the web app's index.html (SPA fallback, captured
+     * 2026-10-27), which is a reachable server with no release file, not an unreachable one.
+     */
+    fun answer(code: Int, contentType: String?, body: String): Pair<UpdateState, LatestRelease?> = when {
+        code == 404 -> UpdateState.NonePublished to null
+        code !in 200..299 -> UpdateState.Unreachable to null
+        contentType?.contains("html", ignoreCase = true) == true || body.trimStart().startsWith("<") -> UpdateState.NonePublished to null
+        else -> runCatching { SosJson.decodeFromString(LatestRelease.serializer(), body) }.getOrNull()
+            ?.let { UpdateState.NotChecked to it } ?: (UpdateState.Unreachable to null)
+    }
+
     /** A card the owner dismissed stays hidden for THAT version only; a newer one shows again. */
     fun showCard(state: UpdateState, dismissedCode: Int): Boolean =
         state is UpdateState.Available && state.release.versionCode > dismissedCode
@@ -90,15 +103,7 @@ class UpdateCheck(private val http: OkHttpClient) {
         val req = Request.Builder().url(url).header("Accept", "application/json").header("Cache-Control", "no-cache").build()
         return try {
             http.newCall(req).execute().use { r ->
-                when {
-                    r.code == 404 -> UpdateState.NonePublished to null
-                    !r.isSuccessful -> UpdateState.Unreachable to null
-                    else -> {
-                        val body = r.body?.string().orEmpty()
-                        val rel = runCatching { SosJson.decodeFromString(LatestRelease.serializer(), body) }.getOrNull()
-                        if (rel == null) UpdateState.Unreachable to null else UpdateState.NotChecked to rel
-                    }
-                }
+                UpdateRules.answer(r.code, r.header("Content-Type"), if (r.isSuccessful) r.body?.string().orEmpty() else "")
             }
         } catch (_: IOException) {
             UpdateState.Unreachable to null

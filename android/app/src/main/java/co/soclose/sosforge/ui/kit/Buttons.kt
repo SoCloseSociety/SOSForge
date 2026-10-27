@@ -60,7 +60,7 @@ fun PrimaryButton(
             Icon(icon, null, Modifier.size(18.dp), tint = c.onPrimary)
             Box(Modifier.size(8.dp))
         }
-        Text(text, style = Sos.type.label, color = c.onPrimary, maxLines = 2, textAlign = TextAlign.Center)
+        Text(text, style = Sos.type.label, color = c.onPrimary, maxLines = 3, textAlign = TextAlign.Center)
     }
 }
 
@@ -91,7 +91,7 @@ fun SecondaryButton(
             Icon(icon, null, Modifier.size(18.dp), tint = fg)
             Box(Modifier.size(8.dp))
         }
-        Text(text, style = Sos.type.label, color = fg, maxLines = 2, textAlign = TextAlign.Center)
+        Text(text, style = Sos.type.label, color = fg, maxLines = 3, textAlign = TextAlign.Center)
     }
 }
 

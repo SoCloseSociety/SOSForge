@@ -40,10 +40,12 @@ class LocateRulesTest {
     }
 
     @Test fun a_last_known_fix_is_used_at_once_when_recent_and_refused_when_old() {
+        // a coarse fix half an hour old is the same town for a 50 km radius at least (Fold, 2026-10-27)
         assertTrue(LocateRules.recentEnough(60_000))
-        assertFalse(LocateRules.recentEnough(3 * 60_000))
-        assertTrue(LocateRules.usableFallback(9 * 60_000))
-        assertFalse("a 30 min old fix may be another city", LocateRules.usableFallback(30 * 60_000))
+        assertTrue(LocateRules.recentEnough(29 * 60_000))
+        assertFalse(LocateRules.recentEnough(31 * 60_000))
+        assertTrue(LocateRules.usableFallback(29 * 60_000))
+        assertFalse("an hour old fix may be another city", LocateRules.usableFallback(60 * 60_000))
         assertFalse(LocateRules.usableFallback(null))
         assertFalse("a fix from the future (clock change) is not trusted", LocateRules.usableFallback(-5))
     }
@@ -52,7 +54,8 @@ class LocateRulesTest {
         assertEquals(listOf(LocationManager.FUSED_PROVIDER, LocationManager.GPS_PROVIDER), LocateRules.providers(34) { it != LocationManager.NETWORK_PROVIDER })
         assertEquals(listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER), LocateRules.providers(29) { true })
         assertTrue(LocateRules.providers(34) { false }.isEmpty())
-        assertEquals(15_000L, LocateRules.TIMEOUT_MS)
+        // coarse grants are throttled to LOW_POWER: one 30 s wait for every provider together
+        assertEquals(30_000L, LocateRules.TIMEOUT_MS)
     }
 }
 
@@ -99,6 +102,18 @@ class UpdateRulesTest {
         else assertEquals(UpdateState.Refused(UpdateState.Why.BAD_URL), dev)
     }
 
+    @Test fun production_answering_its_web_page_means_nothing_published_not_unreachable() {
+        // captured from https://sosforge.soclose.co/download/latest.json on 2026-10-27: HTTP 200, text/html
+        val html = Fixtures.text("latest-json-spa-fallback.html")
+        assertEquals(UpdateState.NonePublished, UpdateRules.answer(200, "text/html", html).first)
+        assertEquals(UpdateState.NonePublished, UpdateRules.answer(200, null, html).first)
+        assertEquals(UpdateState.NonePublished, UpdateRules.answer(404, "text/html", "").first)
+        assertEquals(UpdateState.Unreachable, UpdateRules.answer(502, "text/html", "").first)
+        val (s, r) = UpdateRules.answer(200, "application/json", """{"app": "co.soclose.sosforge", "version": "0.1.3", "version_code": 8, "url": "/download/x.apk", "cert_sha256": "$pinned"}""")
+        assertEquals(UpdateState.NotChecked, s)
+        assertEquals(8, r!!.versionCode)
+    }
+
     @Test fun a_dismissed_card_stays_hidden_for_that_version_only() {
         val s = UpdateRules.decide(rel(code = 8), origin, 7, 34)
         assertTrue(UpdateRules.showCard(s, dismissedCode = 0))
@@ -111,13 +126,15 @@ class UpdateRulesTest {
 class PackPlanTest {
     private val athens = Place("ath", "Athens", 37.98, 23.73, 300)
 
-    @Test fun the_world_is_zooms_0_to_4_and_a_300_km_place_stops_where_the_budget_says() {
+    @Test fun the_world_is_zooms_0_to_3_and_a_300_km_place_stops_where_the_budget_says() {
         val specs = PackPlan.wanted(listOf(athens), listOf(MapStyles.DARK))
         val world = specs.first { it.placeId == null }
-        assertEquals(0 to 4, world.minZoom to world.maxZoom)
-        assertEquals(341L, PackPlan.tiles(PackPlan.WORLD, 0, 4))
+        // measured in the emulator's MapLibre database (2026-10-27): 0..4 was 133 MB with the unused relief
+        // raster, 0..3 is about 47 MB of tiles
+        assertEquals(0 to 3, world.minZoom to world.maxZoom)
+        assertEquals(85L, PackPlan.tiles(PackPlan.WORLD, 0, 3))
         val place = specs.first { it.placeId == "ath" }
-        // measured 2026-10-27 on OpenFreeMap: z5-9 ~13-15 MB, z5-10 ~23-30 MB for a 300 km radius
+        // measured: Tokyo at 300 km, zooms 5..9 = 171 vector tiles, 8.1 MB
         assertEquals(9, place.maxZoom)
         assertTrue(PackPlan.tiles(place.bounds, 5, place.maxZoom) <= PackPlan.PLACE_TILE_BUDGET)
         assertTrue(PackPlan.tiles(place.bounds, 5, place.maxZoom + 1) > PackPlan.PLACE_TILE_BUDGET)
@@ -139,6 +156,19 @@ class PackPlanTest {
         val (drop2, create2) = PackPlan.diff(before, PackPlan.wanted(listOf(athens.copy(radiusKm = 100))))
         assertEquals(2, drop2.size)
         assertEquals(setOf("place:ath:100|dark", "place:ath:100|light"), create2.map { it.key }.toSet())
+    }
+
+    @Test fun a_pack_downloaded_with_another_definition_is_replaced_not_kept() {
+        val wanted = PackPlan.wanted(listOf(athens))
+        val keys = wanted.map { it.key }.toSet()
+        // the 0.1.2 test build downloaded the world at 0..4: same key, other zooms -> dropped AND created again
+        val old = mapOf("world|dark" to PackPlan.defOf(MapStyles.DARK, 0, 4))
+        val (drop, create) = PackPlan.diff(keys, wanted, old)
+        assertEquals(setOf("world|dark"), drop)
+        assertEquals(listOf("world|dark"), create.map { it.key })
+        // the same definition is left alone
+        val same = wanted.associate { it.key to PackPlan.defOf(it) }
+        assertEquals(emptySet<String>() to emptyList<PackPlan.Spec>(), PackPlan.diff(keys, wanted, same))
     }
 
     @Test fun bounds_stay_inside_the_mercator_band_and_the_antimeridian() {
