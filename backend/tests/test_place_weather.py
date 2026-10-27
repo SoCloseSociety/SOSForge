@@ -3,11 +3,15 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
-from datetime import timedelta
+import re
+from datetime import datetime, timedelta
 
+import httpx
 import pytest
 
+from app.place import block as B
 from app.place import fetch, metar, weather
 from tests.place_helpers import at, ctx_for, install, meta_of, read_bytes, read_json
 
@@ -311,13 +315,39 @@ def test_forecast_caches_are_bounded_in_bytes() -> None:
 
 # ------------------------------------------------- METAR, merged across reads
 
+PAIR_A = "awc_metars_cache_global_pair_a.csv.gz"  # read 17:24Z
+PAIR_B = "awc_metars_cache_global_pair_b.csv.gz"  # read 17:39Z
+# two reads 3 min apart, the background refresh's cadence (18:37Z, 18:40Z)
+CHAIN_A = "awc_metars_cache_global_chain_a.csv.gz"
+CHAIN_B = "awc_metars_cache_global_chain_b.csv.gz"
+OCEAN = (0.0, -140.0)  # no METAR station within 50 km
+
+
+def _headers(name: str) -> dict[str, str]:
+    """The response headers recorded in a capture's sidecar."""
+    lines = meta_of("weather", name)["raw_headers"].splitlines()[1:]
+    return dict(line.split(": ", 1) for line in lines if ": " in line)
+
+
+def _read(name: str) -> weather.MetarIndex:
+    """A capture as the loader takes it: parsed, current at its Last-Modified."""
+    headers = _headers(name)
+    meta = meta_of("weather", name)
+    read = at(meta["fetched_at_utc"]) if "fetched_at_utc" in meta else CACHE_FETCHED
+    index = weather.parse_metar_cache(read_bytes("weather", name))
+    return weather.stamped(index, weather.file_time(headers.get("last-modified"), read))
+
+
+def _answer(name: str) -> httpx.Response:
+    return httpx.Response(200, headers=_headers(name), content=read_bytes("weather", name))
+
 
 @pytest.fixture(scope="module")
 def metar_pair() -> tuple[weather.MetarIndex, weather.MetarIndex]:
-    # two real reads of the cache file, 15 min apart (17:24Z and 17:39Z):
-    # its window is 15:55-17:23 in the first and 16:30-17:37 in the second
-    a = weather.parse_metar_cache(read_bytes("weather", "awc_metars_cache_global_pair_a.csv.gz"))
-    b = weather.parse_metar_cache(read_bytes("weather", "awc_metars_cache_global_pair_b.csv.gz"))
+    # two real reads of the cache file, 15 min apart (17:24Z and 17:39Z),
+    # parsed bare (no read time): oldest rows 15:55 and 16:30
+    a = weather.parse_metar_cache(read_bytes("weather", PAIR_A))
+    b = weather.parse_metar_cache(read_bytes("weather", PAIR_B))
     return a, b
 
 
@@ -325,14 +355,27 @@ def _stations(index: weather.MetarIndex) -> dict[str, weather.Station]:
     return {s.icao: s for cell in index.cells.values() for s in cell}
 
 
+def _oldest(index: weather.MetarIndex) -> datetime:
+    return min(s.time for s in _stations(index).values())
+
+
+def _times_named(block: B.Block, now: datetime) -> list[str]:
+    """Every HH:MM the block says, to operators and to readers."""
+    assert block.error is not None
+    said = [block.error.reason, block.public(now, "en")["error"]["message"]]
+    said += [str(v) for v in block.error.params.values()]
+    return re.findall(r"\b\d\d:\d\d\b", " ".join(said))
+
+
 def test_the_cache_file_holds_80_minutes_so_reads_are_merged(metar_pair) -> None:
     a, b = metar_pair
-    assert (a.since, a.newest) == (at("2026-10-27T15:55:00Z"), at("2026-10-27T17:23:00Z"))
+    assert (_oldest(a), a.newest) == (at("2026-10-27T15:55:00Z"), at("2026-10-27T17:23:00Z"))
     dropped = set(_stations(a)) - set(_stations(b))
     assert len(dropped) == 51  # reported at 15:55-17:23, gone from the next read
     merged = weather.merge_metar(a, b)
     assert dropped <= set(_stations(merged))
-    assert merged.since == a.since and merged.newest == b.newest
+    assert merged.newest == b.newest
+    assert merged.since is None and merged.read_at is None  # bare parses: no cover claimed
     # newest report per station: LFPB's 17:30Z, not its 17:00Z
     assert _stations(merged)["LFPB"].time == at("2026-10-27T17:30:00Z")
 
@@ -353,31 +396,175 @@ def test_a_station_the_next_read_dropped_is_still_the_nearest(metar_pair) -> Non
     assert block.data["station"]["icao"] == icao
 
 
-def test_after_a_restart_no_station_names_the_window_it_holds(metar_pair) -> None:
+def test_a_same_time_correction_replaces_the_report_it_corrects(metar_pair) -> None:
+    # pair_a lists ETAR's 17:10Z SPECI as "AUTO ... 4000 BR"; pair_b re-issues
+    # it at the SAME observation time as "COR ... 9999", and SAZG's 17:00Z
+    # COR takes out the SCT100 layer. The original is retracted, not current.
     a, b = metar_pair
+    assert _stations(a)["ETAR"].time == _stations(b)["ETAR"].time
     merged = weather.merge_metar(a, b)
-    block = weather.now_block(merged, ctx_for(0.0, -140.0, at("2026-10-27T17:40:00Z")))
+    now = at("2026-10-27T17:40:00Z")
+    etar = _stations(b)["ETAR"]
+    d = weather.now_block(merged, ctx_for(etar.lat, etar.lon, now)).data
+    assert d is not None and d["station"]["icao"] == "ETAR"
+    assert " COR " in d["raw"] and "4000 BR" not in d["raw"]
+    assert (d["visibility_km"], d["wx"], d["flight_category"]) == (10.0, None, "VFR")
+    sazg = _stations(b)["SAZG"]
+    d = weather.now_block(merged, ctx_for(sazg.lat, sazg.lon, now)).data
+    assert d is not None and d["station"]["icao"] == "SAZG"
+    assert d["raw"].startswith("METAR SAZG 271700Z COR ")
+    assert d["clouds"] == [{"cover": "SCT", "base_ft": 2500}]
+
+
+def test_an_older_copy_read_later_does_not_bring_the_original_back() -> None:
+    # a CDN copy can be older than the file already held: taken in that
+    # order, pair_a's original must not overturn pair_b's correction
+    held, older = _read(PAIR_B), _read(PAIR_A)
+    assert older.read_at is not None and held.read_at is not None
+    assert older.read_at < held.read_at
+    merged = weather.merge_metar(held, older)
+    assert " COR " in _stations(merged)["ETAR"].raw
+    assert (merged.read_at, merged.since) == (held.read_at, held.since)
+
+
+def test_a_read_is_current_at_its_last_modified_never_later_than_the_read() -> None:
+    read = at("2026-10-27T17:39:18Z")
+    lm = _headers(PAIR_B)["last-modified"]
+    assert weather.file_time(lm, read) == at("2026-10-27T17:38:09Z")
+    assert weather.file_time(lm, at("2026-10-27T17:30:00Z")) == at("2026-10-27T17:30:00Z")
+    assert weather.file_time(None, read) == read
+    assert weather.file_time("yesterday", read) == read
+
+
+async def test_after_a_restart_no_station_never_names_a_window_it_does_not_hold() -> None:
+    # KOYE, an oil platform in the Gulf of Mexico, reported at 17:10Z: listed
+    # at 17:24Z, gone at 17:39Z while 16:30Z rows stayed. The first read
+    # after a restart is the 17:39Z file: its oldest row says nothing about
+    # what it holds, and "no station since 16:30 UTC" was false there.
+    koye = _stations(weather.parse_metar_cache(read_bytes("weather", PAIR_A)))["KOYE"]
+    assert koye.time == at("2026-10-27T17:10:00Z")
+    first = weather.parse_metar_cache(read_bytes("weather", PAIR_B))
+    assert "KOYE" not in _stations(first) and _oldest(first) == at("2026-10-27T16:30:00Z")
+    router = install()
+    router.handler(weather.METAR_URL, lambda request: _answer(PAIR_B))
+    loaded = await weather._load_metar(fetch.Entry())
+    index = loaded.value
+    now = at("2026-10-27T17:40:00Z")
+    block = weather.now_block(index, ctx_for(28.87, -90.49, now))
     assert block.status == "unavailable" and block.error is not None
     assert block.error.code == "no_station"
-    assert block.error.params == {"km": 50, "since": "15:55"}
-    assert "since 15:55 UTC" in block.public(at("2026-10-27T17:40:00Z"), "en")["error"]["message"]
-    # 3 h after the first report held, the window is the full 3 h again
-    later = weather.now_block(merged, ctx_for(0.0, -140.0, at("2026-10-27T18:56:00Z")))
-    assert later.error is not None and later.error.params == {"km": 50, "hours": 3}
+    assert all(t >= "17:10" for t in _times_named(block, now))
+    # the cover starts at the read itself (its Last-Modified), and two
+    # minutes of it name no window at all
+    assert index.since == index.read_at == at("2026-10-27T17:38:09Z")
+    assert block.error.params == {"km": 50}
+    message = block.public(now, "en")["error"]["message"]
+    assert message == "No station within 50 km is in the latest reports."
 
 
-def test_a_read_that_does_not_reach_back_starts_the_cover_over(
-    metar_index: weather.MetarIndex, metar_pair
-) -> None:
-    # 11:08Z, then 17:23Z: the reads failed for six hours in between
-    a, _ = metar_pair
-    assert weather.merge_metar(metar_index, a) is a
+def test_the_window_named_is_the_cover_held() -> None:
+    a, b = _read(CHAIN_A), _read(CHAIN_B)
+    merged = weather.merge_metar(a, b)
+    start = at("2026-10-27T18:37:06Z")
+    assert merged.since == a.since == start
+    assert merged.read_at == b.read_at == at("2026-10-27T18:40:10Z")
+
+    def error(now: datetime) -> B.Problem:
+        block = weather.now_block(merged, ctx_for(*OCEAN, now))
+        assert block.status == "unavailable" and block.error is not None
+        return block.error
+
+    assert error(start + timedelta(minutes=59)).params == {"km": 50}
+    # rounded UP: a report observed at 18:37:00 is not vouched for
+    later = error(start + timedelta(minutes=61))
+    assert later.params == {"km": 50, "since": "18:38"}
+    assert later.reason == "no METAR within 50 km reported since 18:38 UTC"
+    assert error(start + timedelta(hours=3)).params == {"km": 50, "hours": 3}
 
 
-async def test_the_loader_merges_into_the_copy_it_had(metar_pair) -> None:
-    a, _ = metar_pair
+def test_a_report_dropped_between_two_close_reads_is_still_served() -> None:
+    # KOYE's 18:30Z report again, an hour later: listed 18:31Z to 18:38Z,
+    # gone from the 18:40Z file with no newer one, and no other station
+    # within 50 km (KPBM is 61 km away). Read 3 min apart, it stays served.
+    a, b = _read(CHAIN_A), _read(CHAIN_B)
+    assert _stations(a)["KOYE"].time == at("2026-10-27T18:30:00Z")
+    assert "KOYE" not in _stations(b)
+    dropped = set(_stations(a)) - set(_stations(b))
+    merged = weather.merge_metar(a, b)
+    assert dropped <= set(_stations(merged))
+    now = at("2026-10-27T18:41:00Z")
+    alone = weather.now_block(b, ctx_for(28.87, -90.49, now))
+    assert alone.status == "unavailable"
+    block = weather.now_block(merged, ctx_for(28.87, -90.49, now))
+    assert block.status == "ok" and block.data is not None
+    assert block.data["station"]["icao"] == "KOYE"
+    assert block.public(now, "en")["as_of"] == "2026-10-27T18:30:00Z"
+
+
+def test_reads_further_apart_than_a_report_stays_listed_start_the_cover_over() -> None:
+    # 17:24:08 then 17:38:09: KOYE's 18:30Z report was listed for 7 to 10
+    # minutes only, so one can come and go in 14, and a station whose newer
+    # report did would be served its superseded one
+    a, b = _read(PAIR_A), _read(PAIR_B)
+    assert a.read_at is not None and b.read_at is not None
+    assert b.read_at - a.read_at > weather.METAR_MAX_GAP
+    assert weather.merge_metar(a, b) is b
+    # 11:09Z, then 17:24Z: the reads failed for six hours in between
+    assert weather.merge_metar(_read("awc_metars_cache_global.csv.gz"), a) is a
+
+
+async def test_the_loader_merges_into_the_copy_it_had() -> None:
+    held = _read(CHAIN_A)
     router = install()
-    router.add(weather.METAR_URL, read_bytes("weather", "awc_metars_cache_global_pair_b.csv.gz"))
-    loaded = await weather._load_metar(fetch.Entry(value=a))
-    assert loaded.value.since == a.since
-    assert len(_stations(loaded.value)) == 5308
+    router.handler(weather.METAR_URL, lambda request: _answer(CHAIN_B))
+    loaded = await weather._load_metar(fetch.Entry(value=held))
+    index = loaded.value
+    assert (index.since, index.read_at) == (held.since, at("2026-10-27T18:40:10Z"))
+    both = set(_stations(held)) | set(_stations(_read(CHAIN_B)))
+    assert set(_stations(index)) == both
+
+
+async def test_the_cache_file_is_read_every_3_minutes_without_a_visitor(monkeypatch) -> None:
+    from app import place
+
+    assert place.start(enabled=False) == []  # the report switched off: no read at all
+    router = install()
+    answers = [lambda: httpx.Response(503), lambda: _answer(CHAIN_A), lambda: _answer(CHAIN_B)]
+    agents: list[str] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        agents.append(request.headers["user-agent"])
+        return answers[min(len(agents), len(answers)) - 1]()
+
+    router.handler(weather.METAR_URL, answer)
+    monkeypatch.setattr(weather, "METAR_TTL_S", 0.05)
+    monkeypatch.setattr(fetch, "FAILURE_MEMORY_S", 0.05)
+    (task,) = place.start(enabled=True)
+    try:
+        async with asyncio.timeout(10):
+            while len(agents) < 3:
+                await asyncio.sleep(0.05)
+            while (entry := weather._metar_cache.peek("global")) is None or entry.task:
+                await asyncio.sleep(0.05)
+    finally:
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+    # the failure was retried, then the expired copy read again and merged
+    assert agents == [fetch.USER_AGENT] * 3
+    index = entry.value
+    assert (index.since, index.read_at) == (at("2026-10-27T18:37:06Z"), at("2026-10-27T18:40:10Z"))
+    seen = len(agents)
+    await asyncio.sleep(1.2)
+    assert len(agents) == seen  # cancelled with the lifespan: no read after
+
+
+def test_a_message_variant_is_the_one_naming_the_most_parameters() -> None:
+    from app.place import messages
+
+    def say(**params: object) -> str:
+        return messages.message("no_station", "en", params)
+
+    assert say(km=50) == "No station within 50 km is in the latest reports."
+    assert say(km=50, since="18:38") == "No station within 50 km has reported since 18:38 UTC."
+    assert say(km=50, hours=3) == "No station within 50 km has reported in the last 3 hours."
+    assert say() == "No station near this place has reported recently."

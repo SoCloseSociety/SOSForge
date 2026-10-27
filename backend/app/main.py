@@ -448,6 +448,8 @@ async def lifespan(app: FastAPI):
     tasks.append(asyncio.create_task(climate.run(), name="climate"))
     if settings.enable_felt_reports:
         tasks.append(asyncio.create_task(felt_reports(), name="felt"))
+    # the place report's METAR file, read every 3 min (none when it is off)
+    tasks.extend(place.start(enabled=settings.enable_place))
     log.info("SOSForge online -- %d sources: %s", len(sources), ", ".join(s.name for s in sources))
 
     yield

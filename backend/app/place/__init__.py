@@ -9,6 +9,7 @@ and its licence, or the real reason it has no value.
 
 from __future__ import annotations
 
+import asyncio
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -26,7 +27,16 @@ from app.place.messages import LANGS
 PARAMS = ("lat", "lon", "radius_km", "lang")
 RADIUS_MIN, RADIUS_MAX, RADIUS_DEFAULT = 10.0, 300.0, 300.0
 
-__all__ = ["PARAMS", "Query", "QueryError", "Report", "configure", "parse_query", "report"]
+__all__ = [
+    "PARAMS",
+    "Query",
+    "QueryError",
+    "Report",
+    "configure",
+    "parse_query",
+    "report",
+    "start",
+]
 
 
 class QueryError(Exception):
@@ -131,6 +141,16 @@ def configure(
             cache.max_entries = cache_entries
     history.configure(history_cache_mb)
     cyclones.configure(data_dir)
+
+
+def start(*, enabled: bool) -> list[asyncio.Task[None]]:
+    """The report's background work, for the app lifespan to cancel at
+    shutdown: the METAR cache file read every 3 minutes, so the cover that
+    "no station" names does not depend on visitors (weather.keep_metar_fresh).
+    Nothing at all when the report is switched off."""
+    if not enabled:
+        return []
+    return [fetch.spawn(weather.keep_metar_fresh(), "place:metar-refresh")]
 
 
 async def report(

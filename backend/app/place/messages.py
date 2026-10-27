@@ -91,6 +91,14 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "{km} km 以内に、過去 {hours} 時間に報告した観測所はありません。",
         "id": "Tidak ada stasiun dalam {km} km yang melapor dalam {hours} jam terakhir.",
     },
+    # the reads held cover too little to name a window (just after a restart)
+    "no_station:km": {
+        "en": "No station within {km} km is in the latest reports.",
+        "fr": "Aucune station à moins de {km} km ne figure dans les derniers relevés.",
+        "es": "Ninguna estación a menos de {km} km figura en los últimos informes.",
+        "ja": "{km} km 以内の観測所は、最新の報告に含まれていません。",
+        "id": "Tidak ada stasiun dalam {km} km di laporan terbaru.",
+    },
     "coast_not_resolved": {
         "en": "The model has no sea cell close enough to this place.",
         "fr": "Le modèle n’a pas de maille marine assez proche de ce lieu.",
@@ -146,12 +154,18 @@ MESSAGES: dict[str, dict[str, str]] = {
 def message(code: str, lang: str, params: dict[str, Any] | None = None) -> str:
     lang = lang if lang in LANGS else "en"
     params = params or {}
+    best: list[str] = []
+    sentence = None
     for key, sentences in MESSAGES.items():
         base, _, names = key.partition(":")
         if base != code or not names:
             continue
         wanted = names.split(",")
-        if all(params.get(name) is not None for name in wanted):
-            return sentences[lang].format(**{name: params[name] for name in wanted})
+        # the variant naming the most of the given parameters, whatever the
+        # order of the table ("no_station:km" never hides "no_station:km,hours")
+        if all(params.get(name) is not None for name in wanted) and len(wanted) > len(best):
+            best, sentence = wanted, sentences[lang]
+    if sentence is not None:
+        return sentence.format(**{name: params[name] for name in best})
     generic = MESSAGES.get(code) or MESSAGES["upstream_parse"]
     return generic[lang]

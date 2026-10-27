@@ -11,6 +11,22 @@
    "bytes": 564,
    "sha256": "9446585065457958c4dd3f36e2e81074445ccc8f8b7c965a9ea8201d6ccd198e"
   },
+  "awc_metars_cache_global_chain_a.csv.gz": {
+   "bytes": 261866,
+   "sha256": "d6eae8346d59caf0a0736cfbfdb4ec2a221aaf585e67fad49e69ccbe6f3a5303"
+  },
+  "awc_metars_cache_global_chain_a.csv.gz.meta.json": {
+   "bytes": 784,
+   "sha256": "4ba401fe18499c83290e233b78756ee9cf59b9d0d399feef8313391eed6806d0"
+  },
+  "awc_metars_cache_global_chain_b.csv.gz": {
+   "bytes": 261266,
+   "sha256": "939d863a6893757fa3791a5cfdb605a6ab129804f961b72f938bf016d8ce7e29"
+  },
+  "awc_metars_cache_global_chain_b.csv.gz.meta.json": {
+   "bytes": 752,
+   "sha256": "287b9bbfd9280a2c80550613d51428c101437ea63856b434eecfe87dfea02e2c"
+  },
   "awc_metars_cache_global_pair_a.csv.gz": {
    "bytes": 258847,
    "sha256": "765e03643c7c61af48f8ada65be3add5bbde75f1ad1c95d352de43cb9730b77f"
@@ -85,6 +101,17 @@
     "awc_metars_cache_global_pair_a.csv.gz.meta.json",
     "awc_metars_cache_global_pair_b.csv.gz",
     "awc_metars_cache_global_pair_b.csv.gz.meta.json"
+   ],
+   "removed": []
+  },
+  {
+   "utc": "2026-10-27T18:57:06Z",
+   "source": "one-minute captures of the cache file (SOSForge User-Agent), bodies byte for byte",
+   "added": [
+    "awc_metars_cache_global_chain_a.csv.gz",
+    "awc_metars_cache_global_chain_a.csv.gz.meta.json",
+    "awc_metars_cache_global_chain_b.csv.gz",
+    "awc_metars_cache_global_chain_b.csv.gz.meta.json"
    ],
    "removed": []
   }
