@@ -25,6 +25,25 @@
 export const NEAR_BORDER_KM = 25
 export const OFFSHORE_KM = 100
 
+/** Territories with their own code, and the state a geocoder files them
+ * under. Nominatim answers "Saint-Denis, Reunion" with FR and "Kralendijk"
+ * with NL; added to the table's RE or BQ, the parent code brought back the
+ * metropolitan warnings of France or the Netherlands, 9,000 km away
+ * (recheck of PR #5). The alert feeds that read a parent code cover its
+ * home territory only (Meteoalarm's "France" is metropolitan). */
+export const OVERSEAS_PARENT: Record<string, string> = {
+  // France
+  RE: 'FR', GF: 'FR', GP: 'FR', MQ: 'FR', YT: 'FR', PF: 'FR', NC: 'FR', MF: 'FR',
+  BL: 'FR', PM: 'FR', WF: 'FR', TF: 'FR',
+  // the Netherlands
+  BQ: 'NL', AW: 'NL', CW: 'NL', SX: 'NL',
+  // the United Kingdom
+  GI: 'GB', BM: 'GB', KY: 'GB', VG: 'GB', TC: 'GB', MS: 'GB', AI: 'GB', FK: 'GB',
+  GS: 'GB', SH: 'GB', PN: 'GB', IO: 'GB',
+  // Denmark
+  GL: 'DK', FO: 'DK',
+}
+
 interface Shape {
   code: string
   /** the exterior ring, then the holes: lon, lat, lon, lat... in degrees */

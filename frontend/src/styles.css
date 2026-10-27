@@ -2554,6 +2554,26 @@ a {
   color: var(--t2);
 }
 
+/* a chunk that failed: a sentence, two actions that wrap, the raw text
+   behind "Show more", broken anywhere (an asset URL has no spaces) */
+.climate-failed {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.climate-failed-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.climate-failed-more code {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 /* --------------------------------------------------------------- crash page */
 
 .crash {

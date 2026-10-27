@@ -138,7 +138,9 @@ describe('#4: a failed climate chunk stays inside its dialog', () => {
     )
     const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     fireEvent.click(screen.getByRole('button', { name: /Climate indicators/ }))
-    expect(await screen.findByText('The climate indicators could not be loaded.')).toBeInTheDocument()
+    expect(
+      await screen.findByText('The climate indicators could not be loaded. Reload the page to get the current version.'),
+    ).toBeInTheDocument()
     expect(screen.getByText('live feed')).toBeInTheDocument()
     fail = false
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
