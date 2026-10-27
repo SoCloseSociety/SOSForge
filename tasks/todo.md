@@ -838,7 +838,8 @@ Measured before (2026-10-27, M4 Pro, machine load ~13 from other lanes):
 
 - 1 / 100 / 1000 sockets: server CPU 1.3 / 1.4 / 14.8 %, tick period
   1.0019 / 1.0015 / 1.0256 s (the heartbeat sleeps 1 s AFTER its work),
-  tick latency p99 6 / 9 / 518 ms, RSS ~0.45 MB per connected socket.
+  tick latency p99 6 / 9 / 518 ms, RSS 0.15-0.45 MB per connected socket
+  (the higher figure while 1000 sockets opened at 400/s).
 - 1000 sockets opened at 400/s: snapshot p50 0.83 s, p95 4.68 s, while every
   tick to the sockets already open stalls (max gap 1.46 s).
 - Full ring (5000): `stats()` 2.1 ms per call (each tick and each snapshot),
@@ -861,6 +862,13 @@ Changes, smallest first:
       reason; tested with a real uvicorn and a real client (e7a3d9a).
 - [x] `agent/`: the reconnect backoff never reset (`run_once` only leaves by
       an exception). Reset after a session that delivered (a022416).
+- [x] `agent/`: lane N's drills, real agent, notifier recorded (f36ba98).
+      A cancelled / lifted / ended / relocated alert it had rung got no
+      follow-up; now one, once, without sound. An area alert was judged by
+      its centre; now by its bbox, the clamp of `Zone.touches`. Drill rows:
+      eew-cancelled tokyo M6.1, M6.6 -> + "Cancelled"; relocated-out tokyo
+      M5.9 -> + "No longer near you"; relocated-out paris silent -> UK
+      amber, then "No longer near you".
 - [x] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
       pipeline's horizon is the one rule (expired, too old and not ongoing).
       Read line by line instead of `read_text()` (no whole-file copy at
@@ -870,24 +878,41 @@ Changes, smallest first:
       severe+ 104 (60); second journal 1196 (622).**
 - [x] `store/ring.py` journal lines without `raw`. Test: the line carries no
       `raw`, the replayed event is equal on every public field.
-- [ ] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
+- [x] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
       whatever the fan-out costs; a stalled loop resumes from now instead of
-      firing a burst of catch-up ticks.
-- [ ] `main.py` + `store/ring.py`: the unscoped snapshot (web `chunks=1`,
+      firing a burst of catch-up ticks. **After: mean period 1.0000004 s
+      (was 1.0019) with one socket, 0.99994 s (was 1.025) with 1000.**
+- [x] `main.py` + `store/ring.py`: the unscoped snapshot (web `chunks=1`,
       agent legacy) serialized once per store version and shared, instead
       of composed and serialized for every socket. The store gets a
       `version` counter bumped on every mutation (insert, revision,
       removal, promotion); `last_seen` refreshes do not bump it, so the
       cache also expires after 1 s. Scoped sockets keep their own snapshot.
-      Gate: same bytes as the uncached path for the same store.
+      Gate: same bytes as the uncached path for the same store. Built in
+      its own coroutine too: as locals of the endpoint it stayed referenced
+      for the whole connection (339 -> 87 KB held per socket in-process).
+      **After, 1000 web sockets opened at 100/s: 1000/1000 connected (was
+      908, 92 handshake timeouts), snapshot p95 0.029 s (was 8.45 s), CPU
+      7.8 % (23.4 %), RSS 108 MB (189). At 300/s: 1000/1000 (770), the
+      watcher's tick period max 1.017 s (1.86 s).**
+- [x] `main.py` legacy `/api/events` returns its JSONResponse: FastAPI's
+      `jsonable_encoder` re-walked 300 JSON-native dicts, 6.9 ms of 14.
+      Same bytes (tested). **After, live: p50/p95 6.5/10.2 ms (was
+      15.1/35.9), limit=2000 17.9/34.5 ms (66.0/233).**
 - [x] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
       second) on cache misses, 429 + `Retry-After` beyond. The web debounces
       at 450 ms and treats a failure as "no places", so a person typing is
       never refused. **After: a burst of 10 or 30 from one
       address costs another visitor 2.95 s (was 9.96 / 29.98 s); the burst
       gets 3 answers and 429 for the rest.**
-- [ ] `Dockerfile`: dependency layer before the code (a code change no
-      longer reinstalls every dependency); prod footprint measured.
+- [ ] `Dockerfile`: NOT changed. Measured: `pip install .` adds 22 MB to
+      python:3.12-slim (~125 MB); removable parts are watchfiles 1.0 MB and
+      pyyaml 0.66 MB (uvicorn[standard], dev reload / YAML logging only)
+      and a second 1 MB copy of `app` in site-packages. About 2 % of the
+      image, and Docker does not run on this Mac, so an unbuilt Dockerfile
+      is not worth that. For whoever can build: install the dependencies
+      from pyproject (tomllib) BEFORE `COPY app`, and drop `pip install .`
+      (uvicorn runs /srv/app), so a code change stops reinstalling 22 MB.
 - [x] `dedupe.py`: the number said so. cProfile of the startup replay on the
       real journals: `Deduper.assign` is 0.83 s of 1.23 s, of which 0.37 s
       is 1.38 million `datetime.timestamp()` calls -- every located quake,
@@ -900,4 +925,6 @@ Changes, smallest first:
       identical between the old and the new deduper on the real journals.
       **After: 6678 assigns on 6707 real entries, 0 clusters different,
       same window; 136.6 -> 21.5 us per assign (x6.3).**
-- [ ] `pipeline.py`: measured, no change unless a number says so.
+- [x] `pipeline.py`: measured, no change. After the deduper fix the replay
+      is 0.60 s for 5714 real entries (was 1.23 s, cProfile), dominated by
+      journal validation; `emit` itself is 0.28 s.
