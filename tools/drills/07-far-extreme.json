@@ -42,7 +42,7 @@
     "world": [
       [
         "event",
-        "usgs:drill{run}f1",
+        "drill:usgs:drill{run}f1",
         {
           "severity": "extreme",
           "breaking": true

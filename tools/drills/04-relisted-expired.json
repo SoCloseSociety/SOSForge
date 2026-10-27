@@ -252,24 +252,24 @@
     "world": [
       [
         "event",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
         {}
       ],
       [
         "event",
-        "nws:drill{run}n1",
+        "drill:nws:drill{run}n1",
         {}
       ],
       [
         "purge",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
         {
           "reason": "stale"
         }
       ],
       [
         "purge",
-        "nws:drill{run}n1",
+        "drill:nws:drill{run}n1",
         {
           "reason": "expired"
         }
@@ -279,12 +279,12 @@
     "app_fg": [
       [
         "event",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
         {}
       ],
       [
         "purge",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
         {
           "reason": "stale"
         }

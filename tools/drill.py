@@ -20,9 +20,20 @@ and `--delay` seconds) and keeps serving until Ctrl-C, so a client can poll
 socket, the app's zoned sockets, the app's cursor poll), plays everything,
 asserts the exact messages each one got, and exits 1 on any failure.
 
-A drill never touches the product's data: it refuses to start if the app was
-imported before the temp dir was set, or if the store does not point at it.
-Every place and title it publishes says [DRILL].
+A drill is a fire drill, not data, and it is built so it cannot leak:
+
+- it listens on a loopback address only (`--host` refuses anything else),
+  so nothing outside this machine can reach it -- an Android EMULATOR gets
+  it through `adb reverse`; never point a real device or production at it;
+- it refuses to start unless the store's data dir is the fresh temp dir it
+  just created (and refuses if the app was imported before that was set);
+- every event it publishes has `source == "drill"`, a source name no real
+  source uses, an id starting `drill:`, `[DRILL]` in its title AND its
+  place, and no link to a real agency page;
+- the deduper treats `drill` as synthetic, so with `--with-sources` a drill
+  quake can never be paired with a real one (hiding either), and swarm
+  detection is off, so no unlabelled swarm can be built from drill quakes;
+- tools/ is not in the backend image (it copies backend/app only).
 """
 
 from __future__ import annotations
@@ -55,7 +66,12 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKEND = ROOT / "backend"
 DRILLS = Path(__file__).resolve().parent / "drills"
 DEFAULT_PORT = 8334
+DEFAULT_HOST = "127.0.0.1"
 JST = ZoneInfo("Asia/Tokyo")
+# The source name of every drill event. No real source is called this, and a
+# test keeps it that way.
+DRILL_SOURCE = "drill"
+DRILL_MARK = "[DRILL]"
 
 HOMES: dict[str, dict[str, Any]] = {
     k: v
@@ -85,6 +101,40 @@ POLL = f"/api/events?zones={ZONES}&unplaced={COUNTRIES}&min_severity=moderate&li
 # ------------------------------------------------------------------ isolation
 
 
+def require_loopback(host: str) -> str:
+    """Only this machine may reach a drill server."""
+    import ipaddress
+
+    if host == "localhost":
+        return host
+    try:
+        if ipaddress.ip_address(host).is_loopback:
+            return host
+    except ValueError:
+        pass
+    raise SystemExit(f"drill: refusing to listen on {host!r}: loopback only (127.0.0.1, ::1)")
+
+
+def require_drill_data_dir(
+    data: Path, settings_dir: Path, store_dir: Path | None, temp_root: Path | None = None
+) -> None:
+    """The store must journal into the drill's own fresh temp dir, nowhere
+    else: never the product's ./data, never a deployed volume."""
+    root = (temp_root or Path(tempfile.gettempdir())).resolve()
+    target = data.resolve()
+    if (
+        root not in target.parents
+        or not target.name.startswith("sosforge-drill-")
+        or settings_dir.resolve() != target
+        or store_dir is None
+        or Path(store_dir).resolve() != target
+    ):
+        raise SystemExit(
+            f"drill: refusing to run, the data dir is {settings_dir} and the store's is "
+            f"{store_dir}, not the drill's own temp dir under {root}"
+        )
+
+
 def isolate() -> Path:
     """A fresh data dir, set BEFORE the app is imported: the store opens its
     journal at import time."""
@@ -106,18 +156,16 @@ def load_app(data: Path, with_sources: bool, verbose: bool = False) -> Any:
         # the timeline is the output; per-connection INFO lines drown it
         logging.getLogger().setLevel(logging.WARNING)
 
-    store_dir = main.store._data_dir
-    temp_root = Path(tempfile.gettempdir()).resolve()
-    if (
-        settings.data_dir.resolve() != data.resolve()
-        or store_dir is None
-        or Path(store_dir).resolve() != data.resolve()
-        or temp_root not in data.resolve().parents
-    ):
-        raise SystemExit(
-            f"drill: refusing to run, the data dir is {settings.data_dir} and the store's is "
-            f"{store_dir}, not the drill's own temp dir {data}"
-        )
+    require_drill_data_dir(data, settings.data_dir, main.store._data_dir)
+
+    # Drill quakes must never be paired with real ones by the deduper (a drill
+    # solution would hide a real quake, or the reverse): `drill` is treated as
+    # a synthetic source, like swarm summaries. And no swarm may be built from
+    # drill quakes -- it would carry no [DRILL] mark.
+    from app import dedupe
+
+    dedupe.SYNTHETIC_SOURCES = dedupe.SYNTHETIC_SOURCES | {DRILL_SOURCE}
+    settings.enable_swarm_detection = False
     if not with_sources:
 
         async def no_backfill(url: str, emit: Callable[..., Any]) -> int:
@@ -266,6 +314,25 @@ class Timeline:
 # -------------------------------------------------------------------- player
 
 
+def drill_id(event_id: str) -> str:
+    return event_id if event_id.startswith(f"{DRILL_SOURCE}:") else f"{DRILL_SOURCE}:{event_id}"
+
+
+def mark_drill(event: Any) -> Any:
+    """What the real parser built, made unmistakable: its own source name,
+    an id no real source can produce, [DRILL] in the title and the place,
+    and no link to an agency page that has never heard of it."""
+    event.source_id = event.id
+    event.id = drill_id(event.id)
+    event.source = DRILL_SOURCE
+    if DRILL_MARK not in event.title:
+        event.title = f"{DRILL_MARK} {event.title}".strip()
+    if DRILL_MARK not in event.place:
+        event.place = f"{DRILL_MARK} {event.place}".strip()
+    event.url = None
+    return event
+
+
 class Player:
     """Turns scenario steps into calls on the real pipeline."""
 
@@ -275,6 +342,11 @@ class Player:
         self.run = run
         self.speed = speed
         self.touched: dict[str, set[str]] = {}
+
+    async def retract_drill(self, event_id: str, reason: str) -> Any:
+        """A source's withdrawal names the id IT built; the store holds the
+        drill's (`drill:` + that id)."""
+        return await self.main.pipeline.retract(drill_id(event_id), reason)
 
     def normalize(self, step: dict[str, Any], payload: Any) -> tuple[list[Any], Any]:
         """(events, source-or-None) from one payload, through the real parser."""
@@ -374,6 +446,7 @@ class Player:
                 for feature in features:
                     events, _ = self.normalize({"source": spec["source"]}, feature)
                     for event in events:
+                        mark_drill(event)
                         ids.add(event.id)
                         await self.main.pipeline.emit(event)
                     if spec.get("every_s"):
@@ -381,13 +454,15 @@ class Player:
                 continue
 
             if "retract" in step:
-                event_id = resolve(step["retract"], now, self.run)
+                event_id = drill_id(resolve(step["retract"], now, self.run))
                 ids.add(event_id)
                 self.timeline.say(f"step {index + 1}: {label} (retract {event_id})")
                 await self.main.pipeline.retract(event_id, step.get("reason", "cancelled"))
                 continue
 
             events, source = self.normalize(step, payload)
+            for event in events:
+                mark_drill(event)
             self.timeline.say(
                 f"step {index + 1}: {label} ({step['source']} -> "
                 f"{', '.join(e.id for e in events) or 'no event'})"
@@ -397,8 +472,8 @@ class Player:
                 await self.main.pipeline.emit(event)
             if source is not None:
                 pending = list(source.retractions) + list(source.expirations) + list(source.lifts)
-                ids.update(pending)
-                source.retract = self.main.pipeline.retract
+                ids.update(drill_id(i) for i in pending)
+                source.retract = self.retract_drill
                 await source.flush_retractions()
 
 
@@ -609,13 +684,13 @@ class Running:
     task: asyncio.Task[None]
 
 
-async def start_server(main: Any, port: int) -> Running:
-    """uvicorn on 127.0.0.1 only, in this loop. Its own signal handling stays:
+async def start_server(main: Any, port: int, host: str = DEFAULT_HOST) -> Running:
+    """uvicorn on a loopback address only, in this loop. Its own signal handling stays:
     Ctrl-C stops the server, which ends `Running.task`."""
     import uvicorn
 
     config = uvicorn.Config(
-        main.app, host="127.0.0.1", port=port, log_level="warning", lifespan="on"
+        main.app, host=require_loopback(host), port=port, log_level="warning", lifespan="on"
     )
     server = uvicorn.Server(config)
     # uvicorn catches SIGINT / SIGTERM to shut down gracefully, then re-raises
@@ -632,7 +707,7 @@ async def start_server(main: Any, port: int) -> Running:
             task.result()
         await asyncio.sleep(0.05)
     else:
-        raise SystemExit(f"drill: the server did not start on 127.0.0.1:{port}")
+        raise SystemExit(f"drill: the server did not start on {host}:{port}")
     return Running(server, task)
 
 
@@ -654,14 +729,19 @@ def hook_timeline(main: Any, timeline: Timeline) -> None:
     hub.broadcast = recording
 
 
-def banner(port: int, data: Path, run: str, with_sources: bool) -> None:
+def netloc(host: str, port: int) -> str:
+    return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+
+
+def banner(port: int, data: Path, run: str, with_sources: bool, host: str = DEFAULT_HOST) -> None:
+    where = netloc(host, port)
     print(
-        f"drill server on http://127.0.0.1:{port}  (run {run}, data {data}, "
+        f"drill server on http://{where}  (run {run}, data {data}, "
         f"sources {'ON' if with_sources else 'off'})"
     )
     for name, path in CLIENTS.items():
-        print(f"  {name:10s} ws://127.0.0.1:{port}{path}")
-    print(f"  {'poll':10s} http://127.0.0.1:{port}{POLL}&since=")
+        print(f"  {name:10s} ws://{where}{path}")
+    print(f"  {'poll':10s} http://{where}{POLL}&since=")
     for name, home in HOMES.items():
         where = f"{home['lat']},{home['lon']} r={home['radius_km']} km"
         print(f"  home {name}: {where} ({home['country']})")
@@ -669,14 +749,15 @@ def banner(port: int, data: Path, run: str, with_sources: bool) -> None:
 
 
 async def serve(args: argparse.Namespace) -> int:
+    require_loopback(args.host)
     data = isolate()
     try:
         main = load_app(data, args.with_sources, args.verbose)
         run = args.run or uuid.uuid4().hex[:6]
         timeline = Timeline(Path(args.timeline) if args.timeline else None)
         hook_timeline(main, timeline)
-        server = await start_server(main, args.port)
-        banner(args.port, data, run, args.with_sources)
+        server = await start_server(main, args.port, args.host)
+        banner(args.port, data, run, args.with_sources, args.host)
         try:
             if args.wait_clients:
                 timeline.say(f"waiting for {args.wait_clients} websocket client(s)")
@@ -706,6 +787,7 @@ async def serve(args: argparse.Namespace) -> int:
 
 
 async def check(args: argparse.Namespace) -> int:
+    require_loopback(args.host)
     data = isolate()
     failures = 0
     rows: list[tuple[str, str, bool, str]] = []
@@ -714,10 +796,10 @@ async def check(args: argparse.Namespace) -> int:
         run = args.run or uuid.uuid4().hex[:6]
         timeline = Timeline(Path(args.timeline) if args.timeline else None)
         hook_timeline(main, timeline)
-        server = await start_server(main, args.port)
-        base_ws = f"ws://127.0.0.1:{args.port}"
-        base_http = f"http://127.0.0.1:{args.port}"
-        banner(args.port, data, run, args.with_sources)
+        server = await start_server(main, args.port, args.host)
+        base_ws = f"ws://{netloc(args.host, args.port)}"
+        base_http = f"http://{netloc(args.host, args.port)}"
+        banner(args.port, data, run, args.with_sources, args.host)
         probes = {name: Probe(name, base_ws, path) for name, path in CLIENTS.items()}
         agents = {
             "agent_tokyo": AgentProbe("agent_tokyo", base_ws, HOMES["tokyo"], zone_alerts=False),
@@ -887,6 +969,9 @@ def main() -> int:
     for name in ("serve", "check"):
         p = sub.add_parser(name)
         p.add_argument("--port", type=int, default=DEFAULT_PORT)
+        p.add_argument(
+            "--host", default=DEFAULT_HOST, help="a loopback address; anything else is refused"
+        )
         p.add_argument("--scenario", nargs="*", help="names or file stems; default all")
         p.add_argument(
             "--with-sources",

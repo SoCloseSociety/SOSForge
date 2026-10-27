@@ -125,7 +125,7 @@
     "world": [
       [
         "event",
-        "jma_eew:drill{run}e1",
+        "drill:jma_eew:drill{run}e1",
         {
           "severity": "severe",
           "breaking": true
@@ -133,7 +133,7 @@
       ],
       [
         "update",
-        "jma_eew:drill{run}e1",
+        "drill:jma_eew:drill{run}e1",
         {
           "severity": "extreme",
           "escalated": true
@@ -141,7 +141,7 @@
       ],
       [
         "purge",
-        "jma_eew:drill{run}e1",
+        "drill:jma_eew:drill{run}e1",
         {
           "reason": "cancelled"
         }
@@ -156,8 +156,8 @@
       "removed": []
     },
     "agent_tokyo": [
-      "jma_eew:drill{run}e1",
-      "jma_eew:drill{run}e1"
+      "drill:jma_eew:drill{run}e1",
+      "drill:jma_eew:drill{run}e1"
     ],
     "agent_paris": []
   }

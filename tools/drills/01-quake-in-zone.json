@@ -81,7 +81,7 @@
     "world": [
       [
         "event",
-        "usgs:drill{run}q1",
+        "drill:usgs:drill{run}q1",
         {
           "severity": "severe",
           "breaking": true
@@ -89,7 +89,7 @@
       ],
       [
         "update",
-        "usgs:drill{run}q1",
+        "drill:usgs:drill{run}q1",
         {
           "severity": "extreme",
           "escalated": true
@@ -102,13 +102,13 @@
     "zoned_drop": "world",
     "poll": {
       "events": [
-        "usgs:drill{run}q1"
+        "drill:usgs:drill{run}q1"
       ],
       "removed": []
     },
     "agent_tokyo": [
-      "usgs:drill{run}q1",
-      "usgs:drill{run}q1"
+      "drill:usgs:drill{run}q1",
+      "drill:usgs:drill{run}q1"
     ],
     "agent_paris": []
   }

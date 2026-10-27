@@ -219,12 +219,12 @@
     "world": [
       [
         "event",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w1",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w1",
         {}
       ],
       [
         "gone",
-        "meteoalarm:2.49.0.0.250.0.FR.drill{run}w1"
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w1"
       ]
     ],
     "web": "world",

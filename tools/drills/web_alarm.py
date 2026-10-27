@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -198,8 +199,13 @@ def main() -> int:
 
         entries = timeline_entries(timeline)
         ids = {e.get("id") for e in entries if e.get("id")}
-        run = next((i.split("drill")[1][:6] for i in ids if i and "drill" in i), "")
-        q1, e1, q2 = (f"usgs:drill{run}q1", f"jma_eew:drill{run}e1", f"usgs:drill{run}q2")
+        found = [re.search(r"drill([0-9a-f]{6})", i) for i in ids if i]
+        run = next((m.group(1) for m in found if m), "")
+        q1, e1, q2 = (
+            f"drill:usgs:drill{run}q1",
+            f"drill:jma_eew:drill{run}e1",
+            f"drill:usgs:drill{run}q2",
+        )
         tags = [n["tag"] for n in notes]
 
         rows.append(
@@ -266,8 +272,8 @@ def main() -> int:
                 f"final alarm list: {final_alarms or '[]'}",
             )
         )
-        far = [t for t in tags if t == f"usgs:drill{run}f1"]
-        burst = [t for t in tags if t and t.startswith(f"usgs:drill{run}b")]
+        far = [t for t in tags if t == f"drill:usgs:drill{run}f1"]
+        burst = [t for t in tags if t and t.startswith(f"drill:usgs:drill{run}b")]
         rows.append(
             (
                 "far extreme and minor burst stay silent",
@@ -300,7 +306,7 @@ def main() -> int:
                     f"{len(got)} beep(s) at {sorted({b['hz'] for b in got}) or '-'} Hz",
                 )
             )
-        quiet = [e for e in entries if e.get("id", "").startswith(f"usgs:drill{run}b")]
+        quiet = [e for e in entries if e.get("id", "").startswith(f"drill:usgs:drill{run}b")]
         burst_beeps = [b for e in quiet for b in beeps_after(e)]
         rows.append(
             ("the minor burst makes no sound", not burst_beeps, f"{len(burst_beeps)} beep(s)")

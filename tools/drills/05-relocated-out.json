@@ -182,22 +182,22 @@
     "world": [
       [
         "event",
-        "usgs:drill{run}q2",
+        "drill:usgs:drill{run}q2",
         {}
       ],
       [
         "event",
-        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
         {}
       ],
       [
         "update",
-        "usgs:drill{run}q2",
+        "drill:usgs:drill{run}q2",
         {}
       ],
       [
         "update",
-        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
         {}
       ]
     ],
@@ -205,24 +205,24 @@
     "app_fg": [
       [
         "event",
-        "usgs:drill{run}q2",
+        "drill:usgs:drill{run}q2",
         {}
       ],
       [
         "event",
-        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
         {}
       ],
       [
         "purge",
-        "usgs:drill{run}q2",
+        "drill:usgs:drill{run}q2",
         {
           "reason": "out_of_scope"
         }
       ],
       [
         "purge",
-        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
         {
           "reason": "out_of_scope"
         }
@@ -235,7 +235,7 @@
       "removed": []
     },
     "agent_tokyo": [
-      "usgs:drill{run}q2"
+      "drill:usgs:drill{run}q2"
     ],
     "agent_paris": []
   }
