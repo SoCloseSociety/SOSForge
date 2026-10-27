@@ -1570,3 +1570,7 @@ parts and safe names holding a value of the wrong shape.
       is not today's).
       id "untuk tanggal ini", fr "pour cette date"; en "for this day", es
       "para este día", ja "この日の" kept (they say "this day", not today).
+
+- [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
+      (warning) for a counter of every bulletin; the phone's short label is now
+      「津波情報」, JMA's umbrella term (2026-10-27, integrator).

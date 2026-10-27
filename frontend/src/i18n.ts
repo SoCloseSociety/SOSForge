@@ -1067,7 +1067,10 @@ const ja: Dict = {
   "kpi.tsunami.sub": "有効な情報",
   "kpi.quakes.short": "地震 1時間",
   "kpi.maxmag.short": "最大M 1時間",
-  "kpi.tsunami.short": "津波警報",
+  // 津波情報, JMA's umbrella term, not 津波警報 (one tier, "warning"): the
+  // counter counts every bulletin, and on a phone the 有効な情報 footnote
+  // that qualifies the long label is hidden (as for "Buletin tsunami")
+  "kpi.tsunami.short": "津波情報",
   "kpi.tracked": "追跡中の事象",
   "kpi.tracked.sub": "直近1時間で {n} 件",
   "kpi.sources": "稼働中の情報源",
