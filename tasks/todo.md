@@ -1007,3 +1007,16 @@ change (rule 5).
    those events only, and the ring re-appending a major event it evicts.
    Not built in this lane: it changes what the feed calls current, and
    the UI must show them as past (lane H).
+
+**Q's audit, same minute (2026-10-27 10:47:29Z), base code vs this lane,
+both started from one copy of the real journal, 32 live sources:** restored
+592 vs 954 events; dedupe summary clean on both (0 split, 0 extra
+primaries, 0 over-merged; multi-source groups 46 vs 48 -- the churn needs
+hours of polling to show, its proof is Q's script above). Two more defects
+on the new side, both on events the base had dropped at restart and both
+normalizer rules (item 5, lane C2): gdacs:EQ1573942 under-graded and
+phivolcs:2026_1026_1025_B1 superseded but never retracted. Also new only:
+ingv:47788232 stamped IT at the Vanuatu position (C2). Read with care: the
+new side's sources show `ingested=0`, "newest 88 m" because restored events
+keep their real `received_at` and re-polls are no-ops; the base re-ingested
+them as new at restart (lesson 4).
