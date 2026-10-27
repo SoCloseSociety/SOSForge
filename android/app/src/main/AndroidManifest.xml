@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Android 13+: without it a posted notification is a SILENT no-op (the funnel asks, Settings shows the real state). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The opt-in Watch: a foreground service holding the websocket. See README "Foreground service type". -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <!-- Restart the Watch after a reboot, only if the owner had switched it on. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- "Use my location" in the funnel: read once, kept on the device, never sent to the server. -->
+    <!-- Coarse only: the smallest radius offered is 50 km, a coarse fix is within ~2 km. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- MapLibre merges these in (its location component, its connectivity probe). This app needs
+         neither: removed here, and tools/check-release.sh fails a build that carries them again. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" tools:node="remove" />
+    <!-- The battery step of the funnel opens the system dialog for this app (skippable). -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <application
+        android:name=".SosApp"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:localeConfig="@xml/locales_config"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="true"
+        android:resizeableActivity="true"
+        android:theme="@style/Theme.Sos">
+
+        <!-- No configChanges on purpose: fold / unfold recreates the activity, and every piece of
+             screen state that must survive it (open event, tab, funnel step) is saveable state. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.Sos.Launch">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- The Watch (opt-in): holds the websocket in the background. specialUse: a real-time
+             disaster alert stream has no cap (dataSync is capped at 6 h / day on Android 15). -->
+        <service
+            android:name=".core.watch.WatchService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Real-time disaster alert websocket (earthquake, tsunami, volcano, CAP warnings) for the places the user watches; the user switches it on and can stop it from its own notification." />
+        </service>
+
+        <!-- Not exported: BOOT_COMPLETED and MY_PACKAGE_REPLACED come from the system, which reaches it anyway. -->
+        <receiver
+            android:name=".core.watch.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Per-app language before Android 13: AppCompat stores the choice here. -->
+        <service
+            android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"
+            android:enabled="false"
+            android:exported="false">
+            <meta-data android:name="autoStoreLocales" android:value="true" />
+        </service>
+
+    </application>
+</manifest>
