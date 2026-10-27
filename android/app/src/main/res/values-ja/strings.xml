@@ -423,4 +423,5 @@
     <string name="fbg_cost_battery_value">接続を1本維持</string>
     <string name="fbg_cost_check_value">約15分ごと（Androidが判断）</string>
     <string name="offline_on_disk">この端末上</string>
+    <string name="offline_rule_done">この端末に保存済み。更新はWi-Fi接続時のみ。</string>
 </resources>

@@ -323,7 +323,12 @@ private fun OfflineSummary(packs: Map<String, co.soclose.sosforge.core.map.PackS
         val mb = list.maxOf { it.bytes } / 1_000_000.0
         return if (done) "%.0f\u00A0MB \u00B7 ok".format(mb) else "%d\u00A0%% \u00B7 %.0f\u00A0MB".format((got * 100 / req).coerceIn(0, 99), mb)
     }
-    Text(stringResource(if (unmetered) R.string.offline_rule_now else R.string.offline_rule_waiting), style = Sos.type.small, color = if (unmetered) Sos.colors.t2 else Sos.colors.amber)
+    // all saved: say so, on any network (it said "In progress now" with every pack done, 0.1.2 test build)
+    val allDone = packs.isNotEmpty() && packs.values.all { it.complete }
+    Text(
+        stringResource(if (allDone) R.string.offline_rule_done else if (unmetered) R.string.offline_rule_now else R.string.offline_rule_waiting),
+        style = Sos.type.small, color = if (allDone || unmetered) Sos.colors.t2 else Sos.colors.amber,
+    )
     KeyValue(stringResource(R.string.offline_world), line(groups[null].orEmpty()) ?: stringResource(R.string.offline_not_started))
     places.forEach { p -> KeyValue(p.name, line(groups[p.id].orEmpty()) ?: stringResource(R.string.offline_not_started)) }
     val disk = LocalContext.current.app.offline.bytesOnDisk

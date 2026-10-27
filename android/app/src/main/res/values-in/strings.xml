@@ -424,4 +424,5 @@
     <string name="fbg_cost_battery_value">satu koneksi tetap terbuka</string>
     <string name="fbg_cost_check_value">sekitar tiap 15 menit, menurut Android</string>
     <string name="offline_on_disk">Di ponsel ini</string>
+    <string name="offline_rule_done">Tersimpan di ponsel ini. Pembaruan hanya lewat Wi-Fi.</string>
 </resources>

@@ -440,4 +440,5 @@
     <string name="fbg_cost_battery_value">una conexión queda abierta</string>
     <string name="fbg_cost_check_value">cada 15 min aprox., según Android</string>
     <string name="offline_on_disk">En este teléfono</string>
+    <string name="offline_rule_done">Guardado en este teléfono. Actualizaciones solo por Wi-Fi.</string>
 </resources>

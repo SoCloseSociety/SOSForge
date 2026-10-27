@@ -262,18 +262,23 @@ class SosApp : Application() {
     suspend fun checkUpdate(force: Boolean = false) {
         val last = prefs.getLong(Prefs.K_UPDATE_AT)
         if (!force && last > 0 && System.currentTimeMillis() - last < co.soclose.sosforge.core.update.UpdateRules.EVERY_MS) {
-            prefs.getString(Prefs.K_UPDATE_JSON)?.let { j ->
-                runCatching { SosJson.decodeFromString(co.soclose.sosforge.core.update.LatestRelease.serializer(), j) }.getOrNull()?.let { r ->
-                    _update.value = co.soclose.sosforge.core.update.UpdateRules.decide(r, prefs.origin.value, BuildConfig.VERSION_CODE, android.os.Build.VERSION.SDK_INT)
-                }
+            val r = prefs.getString(Prefs.K_UPDATE_JSON)?.let { j ->
+                runCatching { SosJson.decodeFromString(co.soclose.sosforge.core.update.LatestRelease.serializer(), j) }.getOrNull()
+            }
+            // the cached verdict survives a restart: "nothing published" too (0.1.2 test build said "Not checked yet")
+            when {
+                r != null -> _update.value = co.soclose.sosforge.core.update.UpdateRules.decide(r, prefs.origin.value, BuildConfig.VERSION_CODE, android.os.Build.VERSION.SDK_INT)
+                prefs.getString(Prefs.K_UPDATE_RESULT) == RESULT_NONE -> _update.value = co.soclose.sosforge.core.update.UpdateState.NonePublished
             }
             return
         }
         val origin = prefs.origin.value
         val (state, rel) = withContext(Dispatchers.IO) { co.soclose.sosforge.core.update.UpdateCheck(http).read(origin) }
-        prefs.putLong(Prefs.K_UPDATE_AT, System.currentTimeMillis())
+        // an unreachable server is asked again at the next foreground, not in 6 h
+        if (rel != null || state != co.soclose.sosforge.core.update.UpdateState.Unreachable) prefs.putLong(Prefs.K_UPDATE_AT, System.currentTimeMillis())
+        prefs.putString(Prefs.K_UPDATE_JSON, rel?.let { SosJson.encodeToString(co.soclose.sosforge.core.update.LatestRelease.serializer(), it) })
+        prefs.putString(Prefs.K_UPDATE_RESULT, if (state == co.soclose.sosforge.core.update.UpdateState.NonePublished) RESULT_NONE else null)
         _update.value = if (rel != null) {
-            prefs.putString(Prefs.K_UPDATE_JSON, SosJson.encodeToString(co.soclose.sosforge.core.update.LatestRelease.serializer(), rel))
             co.soclose.sosforge.core.update.UpdateRules.decide(rel, origin, BuildConfig.VERSION_CODE, android.os.Build.VERSION.SDK_INT)
         } else state
     }
@@ -526,6 +531,7 @@ class SosApp : Application() {
     }
 
     companion object {
+        private const val RESULT_NONE = "none"
         const val HERE_REFRESH_MS = 15 * 60_000L
         fun errorWords(e: Throwable): ApiError = (e as? ApiException)?.error ?: ApiError.Unreachable
         val EVENT_LIST = ListSerializer(SosEvent.serializer())

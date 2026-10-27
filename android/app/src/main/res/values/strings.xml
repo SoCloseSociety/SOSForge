@@ -433,4 +433,5 @@
     <string name="fbg_cost_battery_value">one connection stays open</string>
     <string name="fbg_cost_check_value">every 15 min or so, as Android decides</string>
     <string name="offline_on_disk">On this phone</string>
+    <string name="offline_rule_done">Saved on this phone. Updates download on Wi-Fi only.</string>
 </resources>

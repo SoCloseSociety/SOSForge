@@ -441,4 +441,5 @@
     <string name="fbg_cost_battery_value">une connexion reste ouverte</string>
     <string name="fbg_cost_check_value">toutes les 15 min environ, selon Android</string>
     <string name="offline_on_disk">Sur ce téléphone</string>
+    <string name="offline_rule_done">Enregistré sur ce téléphone. Mises à jour en Wi-Fi seulement.</string>
 </resources>
