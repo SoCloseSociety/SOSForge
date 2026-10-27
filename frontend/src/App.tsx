@@ -523,6 +523,19 @@ export default function App() {
       <Banner events={events} now={now} />
 
       <div className="body">
+        {/* The place report, ONLY for a place the reader searched or
+            clicked. NEVER with `center`: in Near me `center` is the DEVICE
+            position, and /api/place sends its point to about fifteen third
+            parties, which breaks "your location never leaves your device".
+            Laid over the map, which is centred on that place: any row of
+            its own pushed the first event below the fold on landscape
+            phones (tools/responsive.py --place). First in the DOM, so Tab
+            reaches it before the feed. */}
+        {showing === "place" && place ? (
+          <div className="map-report">
+            <PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />
+          </div>
+        ) : null}
         <section className="panel">
           <GetAppBanner />
           <div className="filters">
@@ -546,13 +559,6 @@ export default function App() {
             {isPhone ? null : <WindowSwitch />}
           </div>
           <ScopeBar severeElsewhere={severeElsewhere} unlocated={unlocated} />
-          {/* The place report, ONLY for a place the reader searched or
-              clicked. NEVER with `center`: in Near me `center` is the DEVICE
-              position, and /api/place sends its point to about fifteen third
-              parties, which breaks "your location never leaves your device". */}
-          {showing === "place" && place ? (
-            <PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />
-          ) : null}
           <Feed
             events={feedEvents}
             now={now}

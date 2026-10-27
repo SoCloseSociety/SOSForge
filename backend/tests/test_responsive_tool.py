@@ -106,3 +106,34 @@ def test_the_profile_is_removed_when_the_measure_fails(responsive, monkeypatch):
     assert seen and seen[0].port, "Chrome did start"
     assert not seen[0].profile.exists()
     assert seen[0].proc is not None and seen[0].proc.poll() is not None
+
+
+def test_place_mode_seeds_the_scope_the_store_reads(responsive):
+    place = responsive.parse_place("9.51,100.01,Ko Samui, Surat Thani")
+    assert place == {"lat": 9.51, "lon": 100.01, "name": "Ko Samui, Surat Thani", "country": None}
+    seed = responsive.place_seed(place)
+    prefix = "localStorage.setItem('sosforge.scope', "
+    assert seed.startswith(prefix) and seed.endswith(")")
+    # the stored value is the JSON string frontend/src/store.ts loadScope() parses
+    saved = json.loads(json.loads(seed[len(prefix) : -1]))
+    assert saved == {"scope": "place", "asked": True, "place": place}
+
+
+def test_place_mode_requires_the_report_to_open_inside_the_viewport(responsive):
+    m = {
+        "gotData": True,
+        "overflowX": 0,
+        "offenders": [],
+        "regions": {"feed": {"h": 400}, "map": {"h": 300, "w": 300}, "strip": {"w": 300}},
+        "itemsAboveFold": 3,
+        "items": 5,
+        "cardOverflow": [],
+        "mapOffset": None,
+        "reach": {"filters": {"ok": True}, "panel": {"ok": True}},
+    }
+    assert responsive.verdict("phone", 390, m) == []
+    assert responsive.verdict("phone", 390, m, place=True) == ["the place report did not open"]
+    m["reach"]["place"] = {"ok": False, "bottom": 900}
+    assert responsive.verdict("phone", 390, m, place=True) == [
+        "the place report opens outside the viewport: {'ok': False, 'bottom': 900}"
+    ]

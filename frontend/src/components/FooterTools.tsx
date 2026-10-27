@@ -71,6 +71,7 @@ function PanelButton<P extends object>({
   words,
   icon,
   label,
+  name,
   className,
 }: {
   load: () => Promise<{ default: ComponentType<P> }>
@@ -78,6 +79,8 @@ function PanelButton<P extends object>({
   words: PanelWords
   icon: string
   label: string
+  /** the accessible name, when the visible label is a short form of it */
+  name?: string
   className: string
 }) {
   const t = useStore((s) => s.t)
@@ -126,6 +129,7 @@ function PanelButton<P extends object>({
         type="button"
         ref={trigger}
         className={className}
+        aria-label={name}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
@@ -223,12 +227,12 @@ const PLACE_WORDS: PanelWords = {
 }
 
 /** The place report (weather, sea, wind, air, risks, history) of a place
- * the reader SEARCHED or CLICKED, behind one button under the scope bar.
+ * the reader SEARCHED or CLICKED, behind one button laid over the map.
  * Never give it the device position: /api/place sends its point to about
- * fifteen third parties, and "your location never leaves your device" is
- * a promise. Inline, the report took about two phone screens and pushed
- * every live event below the fold; here it costs one row, and it is
- * fetched only when opened. */
+ * fifteen third parties, and "your location never leaves your device" is a
+ * promise. Inline, the report took about two phone screens and pushed
+ * every live event below the fold; over the map it takes no row at all,
+ * and it is fetched only when opened. */
 export function PlaceReportButton({
   lat,
   lon,
@@ -248,8 +252,9 @@ export function PlaceReportButton({
       panel={panel}
       words={PLACE_WORDS}
       icon="☁"
-      label={t('place.open', { place: name })}
-      className="place-open"
+      label={t('place.open.short')}
+      name={t('place.open', { place: name })}
+      className="map-report-open"
     />
   )
 }

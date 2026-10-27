@@ -1,5 +1,5 @@
-/** Where the place report is mounted: one button under the scope bar for a
- * place the reader searched or clicked, never for the device position, and
+/** Where the place report is mounted: one button over the map for a place
+ * the reader searched or clicked, never for the device position, and
  * nothing fetched until it is opened. */
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -36,13 +36,17 @@ describe('the place report in the app', () => {
   it('a searched place gets one button, and nothing is fetched before it is opened', async () => {
     useStore.getState().setPlace({ lat: 9.51, lon: 100.01, name: 'Ko Samui', country: 'TH' })
     await app()
-    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.place-open')]
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>('.map-report-open')]
     expect(buttons).toHaveLength(1)
     expect(buttons[0].getAttribute('aria-haspopup')).toBe('dialog')
-    expect(buttons[0].textContent).toContain('Weather, sea, air, risks and history: Ko Samui')
-    // it sits under the scope bar, before the feed
-    const bar = document.querySelector('.scope-bar')
-    expect(bar?.nextElementSibling).toBe(buttons[0])
+    // a short label on the map, the whole description as its name
+    expect(buttons[0].textContent?.trim()).toBe('☁ Weather, sea, air, risks')
+    expect(screen.getByRole('button', { name: 'Weather, sea, air, risks and history: Ko Samui' })).toBe(buttons[0])
+    // the first thing in .body: Tab reaches it before the search and the feed
+    const holder = buttons[0].parentElement
+    expect(holder?.classList.contains('map-report')).toBe(true)
+    expect(holder?.parentElement?.classList.contains('body')).toBe(true)
+    expect(holder?.parentElement?.firstElementChild).toBe(holder)
     expect(placeCalls()).toBe(0)
   })
 
@@ -62,14 +66,14 @@ describe('the place report in the app', () => {
     expect(useStore.getState().locate).toBe('ok')
     expect(useStore.getState().here).toEqual({ lat: 48.85, lon: 2.35 })
     expect(useStore.getState().scope).toBe('near')
-    expect(document.querySelector('.place-open')).toBeNull()
+    expect(document.querySelector('.map-report')).toBeNull()
     expect(placeCalls()).toBe(0)
   })
 
   it('the world view has none either', async () => {
     useStore.getState().setScope('world')
     await app()
-    expect(document.querySelector('.place-open')).toBeNull()
+    expect(document.querySelector('.map-report')).toBeNull()
   })
 })
 
@@ -83,7 +87,7 @@ describe('PlaceReportButton', () => {
     const load = vi.fn(async () => ({ default: Panel }))
     render(<PlaceReportButton lat={-20.88} lon={55.45} name="Saint-Denis" load={load as never} />)
     expect(load).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: /Saint-Denis/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Weather, sea, air, risks and history: Saint-Denis' }))
     expect(await screen.findByText('panel for Saint-Denis')).toBeTruthy()
     expect(seen.at(-1)).toEqual({ lat: -20.88, lon: 55.45, name: 'Saint-Denis' })
     expect(screen.getByRole('dialog').getAttribute('aria-label')).toBe('Place report')
@@ -98,7 +102,7 @@ describe('PlaceReportButton', () => {
     })
     vi.spyOn(console, 'error').mockImplementation(() => {})
     render(<PlaceReportButton lat={1} lon={2} name="X" load={load as never} />)
-    fireEvent.click(screen.getByRole('button', { name: /X/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Weather, sea, air, risks and history: X' }))
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toContain('The place report could not be loaded.')
     expect(screen.getByRole('button', { name: 'Try again' })).toBeTruthy()

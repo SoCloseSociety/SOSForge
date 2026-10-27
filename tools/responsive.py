@@ -34,7 +34,12 @@ etre full op pour tout type de format et d'ecran"):
     has room;
   * the stylesheet and the components agree on what a phone is.
 
+With --place "LAT,LON,NAME" the page starts on that place (the saved scope
+the app reads at start): the place report's row is measured with the rest,
+and the report must open inside the viewport like the Filters dialog.
+
 Usage:  python3 tools/responsive.py [--url URL] [--json] [--shots DIR] [--only LABEL ...]
+                                    [--place LAT,LON,NAME]
 Exit code 1 if any viewport fails, so `make responsive` can gate on it.
 """
 
@@ -226,6 +231,15 @@ REACH = r"""
     document.querySelector('.filter-dialog')?.dispatchEvent(escape);
     await pause();
   }
+  const placeOpen = document.querySelector('.map-report-open');
+  if (placeOpen) {
+    placeOpen.scrollIntoView({ block: 'center' });
+    placeOpen.click(); await pause(); await pause();
+    out.place = inside(document.querySelector('.climate-dialog'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await pause();
+    window.scrollTo(0, 0);
+  }
   const row = document.querySelector('.item');
   if (row) {
     row.scrollIntoView({ block: 'center' });
@@ -323,6 +337,7 @@ async def measure(
     shots: str | None = None,
     label: str = "",
     lang: str = "fr",
+    place: dict | None = None,
 ) -> dict:
     chrome = Chrome()
     try:
@@ -374,6 +389,11 @@ async def measure(
                 },
             )
             await call("Page.enable")
+            if place is not None:
+                await call(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": place_seed(place)},
+                )
             if scale != 1.0:
                 # the reader's own text size: rem scales with the root, the
                 # way a browser's "very large" or a 200 % zoom of text does
@@ -453,7 +473,20 @@ async def measure(
         chrome.close()
 
 
-def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
+def parse_place(text: str) -> dict:
+    """`LAT,LON,NAME` (the name may hold commas) -> the app's saved place."""
+    lat, lon, name = text.split(",", 2)
+    return {"lat": float(lat), "lon": float(lon), "name": name.strip(), "country": None}
+
+
+def place_seed(place: dict) -> str:
+    """Runs before the page's own scripts: the saved scope the store reads
+    at start (`sosforge.scope`), so the page opens on that place."""
+    saved = json.dumps({"scope": "place", "asked": True, "place": place})
+    return f"localStorage.setItem('sosforge.scope', {json.dumps(saved)})"
+
+
+def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = False) -> list[str]:
     """The invariants. Each one is a bug this product actually shipped."""
     failures = []
     if not m.get("gotData"):
@@ -494,7 +527,10 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
     if not mapbox or mapbox["h"] < 40 or mapbox["w"] < 40:
         failures.append(f"the map is {mapbox} : not usable")
     reach = m.get("reach") or {}
-    for key, what in (("filters", "the Filters dialog"), ("panel", "an event's panel")):
+    panels = [("filters", "the Filters dialog"), ("panel", "an event's panel")]
+    if place:
+        panels.append(("place", "the place report"))
+    for key, what in panels:
         got = reach.get(key)
         if not got:
             failures.append(f"{what} did not open")
@@ -527,7 +563,9 @@ async def main() -> int:
     ap.add_argument("--only", nargs="*", default=None, help="labels (substrings) to run")
     ap.add_argument("--parallel", type=int, default=3, help="Chromes at once")
     ap.add_argument("--lang", default="fr", help="language of the page (en, fr, es, ja, id)")
+    ap.add_argument("--place", default=None, help='start on a place: "LAT,LON,NAME"')
     args = ap.parse_args()
+    place = parse_place(args.place) if args.place else None
 
     chosen = [
         v for v in VIEWPORTS if not args.only or any(o.lower() in v[0].lower() for o in args.only)
@@ -537,12 +575,12 @@ async def main() -> int:
         batch = chosen[start : start + args.parallel]
         measured = await asyncio.gather(
             *[
-                measure(args.url, w, h, scale, args.shots, label, args.lang)
+                measure(args.url, w, h, scale, args.shots, label, args.lang, place)
                 for label, w, h, scale in batch
             ]
         )
         for (label, w, h, scale), m in zip(batch, measured, strict=True):
-            bad = verdict(label, w, m, scale)
+            bad = verdict(label, w, m, scale, place is not None)
             results.append(
                 {
                     "label": label,
