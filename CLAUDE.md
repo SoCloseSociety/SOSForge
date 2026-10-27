@@ -127,6 +127,11 @@ off. Concretely:
   (verified on those DWD gusts), so it is mapped and an expired warning is
   withdrawn. Greece escapes `&amp;` inside the JSON (`"East Sterea &amp;
   Evvoia"`, `headline` + `areaDesc` only): decoded there and nowhere else.
+  **A warning is replaced under a NEW identifier**: the Update (or the lift,
+  an AllClear at level 1 green) names the old one in CAP `references`
+  (`sender,identifier,sent` triples) and the old one is never listed again
+  (0 of 1009 on 2026-10-27). Read `references` BEFORE the level filter and
+  withdraw what they name, or a lifted orange stays on every client.
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read

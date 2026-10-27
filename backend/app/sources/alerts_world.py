@@ -184,6 +184,18 @@ def _label(value: str | None) -> str | None:
     return html.unescape(value) if isinstance(value, str) else value
 
 
+def meteoalarm_references(warning: dict) -> list[str]:
+    """Identifiers a Meteoalarm message replaces. CAP `references` is a
+    space-separated list of `sender,identifier,sent` triples, e.g.
+    `https://meteo.hr,2.49.0.0.191.0.HR.261021110840_0_002_yellow_HR018,2026-10-21T11:08:40+02:00`."""
+    found: list[str] = []
+    for token in str((warning.get("alert") or {}).get("references") or "").split():
+        parts = token.split(",")
+        if len(parts) >= 2 and parts[1].strip():
+            found.append(parts[1].strip())
+    return found
+
+
 def parse_meteoalarm(warning: dict, country: str) -> Event | None:
     alert = warning.get("alert") or {}
     identifier = alert.get("identifier")
@@ -351,12 +363,35 @@ class MeteoalarmSource(Source):
         Below the threshold: not published. Already expired: not published
         either, and WITHDRAWN, so a warning stored before it ended leaves the
         map now rather than whenever something else notices.
+
+        **A warning is replaced under a NEW identifier.** Meteoalarm does not
+        update a warning in place: it publishes a message with its own
+        identifier whose `references` names the one it replaces, and the
+        replaced one is never listed again (1009 references on 2026-10-27,
+        0 still listed; France 143 of 161 entries are such Updates, Italy
+        120 of 120). Ignoring `references` meant a replaced warning lived on
+        until its own `expires` or six hours of silence -- and a LIFT, which
+        Meteo-France publishes as an AllClear at level 1 green, was dropped
+        by the threshold before anyone read it, so the orange it lifted stayed
+        on every client. Every reference is therefore honoured BEFORE the
+        level filter: an AllClear withdraws what it references as `lifted`,
+        any other replacement as `stale` (its successor is published below
+        under its own identifier, at whatever level it now has).
+
+        No stable-key remapping across the chain: the store key of a replaced
+        warning is its own identifier, which is what survives a restart.
         """
         now = now or datetime.now(UTC)
         kept: list[Event] = []
         for warning in (data or {}).get("warnings") or []:
             event = parse_meteoalarm(warning, country)
-            if event is None or _level_of(event) < self.min_level:
+            if event is None:
+                continue
+            lifts = event.alert == "lifted"
+            for replaced in meteoalarm_references(warning):
+                if replaced != event.source_id:
+                    (self.lifts if lifts else self.expirations).append(f"meteoalarm:{replaced}")
+            if _level_of(event) < self.min_level:
                 continue
             if event.expires is not None and event.expires <= now:
                 self.expirations.append(event.id)

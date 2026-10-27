@@ -824,3 +824,26 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 - [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
 - [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
       pull + build, host vhost headers, publish the APK, verify live)
+
+## Lane C2 (sources + climate) -- plan
+
+- [x] Meteoalarm lifts (critical file `sources/alerts_world.py`): an Update /
+      AllClear carries a NEW identifier and `references` the old one (France
+      143/161, Italy 120/120; referenced id still listed: 0 of 1009 today).
+      Fix in `MeteoalarmSource.select`: every warning's `references` withdraws
+      the referenced event, BEFORE the level filter -- AllClear as `lifted`, a
+      replacing Update as `stale` (its successor is published under its own
+      id). No stable-key remapping: the store key of a replaced warning is its
+      own identifier, which survives restarts; a chain map would not.
+      Measure: published warnings replaced/lifted between two real captures.
+- [ ] New sources measured live first: UK EA floods, DWD WFS warnings,
+      ECCC alerts, INMET Brazil (research report 2026-10-27)
+- [ ] `app/climate.py` + `GET /api/climate` + `climate` feature; real dataset
+      dates only, unavailable with the real error when a fetch fails
+- [ ] `frontend/src/components/ClimatePanel.tsx` (+ css, test, i18n strings)
+      Done: one cycle on the 2026-10-27 feeds withdraws 333 referenced
+      warnings as lifted (Croatia 172, France 143, Germany 18) and 902 as
+      stale (most never stored: no-ops). Of the 35 orange+ warnings published
+      at the 2026-10-26 19:10 capture, 3 (UK) were replaced by an Update by
+      the next morning and would have stayed until their own `expires` -- a
+      lower bound, since a chain of updates references only its predecessor.
