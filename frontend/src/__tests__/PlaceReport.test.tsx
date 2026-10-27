@@ -1049,7 +1049,9 @@ describe('the request', () => {
 describe('where the panel is mounted, and how its tables lay out', () => {
   it('App mounts it for a chosen place only, never with the device position', () => {
     // the behaviour is in placeMount.test.tsx; this pins the one mount line
-    expect(appSource).toContain('showing === "place" && place ? (')
+    // (and only where /api/version lists "place")
+    expect(appSource).toContain('showing === "place" && place && placeServed ? (')
+    expect(appSource).toContain('useApiFeature("place", showing === "place" && place !== null)')
     expect(appSource).toContain('<PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />')
     expect(appSource).not.toMatch(/<PlaceReport(Button)?\b[^>]*\b(center|here)\b/)
   })

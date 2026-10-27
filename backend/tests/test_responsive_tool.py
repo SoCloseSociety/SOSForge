@@ -143,3 +143,160 @@ def test_near_mode_reads_a_position(responsive):
     assert responsive.parse_near("48.85,2.35") == (48.85, 2.35)
     with pytest.raises(ValueError):
         responsive.parse_near("48.85")
+
+
+def test_place_mode_requires_the_button_not_to_cover_the_place(responsive):
+    """At 320x568 and 200 % text the place report's button covered the
+    place the map flew to (review of the place report): checked from where
+    the map says the place landed, not from the map's centre."""
+    m = {
+        "gotData": True,
+        "overflowX": 0,
+        "offenders": [],
+        "regions": {"feed": {"h": 400}, "map": {"h": 140, "w": 320}, "strip": {"w": 300}},
+        "itemsAboveFold": 0,
+        "items": 5,
+        "cardOverflow": [],
+        "mapOffset": None,
+        "canvas": [320, 140],
+        "reach": {"filters": {"ok": True}, "panel": {"ok": True}, "place": {"ok": True}},
+    }
+    button = {"left": 12, "top": 113, "right": 252, "bottom": 200}
+    m["focus"] = {
+        "x": 160,
+        "y": 171,
+        "inMap": True,
+        "button": button,
+        "iconOnly": False,
+        "covered": True,
+    }
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        f"the place report's button {button} covers the place the map flew to, at 160,171"
+    ]
+    m["focus"] = {**m["focus"], "y": 206, "iconOnly": True, "covered": False}
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == []
+    m["focus"] = {**m["focus"], "y": 900, "inMap": False}
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        "the place landed off the map, at 160,900"
+    ]
+    m["focus"] = None
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        "the map never said where the place landed (no data-focus-at)"
+    ]
+    # outside place mode, or with no WebGL map, there is nothing to judge
+    assert responsive.verdict("phone", 320, m, 2.0) == []
+    m["canvas"] = None
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == []
+
+
+def test_the_usage_line_names_every_flag(responsive):
+    """--near reached argparse and the prose, not the Usage line."""
+    usage = responsive.__doc__.split("Usage:", 1)[1].split("Exit code", 1)[0]
+    flags = [
+        option
+        for action in responsive.build_parser()._actions
+        for option in action.option_strings
+        if option.startswith("--") and option != "--help"
+    ]
+    assert "--near" in flags and len(flags) >= 8
+    assert [flag for flag in flags if f"[{flag}" not in usage] == []
+
+
+def test_the_smallest_map_is_measured_at_200_percent_text(responsive):
+    """568x320 holds the smallest map (99 px): at 200 % text a one-line
+    button is half of it, and a late one covered the place there. No
+    viewport had that size and text scale."""
+    assert ("landscape 568, 200 % text", 568, 320, 2.0) in responsive.VIEWPORTS
+
+
+def test_version_late_holds_only_the_first_version_request(responsive):
+    """--version-late S: the page's first GET /api/version is sent once the
+    map says where the place landed, then S seconds later. A later one, and
+    every other URL, goes out at once, or the run would measure a page
+    starved of its feed instead. A fixed delay raced the map's load: the
+    button came before the flight in one language and after it in two."""
+    import http.server
+    import threading
+
+    class Answer(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):  # noqa: N802 -- the stdlib's name
+            page = self.path == "/"
+            body = b'<div class="map-wrap"><div class="map"></div></div>' if page else b"{}"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html" if page else "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *args):
+            pass
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Answer)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    origin = f"http://127.0.0.1:{server.server_port}"
+    timings = """(async () => {
+      const took = async (url) => {
+        const start = performance.now();
+        await (await fetch(url)).json();
+        return Math.round(performance.now() - start);
+      };
+      const first = took('/api/version');
+      const other = await took('/api/sources');
+      // the map stops where the place landed, a second later
+      await new Promise((go) => setTimeout(go, 1000));
+      document.querySelector('.map-wrap > .map').dataset.focusAt = '284,75';
+      const held = await first;
+      // a later one, by its full URL this time
+      return { held, other, again: await took(location.origin + '/api/version') };
+    })()"""
+
+    async def scenario():
+        chrome = responsive.Chrome()
+        try:
+            page = await chrome.open()
+            async with responsive.websockets.connect(page, max_size=None) as ws:
+                counter = [0]
+
+                async def call(method: str, params: dict | None = None) -> dict:
+                    counter[0] += 1
+                    await ws.send(
+                        json.dumps({"id": counter[0], "method": method, "params": params or {}})
+                    )
+                    while True:
+                        msg = json.loads(await ws.recv())
+                        if msg.get("id") == counter[0]:
+                            return msg
+
+                await call("Page.enable")
+                await call(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": responsive.version_hold(0.5)},
+                )
+                await call("Page.navigate", {"url": f"{origin}/"})
+                for _ in range(50):
+                    probe = await call(
+                        "Runtime.evaluate",
+                        {
+                            "expression": "location.origin + ' ' + document.readyState",
+                            "returnByValue": True,
+                        },
+                    )
+                    if probe["result"]["result"]["value"] == f"{origin} complete":
+                        break
+                    await asyncio.sleep(0.1)
+                res = await call(
+                    "Runtime.evaluate",
+                    {"expression": timings, "awaitPromise": True, "returnByValue": True},
+                )
+                return res["result"]["result"]["value"]
+        finally:
+            chrome.close()
+
+    try:
+        got = asyncio.run(scenario())
+    finally:
+        server.shutdown()
+        server.server_close()
+    # 1 s until the map stopped, then 0.5 s
+    assert 1450 <= got["held"] < 3000, got
+    assert got["other"] < 1000 and got["again"] < 1000, got

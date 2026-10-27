@@ -1807,6 +1807,14 @@ a {
   border-color: var(--edge);
 }
 
+/* Where the label would wrap, the icon alone (FooterTools.tsx
+   useIconOnly): a two-line button over a 139 px phone map covered the
+   place the map flew to. Still a 44 px target. */
+.map-report-open.icon-only {
+  min-width: 44px;
+  justify-content: center;
+}
+
 /* Map overlays sit on OPAQUE surfaces: a translucent card over a white map
    label would fall below 4.5:1, and the label can be anywhere. */
 .legend {
