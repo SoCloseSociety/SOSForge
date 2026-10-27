@@ -136,3 +136,76 @@ class TestNothingLooksReal:
         assert (event.source, event.id, event.source_id) == ("drill", "drill:usgs:x1", "usgs:x1")
         assert event.title.startswith("[DRILL]") and event.place.startswith("[DRILL]")
         assert event.url is None
+
+
+def _free_port() -> int:
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return sock.getsockname()[1]
+
+
+def _start_serving(*extra: str):
+    """`drill.py serve` in a real process, up to its banner."""
+    import re
+    import subprocess
+    import time
+
+    port = _free_port()
+    proc = subprocess.Popen(
+        [sys.executable, str(ROOT / "tools" / "drill.py"), "serve", "--port", str(port), *extra],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+    deadline = time.time() + 30
+    data = None
+    assert proc.stdout is not None
+    while time.time() < deadline:
+        line = proc.stdout.readline()
+        match = re.search(r"data (\S+sosforge-drill-\S+?),", line)
+        if match:
+            data = Path(match.group(1))
+            break
+    assert data is not None and data.is_dir(), "the drill never printed its banner"
+    return proc, port, data
+
+
+@pytest.mark.parametrize("sig", ["SIGTERM", "SIGINT"])
+def test_a_signal_while_waiting_for_clients_stops_and_cleans_up(sig):
+    """The no-op handlers this replaced left `serve --wait-clients` waiting
+    forever on a server that had already stopped, swallowing every later
+    signal, with its temp dir never removed."""
+    import signal
+    import socket
+
+    proc, port, data = _start_serving("--wait-clients", "1")
+    try:
+        proc.send_signal(getattr(signal, sig))
+        assert proc.wait(timeout=15) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    assert not data.exists(), "the temp data dir was left behind"
+    with pytest.raises(OSError), socket.create_connection(("127.0.0.1", port), timeout=1):
+        pass
+
+
+def test_a_signal_while_serving_after_the_drills_stops_and_cleans_up():
+    import signal
+
+    proc, _, data = _start_serving("--scenario", "07-far-extreme", "--gap", "0")
+    try:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            if "still serving" in line:
+                break
+        proc.send_signal(signal.SIGTERM)
+        assert proc.wait(timeout=15) == 0
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait()
+    assert not data.exists()

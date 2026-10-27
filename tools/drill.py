@@ -579,8 +579,14 @@ class AgentProbe:
         self.task: asyncio.Task[None] | None = None
 
     def _notify(self, title: str, body: str, *, urgent: bool = False) -> bool:
-        event = self._current.get("event") or {}
-        self.notes.append((event.get("id"), title, body))
+        # a follow-up on a withdrawal is posted while handling the PURGE,
+        # which names ids rather than carrying an event
+        current = self._current
+        if current.get("type") == "purge":
+            event_id = ",".join(str(i) for i in current.get("ids") or ()) or None
+        else:
+            event_id = (current.get("event") or {}).get("id")
+        self.notes.append((event_id, title, body))
         return True
 
     async def start(self) -> None:
@@ -596,6 +602,23 @@ class AgentProbe:
             self.task.cancel()
             with contextlib.suppress(asyncio.CancelledError, Exception):
                 await self.task
+
+
+def verdict_agent(
+    expected: list[Any], notes: list[tuple[str | None, str, str]], ids: set[str]
+) -> tuple[bool, str]:
+    """The agent's notifications for this scenario, in order. An expected
+    entry is an event id, or `[id, text]` when the title must also say
+    something (a follow-up: "Cancelled", "No longer near you")."""
+    mine = [n for n in notes if n[0] is None or n[0] in ids]
+    ok = len(mine) == len(expected)
+    for want, (event_id, title, _) in zip(expected, mine, strict=False):
+        want_id, want_text = (want, None) if isinstance(want, str) else (want[0], want[1])
+        ok &= event_id == want_id and (want_text is None or want_text in title)
+    detail = "; ".join(f"{n[0]}: {n[1]}" for n in notes) or "silent"
+    if not ok:
+        detail += f" EXPECTED {expected or 'nothing'}"
+    return ok, detail
 
 
 async def http_get(
@@ -684,6 +707,50 @@ class Running:
     task: asyncio.Task[None]
 
 
+class Stopper:
+    """SIGINT / SIGTERM for the whole run, not only while uvicorn listens.
+
+    uvicorn catches both while it serves, shuts down, puts back the handler
+    it found and re-raises the signal into it. With the default handler that
+    killed the process before the temp dir was removed; with a no-op one the
+    drill hung forever in `--wait-clients` (the server it waited on was
+    gone) and swallowed every later signal. This one sets an event that
+    every phase of the run is raced against, and a SECOND signal forces the
+    exit -- the cleanup in `finally` still runs either way.
+    """
+
+    def __init__(self) -> None:
+        self.event = asyncio.Event()
+        self.signals = 0
+        self._loop = asyncio.get_running_loop()
+        for sig in (signal.SIGINT, signal.SIGTERM):
+            signal.signal(sig, self._handle)
+
+    def _handle(self, signum: int, frame: Any) -> None:
+        self.signals += 1
+        if self.signals > 1:
+            raise KeyboardInterrupt
+        self._loop.call_soon_threadsafe(self.event.set)
+
+
+async def until_stopped(running: Running, stopper: Stopper, work: Any) -> bool:
+    """Runs `work` until it ends, the server stops, or a signal arrives.
+    Returns whether `work` finished on its own."""
+    job = asyncio.ensure_future(work)
+    stop = asyncio.ensure_future(stopper.event.wait())
+    try:
+        done, _ = await asyncio.wait({job, stop, running.task}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        stop.cancel()
+    if job in done:
+        job.result()
+        return True
+    job.cancel()
+    with contextlib.suppress(asyncio.CancelledError, Exception):
+        await job
+    return False
+
+
 async def start_server(main: Any, port: int, host: str = DEFAULT_HOST) -> Running:
     """uvicorn on a loopback address only, in this loop. Its own signal handling stays:
     Ctrl-C stops the server, which ends `Running.task`."""
@@ -693,12 +760,6 @@ async def start_server(main: Any, port: int, host: str = DEFAULT_HOST) -> Runnin
         main.app, host=require_loopback(host), port=port, log_level="warning", lifespan="on"
     )
     server = uvicorn.Server(config)
-    # uvicorn catches SIGINT / SIGTERM to shut down gracefully, then re-raises
-    # the signal once done; with the default handler that kills the process
-    # before the temp data dir is removed. A no-op handler lets `serve()`
-    # return, so the caller's cleanup runs. Stopping by port stays the rule.
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        signal.signal(sig, lambda *_: None)
     task = asyncio.create_task(server.serve())
     for _ in range(200):
         if server.started:
@@ -756,9 +817,11 @@ async def serve(args: argparse.Namespace) -> int:
         run = args.run or uuid.uuid4().hex[:6]
         timeline = Timeline(Path(args.timeline) if args.timeline else None)
         hook_timeline(main, timeline)
+        stopper = Stopper()
         server = await start_server(main, args.port, args.host)
         banner(args.port, data, run, args.with_sources, args.host)
-        try:
+
+        async def drive() -> None:
             if args.wait_clients:
                 timeline.say(f"waiting for {args.wait_clients} websocket client(s)")
                 while main.hub.client_count < args.wait_clients:
@@ -777,7 +840,12 @@ async def serve(args: argparse.Namespace) -> int:
                 else "drills played"
             )
             if not args.exit:
-                await server.task  # until Ctrl-C stops the server
+                await asyncio.Event().wait()  # until a signal or the server stops
+
+        try:
+            finished = await until_stopped(server, stopper, drive())
+            if not finished:
+                timeline.say("stopped")
         finally:
             await stop_server(server)
     finally:
@@ -796,6 +864,7 @@ async def check(args: argparse.Namespace) -> int:
         run = args.run or uuid.uuid4().hex[:6]
         timeline = Timeline(Path(args.timeline) if args.timeline else None)
         hook_timeline(main, timeline)
+        stopper = Stopper()
         server = await start_server(main, args.port, args.host)
         base_ws = f"ws://{netloc(args.host, args.port)}"
         base_http = f"http://{netloc(args.host, args.port)}"
@@ -805,7 +874,9 @@ async def check(args: argparse.Namespace) -> int:
             "agent_tokyo": AgentProbe("agent_tokyo", base_ws, HOMES["tokyo"], zone_alerts=False),
             "agent_paris": AgentProbe("agent_paris", base_ws, HOMES["paris"], zone_alerts=True),
         }
-        try:
+        interrupted = False
+
+        async def drive() -> None:
             for probe in probes.values():
                 await probe.start()
             for agent in agents.values():
@@ -830,17 +901,16 @@ async def check(args: argparse.Namespace) -> int:
                     if expected is None:
                         continue
                     notes = agent.notes[agent_marks[name] :]
-                    got = [n[0] for n in notes if n[0] in ids or n[0] is None]
-                    ok = got == expected
-                    detail = "; ".join(f"{n[0]}: {n[1]}" for n in notes) or "silent"
-                    if not ok:
-                        detail += f" EXPECTED notifications for {expected or 'nothing'}"
+                    ok, detail = verdict_agent(expected, notes, ids)
                     rows.append((scenario.name, name, ok, detail))
                 rows.extend(await check_poll(scenario, run, ids, base_http, cursor))
                 for spec in scenario.fresh:
                     rows.append(await check_fresh(scenario, spec, ids, base_ws))
                 await asyncio.sleep(args.gap / args.speed)
             rows.extend(await check_refusals(base_ws, main))
+
+        try:
+            interrupted = not await until_stopped(server, stopper, drive())
         finally:
             for probe in probes.values():
                 await probe.stop()
@@ -851,6 +921,9 @@ async def check(args: argparse.Namespace) -> int:
         if not args.keep_data:
             shutil.rmtree(data, ignore_errors=True)
 
+    if interrupted:
+        print("\ndrill: interrupted, no verdict")
+        return 130
     print()
     print(f"{'scenario':20s} {'client':11s} result")
     for scenario_name, client, ok, detail in rows:

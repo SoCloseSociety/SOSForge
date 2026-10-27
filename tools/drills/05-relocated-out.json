@@ -235,8 +235,18 @@
       "removed": []
     },
     "agent_tokyo": [
-      "drill:usgs:drill{run}q2"
+      "drill:usgs:drill{run}q2",
+      [
+        "drill:usgs:drill{run}q2",
+        "No longer near you"
+      ]
     ],
-    "agent_paris": []
+    "agent_paris": [
+      "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+      [
+        "drill:meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        "No longer near you"
+      ]
+    ]
   }
 }
