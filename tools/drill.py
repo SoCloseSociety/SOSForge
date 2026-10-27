@@ -782,10 +782,14 @@ def hook_timeline(main: Any, timeline: Timeline) -> None:
     hub = main.hub
     original = hub.broadcast
 
-    async def recording(message: dict[str, Any]) -> None:
-        if message.get("type") != "tick":
+    # Same signature as Hub.broadcast: the heartbeat passes `lite=` for the
+    # light-tick clients, and a None message carries a lite-only `sources`
+    # frame. A one-argument wrapper raised on every tick, so the drill server
+    # sent no tick at all and every client reconnected after its 15 s watchdog.
+    async def recording(message: dict[str, Any] | None, lite: dict[str, Any] | None = None) -> None:
+        if message is not None and message.get("type") != "tick":
             timeline.record(message)
-        await original(message)
+        await original(message, lite=lite)
 
     hub.broadcast = recording
 
@@ -907,6 +911,7 @@ async def check(args: argparse.Namespace) -> int:
                 for spec in scenario.fresh:
                     rows.append(await check_fresh(scenario, spec, ids, base_ws))
                 await asyncio.sleep(args.gap / args.speed)
+            rows.extend(await check_ticks(base_ws))
             rows.extend(await check_refusals(base_ws, main))
 
         try:
@@ -981,6 +986,40 @@ async def check_fresh(
     if not ok:
         detail += f" EXPECTED {spec}"
     return (scenario.name, f"{spec['client']}*", ok, detail)
+
+
+async def check_ticks(base: str, seconds: float = 3.5) -> list[tuple[str, str, bool, str]]:
+    """The heartbeat itself: a full socket and a light-tick socket each get a
+    tick every second. Every other row would still pass on a server that sends
+    no tick at all, since the drill clients read events, not the heartbeat."""
+    import websockets
+
+    rows = []
+    for name, query in (("full", ""), ("lite", "?tick=lite")):
+        ticks = 0
+        with_sources = 0
+        try:
+            async with websockets.connect(f"{base}/ws{query}", max_size=2**26) as ws:
+                loop = asyncio.get_running_loop()
+                end = loop.time() + seconds
+                while (left := end - loop.time()) > 0:
+                    try:
+                        message = json.loads(await asyncio.wait_for(ws.recv(), left))
+                    except TimeoutError:
+                        break
+                    if message.get("type") == "tick":
+                        ticks += 1
+                        with_sources += "sources" in message
+        except websockets.ConnectionClosed as exc:
+            rows.append(("heartbeat", name, False, f"closed {exc.rcvd.code if exc.rcvd else None}"))
+            continue
+        # full ticks carry the source list on every tick, light ones never
+        sources_ok = with_sources == ticks if name == "full" else with_sources == 0
+        ok = ticks >= int(seconds) - 1 and sources_ok
+        rows.append(
+            ("heartbeat", name, ok, f"{ticks} ticks in {seconds} s, {with_sources} with sources")
+        )
+    return rows
 
 
 async def check_refusals(base: str, main: Any) -> list[tuple[str, str, bool, str]]:
