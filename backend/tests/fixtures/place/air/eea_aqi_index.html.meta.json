@@ -1,0 +1,26 @@
+{
+ "url": "https://airindex.eea.europa.eu/AQI/index.html",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 14:03:25 GMT",
+  "content-type": "text/html",
+  "content-length": "44677",
+  "server": "nginx",
+  "last-modified": "Wed, 14 Jan 2026 08:08:00 GMT",
+  "accept-ranges": "bytes",
+  "etag": "\"0301de62c85dc1:0\"",
+  "x-powered-by": "EEA",
+  "x-xss-protection": "1;mode=block",
+  "x-frame-options": "ALLOW-FROM https://www.eea.europa.eu",
+  "x-content-type-options": "nosniff",
+  "strict-transport-security": "max-age=15780000; includeSubDomains",
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "*",
+  "access-control-allow-headers": "*"
+ },
+ "fetched_utc": "2026-10-27T14:03:25Z",
+ "bytes": 44677,
+ "sha256": "ec1d0f2c890fa759bdbc29f4396f7d5c38a3898a12337c784a908300cccf9e70",
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "captured with curl -D (--compressed: body as delivered after content decoding)"
+}

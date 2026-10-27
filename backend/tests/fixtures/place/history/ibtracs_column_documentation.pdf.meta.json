@@ -1,0 +1,27 @@
+{
+ "url": "https://www.ncei.noaa.gov/sites/default/files/2021-07/IBTrACS_v04_column_documentation.pdf",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 14:16:43 GMT",
+  "server": "Apache",
+  "strict-transport-security": "max-age=15768000",
+  "content-type": "application/pdf",
+  "content-length": "71078",
+  "x-content-type-options": "nosniff",
+  "last-modified": "Mon, 02 May 2022 17:32:20 GMT",
+  "x-request-id": "60c60066-c825-44d7-9c17-f8794e7b3cf2",
+  "x-ah-environment": "prod",
+  "x-cache-hits": "75",
+  "x-age": "497776",
+  "accept-ranges": "bytes",
+  "cache-control": "max-age=300",
+  "expires": "Tue, 27 Oct 2026 14:21:43 GMT",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "X-Requested-With, Content-Type"
+ },
+ "fetched_utc": "2026-10-27T14:16:43Z",
+ "bytes": 71078,
+ "sha256": "a43655f3e94cfd5c67f31911af7789a2c4dadeb15e1203afbd17cdaf293d66a0",
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "captured with curl -D (--compressed: body as delivered after content decoding)"
+}

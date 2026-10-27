@@ -1,0 +1,15 @@
+{
+  "url": "https://wri-rw.carto.com/api/v2/sql?q=SELECT%20s.aq30_id%2C%20s.pfaf_id%2C%20s.bws_raw%2C%20s.bws_cat%2C%20s.bws_label%2C%20s.rfr_raw%2C%20s.rfr_cat%2C%20s.rfr_label%2C%20s.cfr_raw%2C%20s.cfr_cat%2C%20s.cfr_label%2C%20s.drr_raw%2C%20s.drr_cat%2C%20s.drr_label%20FROM%20water_risk_indicators_annual_aqueduct40%20s%20JOIN%20y2018m12d06_rh_master_shape_v01%20r%20ON%20s.aq30_id%20%3D%20r.aq30_id%20WHERE%20ST_Intersects%28r.the_geom%2C%20ST_SetSRID%28ST_Point%28100.01%2C%209.51%29%2C%204326%29%29",
+  "fetched_at_utc": "2026-10-27T15:57:38Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 15:57:39 GMT",
+    "content-type": "application/json; charset=utf-8",
+    "content-length": "1007",
+    "last-modified": "Thu, 10 Aug 2023 14:44:21 GMT",
+    "cache-control": "no-cache,max-age=31536000,must-revalidate,public",
+    "age": "0"
+  },
+  "bytes": 1007,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

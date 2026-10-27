@@ -1,0 +1,20 @@
+{
+ "url": "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.ALL.list.v04r01.csv",
+ "request_range": "bytes=0-2941",
+ "status": 206,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 11:05:25 GMT",
+  "server": "Apache",
+  "strict-transport-security": "max-age=31536000",
+  "last-modified": "Sun, 25 Oct 2026 09:05:37 GMT",
+  "etag": "\"13daad49-65ea684487471\"",
+  "accept-ranges": "bytes",
+  "content-length": "2942",
+  "content-range": "bytes 0-2941/333098313",
+  "content-type": "text/csv",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "X-Requested-With, Content-Type"
+ },
+ "fetched_utc": "2026-10-27T11:07:00Z",
+ "note": "HTTP 206 partial response of the ALL file; byte-identical to the same range of the full 333098313-byte download"
+}

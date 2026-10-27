@@ -1,0 +1,343 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/air",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "eea_aqi_index.html": {
+   "bytes": 44677,
+   "sha256": "ec1d0f2c890fa759bdbc29f4396f7d5c38a3898a12337c784a908300cccf9e70"
+  },
+  "eea_aqi_index.html.meta.json": {
+   "bytes": 969,
+   "sha256": "dcf0f3bacad15a44f09214aa53d96e2d6137adb436b9f2af783a9f212c4a32dc"
+  },
+  "epa_aqi_breakpoints.csv": {
+   "bytes": 6494,
+   "sha256": "00460436574eb146f0b1293cf591a831c272c3d2a5be1fbef76b98193f9ff3c4"
+  },
+  "epa_aqi_breakpoints.csv.meta.json": {
+   "bytes": 790,
+   "sha256": "b103b570507c1c0528a7c93df9147e5a127779d18fedb3ce9d55e07cbb730922"
+  },
+  "openmeteo_api_aq_kosamui.json": {
+   "bytes": 4047,
+   "sha256": "9a6bbaa1579d96eb90d2c61273eeca6fad627305bf393ff9a9782806e1cae925"
+  },
+  "openmeteo_api_aq_kosamui.json.meta.json": {
+   "bytes": 717,
+   "sha256": "a132dba529d011e9582918457b568d18949f3e88b5b9246f021dad76dded20b2"
+  },
+  "openmeteo_api_aq_paris.json": {
+   "bytes": 4111,
+   "sha256": "6edf1461d998e0e567124fb69e5802b174711cc1d411975b247dccb0ab9fa680"
+  },
+  "openmeteo_api_aq_paris.json.meta.json": {
+   "bytes": 716,
+   "sha256": "812d9b88fe402b687b8aa7cd2aab0fdd501c54ada9d47c33548a48f3d0669b21"
+  },
+  "openmeteo_s3_cams_europe_meta.json": {
+   "bytes": 599,
+   "sha256": "185e3ab4a83c2f1d33cc1cebf3e3f1ff8e5dc8210c03ce2761601dabb78faed1"
+  },
+  "openmeteo_s3_cams_europe_paris/000.body": {
+   "bytes": 599,
+   "sha256": "185e3ab4a83c2f1d33cc1cebf3e3f1ff8e5dc8210c03ce2761601dabb78faed1"
+  },
+  "openmeteo_s3_cams_europe_paris/001.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/002.body": {
+   "bytes": 24,
+   "sha256": "499d6d139a4b6c2922e8b694919b76e12cc5bdd349b9a2b2ce5bba694c7a3dd2"
+  },
+  "openmeteo_s3_cams_europe_paris/003.body": {
+   "bytes": 88,
+   "sha256": "8785513f0b3778fcc251b78650f20de4bb85adac27a6d6f44fe87182406b0690"
+  },
+  "openmeteo_s3_cams_europe_paris/004.body": {
+   "bytes": 100,
+   "sha256": "02e17d659769e11ebc3e83ca74878e50afa1ff6aee5083deb19a204269d4b713"
+  },
+  "openmeteo_s3_cams_europe_paris/005.body": {
+   "bytes": 1508,
+   "sha256": "37d1d6e8cb7b3525ca3f3cce5364f43725d345839e229eb4d19739bc5461bc6a"
+  },
+  "openmeteo_s3_cams_europe_paris/006.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/007.body": {
+   "bytes": 24,
+   "sha256": "8fbac6156c21be4edeac8e2e31d57d5ae29a3edf7986c508dfc6d2f396cf72d3"
+  },
+  "openmeteo_s3_cams_europe_paris/008.body": {
+   "bytes": 88,
+   "sha256": "867a612aaa7c03b4569e9c69b4f6f89d03ae48a40baa0c606504716b96dda967"
+  },
+  "openmeteo_s3_cams_europe_paris/009.body": {
+   "bytes": 100,
+   "sha256": "cb17d10663fc149f7c5488efde8f6fd80fff4520769819898e0b88abc3575874"
+  },
+  "openmeteo_s3_cams_europe_paris/010.body": {
+   "bytes": 1799,
+   "sha256": "eea4df21204bb785aa2956c190af1774288a89a004d4a7318de8679bc55e7927"
+  },
+  "openmeteo_s3_cams_europe_paris/011.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/012.body": {
+   "bytes": 24,
+   "sha256": "6360073e263d9dcf157a60cae5a4aac5f58bb2a9bd9fb9638cad7119909cdae0"
+  },
+  "openmeteo_s3_cams_europe_paris/013.body": {
+   "bytes": 88,
+   "sha256": "8fad2922db21a884dca2383acec8cdee347a59e0f1722798a8a1ca53b4f05a51"
+  },
+  "openmeteo_s3_cams_europe_paris/014.body": {
+   "bytes": 92,
+   "sha256": "60f128ab405c0600662d8011a7287befc402a215894858ef6dc64395b52e8999"
+  },
+  "openmeteo_s3_cams_europe_paris/015.body": {
+   "bytes": 1258,
+   "sha256": "dec686d3d6d8f51a4ff1922ee176c741bf36adef62afb6d664239dbeedf69585"
+  },
+  "openmeteo_s3_cams_europe_paris/016.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/017.body": {
+   "bytes": 24,
+   "sha256": "45cedf8c81222214adb02a47c66365c8eb22d757d7da97f8b9e4a541c84cabaf"
+  },
+  "openmeteo_s3_cams_europe_paris/018.body": {
+   "bytes": 88,
+   "sha256": "8d50f39eb44d53699bf2d95bba65f552a08b13f4275ba8f31096eb53f67ad918"
+  },
+  "openmeteo_s3_cams_europe_paris/019.body": {
+   "bytes": 100,
+   "sha256": "5d8460d1974a538da49e996db9f54322ee9a7c8bd09f1a2b0c71b7632f8d45e0"
+  },
+  "openmeteo_s3_cams_europe_paris/020.body": {
+   "bytes": 2051,
+   "sha256": "232c7c1fd34481d64a2592704052e5e8f71dbbaf1dbde86f35fd3bfbbdf96403"
+  },
+  "openmeteo_s3_cams_europe_paris/021.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/022.body": {
+   "bytes": 24,
+   "sha256": "d34b0735576617952b1aeb6112646c17472af504e5e9abe78c344bd3aa385a9e"
+  },
+  "openmeteo_s3_cams_europe_paris/023.body": {
+   "bytes": 88,
+   "sha256": "4320febf05020c2498a36da20897598f05db3a86a2d7fca80bcca61532d584e9"
+  },
+  "openmeteo_s3_cams_europe_paris/024.body": {
+   "bytes": 44,
+   "sha256": "8750d9ed9f618ea62cf481398c7c42098294bb52c700b085356112b2c8aee967"
+  },
+  "openmeteo_s3_cams_europe_paris/025.body": {
+   "bytes": 24,
+   "sha256": "9d908ecfb6b256def8b49a7c504e6c889c4b0e41fe6ce3e01863dd7b61a20aa0"
+  },
+  "openmeteo_s3_cams_europe_paris/026.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/027.body": {
+   "bytes": 24,
+   "sha256": "cb237bb1e6e60e5f80439a968f480adb093acdcfbf1a9ef61f35a16550d1ba62"
+  },
+  "openmeteo_s3_cams_europe_paris/028.body": {
+   "bytes": 88,
+   "sha256": "67a63d3249da0aea45972494c55839f9bf4ac33a34c8576cad8ceade3193e404"
+  },
+  "openmeteo_s3_cams_europe_paris/029.body": {
+   "bytes": 80,
+   "sha256": "7d279fbbca49ab65c12b9155f66d90a96bc0a31fcbfbcf65b6395cd8373a5df2"
+  },
+  "openmeteo_s3_cams_europe_paris/030.body": {
+   "bytes": 24,
+   "sha256": "9d908ecfb6b256def8b49a7c504e6c889c4b0e41fe6ce3e01863dd7b61a20aa0"
+  },
+  "openmeteo_s3_cams_europe_paris/031.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_europe_paris/032.body": {
+   "bytes": 24,
+   "sha256": "d34b0735576617952b1aeb6112646c17472af504e5e9abe78c344bd3aa385a9e"
+  },
+  "openmeteo_s3_cams_europe_paris/033.body": {
+   "bytes": 88,
+   "sha256": "4320febf05020c2498a36da20897598f05db3a86a2d7fca80bcca61532d584e9"
+  },
+  "openmeteo_s3_cams_europe_paris/034.body": {
+   "bytes": 44,
+   "sha256": "8750d9ed9f618ea62cf481398c7c42098294bb52c700b085356112b2c8aee967"
+  },
+  "openmeteo_s3_cams_europe_paris/035.body": {
+   "bytes": 24,
+   "sha256": "9d908ecfb6b256def8b49a7c504e6c889c4b0e41fe6ce3e01863dd7b61a20aa0"
+  },
+  "openmeteo_s3_cams_europe_paris/cassette.json": {
+   "bytes": 32362,
+   "sha256": "9f1ca8b35bdb23d2f3a2aca299751cd83e70c73039fd3f8ebe1e13fed6e85761"
+  },
+  "openmeteo_s3_cams_global_kosamui/000.body": {
+   "bytes": 594,
+   "sha256": "fe2ce4c109e816227ffa420709afc9fbdb04362abe3eba81fbe4d138517fdf27"
+  },
+  "openmeteo_s3_cams_global_kosamui/001.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/002.body": {
+   "bytes": 24,
+   "sha256": "917f253a32834d8a8a819c52d7a60b1f66c27d113c83494c9bff5414a102bd26"
+  },
+  "openmeteo_s3_cams_global_kosamui/003.body": {
+   "bytes": 88,
+   "sha256": "277eac887a84c8c66c67654ddd8391242c32ca96ae0f98f055a7dbe5ff04f9e3"
+  },
+  "openmeteo_s3_cams_global_kosamui/004.body": {
+   "bytes": 100,
+   "sha256": "edc59b7e105c663dfd3082907d2b4c001c0d5078e887af96b718e948881b7781"
+  },
+  "openmeteo_s3_cams_global_kosamui/005.body": {
+   "bytes": 1712,
+   "sha256": "a15c0e0769db452e872f1060de94c87cc5f591b0e5c3f62700725c6be469aca7"
+  },
+  "openmeteo_s3_cams_global_kosamui/006.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/007.body": {
+   "bytes": 24,
+   "sha256": "29dd27c07e156678b28d6dda1553be4df3c1f7b77770aecb1b67486a364081a6"
+  },
+  "openmeteo_s3_cams_global_kosamui/008.body": {
+   "bytes": 88,
+   "sha256": "69839e4019fd4684c495cc4c51e50f96c3767c0b93383c3068d5bbd5f61a70a1"
+  },
+  "openmeteo_s3_cams_global_kosamui/009.body": {
+   "bytes": 103,
+   "sha256": "61785bdf1e96f4c651b0a1e6be1f63089198739a1faae5df6d0ec8da43c6890b"
+  },
+  "openmeteo_s3_cams_global_kosamui/010.body": {
+   "bytes": 1888,
+   "sha256": "c6be9fc5705e712e4f669320faa8910290698e7f703a8946eaeb57e9662921a9"
+  },
+  "openmeteo_s3_cams_global_kosamui/011.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/012.body": {
+   "bytes": 24,
+   "sha256": "566afbdaec090f5260ab062ac2e3e101732069dfbf9b39a8d88d992c5ee5d1f9"
+  },
+  "openmeteo_s3_cams_global_kosamui/013.body": {
+   "bytes": 88,
+   "sha256": "964be3b7ee7572e451cbad498876c3c61390944a7629e431b31ab2feafefc502"
+  },
+  "openmeteo_s3_cams_global_kosamui/014.body": {
+   "bytes": 97,
+   "sha256": "b32e16786c27146d0b8c4720bd595eab0e3a0a3b84e4e04cccc886a7c4aab14d"
+  },
+  "openmeteo_s3_cams_global_kosamui/015.body": {
+   "bytes": 1269,
+   "sha256": "0732b12463814c6685ccc89406017796b6a979f8ad14430533212b3fc94e6995"
+  },
+  "openmeteo_s3_cams_global_kosamui/016.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/017.body": {
+   "bytes": 24,
+   "sha256": "cd587fb39050647bbdb4361430c9c2c154214d8f47db477075b16461aac2b84e"
+  },
+  "openmeteo_s3_cams_global_kosamui/018.body": {
+   "bytes": 88,
+   "sha256": "241362a5b236bc884f00b4404e260fb92ce00a26f6ae548fb29bf1b75e4dfeee"
+  },
+  "openmeteo_s3_cams_global_kosamui/019.body": {
+   "bytes": 100,
+   "sha256": "93ad03133e842959059f0577b2bb6bc201b0b53f53466b839f4778a9e0956606"
+  },
+  "openmeteo_s3_cams_global_kosamui/020.body": {
+   "bytes": 1036,
+   "sha256": "bec080150797bc601c7a3ec6eecba5f6768ec8b17ec7917ca8a720cac25118e1"
+  },
+  "openmeteo_s3_cams_global_kosamui/021.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/022.body": {
+   "bytes": 24,
+   "sha256": "f62a0aee420da4fe37a5e79da678a56a96ad8fa0a4f187bfb731d130824dbaf0"
+  },
+  "openmeteo_s3_cams_global_kosamui/023.body": {
+   "bytes": 88,
+   "sha256": "98ed90b6da45c3998e80614ecaccae8d5c90239429b1c6f4bd08f6d12ef3a2bc"
+  },
+  "openmeteo_s3_cams_global_kosamui/024.body": {
+   "bytes": 98,
+   "sha256": "caa50bbb7207b85e65adb3c307ef4cc77b8b92d3ee7d9e20a9b8332cfb62cbea"
+  },
+  "openmeteo_s3_cams_global_kosamui/025.body": {
+   "bytes": 1068,
+   "sha256": "0e47e36f4419f803f928dedb45e71c63f3d8b3e4ae0814ba7481388a63e62d20"
+  },
+  "openmeteo_s3_cams_global_kosamui/026.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/027.body": {
+   "bytes": 24,
+   "sha256": "b3b19b4b2991bf45c42aeae7838c456b141c44f3d098dac811e994286837f533"
+  },
+  "openmeteo_s3_cams_global_kosamui/028.body": {
+   "bytes": 88,
+   "sha256": "00ef43fca9144b303afd19221e3e082a57b7b766e0a3ca5f58d49000c0594818"
+  },
+  "openmeteo_s3_cams_global_kosamui/029.body": {
+   "bytes": 96,
+   "sha256": "43d5ed660eda995949b4c8a863c061a5a763970de6a2f07e888cd51b95661a40"
+  },
+  "openmeteo_s3_cams_global_kosamui/030.body": {
+   "bytes": 33,
+   "sha256": "db22629357435696dda187cf42756844772155642ff3eb5799d34fece94aaf22"
+  },
+  "openmeteo_s3_cams_global_kosamui/031.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_cams_global_kosamui/032.body": {
+   "bytes": 24,
+   "sha256": "fc946fe1b13911a71b799b6e87f122eda11f063e69454d458a297675db3c9f12"
+  },
+  "openmeteo_s3_cams_global_kosamui/033.body": {
+   "bytes": 88,
+   "sha256": "d0aed87ecffb73f9290a8520346ebe11131103d90939c75b6f2baee412024b1d"
+  },
+  "openmeteo_s3_cams_global_kosamui/034.body": {
+   "bytes": 92,
+   "sha256": "40e85476fac4775e08781e6d6171d99987ccbb0cd164a81474c81ab340e92147"
+  },
+  "openmeteo_s3_cams_global_kosamui/035.body": {
+   "bytes": 1331,
+   "sha256": "5d7f24b37dceecc97ccadcb13591d47d3a742fb64774e15042dc68a157db3f76"
+  },
+  "openmeteo_s3_cams_global_kosamui/cassette.json": {
+   "bytes": 33116,
+   "sha256": "c1a937d8fb157d3229d3a506ffc4579a97d0e59579163e8874f76618959a2503"
+  },
+  "openmeteo_s3_cams_global_meta.json": {
+   "bytes": 594,
+   "sha256": "fe2ce4c109e816227ffa420709afc9fbdb04362abe3eba81fbe4d138517fdf27"
+  }
+ }
+}

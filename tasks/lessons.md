@@ -468,3 +468,20 @@ Gradle and six agents) and it got 12, on correct code; alone it passed 3 of 3.
 (`next_tick`). An integration test of timing uses a period that dwarfs the
 scheduler's jitter (250 ms here) and a bound that still separates the old
 behaviour from the new (7 versus 10 ticks).
+
+## 34. Read the value AT the point, and measure a "no value" before explaining it
+
+**What happened.** `fire.danger` read one pixel of a 9x9 tile spanning 2 deg
+around a 0.25 deg cell. WMS samples a pixel at its centre, so the class shown
+came from up to 16.7 km away: Ko Samui's pixel was open sea, and the report
+said `masked`. The review then explained it ("the island is outside ECMWF's
+land mask") without ever rendering the point itself; GWIS draws "low" over
+2431 pixels of the island. Lima tomorrow showed the neighbour pixel's class.
+
+**The rules.**
+- A value "at the place" is read at the place: a tile is centred on the
+  point, odd-sized, so the sampled pixel IS the point; a cell key is fine for
+  caching, never for choosing the pixel.
+- An `unavailable` reason is a claim about the upstream. Before writing why,
+  fetch the upstream at the exact point (a finer render, a wider box) and
+  record what it shows; a plausible cause is not a measured one.

@@ -1,0 +1,16 @@
+{
+  "url": "https://www.ndbc.noaa.gov/data/stations/station_owners.txt",
+  "fetched_at_utc": "2026-10-27T15:56:48Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 15:56:48 GMT",
+    "content-type": "text/plain; charset=ISO-8859-1",
+    "content-length": "3179",
+    "content-encoding": "gzip",
+    "last-modified": "Tue, 27 Oct 2026 14:42:11 GMT",
+    "etag": "\"1e33-65ed373a9a443-gzip\"",
+    "cache-control": "max-age=600, must-revalidate"
+  },
+  "bytes": 7731,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

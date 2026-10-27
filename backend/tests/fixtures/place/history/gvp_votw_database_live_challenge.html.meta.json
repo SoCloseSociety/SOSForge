@@ -1,0 +1,12 @@
+{
+  "url": "https://volcano.si.edu/gvp_votw.cfm",
+  "fetched_at_utc": "2026-10-27T16:14:24Z",
+  "status": 403,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 16:14:24 GMT",
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip"
+  },
+  "bytes": 46412,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

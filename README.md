@@ -161,6 +161,7 @@ from HTTP to HTTPS.
 | `GET /api/events/{id}` | one event (the raw source payload is deliberately left out) |
 | `GET /api/events/{id}/nearby` | live views of the area: deep links + webcams |
 | `GET /api/geocode?q=` | area search (Nominatim proxy, rate-limited and cached) |
+| `GET /api/place?lat=&lon=` | place report for ONE searched or clicked point (never the device position): 22 blocks (weather now and ahead, wind, sea state, sea level, sea temperature, buoy, air, pollen, drought, fire, water risk, national risk, hazard history, alerts now), each with its dataset's own `as_of`, source and licence, or `unavailable` / `not_applicable` with the real reason. `radius_km` 10..300, `lang` en/fr/es/ja/id. Strict query, ETag / 304 (`Server-Time` on both: a revalidated body's `server_time` is old), per-address budget (429, an IPv6 client by its /64); `complete: false` + `retry_after_s` whenever a block will read differently in seconds |
 | `GET /api/stats` | counters for the last hour |
 | `GET /api/sources` | health of every source (connected, events seen, last error) |
 | `GET /api/guidance?lang=` | what to do before / during / after, per hazard, each line with its official source |
@@ -319,6 +320,38 @@ Copernicus Climate Change Service / ECMWF (generated using Copernicus Climate
 Change Service information), NOAA GML, NSIDC (Sea Ice Index v4), NOAA CPC.
 Basemap by OpenStreetMap, OpenMapTiles and OpenFreeMap. These feeds are public; they belong to their
 producers.
+
+Place report (`/api/place`): METAR reports via NOAA Aviation Weather Center;
+forecasts from The Norwegian Meteorological Institute (MET Norway, CC BY 4.0 and
+NLOD 2.0) and NOAA/National Weather Service; weather, marine and air quality
+data by Open-Meteo.com from its open-data bucket (CC BY 4.0), from Meteo-France
+MFWAM and SMOC (generated using E.U. Copernicus Marine Service information) and
+the Copernicus Atmosphere Monitoring Service (generated using Copernicus
+Atmosphere Monitoring Service information; neither the European Commission nor
+ECMWF is responsible for any use made of it); NOAA CoastWatch Geo-Polar Blended
+SST; NOAA National Data Buoy Center (each station's owner, from NDBC's
+station owners file, named in the block); Copernicus Emergency Management Service
+(Global Drought Observatory; Global Wildfire Information System, ECMWF fire
+danger forecast); NASA FIRMS (VIIRS NOAA-20 and NOAA-21); World Resources
+Institute Aqueduct 4.0 (CC BY 4.0); INFORM Risk Index (European Commission
+Joint Research Centre, CC BY 4.0); USGS ANSS ComCat; NOAA NCEI/WDS Global
+Significant Earthquake, Historical Tsunami and Significant Volcanic Eruptions
+databases; Global Volcanism Program, Volcanoes of the World, distributed by
+Smithsonian Institution, compiled by Venzke, E. (a work of US Government
+employees, cited with the day its web service was read: the version number is
+published only on a page closed to non-browser clients); IBTrACS v04r01 (Knapp
+et al., NOAA NCEI). The European and US air quality
+indices, distances, rings, decade counts, model tide extremes and the sea
+level's window mean are computed by SOSForge from those data (modified). Model
+sea level is referenced to the GLOBAL mean sea level, not to the local mean
+nor chart datum. Countries and coastline: Natural Earth
+(public domain).
+
+**ISC-GEM, shared alike.** The USGS catalogue relays rows of the ISC-GEM Global
+Instrumental Earthquake Catalogue (International Seismological Centre, CC BY-SA
+3.0). When a place's `history.earthquakes` block contains such rows (net
+`iscgem`), the block names ISC-GEM in `source.also` and that block's data is
+shared under CC BY-SA 3.0.
 
 **SOSForge is not an official warning service.** In a real emergency, your local
 civil protection authority is the reference.

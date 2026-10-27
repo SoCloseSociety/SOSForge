@@ -1,0 +1,23 @@
+{
+ "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/tsunamis/runups?minLatitude=-12.945&maxLatitude=-11.147&minLongitude=-77.963&maxLongitude=-76.123&itemsPerPage=200&page=1",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 10:47:00 GMT",
+  "server": "Apache",
+  "strict-transport-security": "max-age=31536000;, max-age=31536000 ; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "0",
+  "cache-control": "no-cache, no-store, max-age=0, must-revalidate",
+  "pragma": "no-cache",
+  "expires": "0",
+  "x-frame-options": "SAMEORIGIN",
+  "vary": "accept-encoding",
+  "content-encoding": "gzip",
+  "content-type": "application/json",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "X-Requested-With, Content-Type",
+  "transfer-encoding": "chunked",
+  "connection": "close"
+ },
+ "fetched_utc": "2026-10-27T10:47:07Z"
+}

@@ -1,0 +1,24 @@
+{
+ "url": "https://api.weather.gov/gridpoints/AER/143,236",
+ "status": 200,
+ "headers": {
+  "server": "nginx/1.28.3",
+  "content-type": "application/geo+json",
+  "last-modified": "Tue, 27 Oct 2026 04:33:13 GMT",
+  "access-control-allow-origin": "*",
+  "access-control-expose-headers": "X-Correlation-Id, X-Request-Id, X-Server-Id",
+  "x-request-id": "01a17d05-34bc-74b1-9c8c-9307182a4ca0",
+  "x-correlation-id": "71195c95",
+  "x-server-id": "vm-bldr-api-ops-app14.ncep.noaa.gov",
+  "content-encoding": "gzip",
+  "content-length": "7203",
+  "cache-control": "public, max-age=3600, s-maxage=3600",
+  "expires": "Tue, 27 Oct 2026 12:00:55 GMT",
+  "date": "Tue, 27 Oct 2026 11:00:55 GMT",
+  "connection": "keep-alive",
+  "vary": "Accept-Encoding, Accept,Feature-Flags,Accept-Language",
+  "x-edge-request-id": "25eee1f3",
+  "strict-transport-security": "max-age=31536000 ; includeSubDomains ; preload"
+ },
+ "fetched_utc": "2026-10-27T11:00:55Z"
+}

@@ -1,0 +1,30 @@
+{
+ "url": "https://wri-rw.carto.com/api/v2/sql?q=SELECT%20%27bws%27%20AS%20ind%2C%20bws_cat%20AS%20cat%2C%20bws_label%20AS%20label%2C%20COUNT%28%2A%29%20AS%20n%20FROM%20water_risk_indicators_annual_aqueduct40%20GROUP%20BY%201%2C2%2C3%20UNION%20ALL%20SELECT%20%27rfr%27%2C%20rfr_cat%2C%20rfr_label%2C%20COUNT%28%2A%29%20FROM%20water_risk_indicators_annual_aqueduct40%20GROUP%20BY%201%2C2%2C3%20UNION%20ALL%20SELECT%20%27cfr%27%2C%20cfr_cat%2C%20cfr_label%2C%20COUNT%28%2A%29%20FROM%20water_risk_indicators_annual_aqueduct40%20GROUP%20BY%201%2C2%2C3%20UNION%20ALL%20SELECT%20%27drr%27%2C%20drr_cat%2C%20drr_label%2C%20COUNT%28%2A%29%20FROM%20water_risk_indicators_annual_aqueduct40%20GROUP%20BY%201%2C2%2C3%20ORDER%20BY%201%2C2",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 14:10:55 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "vary": "Authorization",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "*",
+  "access-control-expose-headers": "*",
+  "carto-user": "wri-rw",
+  "carto-user-id": "c73d7d4a-5ff5-4d7c-bfb8-53dd1a6ce8f9",
+  "carto-rate-limit-limit": "81",
+  "carto-rate-limit-remaining": "80",
+  "carto-rate-limit-reset": "0",
+  "cache-control": "no-cache,max-age=31536000,must-revalidate,public",
+  "surrogate-key": "t:zUjGih",
+  "last-modified": "Thu, 10 Aug 2023 14:44:21 GMT",
+  "content-disposition": "inline; filename=cartodb-query.json; modification-date=\"Tue, 27 Oct 2026 14:10:54 GMT\";",
+  "x-varnish": "13435836",
+  "age": "0",
+  "x-cache": "MISS",
+  "content-encoding": "gzip"
+ },
+ "fetched_utc": "2026-10-27T14:10:55Z",
+ "bytes": 1859,
+ "sha256": "b86cab6681362c717b5000374e30c0d88dcfce798bf63dbc41aeb8694bebe55f",
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "captured with curl -D (--compressed: body as delivered after content decoding)"
+}

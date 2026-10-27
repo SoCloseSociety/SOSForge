@@ -1,0 +1,28 @@
+{
+ "url": "https://drmkc.jrc.ec.europa.eu/inform-index/API/InformAPI/workflows/WorkflowGroups",
+ "status": 200,
+ "headers": {
+  "cache-control": "no-cache",
+  "pragma": "no-cache",
+  "content-type": "application/json; charset=utf-8",
+  "expires": "-1",
+  "set-cookie": "TS017a68fb=01f4fc03dd8813ff67070efef75ea0383857609889ff966e5a27e58a62fdaba4183230bf039cf42e0ada424d226ac6b262067eadfe; Path=/",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "Content-Type",
+  "x-content-security-policy": "default-src 'self'",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "1; mode=block",
+  "content-security-policy": "upgrade-insecure-requests; worker-src data: blob: https: 'unsafe-inline' 'unsafe-eval'; default-src https: wss: data: 'unsafe-inline' 'unsafe-eval'",
+  "x-frame-options": "SAMEORIGIN",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  "date": "Tue, 27 Oct 2026 14:11:26 GMT",
+  "content-length": "366",
+  "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
+ },
+ "fetched_utc": "2026-10-27T14:11:26Z",
+ "bytes": 366,
+ "sha256": "15fdeaf7738bb1d1d2d0609feeea8eea6ec9a6ad51920c4b5dd9a4c2ac7bf18f",
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "captured with curl -D (--compressed: body as delivered after content decoding)"
+}

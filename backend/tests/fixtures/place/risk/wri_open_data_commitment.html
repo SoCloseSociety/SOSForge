@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="og: https://ogp.me/ns#" class="html-simple-page">
+  <head>
+        <script>
+      window.dataLayer = window.dataLayer ||[];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent','default',{
+        'ad_storage':'denied',
+        'analytics_storage':'denied',
+        'ad_user_data':'denied',
+        'ad_personalization':'denied',
+        'personalization_storage':'denied',
+        'functionality_storage':'granted',
+        'security_storage':'granted',
+        'wait_for_update': 500
+      });
+      gtag("set", "ads_data_redaction", true);
+    </script>
+            <script src="https://cmp.osano.com/AzyfddTRtqi1560Dk/2f1a8361-e0bc-41c3-b332-023fe627c0bb/osano.js"></script>
+        <meta charset="utf-8" />
+<meta name="description" content="WRI believes that sound policies and informed decisions require the free flow of information. To that end, we commit to making our data and the results of our research freely available for all to use. WRI strives to make our data and the results of our research open to anyone, enabling users to create their own products, conduct their own analyses, and draw their own conclusions." />
+<link rel="canonical" href="https://www.wri.org/data/open-data-commitment" />
+<meta name="wri_full_title" content="WRI’s Open Data Commitment" />
+<meta name="wri_published" content="March 28 2021" />
+<meta property="og:site_name" content="World Resources Institute" />
+<meta property="og:url" content="https://www.wri.org/data/open-data-commitment" />
+<meta property="og:title" content="WRI’s Open Data Commitment" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="WRI’s Open Data Commitment" />
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "WebSite",
+            "@id": "https://www.wri.org/",
+            "name": "World Resources Institute",
+            "url": "https://www.wri.org/",
+            "publisher": {
+                "@type": "Organization",
+                "@id": "https://www.wri.org/",
+                "name": "World Resource Institute",
+                "url": "https://www.wri.org/",
+                "sameAs": [
+                    "http://www.facebook.com/pages/World-Resources-Institute/61863318139",
+                    "http://twitter.comworldresources",
+                    "http://www.youtube.com/WorldResourcesInst",
+                    "https://www.linkedin.com/company/world-resources-institute/"
+                ],
+                "logo": {
+                    "@type": "ImageObject",
+                    "representativeOfPage": "True",
+                    "url": "https://www.wri.org/profiles/contrib/wri_sites/themes/custom/ts_wrin/logo.png",
+                    "width": "150",
+                    "height": "53"
+                }
+            }
+        }
+    ]
+}</script>
+<link rel="icon" href="/sites/default/files/favicon.ico" type="image/vnd.microsoft.icon" />
+<script>window.a2a_config=window.a2a_config||{};a2a_config.callbacks=[];a2a_config.overlays=[];a2a_config.templates={};a2a_config.icon_color = "transparent,#000000";
+
+(function () {
+  // Ensure a2a_config exists before AddToAny runs.
+window.a2a_config = window.a2a_config || {};
+window.a2a_config.icon_color = "transparent,#000000";
+window.a2a_config.callbacks = window.a2a_config.callbacks || [];
+window.a2a_config.prioritize = ["copy_link","linkedin","facebook","bluesky","x","email","print"];
+window.a2a_config.num_services = 8;
+
+  function showCopiedMessage(buttonEl, message) {
+    if (!buttonEl) return;
+
+    // Remove any existing message for this button.
+    var existing = buttonEl.parentNode && buttonEl.parentNode.querySelector(".a2a-copy-toast");
+    if (existing) existing.remove();
+
+    var toast = document.createElement("span");
+    toast.className = "a2a-copy-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.textContent = message || "Link Copied";
+
+    // Put the message right after the icon.
+    buttonEl.insertAdjacentElement("afterend", toast);
+
+    // Auto-remove after a short delay.
+    window.setTimeout(function () {
+      toast.classList.add("is-hiding");
+      window.setTimeout(function () {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 250);
+    }, 1400);
+  }
+
+  function fallbackCopy(text) {
+    // Old-school fallback for non-secure contexts / older browsers.
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+
+  window.a2a_config.callbacks.push({
+    share: function (data) {
+      // Only override the Copy Link service.
+      if (!data || data.serviceCode !== "copy_link") return;
+
+      var url = data.url || window.location.href;
+      var btn = data.node;
+
+      // Prevent AddToAny’s default modal / UI for copy_link.
+      // Returning { stop: true } cancels the share action. :contentReference[oaicite:3]{index=3}
+      var stop = { stop: true };
+
+      // Prefer modern Clipboard API when available (requires HTTPS / secure context).
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard
+          .writeText(url)
+          .then(function () {
+            showCopiedMessage(btn, "Link Copied");
+          })
+          .catch(function () {
+            // If permissions fail, try fallback.
+            var ok = fallbackCopy(url);
+            showCopiedMessage(btn, ok ? "Link Copied" : "Copy failed");
+          });
+
+        return stop;
+      }
+
+      // Non-secure context or older browser fallback.
+      var ok = fallbackCopy(url);
+      showCopiedMessage(btn, ok ? "Link Copied" : "Copy failed");
+      return stop;
+    },
+  });
+})();
+</script>
+<style>.addtoany_list a {
+  display: inline-flex;
+  border: 1px solid #e8e8e7 !important;
+  border-radius: 3px;
+  padding: 4px !important;
+  margin: 0 4px;
+}
+
+/* Ensure the icon itself is a positioning context */
+.addtoany_list {
+  position: relative;
+}
+.a2a_button_copy_link {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Toast positioned above the icon */
+.a2a-copy-toast {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  opacity: 1;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+/* Fade-out state */
+.a2a-copy-toast.is-hiding {
+  opacity: 0;
+}
+</style>
+
+    <title>WRI’s Open Data Commitment | World Resources Institute</title>
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css__9_Y4Xr9eB6c_Zm0iFe5HCgnZFyiqqgH85iizq01a0k.css?delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1UW1uIyEMvRAatlXvY3mwwzg1GGGmzfT0S5Skq1XTP2Deh8EPJBqG9Yh4L5ZTtzoCSkSBrLaiBnTnAVLPnIb1mNwXqTA2cXDuwg7ErXPCwQQf3F2sPjMVI1R_xjS2pgwVx94ZsBIklTL7QcLSUPLTfqO0ebPylPW5oTO8_IGXV3gL6Z1Jpg4wJes0HxS_q9uIXCkknV2PuE7noy7sjpn9ca5Gk7POkfreUBc84-U_gATV8g2q1guqfHFQPGwfQOLJZiRHtMrJNDTsmDu2zR_-f8iy17avKr4xBZdyjaRZ2xusaund4xPsobvG30baMG5CDCtS5uCHDy63-YbDZ5caNyzr3jP3mfYHKGdMxzdZUGr45PU054j3fZnRFq5jIR4oOmO3nJV_lZ2UL6tdfuXvCf_gr8sPcGzTtNz-4i9Vqgua" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_vIc1DlC3POYksUHYdn3QoHlZVYIin6C3YrCmsm46l-c.css?delta=1&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1UW1uIyEMvRAatlXvY3mwwzg1GGGmzfT0S5Skq1XTP2Deh8EPJBqG9Yh4L5ZTtzoCSkSBrLaiBnTnAVLPnIb1mNwXqTA2cXDuwg7ErXPCwQQf3F2sPjMVI1R_xjS2pgwVx94ZsBIklTL7QcLSUPLTfqO0ebPylPW5oTO8_IGXV3gL6Z1Jpg4wJes0HxS_q9uIXCkknV2PuE7noy7sjpn9ca5Gk7POkfreUBc84-U_gATV8g2q1guqfHFQPGwfQOLJZiRHtMrJNDTsmDu2zR_-f8iy17avKr4xBZdyjaRZ2xusaund4xPsobvG30baMG5CDCtS5uCHDy63-YbDZ5caNyzr3jP3mfYHKGdMxzdZUGr45PU054j3fZnRFq5jIR4oOmO3nJV_lZ2UL6tdfuXvCf_gr8sPcGzTtNz-4i9Vqgua" />
+<link rel="stylesheet" media="all" href="https://use.typekit.net/xrt8xkt.css" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_yEKtxqtdmntQoUqvMKLq9qlFsx-qyfE7hnqkvM0ZetU.css?delta=3&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1UW1uIyEMvRAatlXvY3mwwzg1GGGmzfT0S5Skq1XTP2Deh8EPJBqG9Yh4L5ZTtzoCSkSBrLaiBnTnAVLPnIb1mNwXqTA2cXDuwg7ErXPCwQQf3F2sPjMVI1R_xjS2pgwVx94ZsBIklTL7QcLSUPLTfqO0ebPylPW5oTO8_IGXV3gL6Z1Jpg4wJes0HxS_q9uIXCkknV2PuE7noy7sjpn9ca5Gk7POkfreUBc84-U_gATV8g2q1guqfHFQPGwfQOLJZiRHtMrJNDTsmDu2zR_-f8iy17avKr4xBZdyjaRZ2xusaund4xPsobvG30baMG5CDCtS5uCHDy63-YbDZ5caNyzr3jP3mfYHKGdMxzdZUGr45PU054j3fZnRFq5jIR4oOmO3nJV_lZ2UL6tdfuXvCf_gr8sPcGzTtNz-4i9Vqgua" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_DIhOb2s0O4b3Ty55-ma1e_3HfhqHruq5QI1BYLFJM10.css?delta=4&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1UW1uIyEMvRAatlXvY3mwwzg1GGGmzfT0S5Skq1XTP2Deh8EPJBqG9Yh4L5ZTtzoCSkSBrLaiBnTnAVLPnIb1mNwXqTA2cXDuwg7ErXPCwQQf3F2sPjMVI1R_xjS2pgwVx94ZsBIklTL7QcLSUPLTfqO0ebPylPW5oTO8_IGXV3gL6Z1Jpg4wJes0HxS_q9uIXCkknV2PuE7noy7sjpn9ca5Gk7POkfreUBc84-U_gATV8g2q1guqfHFQPGwfQOLJZiRHtMrJNDTsmDu2zR_-f8iy17avKr4xBZdyjaRZ2xusaund4xPsobvG30baMG5CDCtS5uCHDy63-YbDZ5caNyzr3jP3mfYHKGdMxzdZUGr45PU054j3fZnRFq5jIR4oOmO3nJV_lZ2UL6tdfuXvCf_gr8sPcGzTtNz-4i9Vqgua" />
+
+    <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/100209","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"eJyFU9FyGyEM_CF6NE3_R6MDmVMMiEE6J5evL_bZzkzsTF_QsrsIkABjNMG6ebyC6dClmkP2yJCyzJgdqpIB1zcKJt0H1Ykr2MIKSp1JIVLrFNAowom6stRni4pEzPpMaSQtE1S0tRNgjRAyl5EPApaGnJ7ms9LGzpmGrY-ASvDyG17-wN_v7jedRLEKqG2Za3LhSJGHAhiC9DgO7O9oLwHV6EIeeTY_j8w3XEgVE-ltXiUOTToN1Atm_iSXcZPVILIGGeXYvFQKkl3DjqljW9THvjbM0xczrbWtc2ZdKDrlci5Hk7Y2mLOEo_on3M13Ln2zsKBfOBLMGBM9at8JOL06NTRW43A_0RfjdFOjst_eFN47V79gmdeeqI9enSBTwrDdxYJc3TvNh1EJf41TZMySHujRr0LVpkiGnHVSPNF_TSYp5Z9th0wfs3z8qF9796CfhwfSlrFo2rvsxvUgSCnjmQz4K1m5UAfORt1_wWkPF1FJLuYR93mTI_lO44mPz7NznyLFY3sNYB3D8R84g2Tj","theme":"ts_wrin","theme_token":null},"ajaxTrustedUrl":{"form_action_p_pvdeGsVG5zNF_XLGPTvYSKCf43t8qZYSwcfZl2uzM":true},"simple_popup_blocks":{"settings":[{"uid":"beforefilesmodal","type":0,"css_selector":"1","identifier":"block-beforefilesmodal","layout":"4","visit_counts":"0","overlay":"1","trigger_method":"1","trigger_selector":".files-overlay-trigger-webform","delay":0,"enable_escape":"1","trigger_width":null,"minimize":"1","close":"1","use_time_frequency":false,"time_frequency":"3600","show_minimized_button":"1","width":"600","cookie_expiry":0,"status":"1","escape":"1"},{"uid":"classyembed","type":0,"css_selector":"1","identifier":"block-classyembed","layout":"6","visit_counts":"0","overlay":false,"trigger_method":0,"trigger_selector":"#custom-css-id","delay":0,"enable_escape":"1","trigger_width":null,"minimize":"1","close":"1","use_time_frequency":false,"time_frequency":"3600","show_minimized_button":false,"width":"1200","cookie_expiry":"100","status":"1"},{"uid":"files_modal","type":"1","css_selector":0,"identifier":"files-modal","layout":"5","visit_counts":"0","overlay":"1","trigger_method":"1","trigger_selector":".files-overlay-trigger","delay":0,"minimize":"1","close":"1","width":"600","cookie_expiry":"100","status":"1","escape":"1"},{"uid":"wri_region_map_popup","type":"1","css_selector":0,"identifier":"wri-region-map-popup","layout":"7","visit_counts":"0","overlay":false,"trigger_method":"1","trigger_selector":".wri-region-map-popup-button","delay":0,"minimize":false,"close":false,"width":"500","cookie_expiry":0,"status":"1","escape":"1"}]},"webform":{"dialog":{"options":{"narrow":{"title":"Narrow","width":600},"normal":{"title":"Normal","width":800},"wide":{"title":"Wide","width":1000}},"entity_type":"node","entity_id":"100209"},"xss":{"allowedTags":["a","abbr","acronym","address","article","aside","b","bdi","bdo","big","blockquote","br","caption","cite","code","col","colgroup","command","dd","del","details","dfn","div","dl","dt","em","figcaption","figure","footer","h1","h2","h3","h4","h5","h6","header","hgroup","hr","i","img","ins","kbd","li","mark","menu","meter","nav","ol","output","p","pre","progress","q","rp","rt","ruby","s","samp","section","small","span","strong","sub","summary","sup","table","tbody","td","tfoot","th","thead","time","tr","tt","u","ul","var","wbr","label","fieldset","legend","font"]}},"wri_filter":{"filterCookieName":"STYXKEY_wri_filter","allFilters":{"53":{"id":"53","name":"climate"},"226":{"id":"226","name":"cities"},"222":{"id":"222","name":"energy"},"4422":{"id":"4422","name":"food"},"73":{"id":"73","name":"forests"},"56":{"id":"56","name":"freshwater"},"18861":{"id":"18861","name":"ocean"},"74":{"id":"74","name":"business"},"10510":{"id":"10510","name":"economics"},"9640":{"id":"9640","name":"finance"},"227":{"id":"227","name":"equity \u0026 governance"}},"pageIsFilterable":false,"currentFilterName":""},"wri_seo":{"node_type":"simple_page","default_details":{"primary topic":""}},"ckeditorAccordion":{"accordionStyle":{"collapseAll":1,"keepRowsOpen":0,"animateAccordionOpenAndClose":1,"openTabsWithHash":1,"allowHtmlInTitles":0}},"wri_common":{"gtm_id":"GTM-WGH5WB9","analytics_url":"https:\/\/www.googletagmanager.com"},"simple_recaptcha_v3":{"sitekey":"6Lfe0pUaAAAAADa4jxZYcZ-H67EiunZ-DqLRlYgS","forms":{"webform_submission_simple_email_submit_node_100209_add_form":{"form_id":"webform_submission_simple_email_submit_node_100209_add_form","score":70,"error_message":null,"action":"webform_submission_simple_email_submit_node_100209_add_form"}}},"statistics":{"data":{"nid":"100209"},"url":"\/core\/modules\/statistics\/statistics.php"},"user":{"uid":0,"permissionsHash":"b96204c9d505144fedf04ff3722cc9a90e078ebcb594d09570f6e919d4d6a196"}}</script>
+<script src="/sites/default/files/js/js_oa50UNqk9SoewqHxw0O2uwI5aiFh5UOOGpq2M2oJQiQ.js?scope=header&amp;delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7wEmcBI9ubKD19N9k0kZpW_fEMb0YWMuRsDP0a4GH8LNzNAQWgWCpPUB2ookXqJ0zGEk7qWaFzVLtW6sWlBTNtSYSUWDJxD0-378OenVIbFePgsY44VU6Lhl_Yd08wwbB0hPATxPPBqYGRGiUNWdYB1b-IM40XoR6O0KZVCkrscI4VC6TrM2xA3V1wmllaeKjPBJXLG8aKDbv5jAZU1Suc8d-ScSn171pDVSjv-W247YcxcWvbJTf7UWxHM1VDCS_rd7mHinwvb7q_By8YBG2VHm1nn8wtwDikaAJp-QKj1chR"></script>
+
+    
+  </head>
+  <body class="showing-main-menu wri’s-open-data-commitment path-node page-node-type-simple-page">
+    <!-- Google Tag Manager (noscript) -->
+        <noscript>
+      <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WGH5WB9" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- Grid Layout Checker -->
+        <!-- END Grid Layout Checker -->
+
+    <a href="#main-content" class="visually-hidden focusable skip-link">
+      Skip to main content
+    </a>
+
+    <div id="accessibility-url">
+      <a href="/accessibility" class="visually-hidden focusable skip-link">
+		    Accessibility
+      </a>
+    </div>
+      
+        <main class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+      
+  <div id="tray-nav-wrapper">
+  <div id="tray-nav-canvas">
+        <header>
+      <div class="container header-wrapper">
+                  
+  
+
+<div  class="region region-primary-nav">
+  <div id="block-ts-wrin-branding" class="block block-system block-system-branding-block">
+  
+    
+        <a href="/" rel="home" class="site-logo">
+      <img class="logo-white hidden" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+      <img class="logo-color" src="/sites/default/files/nav_logo_color_0.svg" alt="Home" />
+    </a>
+        <div class="site-name hidden">
+      <a href="/" title="Home" rel="home">World Resources Institute</a>
+    </div>
+        <div class="site-slogan visually-hidden">Making Big Ideas Happen</div>
+  </div>
+<nav role="navigation" aria-labelledby="block-ts-wrin-main-menu-menu" id="block-ts-wrin-main-menu" class="has-active-trail block block-menu navigation menu--main">
+            
+  <div class="visually-hidden" id="block-ts-wrin-main-menu-menu">Main navigation</div>
+  
+
+        <div class="menu-wrapper">
+
+              <ul class="menu">
+                    <li class="menu-item menu-item--collapsed">
+        <a href="/research" data-drupal-link-system-path="node/71">Research</a>
+              </li>
+                <li class="menu-item menu-item--expanded menu-item--active-trail">
+        <a href="/data" data-drupal-link-system-path="node/72">Data</a>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <a href="/data/data-lab" data-drupal-link-system-path="node/100307">Data Lab</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/data-applications" data-drupal-link-system-path="node/100309">Data Applications</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/product-studio" data-drupal-link-system-path="node/104205">Product Studio</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://datasets.wri.org/" target="_blank">Data Explorer</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/open-data-commitment" data-drupal-link-system-path="node/100209" class="is-active" aria-current="page">Open Data Commitment</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/approach-responsible-artificial-intelligence" data-drupal-link-system-path="node/105621">Responsible AI Use</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/applied-ai-group" data-drupal-link-system-path="node/105640">Applied AI Group</a>
+              </li>
+                <li class="menu-item">
+        <a href="/resources/type/data-52" data-drupal-link-system-path="resources/type/data-52">Resource Library</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Reach an Expert</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Insights</a>
+              </li>
+        </ul>
+  
+
+</div><a href="#scroll" class="nav-arrow"><svg aria-hidden="true" data-title="Click to see more items" tabindex="-1" data-prefix="far" data-icon="chevron-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" class="svg-inline--fa fa-chevron-right fa-w-8 fa-3x"><path d="M24.707 38.101L4.908 57.899c-4.686 4.686-4.686 12.284 0 16.971L185.607 256 4.908 437.13c-4.686 4.686-4.686 12.284 0 16.971L24.707 473.9c4.686 4.686 12.284 4.686 16.971 0l209.414-209.414c4.686-4.686 4.686-12.284 0-16.971L41.678 38.101c-4.687-4.687-12.285-4.687-16.971 0z"/><title>Click to see more</title></svg></a>
+  </nav>
+
+</div>
+
+                <div class="header-right ">
+                      
+  
+
+<div  class="region region-secondary-nav">
+  <nav role="navigation" aria-labelledby="block-donate-menu" id="block-donate" class="block block-menu navigation menu--donate">
+            
+  <div class="visually-hidden" id="block-donate-menu">Donate</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <a href="https://giving.wri.org/campaign/694046/donate">Donate</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+</div>
+
+          
+          
+                      <button class="tray-toggle search-toggle" aria-label="Toggle Search Menu" title="Search Menu" data-tray="search-tray">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
+</button>
+          
+                      <button class="tray-toggle filter-toggle" aria-label="Toggle filter Menu" title="Filter Menu" data-tray="filter-tray">
+      <span class="filter-icon">
+        <svg width="22px" height="24px" viewBox="0 0 22 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+          <g id="block-styles" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="assets" transform="translate(-194.000000, -186.000000)" stroke-width="2">
+              <g id="icon/gear-white-copy-2" transform="translate(195.018833, 187.000000)">
+                <path d="M9.99998346,14.1437469 C8.10683773,14.1437469 6.57210464,12.6090138 6.57210464,10.7158681 C6.57210464,8.82272233 8.10683773,7.28798924 9.99998346,7.28798924 C11.8931292,7.28798924 13.4278623,8.82272233 13.4278623,10.7158681 C13.4278623,12.6090138 11.8931292,14.1437469 9.99998346,14.1437469 Z M18.3523689,12.6590768 C18.499688,12.0242017 18.5741447,11.3727453 18.5741447,10.7158681 C18.5741447,10.0589908 18.499688,9.40737496 18.3523689,8.77265936 L19.8018036,7.28097404 C20.0203907,7.0558501 20.0626413,6.71338109 19.9062344,6.4418612 L19.2804472,5.35801375 L18.65466,4.27400686 C18.527111,4.05334712 18.293537,3.92356604 18.0475269,3.92356604 C17.9901298,3.92356604 17.9328922,3.93058123 17.8754952,3.94508993 L15.8567137,4.4546481 C14.895951,3.55558723 13.7462564,2.89121649 12.493566,2.51080166 L11.9261325,0.509558172 C11.8403558,0.208542581 11.5650094,5.15143483e-14 11.2515578,5.15143483e-14 L8.74824966,5.15143483e-14 C8.43495748,5.15143483e-14 8.15945169,0.208542581 8.073675,0.509558172 L7.50640091,2.51080166 C6.2537105,2.89121649 5.10385645,3.55558723 4.1432532,4.4546481 L2.1243123,3.94508993 C2.06707469,3.93058123 2.00967765,3.92356604 1.95291836,3.92356604 C1.70642995,3.92356604 1.47285589,4.05334712 1.34578522,4.27400686 L0.719998036,5.35801375 L0.0942108564,6.4418612 C-0.0628338243,6.71338109 -0.0204237887,7.0558501 0.198163274,7.28097404 L1.64743855,8.77265936 C1.50011948,9.40737496 1.42614107,10.0589908 1.42614107,10.7158681 C1.42614107,11.3727453 1.50011948,12.0242017 1.64743855,12.6590768 L0.198163274,14.1507621 C-0.0204237887,14.375886 -0.0628338243,14.7181956 0.0942108564,14.9898749 L0.719998036,16.0737224 L1.34578522,17.1577293 C1.47285589,17.378389 1.70642995,17.5081701 1.95291836,17.5081701 C2.00967765,17.5081701 2.06707469,17.5011549 2.1243123,17.4866462 L4.1432532,16.977088 C5.10385645,17.8761489 6.2537105,18.5405196 7.50640091,18.9209345 L8.073675,20.9221779 C8.15945169,21.2238313 8.43495748,21.4317361 8.74824966,21.4317361 L11.2515578,21.4317361 C11.5650094,21.4317361 11.8403558,21.2238313 11.9261325,20.9221779 L12.493566,18.9209345 C13.7462564,18.5405196 14.895951,17.8761489 15.8567137,16.977088 L17.8754952,17.4866462 C17.9328922,17.5011549 17.9901298,17.5081701 18.0475269,17.5081701 C18.293537,17.5081701 18.527111,17.378389 18.65466,17.1577293 L19.2804472,16.0737224 L19.9062344,14.9898749 C20.0626413,14.7181956 20.0203907,14.375886 19.8018036,14.1507621 L18.3523689,12.6590768 Z" id="icon/gear-black"></path>
+              </g>
+            </g>
+          </g>
+        </svg>
+      </span>
+</button>
+          
+                      
+<button class="menu-toggle" aria-label="Open mobile menu" title="Menu Toggle">
+  <div class="ts-menu-toggle-wrapper">
+    <span></span>
+  </div>
+</button>
+                  </div>
+      </div>
+    </header>
+    
+    <div class="mobile-menu-target">
+      <div class="ts-mobile-menu__wrapper">
+                  
+
+<div  class="region region-hamburger-nav container">
+  <div class="hamburger-header">
+    <a href="/" rel="home" class="site-logo">
+      <img class="logo-white" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+    </a>
+    <div class="donate-menu">
+              <ul class="menu">
+                    <li class="menu-item">
+        <a href="https://giving.wri.org/campaign/694046/donate">Donate</a>
+              </li>
+        </ul>
+  
+
+</div>
+    <button class="mega_menu_close" aria-label="Toggle Mega Menu" title="Close Mega Menu">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+        <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+      </svg>
+    </button>
+  </div>
+  <div class="hamburger-content">
+    
+<nav role="navigation" aria-labelledby="block-quicklinks-menu" id="block-quicklinks" class="block block-menu navigation menu--quick-links margin-bottom-md">
+            
+  <div class="visually-hidden" id="block-quicklinks-menu">Quick Links</div>
+  
+
+        
+        <div class="menu-wrapper">
+          <ul class="menu">
+                    <li class="menu-item">
+        <span>Quick Links</span>
+              </li>
+                <li class="menu-item">
+        <a href="/news" data-drupal-link-system-path="node/100179">News </a>
+              </li>
+                <li class="menu-item">
+        <a href="/resources" data-drupal-link-system-path="resources">Resource Library</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://www.wri.org/about/experts-staff">Experts</a>
+              </li>
+                <li class="menu-item">
+        <a href="/events" data-drupal-link-system-path="events">Events</a>
+              </li>
+                <li class="menu-item">
+        <a href="/careers" data-drupal-link-system-path="node/105746">Careers</a>
+              </li>
+                <li class="menu-item">
+        <a href="/donate" class="button small" data-drupal-link-system-path="node/100250">Donate</a>
+              </li>
+          </ul>
+    </div>
+  
+
+
+  </nav><a href="#scroll" aria-hidden="true" tabindex="-1" class="nav-arrow"><svg aria-hidden="true" data-prefix="far" data-icon="chevron-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" class="svg-inline--fa fa-chevron-right fa-w-8 fa-3x"><path d="M24.707 38.101L4.908 57.899c-4.686 4.686-4.686 12.284 0 16.971L185.607 256 4.908 437.13c-4.686 4.686-4.686 12.284 0 16.971L24.707 473.9c4.686 4.686 12.284 4.686 16.971 0l209.414-209.414c4.686-4.686 4.686-12.284 0-16.971L41.678 38.101c-4.687-4.687-12.285-4.687-16.971 0z"/><title>Click to see more</title></svg></a>
+<nav role="navigation" aria-labelledby="block-mainnavigation-menu" id="block-mainnavigation" class="block block-menu navigation menu--main">
+            
+  <div class="visually-hidden" id="block-mainnavigation-menu">Main navigation</div>
+  
+
+        
+
+              <ul class="menu">
+                    <li class="menu-item menu-item--collapsed">
+        <a href="/research" data-drupal-link-system-path="node/71">Research</a>
+              </li>
+                <li class="menu-item menu-item--collapsed menu-item--active-trail">
+        <a href="/data" data-drupal-link-system-path="node/72">Data</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Insights</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenusecondary-2-menu" id="block-footermenusecondary-2" class="block block-menu navigation menu--footer-secondary">
+            
+  <div class="visually-hidden" id="block-footermenusecondary-2-menu">Footer menu - secondary</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-work" class="flexible-row-submenu" data-drupal-link-system-path="node/100023">Our Work</a></span>
+                                <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Regions</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/africa" data-drupal-link-system-path="node/100030">Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/asia" data-drupal-link-system-path="node/100062">Asia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/wri-europe" data-drupal-link-system-path="node/100060">Europe</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/latin-america" data-drupal-link-system-path="node/100032">Latin America</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/north-america" data-drupal-link-system-path="node/100065">North America</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Topics</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/cities" data-drupal-link-system-path="node/103166">Cities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/climate" data-drupal-link-system-path="node/100004">Climate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/economics" data-drupal-link-system-path="node/100025">Economics</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/energy" data-drupal-link-system-path="node/105106">Energy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/equitable-development" data-drupal-link-system-path="node/100027">Equity</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/finance" data-drupal-link-system-path="node/100026">Finance</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/food" data-drupal-link-system-path="node/100006">Food</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/forests" data-drupal-link-system-path="node/100007">Forests</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/freshwater" data-drupal-link-system-path="node/100009">Freshwater</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/ocean" data-drupal-link-system-path="node/100008">Ocean</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+<nav role="navigation" aria-labelledby="block-megamenu-menu" id="block-megamenu" class="block block-menu navigation menu--mega-menu">
+            
+  <div class="visually-hidden" id="block-megamenu-menu">Mega Menu</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-approach" data-drupal-link-system-path="node/100163">Our Approach</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/strategic-plan" data-drupal-link-system-path="node/103333">Strategic Plan</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/our-approach/managing-for-results" data-drupal-link-system-path="node/100303">Managing for Results</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/top-outcomes" data-drupal-link-system-path="node/100164">Top Outcomes</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/about" data-drupal-link-system-path="node/100080">About Us</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/mission-values" data-drupal-link-system-path="node/100258">Mission</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.wri.org/about/experts-staff">Staff</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/financials" data-drupal-link-system-path="node/100221">Financials </a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/history" data-drupal-link-system-path="node/102377">History</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/sustainability-wri" data-drupal-link-system-path="node/100257">Sustainability at WRI</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/board-directors" data-drupal-link-system-path="node/100147">Board of Directors</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri.ethicspoint.com/">Whistleblower and Ethics Reporting</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://secure.ethicspoint.com/domain/media/en/gui/72880/code.pdf">Code of Conduct</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/join-us" data-drupal-link-system-path="node/100251">Join Us</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/events" data-drupal-link-system-path="events">Events</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://careers.wri.org">Careers</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/procurement-opportunities" data-drupal-link-system-path="node/100304">Procurement Opportunities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/contact" data-drupal-link-system-path="node/100415">Contact the Institute</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-wrinsearch-2" class="block block-wri-search block-single-file-component-blockwri-search-menu">
+  
+    
+      <div class="search-tray tray-contents">
+      <form class="single-border" action="/search">
+    <div class="input-wrapper">
+      <label for="wrinsearch_2">What can we help you find?</label>
+      <input class="ghost" type="text" name="keys" id="wrinsearch_2">
+    </div>
+    <input class="button ghost form" type="submit" value="Search">
+  </form>
+
+  <button class="tray-nav__close" aria-label="Toggle Search Menu" title="Close Search Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+  
+              <ul class="search-menu-block">
+                    <li class="menu-item">
+        <a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a>
+              </li>
+                <li class="menu-item">
+        <a href="/join-us" data-drupal-link-system-path="node/100251">Join us</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Contact an Expert</a>
+              </li>
+                <li class="menu-item">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Explore WRI Perspectives</a>
+              </li>
+        </ul>
+  
+
+
+</div>
+
+  </div>
+
+  </div>
+  <div class="hamburger-slider">
+    <div class="hamburger-slider-contents">
+      <a href="#" class="back">Back</a>
+      <ul class="menu"></ul>
+    </div>
+  </div>
+</div>
+
+              </div>
+    </div>
+
+        <div id="tray-nav">
+              
+  
+
+<div  class="region region-wrin-custom">
+  <div id="block-wrinfilter" class="block block-wri-filter block-single-file-component-blockwri-filter">
+  
+    
+  
+<div class="filter-tray tray-contents content-side-padding">
+  <div class="header">
+    <h2 class="h2 white">Filter Your Site Experience by Topic</h2>
+    <p class="white">Applying the filters below will filter all articles, data, insights and projects by the topic area you select.</p>
+  </div>
+  <ul>
+    <li><a class="sitewide-content-filter all-topics active h4 white" href="/content-filter/remove">All Topics <span class="filter-remove italic-tiny white">Remove filter</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="climate" href="/content-filter/53">Climate <span class="filter-description italic-tiny black">filter site by Climate</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="cities" href="/content-filter/226">Cities <span class="filter-description italic-tiny black">filter site by Cities</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="energy" href="/content-filter/222">Energy <span class="filter-description italic-tiny black">filter site by Energy</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="food" href="/content-filter/4422">Food <span class="filter-description italic-tiny black">filter site by Food</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="forests" href="/content-filter/73">Forests <span class="filter-description italic-tiny black">filter site by Forests</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="freshwater" href="/content-filter/56">Freshwater <span class="filter-description italic-tiny black">filter site by Freshwater</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="ocean" href="/content-filter/18861">Ocean <span class="filter-description italic-tiny black">filter site by Ocean</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="business" href="/content-filter/74">Business <span class="filter-description italic-tiny black">filter site by Business</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="economics" href="/content-filter/10510">Economics <span class="filter-description italic-tiny black">filter site by Economics</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="finance" href="/content-filter/9640">Finance <span class="filter-description italic-tiny black">filter site by Finance</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="equity &amp; governance" href="/content-filter/227">Equity &amp; Governance <span class="filter-description italic-tiny black">filter site by Equity &amp; Governance</span></a></li>
+      </ul>
+  <button class="tray-nav__close" aria-label="Toggle filter Menu" title="Close Filter Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+</div>
+</div>
+<div id="block-wrinsearch" class="block block-wri-search block-single-file-component-blockwri-search-menu">
+  
+    
+      <div class="search-tray tray-contents">
+      <h2 class="h2 white">Search WRI.org</h2>
+        <p class="tray-nav-description">Not sure where to find something? Search all of the site&#039;s content.</p>
+    <form class="single-border" action="/search">
+    <div class="input-wrapper">
+      <label for="wrinsearch">What can we help you find?</label>
+      <input class="ghost" type="text" name="keys" id="wrinsearch">
+    </div>
+    <input class="button ghost form" type="submit" value="Search">
+  </form>
+
+  <button class="tray-nav__close" aria-label="Toggle Search Menu" title="Close Search Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+  
+              <ul class="search-menu-block">
+                    <li class="menu-item">
+        <a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a>
+              </li>
+                <li class="menu-item">
+        <a href="/join-us" data-drupal-link-system-path="node/100251">Join us</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Contact an Expert</a>
+              </li>
+                <li class="menu-item">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Explore WRI Perspectives</a>
+              </li>
+        </ul>
+  
+
+
+</div>
+
+  </div>
+
+</div>
+
+          </div>
+    
+          
+  
+
+<div  class="region region-admin">
+  <div data-drupal-messages-fallback class="hidden"></div>
+
+</div>
+
+    
+                  
+  
+
+<div  id="main-content" class="region region-content">
+  <div id="block-ts-wrin-content" class="block block-system block-system-main-block">
+  
+    
+      
+<article class="node node--type-simple-page node--promoted node--view-mode-full">
+
+  
+    
+
+  
+  <div class="node__content">
+      <div class="layout layout--onecol">
+    <div  class="layout__region layout__region--content">
+      <div class="block block-ctools block-entity-viewnode">
+  
+    
+      <div  class="display-main-content ds-1col clearfix">
+        <div class="simple-page">
+                  <div >
+            
+          </div>
+                  <div class="display-main-content ds-1col clearfix grid simple-page__title">
+                          <div  class="layout__region layout__region--title">
+                  <nav class="breadcrumb" role="navigation" aria-labelledby="system-breadcrumb">
+    <div id="system-breadcrumb" class="visually-hidden">Breadcrumb</div>
+    <ol>
+                          <li>
+                  <a href="/data">Data</a>
+              </li>
+              </ol>
+  </nav>
+
+
+  <h1 class="h1">
+  WRI’s Open Data Commitment
+</h1>
+
+    
+            <div class="intro-wrapper"><p><em>WRI believes that sound policies and informed decisions require the free flow of information. To that end, we commit to making our data and the results of our research freely available for all to use.</em></p>
+
+<p>WRI strives to make our data and the results of our research open to anyone, enabling users to create their own products, conduct their own analyses, and draw their own conclusions.</p></div>
+
+      
+  
+
+
+              </div>
+                                </div>
+      </div>
+
+    <div class="simple-page-intro">
+              
+    <div class="paragraph paragraph--type--side-by-side paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><h2 class="h2">To support this vision, WRI commits to three key principles of open data:</h2>
+</div>
+      
+            <div class="clearfix text-formatted field field--name-field-body field--type-text-long field--label-hidden field__item"><ol>
+	<li>Data should be licensed openly for free, allowing anyone to use, share, and adapt our work.</li>
+	<li>Data should be easily accessible and downloadable, thoroughly described, machine-readable, and maintained over time, to enable reuse.</li>
+	<li>Data should be complete and primary, such that others are able to test and examine our work.</li>
+</ol>
+
+<p>Get in touch at <a href="/cdn-cgi/l/email-protection#593d382d38192e2b3077362b3e"><span class="__cf_email__" data-cfemail="fd999c899cbd8a8f94d3928f9a">[email&#160;protected]</span></a> to request data not found on <a href="https://datasets.wri.org/">datasets.wri.org</a>, or to raise questions or concerns. You can find more about the code and analyses behind WRI’s research and data products on <a href="https://github.com/wri">our GitHub</a>.</p>
+</div>
+      
+      </div>
+
+    <div class="paragraph paragraph--type--small-cta paragraph--view-mode--default">
+          
+            <div class="has-blue-background-color block field field--name-field-block field--type-entity-reference field--label-hidden field__item"><div class="has-blue-background-color display-default container small-cta-wrapper">
+  
+  <a href="/profile/logan-byers" class="arrow-link">For questions or concerns, please contact Logan Byers</a>
+
+</div>
+
+</div>
+      
+      </div>
+
+    <div class="paragraph paragraph--type--side-by-side paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><h2 class="h2">Why Open Data?</h2>
+</div>
+      
+            <div class="clearfix text-formatted field field--name-field-body field--type-text-long field--label-hidden field__item"><p>We understand the value of open data. Every day, we rely on data and research created by others to conduct our work. We also believe that open data inspires participation and innovation, and increases our reach in providing governments, businesses, and people the necessary tools to make informed decisions. Finally, we believe that our work stands up under scrutiny, and allowing others to see the data behind our analyses ensures that it does.</p>
+
+<p>WRI has a long history of publicly sharing data, from our earliest hard copy data tables in the original World Resources Report to the continued work of The Access Initiative promoting the right to information. We are now challenging ourselves to expand the scope and comprehensiveness of our data sharing.</p>
+</div>
+      
+      </div>
+
+    <div class="paragraph paragraph--type--unique-feature-cta paragraph--view-mode--default">
+          
+            <div class="field field--name-field-block field--type-entity-reference field--label-hidden field__item"><div  class="display-default ds-1col clearfix unique-feature padding-vertical">
+
+  
+        <a href="https://datasets.wri.org/" class="image-link" aria-hidden="true" tabindex="-1" >
+        <div class="image-wrapper">
+          
+      <picture>
+                  <source srcset="https://files.wri.org/d8/s3fs-public/styles/2000x695/s3/2021-03/data-thumbnail.png?VersionId=2qZroF1AJ5WF_IQSlmnJhhby6mkhc.3M&amp;h=343e538c&amp;itok=WSQ_WEoM 1x" media="(min-width: 1440px)" type="image/png" width="2000" height="695"/>
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/1440x500/s3/2021-03/data-thumbnail.png?VersionId=H3U0ocH5mEN49wW2wbsodJUUWCziaMjw&amp;h=343e538c&amp;itok=L0N6i_ef 1x" media="(min-width: 1024px) and (max-width: 1440px)" type="image/png" width="1440" height="500"/>
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/1024x500/s3/2021-03/data-thumbnail.png?VersionId=I6yvxwzY3Z9gPNntkqe.10YyFONye95e&amp;h=343e538c&amp;itok=BGrpRJ8B 1x" media="(min-width: 768px) and (max-width: 1023px)" type="image/png" width="1024" height="500"/>
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/768x460/s3/2021-03/data-thumbnail.png?VersionId=VqGur_repf0wQXr8drdD.L23JJEnlr3U&amp;h=343e538c&amp;itok=mTE6uMV0 1x" media="(min-width: 501px) and (max-width: 767px)" type="image/png" width="768" height="460"/>
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/500x240/s3/2021-03/data-thumbnail.png?VersionId=_qyMUGOEVjZL7JwQMZTj.ICuKtsTlKqj&amp;h=343e538c&amp;itok=BdKTRTDT 1x" media="(min-width: 0px) and (max-width: 500px)" type="image/png" width="500" height="240"/>
+                  <img loading="lazy" width="500" height="240" src="https://files.wri.org/d8/s3fs-public/styles/500x240/s3/2021-03/data-thumbnail.png?VersionId=_qyMUGOEVjZL7JwQMZTj.ICuKtsTlKqj&amp;h=343e538c&amp;itok=BdKTRTDT" alt="Datadots over Europe" />
+
+  </picture>
+
+
+
+          <div class="grid white-corners">
+            <div class="inner-box"></div>
+          </div>
+          <div class="grid image-box">
+            <div class="inner-box blue"></div>
+          </div>
+        </div>
+      </a>
+  
+  <div class="grid">
+          <div class="left-text-wrapper">
+        
+        <a href="https://datasets.wri.org/"  class="block_label" aria-hidden="true" tabindex="-1" >    
+      <h2 class="h2">Open Data Portal </h2>
+      
+  
+
+</a>
+                  <a href="https://datasets.wri.org/" class="button">
+            View our Datasets
+          </a>
+              </div>
+    
+          <div class="right-text-wrapper">
+            
+      <div class="intro"><p>Access all our datasets through our open data portal.&nbsp;Data not found on&nbsp;<a href="http://datasets.wri.org/">datasets.wri.org</a>&nbsp;may be requested at <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cca8adb8ad8cbbbea5e2a3beab">[email&#160;protected]</a>.</p></div>
+      
+  
+
+
+
+                  <a href="https://datasets.wri.org/" class="button">
+            View our Datasets
+          </a>
+              </div>
+      </div>
+
+</div>
+
+</div>
+      
+      </div>
+
+    <div class="paragraph paragraph--type--side-by-side paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><h2 class="h2">How will we get there?</h2>
+</div>
+      
+            <div class="clearfix text-formatted field field--name-field-body field--type-text-long field--label-hidden field__item"><p>WRI is taking six steps to meet our open data commitment:</p>
+
+<ol>
+	<li>We have adopted the Creative Commons Attribution 4.0 International License as our standard license for publications and data, and the MIT License as our standard license for source code.</li>
+	<li>We will publish data via an open data portal, and ensure our data are documented, archived, and machine-readable.</li>
+	<li>Authors are required to submit primary data along with manuscripts for publication.</li>
+	<li>We require research and data funded by WRI sub-grants to be released under a Creative Commons or equivalent license.</li>
+	<li>We will fulfill any requests for data in a timely manner, and keep a public record of responses. Data or information products not found on datasets.wri.org may be requested at <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="74101500153403061d5a1b0613">[email&#160;protected]</a>.</li>
+	<li>We encourage data partners, governments, and other NGOs to adopt the same principles, and to share their own data and research openly, to advance the public good.</li>
+</ol>
+</div>
+      
+      </div>
+
+    <div class="paragraph paragraph--type--side-by-side paragraph--view-mode--default">
+          
+            <div class="field field--name-field-title field--type-string field--label-hidden field__item"><h2 class="h2">What doesn’t fall under this commitment?</h2>
+</div>
+      
+            <div class="clearfix text-formatted field field--name-field-body field--type-text-long field--label-hidden field__item"><p>WRI’s open data commitment applies to all data created or collected for WRI’s research, publications, and other knowledge products, with three important exceptions:</p>
+
+<ol>
+	<li>When WRI is legally obligated to not disclose data or proprietary information, we will not.</li>
+	<li>When the disclosure may threaten the personal privacy of individuals, data should be anonymized or redacted prior to publication.</li>
+	<li>When a publication has not yet been reviewed or published, the decision to share the publication’s supporting data is left to the discretion of the author.</li>
+</ol>
+
+<p>WRI analyses and applications may draw on data that is created and owned by others. In this case, WRI does not control access to the data. Instead, we encourage the original source to release the data openly, and we provide contact information for the original source.</p>
+</div>
+      
+      </div>
+
+
+          </div>
+      </div>
+
+
+  </div>
+<div class="block block-layout-builder block-extra-field-blocknodesimple-pagecontent-moderation-control">
+  
+    
+      
+  </div>
+<div class="has-green-background-color block-content--type-b56185b8-0d6e-40f9-b051-0d4f116e13b2 contextual-region block block-block-content block-block-contentb56185b8-0d6e-40f9-b051-0d4f116e13b2">
+  
+    <div data-contextual-id="block_content:block_content=1721:changed=1746716923&amp;ds_bundle=large_cta&amp;ds_view_mode=default&amp;langcode=en" data-contextual-token="efjAGs1PL7lNh2NuciqZiG2FLlUn_Q1X4JuPnMXRpuw" data-drupal-ajax-container=""></div>
+      <div class="large-cta-wrapper ">
+    <div class="cta-text-wrapper grid padding-top padding-bottom">
+    <div class="cta-text-inner">
+      <h2 class="h2 white margin-bottom-lg">
+  Get the latest news and updates from WRI's Data Lab
+</h2>
+      
+  <a href="/data/subscribe-data-lab-updates" class="button gold margin-bottom-md">Subscribe Now</a>
+
+    </div>
+  </div>
+</div>
+
+
+  </div>
+
+    </div>
+  </div>
+
+  </div>
+
+</article>
+
+  </div>
+
+</div>
+
+          
+    <footer>
+                <div class="region region-footer-top">
+    <div class="container">
+      <div class="footer-padding">
+        <div id="block-howyoucanhelpblock" class="block block-wri-block block-how-you-can-help">
+  
+    
+      <h3 class="h4 white">How You Can Help</h3><p>WRI relies on the generosity of donors like you to turn research into action. You can support our work by making a gift today or exploring other ways to give.</p>
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://giving.wri.org/give/406206/#!/donation/checkout?c_src=webite&amp;c_src2=footer-link" class="button small">Donate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/support" class="button small" data-drupal-link-system-path="node/105478">Ways to Give</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/people-and-planet" class="button small pnc-campaign-button">Join our Campaign</a></span>
+              </li>
+        </ul>
+  
+
+
+  </div>
+<div id="block-webform" class="block block-webform block-webform-block grid">
+  <div class="webform-outer">
+    
+          <h2>Stay Informed</h2>
+        
+          <form class="webform-submission-form webform-submission-add-form webform-submission-simple-email-submit-form webform-submission-simple-email-submit-add-form webform-submission-simple-email-submit-node-100209-form webform-submission-simple-email-submit-node-100209-add-form all-inputs-inline wri-stay-informed-footer pardot-form-gtm js-webform-details-toggle webform-details-toggle" data-drupal-selector="webform-submission-simple-email-submit-node-100209-add-form" data-recaptcha-id="webform_submission_simple_email_submit_node_100209_add_form" action="/data/open-data-commitment" method="post" id="webform-submission-simple-email-submit-node-100209-add-form" accept-charset="UTF-8">
+  
+  <div data-drupal-selector="edit-flexbox" class="webform-flexbox js-webform-flexbox js-form-wrapper form-wrapper" id="edit-flexbox"><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="input-wrapper js-webform-type-email webform-type-email js-form-item form-item js-form-type-email form-type-email js-form-item-email form-item-email">
+      <label for="edit-email" class="js-form-required form-required">Email</label>
+        <input data-drupal-selector="edit-email" type="email" id="edit-email" name="email" value="" size="60" maxlength="254" class="form-email required" required="required" aria-required="true" />
+
+        </div>
+</div></div></div>
+<input data-drupal-selector="edit-url-action" type="hidden" name="url_action" value="/webform/sign_up_for_wri_digest" />
+<input autocomplete="off" data-drupal-selector="form-7qifce9iw3ares7ge7g-2w0bcxeq3594kjevpyx4-aq" type="hidden" name="form_build_id" value="form-7qIFce9iW3arEs7Ge7G_2W0BCXEQ3594KJEVPYx4_AQ" />
+<input data-drupal-selector="edit-webform-submission-simple-email-submit-node-100209-add-form" type="hidden" name="form_id" value="webform_submission_simple_email_submit_node_100209_add_form" />
+<input data-drupal-selector="edit-simple-recaptcha-token" type="hidden" name="simple_recaptcha_token" value="" />
+<input data-drupal-selector="edit-simple-recaptcha-type" type="hidden" name="simple_recaptcha_type" value="v3" />
+<input data-drupal-selector="edit-simple-recaptcha-score" type="hidden" name="simple_recaptcha_score" value="70" />
+<input data-drupal-selector="edit-simple-recaptcha-message" type="hidden" name="simple_recaptcha_message" value="" />
+<div class="recaptcha-legal">This site is protected by reCAPTCHA and the Google
+        <a target="_blank" href="https://policies.google.com/privacy">Privacy Policy</a> and <a target="_blank" href="https://policies.google.com/terms">Terms of Service</a> apply.</div><div data-drupal-selector="edit-actions" class="form-actions js-form-wrapper form-wrapper" id="edit-actions"><div id="webform_submission_simple_email_submit_node_100209_add_form-captcha" class="recaptcha-v3 recaptcha-v3-wrapper js-form-wrapper form-wrapper" data-drupal-selector="edit-captcha"></div>
+<input class="webform-button--submit button button--primary js-form-submit form-submit" data-drupal-selector="edit-submit" type="submit" id="edit-submit" name="op" value="Submit" />
+
+</div>
+
+
+  
+</form>
+
+      </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+
+                    <div class="region-footer">
+          <div class="container">
+            <div class="footer-padding">
+              <div class="footer-logo margin-bottom-md">
+                <a href="/">
+                  <img class="logo-white" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+                </a>
+              </div>
+                              
+  
+
+<div  class="region region-footer-left">
+  <nav role="navigation" aria-labelledby="block-footermenumain-menu" id="block-footermenumain" class="block block-menu navigation menu--footer-main">
+            
+  <div class="visually-hidden" id="block-footermenumain-menu">Footer menu - main</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/research" data-drupal-link-system-path="node/71">Research</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/data" data-drupal-link-system-path="node/72">Data</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/insights" title="WRI Insights" data-drupal-link-system-path="node/106548">Insights</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenusecondary-menu" id="block-footermenusecondary" class="block block-menu navigation menu--footer-secondary">
+            
+  <div class="visually-hidden" id="block-footermenusecondary-menu">Footer menu - secondary</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-work" class="flexible-row-submenu" data-drupal-link-system-path="node/100023">Our Work</a></span>
+                                <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Regions</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/africa" data-drupal-link-system-path="node/100030">Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/asia" data-drupal-link-system-path="node/100062">Asia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/wri-europe" data-drupal-link-system-path="node/100060">Europe</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/latin-america" data-drupal-link-system-path="node/100032">Latin America</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/north-america" data-drupal-link-system-path="node/100065">North America</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Topics</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/cities" data-drupal-link-system-path="node/103166">Cities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/climate" data-drupal-link-system-path="node/100004">Climate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/economics" data-drupal-link-system-path="node/100025">Economics</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/energy" data-drupal-link-system-path="node/105106">Energy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/equitable-development" data-drupal-link-system-path="node/100027">Equity</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/finance" data-drupal-link-system-path="node/100026">Finance</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/food" data-drupal-link-system-path="node/100006">Food</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/forests" data-drupal-link-system-path="node/100007">Forests</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/freshwater" data-drupal-link-system-path="node/100009">Freshwater</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/ocean" data-drupal-link-system-path="node/100008">Ocean</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+</div>
+
+              
+                              
+  
+
+<div  class="region region-footer-right">
+  <nav role="navigation" aria-labelledby="block-footermenuoffices-menu" id="block-footermenuoffices" class="block block-menu navigation menu--footer-offices">
+            
+  <div class="visually-hidden" id="block-footermenuoffices-menu">Footer menu - Offices</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>International Websites</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://africa.wri.org?utm_source=wri-org&amp;utm_medium=wri-org-footer-link" target="_blank">WRI Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://brasil.wri.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Brasil</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.wri.org.cn?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI China</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://es.wri.org/wri-colombia?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link">WRI Colombia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri-india.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI India</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://id.wri.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Indonesia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://es.wri.org/wri-mexico?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Mexico</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenuadditional-menu" id="block-footermenuadditional" class="block block-menu navigation menu--footer-additional">
+            
+  <div class="visually-hidden" id="block-footermenuadditional-menu">Footer menu - Additional</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/contact" data-drupal-link-system-path="node/100415">Contact Us</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/events" data-drupal-link-system-path="events">Events</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/resources" data-drupal-link-system-path="resources">Resource Library</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/media-contacts" data-drupal-link-system-path="node/100406">For Media</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/financials" data-drupal-link-system-path="node/100221">Financials</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/careers" data-drupal-link-system-path="node/105746">Careers</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/internships" title="Internships at WRI" data-drupal-link-system-path="node/100297">Internships</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/privacy-policy" data-drupal-link-system-path="node/100305">Privacy  Policy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/legal-notices" data-drupal-link-system-path="node/104409">Legal Notices</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri.ethicspoint.com">Whistleblower and Ethics Reporting</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="" class="osano-cookie-preference-link" title="Manage privacy and cookie preferences">Cookie Preferences</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-addressblock" class="block block-wri-block block-address-block">
+  
+    
+      
+  </div>
+<nav role="navigation" aria-labelledby="block-socialmenu-menu" id="block-socialmenu" class="block block-menu navigation menu--social-menu">
+            
+  <div class="visually-hidden" id="block-socialmenu-menu">Social menu</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.facebook.com/worldresources/" class="facebook">Facebook</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.instagram.com/worldresources/" class="instagram">Instagram</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.linkedin.com/company/world-resources-institute/" class="linkedin">LinkedIn</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.threads.net/@worldresources" class="threads">Threads</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://bsky.app/profile/worldresources.bsky.social" class="bluesky">Bluesky</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://twitter.com/worldresources" class="twitter">Twitter</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.youtube.com/WorldResourcesInst" class="youtube">Youtube</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-copyrightblock" class="block block-wri-block block-copyright-block">
+  
+    
+      <p>&copy; 2026 World Resources Institute</p>
+  </div>
+
+</div>
+
+                          </div>
+          </div>
+        </div>
+          </footer>
+
+    
+  </div>
+</div>
+
+  </main>
+
+      
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="/sites/default/files/js/js_rlj8qa0o4-H_igbLJLg0yVIxZauJOTw7By3ynnzzR6s.js?scope=footer&amp;delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7wEmcBI9ubKD19N9k0kZpW_fEMb0YWMuRsDP0a4GH8LNzNAQWgWCpPUB2ookXqJ0zGEk7qWaFzVLtW6sWlBTNtSYSUWDJxD0-378OenVIbFePgsY44VU6Lhl_Yd08wwbB0hPATxPPBqYGRGiUNWdYB1b-IM40XoR6O0KZVCkrscI4VC6TrM2xA3V1wmllaeKjPBJXLG8aKDbv5jAZU1Suc8d-ScSn171pDVSjv-W247YcxcWvbJTf7UWxHM1VDCS_rd7mHinwvb7q_By8YBG2VHm1nn8wtwDikaAJp-QKj1chR"></script>
+<script src="https://static.addtoany.com/menu/page.js" defer></script>
+<script src="/sites/default/files/js/js_NtBns6CQ-ZNIGRc1Fdri-p7VDScnLDtSlFb9ONkm0UA.js?scope=footer&amp;delta=2&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7wEmcBI9ubKD19N9k0kZpW_fEMb0YWMuRsDP0a4GH8LNzNAQWgWCpPUB2ookXqJ0zGEk7qWaFzVLtW6sWlBTNtSYSUWDJxD0-378OenVIbFePgsY44VU6Lhl_Yd08wwbB0hPATxPPBqYGRGiUNWdYB1b-IM40XoR6O0KZVCkrscI4VC6TrM2xA3V1wmllaeKjPBJXLG8aKDbv5jAZU1Suc8d-ScSn171pDVSjv-W247YcxcWvbJTf7UWxHM1VDCS_rd7mHinwvb7q_By8YBG2VHm1nn8wtwDikaAJp-QKj1chR"></script>
+<script src="/modules/contrib/ckeditor_accordion/js/accordion.frontend.min.js?tnirnp"></script>
+<script src="/sites/default/files/js/js_gxMYJT_MMOYzvoEprIj2KWH9fEauQSL6pCW7YtVQde8.js?scope=footer&amp;delta=4&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7wEmcBI9ubKD19N9k0kZpW_fEMb0YWMuRsDP0a4GH8LNzNAQWgWCpPUB2ookXqJ0zGEk7qWaFzVLtW6sWlBTNtSYSUWDJxD0-378OenVIbFePgsY44VU6Lhl_Yd08wwbB0hPATxPPBqYGRGiUNWdYB1b-IM40XoR6O0KZVCkrscI4VC6TrM2xA3V1wmllaeKjPBJXLG8aKDbv5jAZU1Suc8d-ScSn171pDVSjv-W247YcxcWvbJTf7UWxHM1VDCS_rd7mHinwvb7q_By8YBG2VHm1nn8wtwDikaAJp-QKj1chR"></script>
+<script src="https://www.google.com/recaptcha/api.js?render=6Lfe0pUaAAAAADa4jxZYcZ-H67EiunZ-DqLRlYgS" defer async></script>
+<script src="/sites/default/files/js/js_Nvpg6N2Hxa0UBLbeiPbDKhV2hf4Zpp1TPeI7o7fUv2M.js?scope=footer&amp;delta=6&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7wEmcBI9ubKD19N9k0kZpW_fEMb0YWMuRsDP0a4GH8LNzNAQWgWCpPUB2ookXqJ0zGEk7qWaFzVLtW6sWlBTNtSYSUWDJxD0-378OenVIbFePgsY44VU6Lhl_Yd08wwbB0hPATxPPBqYGRGiUNWdYB1b-IM40XoR6O0KZVCkrscI4VC6TrM2xA3V1wmllaeKjPBJXLG8aKDbv5jAZU1Suc8d-ScSn171pDVSjv-W247YcxcWvbJTf7UWxHM1VDCS_rd7mHinwvb7q_By8YBG2VHm1nn8wtwDikaAJp-QKj1chR"></script>
+
+  <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a51300baee4245c3',t:'MTc5MzExNzc2MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

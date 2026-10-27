@@ -24,7 +24,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app import geocode
+from app import geocode, place
 from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
 from app.climate import monitor as climate
 from app.core import privacy
@@ -538,6 +538,8 @@ FEATURES = [
     "tick_lite",  # /ws?tick=lite: tick without sources; `sources` messages when they change
     "climate",  # /api/climate: live indicators, each with its dataset's own as_of
 ]
+# `place` (/api/place: the place report) is added by `api_version` when
+# SOS_ENABLE_PLACE is on, so the flag never claims a route that answers 404.
 
 
 def _refuse(exc: ScopeError) -> HTTPException:
@@ -761,7 +763,80 @@ async def api_climate() -> dict:
 
 @app.get("/api/version")
 async def api_version() -> dict:
-    return {"api": API_VERSION, "features": FEATURES, "app": app.version}
+    features = [*FEATURES, "place"] if settings.enable_place else FEATURES
+    return {"api": API_VERSION, "features": features, "app": app.version}
+
+
+# Its own budget, not the geocoder's: a place report reaches about fifteen
+# upstreams, a search one. Keyed by the client address the Dockerfile's
+# --proxy-headers / FORWARDED_ALLOW_IPS make real.
+place_budget = geocode.AddressBudget(
+    burst=settings.place_rate_burst, per_second=settings.place_rate_per_second
+)
+place.configure(
+    data_dir=settings.data_dir,
+    max_upstream=settings.place_max_upstream,
+    cache_entries=settings.place_cache_entries,
+    history_cache_mb=settings.place_history_cache_mb,
+)
+
+
+def place_alerts() -> tuple[list[Event], list[dict]]:
+    """What the place report's `alerts_now` block reads: the store's primary
+    events and the sources' health. Passed in, so app/place never imports
+    this module."""
+    return store.recent(limit=settings.ring_size, primary_only=True), source_states()
+
+
+@app.get("/api/place", response_model=None)
+async def api_place(request: Request) -> Response:
+    """The place report (app/place/): for ONE point the reader searched or
+    clicked, 22 blocks, each from one dataset with its own `as_of`. Read
+    strictly from `request.query_params` (FastAPI ignores extras). A report
+    that starts a new upstream fetch spends the caller's token; a cached
+    one, or one that only joins a fetch in flight, costs nothing."""
+    if not settings.enable_place:
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "place_disabled", "reason": "the place report is switched off here"},
+        )
+    try:
+        query = place.parse_query(request.query_params)
+    except place.QueryError as exc:
+        raise HTTPException(
+            status_code=400, detail={"code": exc.code, "reason": exc.reason}
+        ) from None
+    # an IPv6 client by its /64: one subscriber's prefix, one bucket
+    address = geocode.address_key(request.client.host if request.client else None)
+    result = await place.report(
+        query,
+        place_alerts,
+        budget_s=settings.place_budget_seconds,
+        take_token=lambda: place_budget.take(address),
+    )
+    if result.refused or result.body is None or result.etag is None:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "rate_limited",
+                "reason": "too many new place reports from this address, try again shortly",
+            },
+            headers={"Retry-After": str(max(1, math.ceil(result.retry_after)))},
+        )
+    # `no-cache` + ETag: a 304 means nothing in the report changed. The body
+    # it revalidates holds an OLD server_time, the clock every age on screen
+    # is computed from, so `Server-Time` (the same value as this answer's
+    # `server_time`) travels on the 200 AND the 304: a client that keeps its
+    # own copy and revalidates takes the clock from it. The web fetches with
+    # `cache: 'no-store'` and never sees a 304.
+    headers = {
+        "ETag": result.etag,
+        "Cache-Control": "no-cache",
+        "Server-Time": result.body["server_time"],
+    }
+    if _matches_if_none_match(request.headers.get("if-none-match"), result.etag):
+        return Response(status_code=304, headers=headers)
+    return JSONResponse(result.body, headers=headers)
 
 
 @app.get("/api/guidance")

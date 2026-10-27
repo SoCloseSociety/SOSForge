@@ -1,0 +1,310 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/risk",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "aqueduct40_annual_bws_lima.json": {
+   "bytes": 993,
+   "sha256": "e1920e792e0da90247f76dbb422a0f3bc7836d59df682895c6d8d1b887ba0b78"
+  },
+  "aqueduct40_annual_bws_lima.json.meta.json": {
+   "bytes": 943,
+   "sha256": "56d9893a95033fbe565fee637931bee43d31b427faba5768f695abdb35ef7279"
+  },
+  "aqueduct40_annual_bws_samui.json": {
+   "bytes": 1007,
+   "sha256": "9242c2ad538c40f53dcf499fe3e6f16c108ac2393d333150040d955f334dfd2c"
+  },
+  "aqueduct40_annual_bws_samui.json.meta.json": {
+   "bytes": 943,
+   "sha256": "00098214b10f4632e4452f7be5a68f2e388305de44718a2f72412ce3bf952b0e"
+  },
+  "aqueduct40_annual_midpacific_empty.json": {
+   "bytes": 810,
+   "sha256": "de6a24116d282d511c43e2837ff19d5d5443e22e47f64b1c3b37c39f26eb18ff"
+  },
+  "aqueduct40_annual_midpacific_empty.json.meta.json": {
+   "bytes": 928,
+   "sha256": "67e2b07003d5b0b5e159c9890a8ebdc89fa5c3d346c621d5c586e549b4842982"
+  },
+  "aqueduct40_distinct_labels.json": {
+   "bytes": 1859,
+   "sha256": "b86cab6681362c717b5000374e30c0d88dcfce798bf63dbc41aeb8694bebe55f"
+  },
+  "aqueduct40_distinct_labels.json.meta.json": {
+   "bytes": 1844,
+   "sha256": "39b966d8a8dc1df4c3ab97b7112fd543dca841b408a40b077bf27606becf30bb"
+  },
+  "firms_viirs_noaa21_alaska_24h_empty.csv": {
+   "bytes": 112,
+   "sha256": "fe0401e40606fd90dd4cf24dff508a93539089a4aecf701e2a3c85851fe9bf40"
+  },
+  "firms_viirs_noaa21_alaska_24h_empty.csv.meta.json": {
+   "bytes": 487,
+   "sha256": "0fbee5271d05ef08834b3b465c5a95bb7f7de5abb502078fa85c0731cd84962a"
+  },
+  "firms_viirs_noaa21_europe_24h.csv": {
+   "bytes": 50188,
+   "sha256": "3caefad300f2e9dc2bf211f4bae29a81fb2a742f13c28de2497407a5b4fa1607"
+  },
+  "firms_viirs_noaa21_europe_24h.csv.meta.json": {
+   "bytes": 491,
+   "sha256": "221379968f0510e18ef9fa89c1d0e70bd197c7c60bf54c0625d2670a95d45ae6"
+  },
+  "gdo_hst_rdria_midpacific.json": {
+   "bytes": 201,
+   "sha256": "1bf9f25a896c9ecb4622f7fa5c8ef8d685c603038ea0ba995a8253542d13a9d1"
+  },
+  "gdo_hst_rdria_midpacific.json.meta.json": {
+   "bytes": 457,
+   "sha256": "bf5ff1a5d064ea7781e45955f3e1c1113b5ecdb8331d6260c4bcc6d814e0abc8"
+  },
+  "gdo_hst_rdria_paris.json": {
+   "bytes": 171,
+   "sha256": "67216b55fe26fd58f1f829027837ba45c3031543ff73de19e44e9a650b9906ed"
+  },
+  "gdo_hst_rdria_paris.json.meta.json": {
+   "bytes": 459,
+   "sha256": "a5a55f074d2930c20bf85ab8a0a25fa6f7993ce99add7da4f24a63c95d0f7d91"
+  },
+  "gdo_hst_rdria_reykjavik_to20260915.json": {
+   "bytes": 198,
+   "sha256": "ac247e4bbab8c79b01256265642a44a120173bb707fc52261c2110788474662f"
+  },
+  "gdo_hst_rdria_reykjavik_to20260915.json.meta.json": {
+   "bytes": 460,
+   "sha256": "059693fec0fec0a0621f90f453fb6dbe5cf9f7764276aad3f1e9904b0043a251"
+  },
+  "gdo_hst_rdria_samui.json": {
+   "bytes": 180,
+   "sha256": "a081c47daf68c8f108daf189db3265cd8d46ba9054093f3fe01766660a37dcad"
+  },
+  "gdo_hst_rdria_samui.json.meta.json": {
+   "bytes": 460,
+   "sha256": "359ccb27faacf4a5d6cc691aa1379d4d649c24b5ffcec8b2d1d9da245b555499"
+  },
+  "gdo_hst_smang_midpacific.json": {
+   "bytes": 23,
+   "sha256": "0712b1b2acea81e914dffea613e492770cf07ca147e5e200d09cef6a75787b53"
+  },
+  "gdo_hst_smang_midpacific.json.meta.json": {
+   "bytes": 456,
+   "sha256": "dba8f970b81e190da84e640aa023090cd405351dcae71ab90588b03c222c5a77"
+  },
+  "gdo_hst_smang_paris.json": {
+   "bytes": 228,
+   "sha256": "975f7e5e4bde4ec371c45abd4285b8285eafb0eee5f504ba4db3c273eb935620"
+  },
+  "gdo_hst_smang_paris.json.meta.json": {
+   "bytes": 460,
+   "sha256": "8c38617849ccfa4c5c7a8bd44ba2db0d812d0dde788972305e7c753491603e4c"
+  },
+  "gdo_hst_smang_reykjavik_to20260915.json": {
+   "bytes": 219,
+   "sha256": "76905ca2d7381269a2cf35f65e40cdde53e0ba28c9d9a3b4743c89fb60fef8f5"
+  },
+  "gdo_hst_smang_reykjavik_to20260915.json.meta.json": {
+   "bytes": 460,
+   "sha256": "17e5cac673ca05920fe3293a7c3da6a967fbb917046e503554742b72c68a5812"
+  },
+  "gdo_hst_smang_samui.json": {
+   "bytes": 224,
+   "sha256": "d6c744d04b0c004cc151c91227ed6536a825acb5134fb7ed15ac5281b7a21880"
+  },
+  "gdo_hst_smang_samui.json.meta.json": {
+   "bytes": 460,
+   "sha256": "76ca89cbf6bc04bd66fa80a628a623922d247816b984fb2b17acbae55c21c6c7"
+  },
+  "gdo_hst_spi_midpacific.json": {
+   "bytes": 281,
+   "sha256": "9de458414969af32130a9a45c2cb04f50e13b4a38b7c03074f7b644c28f58ab6"
+  },
+  "gdo_hst_spi_midpacific.json.meta.json": {
+   "bytes": 463,
+   "sha256": "51d57d750fa3ad73ff6103cbd34edf36fbf57ec65cde430fa4f96a7ef55a9f39"
+  },
+  "gdo_hst_spi_paris.json": {
+   "bytes": 304,
+   "sha256": "2a10f2dbb5d054f2f8c3c98b5b7b1f71d126397df213939a6a0f29b316fd8de6"
+  },
+  "gdo_hst_spi_paris.json.meta.json": {
+   "bytes": 465,
+   "sha256": "fe0a442ce50c005c2bdd1f6fecb07a5caa5c03f6065bca2f9dc6961f658d6b66"
+  },
+  "gdo_hst_spi_reykjavik_to20260915.json": {
+   "bytes": 289,
+   "sha256": "2c526e2423e9c7aeaed5fb46d310222d3c027ecdddcb8b0b3e461c3c633e0d3d"
+  },
+  "gdo_hst_spi_reykjavik_to20260915.json.meta.json": {
+   "bytes": 466,
+   "sha256": "ed6cded43b40f9a17b6af84c3e1d7d0aec4d594c6e633bf70edaf46039eb76c0"
+  },
+  "gdo_hst_spi_samui.json": {
+   "bytes": 295,
+   "sha256": "c79ab267c765be78c647a7ca30c25668206af7e5b235816f30045762b0d85167"
+  },
+  "gdo_hst_spi_samui.json.meta.json": {
+   "bytes": 466,
+   "sha256": "78003e7f2020fb859bdddf7b0ecfd5b4a469d4842cf244e622df607089b675e6"
+  },
+  "gwis_fwi_ecmwf_lima_20261027_9x9.png": {
+   "bytes": 119,
+   "sha256": "002f85e7ee5c59dde1bc832d5815a0031aad8a95e77943d41cd93549fe496f4e"
+  },
+  "gwis_fwi_ecmwf_lima_20261027_9x9.png.meta.json": {
+   "bytes": 605,
+   "sha256": "517ac8e75bb874af89e7d0aa1048491c085b642a0c93faeb9d6c792a010da51f"
+  },
+  "gwis_fwi_ecmwf_lima_cell_20261028_9x9.png": {
+   "bytes": 121,
+   "sha256": "17dd9bed7e6501f51298d913b6819801ad133c040b297a4b710c907455d1cde0"
+  },
+  "gwis_fwi_ecmwf_lima_cell_20261028_9x9.png.meta.json": {
+   "bytes": 606,
+   "sha256": "db9a2ada6d7b6c275b5070defd7da37f176ee8dc93595b80abb429b84cc004aa"
+  },
+  "gwis_fwi_ecmwf_lima_point_20261028_9x9.png": {
+   "bytes": 84,
+   "sha256": "8c58b35c961b10fd1ee44da4eb34713fb88f9c2b51a0e89557d7bc41d18a6da2"
+  },
+  "gwis_fwi_ecmwf_lima_point_20261028_9x9.png.meta.json": {
+   "bytes": 604,
+   "sha256": "f0a51b1c2fade9412eef98cc187a86566b412efc1d265d897d4d2ba7512fb4cc"
+  },
+  "gwis_fwi_ecmwf_paris_point_20261027_9x9.png": {
+   "bytes": 79,
+   "sha256": "5953d1477840630dcc679f5f12c5678c151d88e0f33fb459e22b5a0242b4a5fb"
+  },
+  "gwis_fwi_ecmwf_paris_point_20261027_9x9.png.meta.json": {
+   "bytes": 598,
+   "sha256": "b24fd21c78924ddbd20ef84dc2010b45df94f7dd452f29f2cc45de380049a3db"
+  },
+  "gwis_fwi_ecmwf_samui_cell_20261027_9x9.png": {
+   "bytes": 89,
+   "sha256": "b4a852f3070d58217a94e21c4c388b64771552b4c0b0e2b858e5cd7adcae2feb"
+  },
+  "gwis_fwi_ecmwf_samui_cell_20261027_9x9.png.meta.json": {
+   "bytes": 600,
+   "sha256": "550c86834fed03123ea1b5ac1204ff76d7bd9740d346afcf83d903c8db8b7c5e"
+  },
+  "gwis_fwi_ecmwf_samui_point_20261027_9x9.png": {
+   "bytes": 77,
+   "sha256": "f1bd14470fb7c79fec17394f768c69e0c3e6aec10e2f9d8528e11d17dfcfd0e5"
+  },
+  "gwis_fwi_ecmwf_samui_point_20261027_9x9.png.meta.json": {
+   "bytes": 599,
+   "sha256": "5511a9717dd0e8bae1c991b2e3a0b4f94d262967110f0978d011fdb7c1e9f0e7"
+  },
+  "gwis_fwi_legend.png": {
+   "bytes": 6442,
+   "sha256": "f8ab8f03f180b14ebf2fec938e3b40fc45db3e43403f021eda9531e30a67a674"
+  },
+  "gwis_fwi_legend.png.meta.json": {
+   "bytes": 552,
+   "sha256": "e0355d0add7065e11be9ad7f37c365788cf8e681f8c941c62850d9b17714f5b4"
+  },
+  "gwis_fwi_world_probe_2026-10-27.png": {
+   "bytes": 261,
+   "sha256": "963044fffa30d753b7143f87a83b83a57802691053743d527560d6c75390f423"
+  },
+  "gwis_fwi_world_probe_2026-10-27.png.meta.json": {
+   "bytes": 855,
+   "sha256": "cc007af3ae9a1474ab8f0fea90aa7b15196a91bf69c431de90bed91487a6a7a7"
+  },
+  "gwis_fwi_world_probe_2026-11-03.png": {
+   "bytes": 251,
+   "sha256": "a6ddd702238625295db0125bf3d443295aef65db995c8f502b8aa4f3cbb0854c"
+  },
+  "gwis_fwi_world_probe_2026-11-03.png.meta.json": {
+   "bytes": 855,
+   "sha256": "fb65df006c1ab5a5633dcca961a06d0b1a17025284faace248ac3353ee07e851"
+  },
+  "gwis_fwi_world_probe_2026-11-20.png": {
+   "bytes": 82,
+   "sha256": "6d43897d4279107ec5f4c1fee00fa87e287f83d40798789fa05ec861a57f66f0"
+  },
+  "gwis_fwi_world_probe_2026-11-20.png.meta.json": {
+   "bytes": 853,
+   "sha256": "a74623358d43f95e2680ab1d4d3fd32fee129b3da553c180ab6f614a46a2cc9d"
+  },
+  "inform_mid2026_tha.json": {
+   "bytes": 1560,
+   "sha256": "47f5ba8968a498ed73cb5f27c16c35a7fd33f46b38136260aecf6b698ea7eaeb"
+  },
+  "inform_mid2026_tha.json.meta.json": {
+   "bytes": 565,
+   "sha256": "a206bbf7f27d093154e93422fd2ed303b46db1971c57f7ef5223b464cc4fe9cf"
+  },
+  "inform_mid2026_umi_empty.json": {
+   "bytes": 2,
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "inform_mid2026_umi_empty.json.meta.json": {
+   "bytes": 559,
+   "sha256": "d2fd2903a3b78d9b7d5ad446a50d4cc5c672b4b4722ab2f126a6b13412c24e65"
+  },
+  "inform_workflow_2026mid.json": {
+   "bytes": 648,
+   "sha256": "1ff0a4433a1c309d1eeb98025dda538d6b4535c29c318e632b50b3aa5fa5be69"
+  },
+  "inform_workflow_2026mid.json.meta.json": {
+   "bytes": 458,
+   "sha256": "315563b0088e0a84e87ec9777bea086c5d1b640ddb05de5be055a263ecaa1728"
+  },
+  "inform_workflow_groups.json": {
+   "bytes": 366,
+   "sha256": "15fdeaf7738bb1d1d2d0609feeea8eea6ec9a6ad51920c4b5dd9a4c2ac7bf18f"
+  },
+  "inform_workflow_groups.json.meta.json": {
+   "bytes": 1436,
+   "sha256": "fcb4357ee809e910798e4fa0c2d2ff383f3e41fa6b1dcd3ac74dfaba2f867d15"
+  },
+  "wri_aqueduct40_data_page.html": {
+   "bytes": 100327,
+   "sha256": "a9730eb9522fe4df604cb6144c021b92923d6468064054beb3154ee41fdf6fcd"
+  },
+  "wri_aqueduct40_data_page.html.meta.json": {
+   "bytes": 520,
+   "sha256": "3fab3e5f7f55568f0df6dade2ade360f6ab1b8eb48cf254916d3b3e7acdd976a"
+  },
+  "wri_open_data_commitment.html": {
+   "bytes": 75117,
+   "sha256": "c0525224a3f9a4d47221ab849b34a88a38dbebbe6ffd871e628c1fa8a02ba03b"
+  },
+  "wri_open_data_commitment.html.meta.json": {
+   "bytes": 511,
+   "sha256": "5aafa3430d503fa32b171ce48224f6fcf73d538a687fd3b8a27da5aaef7419ca"
+  }
+ },
+ "additions": [
+  {
+   "utc": "2026-10-27T16:00:59Z",
+   "source": "scratchpad/fix8/cap/risk",
+   "added": [
+    "gwis_fwi_ecmwf_samui_point_20261027_9x9.png",
+    "gwis_fwi_ecmwf_lima_point_20261028_9x9.png",
+    "gwis_fwi_ecmwf_paris_point_20261027_9x9.png",
+    "gwis_fwi_ecmwf_samui_cell_20261027_9x9.png",
+    "gwis_fwi_ecmwf_lima_cell_20261028_9x9.png",
+    "gdo_hst_smang_paris.json",
+    "gdo_hst_spi_reykjavik_to20260915.json",
+    "gdo_hst_smang_reykjavik_to20260915.json",
+    "gdo_hst_rdria_reykjavik_to20260915.json",
+    "aqueduct40_annual_bws_samui.json",
+    "aqueduct40_annual_bws_lima.json"
+   ],
+   "removed": [
+    "aqueduct40_annual_samui.json"
+   ]
+  },
+  {
+   "utc": "2026-10-27T16:16:01Z",
+   "source": "scratchpad/fix8/cap/risk",
+   "added": [
+    "wri_aqueduct40_data_page.html",
+    "wri_open_data_commitment.html"
+   ],
+   "removed": []
+  }
+ ]
+}
