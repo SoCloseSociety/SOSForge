@@ -31,11 +31,18 @@ Refusals, each one a way to ship something that lies:
     `immutable` for a year, so a browser or a CDN that already holds the old
     bytes would keep them, and the published sha256 would match neither;
   - a lower versionCode than the one published (unless --allow-downgrade).
+"Published" means both this output directory AND what the server serves
+(--server, default https://sosforge.soclose.co: its latest.json and the
+version's .sha256). downloads/ is gitignored, so another clone or worktree
+starts empty and saw nothing to refuse; unreachable or not serving the
+contract is a refusal too, unless --no-server-check says so on purpose.
 
 The order of the writes matters: latest.json is renamed into place LAST, so
 the app and the page never read a pointer to a file that is not there yet.
 Old versions are never deleted: their URLs are immutable, and a page or a
-search result may still link to one.
+search result may still link to one. The tool ends by printing the two
+rsync steps that put the files on the server in that same order
+(rsync_steps); downloads/README.md shows them too.
 """
 
 from __future__ import annotations
@@ -50,6 +57,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.error
+import urllib.request
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -64,6 +73,29 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUT = ROOT / "downloads"
 URL_PREFIX = "/download/"
 LATEST_ALIAS = "sosforge-latest.apk"
+
+# What is actually served. downloads/ is gitignored, so every clone and every
+# worktree has its own, often empty: checking only the local copy let a
+# second machine publish a lower versionCode, or other bytes under a version
+# browsers hold for a year (PR #5 review). The server's word is checked too.
+DEFAULT_SERVER = "https://sosforge.soclose.co"
+REMOTE = "helper-vps:/root/SAAS/SuiteForge/SOSForge/downloads/"
+
+
+def rsync_steps(out: str = "downloads/", remote: str = REMOTE) -> tuple[str, str]:
+    """How the files reach the server, in this order (downloads/README.md
+    shows the same two lines; a test keeps them equal):
+    1. the versioned files only, and never over a file the server already
+       has (--ignore-existing): a served version is immutable;
+    2. then the two pointers, which do change at every release.
+    README.md and .gitignore stay out: they are tracked in the server's git
+    tree, and an rsynced copy would make its next `git pull` refuse."""
+    out = out.rstrip("/") + "/"
+    return (
+        f"rsync -av --ignore-existing --include 'sosforge-v*' --exclude '*' {out} {remote}",
+        f"rsync -av {out}latest.json {out}{LATEST_ALIAS} {remote}",
+    )
+
 
 # Used in a file name and in nginx's location regex: digits first, then a
 # conservative alphabet. Anything else is refused, not escaped.
@@ -168,6 +200,72 @@ def read_apk(apk: Path, tools: Path, run: Runner = run_tool) -> tuple[Badging, s
     return info, signers[0]
 
 
+def _get(url: str, timeout: float = 20.0, method: str = "GET") -> tuple[int, str, bytes]:
+    request = urllib.request.Request(
+        url,
+        method=method,
+        headers={"User-Agent": "sosforge-publish-apk", "Cache-Control": "no-cache"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            return response.status, response.headers.get("Content-Type", ""), response.read()
+    except urllib.error.HTTPError as error:
+        return error.code, "", b""
+    except (urllib.error.URLError, OSError) as error:
+        raise Refused(
+            f"cannot reach {url} ({error}): the served release must be checked before "
+            "publishing over it (--no-server-check skips it, knowingly)"
+        ) from error
+
+
+def server_release(server: str) -> dict | None:
+    """The served latest.json, or None when the server has published none
+    (404). Anything else that is not the contract is a refusal: an HTML page
+    here means the web image does not serve /download/ yet."""
+    url = f"{server}/download/latest.json"
+    status, ctype, body = _get(url)
+    if status == 404:
+        return None
+    if status != 200 or "json" not in ctype:
+        raise Refused(f"{url} answered {status} {ctype or '?'}, not the release JSON")
+    try:
+        data = json.loads(body)
+    except ValueError as error:
+        raise Refused(f"{url} is not JSON") from error
+    if not isinstance(data, dict) or not {"version", "version_code", "sha256"} <= data.keys():
+        raise Refused(f"{url} is not the latest.json contract")
+    return data
+
+
+def server_sha256(server: str, name: str) -> str | None:
+    """The checksum the server publishes for a versioned file, or None."""
+    url = f"{server}{URL_PREFIX}{name}.sha256"
+    status, _, body = _get(url)
+    if status == 404:
+        return None
+    match = re.match(rb"\s*([0-9a-f]{64})\b", body) if status == 200 else None
+    if not match:
+        raise Refused(f"{url} answered {status} without a checksum")
+    return match.group(1).decode()
+
+
+def refuse_against(
+    published: dict | None, info: Badging, sha: str, allow_downgrade: bool, where: str
+) -> None:
+    if not published:
+        return
+    if published["version_code"] > info.version_code and not allow_downgrade:
+        raise Refused(
+            f"versionCode {info.version_code} is lower than the one published {where}: "
+            f"{published['version_code']} ({published['version']}); --allow-downgrade to force"
+        )
+    if published["version_code"] == info.version_code and published["sha256"] != sha:
+        raise Refused(
+            f"versionCode {info.version_code} is already published {where} with other bytes "
+            f"({published['sha256']}): bump the version"
+        )
+
+
 def sha256_of(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as f:
@@ -218,8 +316,10 @@ def publish(
     run: Runner = run_tool,
     today: dt.date | None = None,
     allow_downgrade: bool = False,
+    server: str | None = None,
 ) -> dict:
-    """Copies, verifies the COPY (the bytes that will be served), then moves
+    """Copies, verifies the COPY (the bytes that will be served), checks it
+    against what is published (here, and on `server` when given), then moves
     everything into place, latest.json last. Returns what latest.json says."""
     if not apk.is_file():
         raise Refused(f"no such file: {apk}")
@@ -239,22 +339,29 @@ def publish(
         sha = sha256_of(staged)
         size = staged.stat().st_size
 
+        name = f"sosforge-v{info.version}.apk"
         latest_path = out / "latest.json"
         previous = json.loads(latest_path.read_text()) if latest_path.exists() else None
-        if previous:
-            if previous["version_code"] > info.version_code and not allow_downgrade:
+        refuse_against(previous, info, sha, allow_downgrade, f"in {out}")
+        remote = None
+        if server:
+            remote = server_release(server)
+            refuse_against(remote, info, sha, allow_downgrade, f"on {server}")
+            served = server_sha256(server, name)
+            if served and served != sha:
                 raise Refused(
-                    f"versionCode {info.version_code} is lower than the published "
-                    f"{previous['version_code']} ({previous['version']}); "
-                    "--allow-downgrade to force"
+                    f"{server}{URL_PREFIX}{name} is already served with sha256 {served}: a "
+                    "versioned file is immutable (cached for a year), bump the version"
                 )
-            if previous["version_code"] == info.version_code and previous["sha256"] != sha:
+            # The APK there without its checksum is a half-done upload: the
+            # copy step would add a .sha256 for OTHER bytes (rsync never
+            # overwrites the served APK). Measured with rsync 3.5.1.
+            if served is None and _get(f"{server}{URL_PREFIX}{name}", method="HEAD")[0] == 200:
                 raise Refused(
-                    f"versionCode {info.version_code} is already published with other bytes "
-                    f"({previous['sha256']}): bump the version"
+                    f"{server}{URL_PREFIX}{name} is served without its .sha256: check the "
+                    "server by hand before publishing over it"
                 )
 
-        name = f"sosforge-v{info.version}.apk"
         target = out / name
         if target.exists():
             existing = sha256_of(target)
@@ -273,13 +380,12 @@ def publish(
     write_atomic(out / f"{name}.sha256", f"{sha}  {name}\n")
     link_latest(out, target)
 
-    # Republishing the same release keeps its date: it was released then.
-    same = previous and previous.get("sha256") == sha
-    released = (
-        previous["released"] if same else (today or dt.datetime.now(dt.UTC).date()).isoformat()
-    )
+    # Republishing the same release keeps its date: it was released then --
+    # as this directory or the server remembers it.
+    same = next((p for p in (previous, remote) if p and p.get("sha256") == sha), None)
+    released = same["released"] if same else (today or dt.datetime.now(dt.UTC).date()).isoformat()
     if same and not notes_en and not notes_fr:
-        notes_en, notes_fr = previous["notes"]["en"], previous["notes"]["fr"]
+        notes_en, notes_fr = same["notes"]["en"], same["notes"]["fr"]
     latest = {
         "app": PACKAGE,
         "version": info.version,
@@ -319,16 +425,36 @@ def main(argv: Sequence[str] | None = None) -> int:
     ap.add_argument("--notes-en", default="")
     ap.add_argument("--notes-fr", default="")
     ap.add_argument("--allow-downgrade", action="store_true")
+    ap.add_argument("--server", default=DEFAULT_SERVER, help="the site whose release is checked")
+    ap.add_argument(
+        "--no-server-check",
+        action="store_true",
+        help="do not compare with what the server serves (a first publish to a new host)",
+    )
     args = ap.parse_args(argv)
+    server = None if args.no_server_check else args.server.rstrip("/")
     try:
         latest = publish(
-            args.apk, args.out, args.notes_en, args.notes_fr, allow_downgrade=args.allow_downgrade
+            args.apk,
+            args.out,
+            args.notes_en,
+            args.notes_fr,
+            allow_downgrade=args.allow_downgrade,
+            server=server,
         )
     except Refused as why:
         print(f"REFUSED: {why}", file=sys.stderr)
         return 1
     print(json.dumps(latest, ensure_ascii=False, indent=1))
     print(f"published into {args.out.resolve()}")
+    if server is None:
+        print("note: NOT checked against the served release (--no-server-check)")
+    print("then, in this order:")
+    shown = os.path.relpath(args.out)
+    if shown.startswith(".."):
+        shown = str(args.out.resolve())
+    for step in rsync_steps(shown + "/"):
+        print(f"  {step}")
     if not (latest["notes"]["en"] and latest["notes"]["fr"]):
         print("note: release notes are empty (--notes-en / --notes-fr)")
     for line in stale_json_ld(latest["version"]):
