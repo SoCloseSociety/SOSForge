@@ -14,7 +14,7 @@ from collections import deque
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from app.models.event import Event, Kind, Severity, utcnow
@@ -201,7 +201,10 @@ class EventStore:
                 self._promote_orphans(orphaned)
 
     def _write_jsonl(self, event: Event, action: str) -> None:
-        self._write_line({"action": action, **event.model_dump(mode="json")})
+        # Without `raw`, the verbatim upstream payload: 19.4 % of the live
+        # journal's bytes (2026-10-27), and nothing reads it back from a
+        # restored event -- sources read `raw` only on what they just parsed.
+        self._write_line({"action": action, **event.model_dump(mode="json", exclude={"raw"})})
 
     def _write_line(self, record: dict) -> None:
         # `_replaying` avoids duplicating the journal on every restart: without
@@ -349,7 +352,7 @@ class EventStore:
         return removed
 
     @staticmethod
-    def read_journal(path: Path, max_age_hours: float = 24.0) -> list[Event | Removal]:
+    def read_journal(path: Path) -> list[Event | Removal]:
         """Reads a JSONL back, IN ORDER: events and the removals between them.
         Reads only -- writing them is the pipeline's job, so that a restored
         event goes through dedup like any other. It used to store them
@@ -358,24 +361,32 @@ class EventStore:
         Order is the whole point of a removal: it cancels what came before it
         and nothing after, so an advisory lifted and then re-issued is back.
         A journal written before removals were journaled simply has none.
+
+        No age filter here. It used to skip every event dated more than 24 h
+        ago, a second and stricter rule than the pipeline's own horizon
+        (three days, ongoing alerts exempt), so a restart restored 679 of the
+        1347 events the store held (journal of 2026-10-26): 362 of 499 alerts
+        gone until their next poll, quakes between 24 h and 3 days old gone
+        for good. The pipeline the replay goes through is the one rule.
+
+        Read line by line: a day of journal is never copied whole into
+        memory at startup, and a line cut by a crash costs that line only.
         """
         if not path.exists():
             return []
-        cutoff = utcnow() - timedelta(hours=max_age_hours)
         entries: list[Event | Removal] = []
-        for line in path.read_text(encoding="utf-8").splitlines():
-            try:
-                data = json.loads(line)
-                action = data.pop("action", None)
-                if action == "remove":
-                    entries.append(Removal(str(data["id"]), str(data.get("reason") or "removed")))
+        with path.open(encoding="utf-8") as journal:
+            for line in journal:
+                try:
+                    data = json.loads(line)
+                    action = data.pop("action", None)
+                    if action == "remove":
+                        reason = str(data.get("reason") or "removed")
+                        entries.append(Removal(str(data["id"]), reason))
+                        continue
+                    entries.append(Event.model_validate(data))
+                except Exception:
                     continue
-                event = Event.model_validate(data)
-            except Exception:
-                continue
-            if event.time.replace(tzinfo=event.time.tzinfo or UTC) < cutoff:
-                continue
-            entries.append(event)
         return entries
 
     @contextmanager

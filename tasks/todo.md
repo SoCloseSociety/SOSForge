@@ -861,13 +861,14 @@ Changes, smallest first:
       reason; tested with a real uvicorn and a real client (e7a3d9a).
 - [x] `agent/`: the reconnect backoff never reset (`run_once` only leaves by
       an exception). Reset after a session that delivered (a022416).
-- [ ] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
+- [x] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
       pipeline's horizon is the one rule (expired, too old and not ongoing).
       Read line by line instead of `read_text()` (no whole-file copy at
       startup). Test: an ongoing alert dated 30 days ago and a quake of 2
       days ago, both journaled today, survive a restart; a quake of 4 days
-      does not.
-- [ ] `store/ring.py` journal lines without `raw`. Test: the line carries no
+      does not. **After: 1348 of 1348 restored (was 679), alerts 500 (137),
+      severe+ 104 (60); second journal 1196 (622).**
+- [x] `store/ring.py` journal lines without `raw`. Test: the line carries no
       `raw`, the replayed event is equal on every public field.
 - [ ] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
       whatever the fan-out costs; a stalled loop resumes from now instead of
