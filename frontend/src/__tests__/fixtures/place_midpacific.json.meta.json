@@ -1,0 +1,13 @@
+{
+ "url": "/api/place?lat=0&lon=-160&lang=en",
+ "status": 200,
+ "headers": {
+  "etag": "\"9c33a9d527c8e58eac31\"",
+  "cache-control": "no-cache",
+  "content-type": "application/json"
+ },
+ "fetched_utc": "2026-10-27T15:50:18Z",
+ "bytes": 40746,
+ "sha256": "cf43004433dff83e026d313b028326baa88ead297c7f702c8943dfb68396aaac",
+ "captured_by": "GET from the SOSForge backend of branch worktree-wf_b765ef57-e77-8 at 2b096d7, driven in process by FastAPI TestClient (lifespan on: the live sources filled the store), every upstream real and reached through the backend fetch layer; body saved byte for byte. The IBTrACS index was read from disk (built from the ALL file that morning)."
+}

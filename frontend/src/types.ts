@@ -25,6 +25,12 @@ export interface SosEvent {
   updated_at: string | null;
   lat: number | null;
   lon: number | null;
+  /** The EXTENT of an area warning when its source draws one (NWS, WMO CAP,
+   * UK Meteoalarm, ash): [west, south, east, north], west > east across the
+   * antimeridian. lat/lon stay its centre, for the map; a distance from a
+   * place must be measured to this box, not to the centre. Null for a point
+   * (an older server omits it). */
+  bbox?: [number, number, number, number] | null;
   depth_km: number | null;
   magnitude: number | null;
   mag_type: string | null;

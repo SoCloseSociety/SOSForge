@@ -1,0 +1,13 @@
+{
+ "url": "/api/place?lat=-12.05&lon=-77.04&lang=en",
+ "status": 429,
+ "headers": {
+  "retry-after": "52",
+  "content-type": "application/json"
+ },
+ "fetched_utc": "2026-10-27T15:52:55Z",
+ "bytes": 109,
+ "sha256": "e7a4d8cf377e7a3d4ffcdd8141f4c6227850235bf0ffabb6e4e28c144d44a3db",
+ "captured_by": "GET from the SOSForge backend of branch worktree-wf_b765ef57-e77-8 at 2b096d7, driven in process by FastAPI TestClient (lifespan on: the live sources filled the store), every upstream real and reached through the backend fetch layer; body saved byte for byte. The IBTrACS index was read from disk (built from the ALL file that morning).",
+ "note": "the client budget set to 1 new report then 1 per minute for this capture, so this second new place in a row is refused: the 429 body and Retry-After are the route's own"
+}

@@ -98,6 +98,10 @@ export interface PlaceSource {
   url: string
   attribution?: string | null
   licence?: string | null
+  /** a second attribution the data of THIS answer requires, nested under
+   * the block's own source (ISC-GEM rows inside the USGS catalogue). It is
+   * credited, linked and licensed like the first one. */
+  also?: PlaceSource[] | null
 }
 
 export interface PlaceError {
@@ -123,7 +127,7 @@ export interface PlaceBlock<D = Record<string, unknown>> {
   max_age_s: number | null
   /** our last read of the upstream, shown apart from as_of */
   fetched_at: string | null
-  /** one source, or several (ISC-GEM rows add a second attribution) */
+  /** the block's source; a second attribution travels in its `also` */
   source: PlaceSource | PlaceSource[] | null
   error: PlaceError | null
   missing: PlaceMissing[]
@@ -438,7 +442,10 @@ interface CycloneRow {
   wind_source?: string | null
   closest_km?: Num
   closest_time?: string | null
+  /** IBTrACS NATURE at the closest approach: DS, TS, ET, SS, NR, MX */
   nature_at_closest?: string | null
+  /** the server's verdict: seen within the radius ONLY as extratropical */
+  post_tropical?: boolean
   provisional?: boolean
 }
 
@@ -447,6 +454,8 @@ interface CyclonesData {
   total_storms?: Num
   tropical?: Num
   post_tropical_only?: Num
+  /** storms seen here only as disturbance, mixed or not reported */
+  other_nature_only?: Num
   strongest?: CycloneRow[]
   latest?: CycloneRow[]
   by_decade?: DecadeCount[]
@@ -474,6 +483,11 @@ export const PLACE_TICK_MS = 30 * 1000
 /** `complete: false` is retried after `retry_after_s`, this many times at
  * most, then left to the five-minute refresh. */
 export const PLACE_PARTIAL_RETRIES = 2
+
+/** A refused request that names its wait (`Retry-After`) is asked again
+ * after that wait, this many times in a row at most, and only when the wait
+ * is shorter than the refresh. */
+export const PLACE_REFUSED_RETRIES = 3
 
 const STATUSES: ReadonlySet<string> = new Set(['ok', 'unavailable', 'not_applicable'])
 
@@ -521,6 +535,30 @@ export function placeUrl(query: PlaceQuery): string {
   return `/api/place?${params.toString()}`
 }
 
+/** A refused request, with the wait the server asked for (`Retry-After`,
+ * the 429 `rate_limited` a fifth new place in a row gets). Its message is
+ * the real status and reason, shown as is. */
+export class PlaceHttpError extends Error {
+  readonly status: number
+  /** seconds, from `Retry-After`; null when the server named no wait */
+  readonly retryAfterS: number | null
+
+  constructor(message: string, status: number, retryAfterS: number | null) {
+    super(message)
+    this.status = status
+    this.retryAfterS = retryAfterS
+  }
+}
+
+/** `Retry-After` in seconds: delta-seconds, or an HTTP date. */
+export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
+  if (!value) return null
+  const text = value.trim()
+  if (/^\d+$/.test(text)) return Number(text)
+  const at = Date.parse(text)
+  return Number.isNaN(at) ? null : Math.max(0, Math.ceil((at - now) / 1000))
+}
+
 /** The default fetch.
  *
  * `cache: 'no-store'`, never the browser's revalidation: with `no-cache` and
@@ -548,8 +586,10 @@ export async function fetchPlace(query: PlaceQuery, signal: AbortSignal): Promis
       detail = ''
     }
     const retry = response.headers.get('Retry-After')
-    throw new Error(
+    throw new PlaceHttpError(
       `HTTP ${response.status}${detail ? ` ${detail}` : ''}${retry ? ` (Retry-After: ${retry} s)` : ''}`,
+      response.status,
+      parseRetryAfter(retry),
     )
   }
   const body: unknown = await response.json()
@@ -749,11 +789,19 @@ export function isLate(block: PlaceBlock, clock: Clock): boolean {
   return isNum(block.max_age_s) && age !== null && age > block.max_age_s
 }
 
+/** Every source a block credits: its own, then each one nested in `also`
+ * (the server sends the ISC-GEM credit there), never one dropped. */
 function sourcesOf(block: PlaceBlock): PlaceSource[] {
   const { source } = block
   if (!source) return []
-  const list = Array.isArray(source) ? source : [source]
-  return list.filter((item) => item && typeof item.name === 'string' && item.name)
+  const out: PlaceSource[] = []
+  const visit = (item: PlaceSource | null | undefined) => {
+    if (!item || typeof item.name !== 'string' || !item.name) return
+    out.push(item)
+    for (const nested of Array.isArray(item.also) ? item.also : []) visit(nested)
+  }
+  for (const item of Array.isArray(source) ? source : [source]) visit(item)
+  return out
 }
 
 /** The ISC-GEM rows of `history.earthquakes` are CC BY-SA 3.0: the block says
@@ -772,6 +820,12 @@ interface Ctx {
   report: PlaceResponse
 }
 
+/** A dataset time the panel cannot read: shown as the server sent it,
+ * labelled, never turned into an age of zero. */
+function rawAsOf(t: T, iso: string): string {
+  return t('place.asof.raw', { date: iso })
+}
+
 function AsOf({ block, ctx }: { block: PlaceBlock; ctx: Ctx }) {
   const { t, fmt, clock } = ctx
   if (block.status !== 'ok' || !block.as_of) return null
@@ -780,7 +834,7 @@ function AsOf({ block, ctx }: { block: PlaceBlock; ctx: Ctx }) {
   let text: string
   switch (block.as_of_kind) {
     case 'observed':
-      text = t('place.asof.observed', { age: fmt.duration(age ?? 0) })
+      text = age === null ? rawAsOf(t, iso) : t('place.asof.observed', { age: fmt.duration(age) })
       break
     case 'issued':
       text = t('place.asof.issued', { date: fmt.dateTime(iso) })
@@ -804,8 +858,13 @@ function AsOf({ block, ctx }: { block: PlaceBlock; ctx: Ctx }) {
     case 'published':
       text = t('place.asof.published', { date: fmt.day(iso) })
       break
-    default:
+    case 'live':
       text = t('place.asof.live')
+      break
+    default:
+      // a kind this panel does not know yet: its date, said plainly, never
+      // "live feed"
+      text = t('place.asof.other', { date: fmt.dateTime(iso) })
   }
   const late = isLate(block, clock)
   return (
@@ -1161,16 +1220,62 @@ const SEVERITY_ORDER: Record<Severity, number> = {
   info: 4,
 }
 
+type Bbox = [number, number, number, number]
+
+function validBbox(value: unknown): value is Bbox {
+  return Array.isArray(value) && value.length === 4 && value.every(isNum)
+}
+
+function lonWithin(lon: number, west: number, east: number): boolean {
+  return west <= east ? west <= lon && lon <= east : lon >= west || lon <= east
+}
+
+function lonGap(a: number, b: number): number {
+  return Math.abs((((a - b + 180) % 360) + 360) % 360 - 180)
+}
+
+/** How far a warning AREA is from the place: 0 inside its box, else the
+ * distance to the box's nearest edge, clamped the way the server's scope
+ * test does it (backend `Zone.touches`). The box (`bbox`: west, south,
+ * east, north; west > east crosses the antimeridian) holds the warned
+ * polygon, so the polygon is never nearer than this: a lower bound. */
+export function distanceToBoxKm(lat: number, lon: number, bbox: Bbox): number {
+  const [west, south, east, north] = bbox
+  const nearLat = Math.min(Math.max(lat, south), north)
+  const nearLon = lonWithin(lon, west, east) ? lon : lonGap(lon, west) <= lonGap(lon, east) ? west : east
+  if (nearLat === lat && nearLon === lon) return 0
+  return distanceKm(lat, lon, nearLat, nearLon)
+}
+
+/** Where an alert stands from the place, in words. An area warning is
+ * measured to its AREA, never to its centre: the centre of a warning drawn
+ * over 800 km of coast is 400 km from places it covers. */
+function alertWhere(event: SosEvent, ctx: Ctx): string {
+  const { t, lang, report } = ctx
+  const { lat, lon } = report.query
+  const box = event.bbox
+  if (validBbox(box)) {
+    const gap = distanceToBoxKm(lat, lon, box)
+    return gap === 0
+      ? t('place.alerts.area_here')
+      : t('place.alerts.area_away', { km: Math.round(gap).toLocaleString(lang) })
+  }
+  if (isNum(event.lat) && isNum(event.lon)) {
+    return t('feed.distance', {
+      km: Math.round(distanceKm(lat, lon, event.lat, event.lon)).toLocaleString(lang),
+    })
+  }
+  return event.country_code
+    ? t('feed.countrywide', { country: countryName(lang, event.country_code) ?? event.country_code })
+    : t('feed.noarea')
+}
+
 function AlertItem({ event, ctx }: { event: SosEvent; ctx: Ctx }) {
-  const { t, lang, report, clock } = ctx
+  const { t, clock } = ctx
   const meta = SEVERITY_META[event.severity] ?? SEVERITY_META.info
   const at = Date.parse(event.time)
-  const placed = isNum(event.lat) && isNum(event.lon)
-  const away = placed
-    ? distanceKm(report.query.lat, report.query.lon, event.lat as number, event.lon as number)
-    : null
   return (
-    <li className="place-alert">
+    <li className="place-alert" data-event={event.id}>
       <span className={`sev sev-${event.severity} place-pill`}>
         <span className="glyph" aria-hidden="true">
           {meta.glyph}
@@ -1179,13 +1284,7 @@ function AlertItem({ event, ctx }: { event: SosEvent; ctx: Ctx }) {
       </span>
       <span className="place-alert-title">{event.title || event.place}</span>
       <span className="place-alert-meta">
-        {away !== null
-          ? t('feed.distance', { km: Math.round(away).toLocaleString(lang) })
-          : event.country_code
-            ? t('feed.countrywide', {
-                country: countryName(lang, event.country_code) ?? event.country_code,
-              })
-            : t('feed.noarea')}
+        {alertWhere(event, ctx)}
         {Number.isNaN(at) ? null : (
           <>
             {' · '}
@@ -1197,6 +1296,24 @@ function AlertItem({ event, ctx }: { event: SosEvent; ctx: Ctx }) {
       </span>
     </li>
   )
+}
+
+/** The place's countries by name ("France", "Croatia or Slovenia" near a
+ * border): the only locator a warning without a position carries. */
+function countryList(ctx: Ctx): string {
+  const { t, lang, report } = ctx
+  const codes = report.place?.country_codes?.length
+    ? report.place.country_codes
+    : report.place?.country_code
+      ? [report.place.country_code]
+      : []
+  const names = codes.map((code) => countryName(lang, code) ?? code)
+  if (names.length === 0) return t('place.alerts.this_country')
+  try {
+    return new Intl.ListFormat(lang, { type: 'disjunction' }).format(names)
+  } catch {
+    return names.join(', ')
+  }
 }
 
 function AlertsSection({ ctx }: { ctx: Ctx }) {
@@ -1215,7 +1332,14 @@ function AlertsSection({ ctx }: { ctx: Ctx }) {
   const radius = isNum(data.radius_km) ? data.radius_km : ctx.report.query.radius_km
   const down = data.sources_down ?? []
   const age = ageSeconds(block, clock)
-  const unplaced = isNum(data.unplaced_in_country) ? data.unplaced_in_country : 0
+  // Warnings of the place's country that carry no position at all (every
+  // Meteoalarm warning, most of the WMO aggregate): counted by the server,
+  // never listed. They may cover this place, so they are said up front, and
+  // while there is one, "nothing under way" is never said.
+  const unplaced = isNum(data.unplaced_in_country) && data.unplaced_in_country > 0 ? data.unplaced_in_country : 0
+  const countries = countryList(ctx)
+  // the server lists the 20 most severe; the rest are counted in `total`
+  const unlisted = isNum(data.total) && data.total > events.length ? data.total - events.length : 0
   return (
     <Section
       id="alerts"
@@ -1223,7 +1347,7 @@ function AlertsSection({ ctx }: { ctx: Ctx }) {
       ids={['alerts_now']}
       ctx={ctx}
       details={
-        events.length > 3 || unplaced > 0 ? (
+        events.length > 3 || unlisted > 0 ? (
           <>
             {events.length > 3 ? (
               <ul className="place-alerts">
@@ -1232,7 +1356,11 @@ function AlertsSection({ ctx }: { ctx: Ctx }) {
                 ))}
               </ul>
             ) : null}
-            {unplaced > 0 ? <p className="place-line">{t('place.alerts.unplaced', { n: unplaced })}</p> : null}
+            {unlisted > 0 ? (
+              <p className="place-line">
+                {t('place.alerts.unlisted', { n: fmt.n(unlisted, 0), km: fmt.n(radius, 0) })}
+              </p>
+            ) : null}
           </>
         ) : null
       }
@@ -1244,12 +1372,25 @@ function AlertsSection({ ctx }: { ctx: Ctx }) {
               <AlertItem key={event.id} event={event} ctx={ctx} />
             ))}
           </ul>
-        ) : down.length === 0 ? (
+        ) : down.length === 0 && unplaced === 0 ? (
           <p className="state state-ok place-line">
             <span className="state-glyph" aria-hidden="true">
               ●
             </span>
             <span>{t('place.alerts.none', { km: fmt.n(radius, 0) })}</span>
+          </p>
+        ) : null}
+        {unplaced > 0 ? (
+          <p className="state state-att place-line place-unplaced">
+            <span className="state-glyph" aria-hidden="true">
+              ▲
+            </span>
+            <span>
+              {t(events.length > 0 ? 'place.alerts.unplaced_more' : 'place.alerts.unplaced', {
+                n: fmt.n(unplaced, 0),
+                country: countries,
+              })}
+            </span>
           </p>
         ) : null}
         {down.length > 0 ? (
@@ -1267,7 +1408,7 @@ function AlertsSection({ ctx }: { ctx: Ctx }) {
         <span className="place-chips">
           {block.as_of ? (
             <time className="place-asof" dateTime={block.as_of}>
-              {t('place.alerts.checked', { age: fmt.duration(age ?? 0) })}
+              {age === null ? rawAsOf(t, block.as_of) : t('place.alerts.checked', { age: fmt.duration(age) })}
             </time>
           ) : null}
           {isLate(block, clock) ? <Late t={t} /> : null}
@@ -1396,15 +1537,36 @@ function dayUnderWay(days: DayStep[], serverNow: number): DayStep | null {
   return !Number.isNaN(end) && end - 24 * 3600 * 1000 <= serverNow ? first : null
 }
 
+const SIX_HOURS_MS = 6 * 3600 * 1000
+
+/** The window a day under way's values actually cover. `start` is the solar
+ * day's start (often yesterday evening in UTC), never what is left of it:
+ * the server keeps only the 6-hour blocks still ahead, which are the last
+ * `blocks` of the day, so they run from `end - blocks x 6 h` to `end`. */
+function partialLabel(day: DayStep, ctx: Ctx): string {
+  const { t, fmt } = ctx
+  const end = Date.parse(day.end)
+  if (Number.isNaN(end)) return t('place.day.partial_until', { to: day.end })
+  if (!isNum(day.blocks) || !Number.isInteger(day.blocks) || day.blocks < 1 || day.blocks > 4) {
+    return t('place.day.partial_until', { to: fmt.time(day.end) })
+  }
+  const from = new Date(end - day.blocks * SIX_HOURS_MS).toISOString()
+  // across midnight UTC each end carries its date, or "18:00 to 12:00" reads
+  // as a window that runs backwards
+  const sameDay = from.slice(0, 10) === new Date(end).toISOString().slice(0, 10)
+  return t('place.day.partial', {
+    from: sameDay ? fmt.clock(from) : fmt.dateTime(from),
+    to: sameDay ? fmt.time(day.end) : fmt.dateTime(day.end),
+  })
+}
+
 function DayLine({ day, ctx, partial }: { day: DayStep; ctx: Ctx; partial: boolean }) {
   const { t, fmt } = ctx
   const max = temp(fmt, day.temp_max_c)
   const min = temp(fmt, day.temp_min_c)
   return (
     <li className="place-day" data-partial={partial ? 'true' : undefined}>
-      <span className="place-day-name">
-        {partial ? t('place.day.partial', { time: fmt.time(day.start) }) : fmt.weekday(day.date)}
-      </span>
+      <span className="place-day-name">{partial ? partialLabel(day, ctx) : fmt.weekday(day.date)}</span>
       <Sky t={t} symbol={day.symbol} />
       {max && min ? (
         <span className="place-day-temps">
@@ -1480,8 +1642,9 @@ function TodaySection({ ctx }: { ctx: Ctx }) {
 
 // ------------------------------------------------------------------ tables
 
-/** A small table that becomes stacked rows on a narrow card (CSS): each cell
- * carries its column name in `data-label` for that layout. */
+/** A small table that becomes stacked rows in a narrow section (CSS): each
+ * cell carries its column name in `data-label` for that layout. More than
+ * three columns is `is-wide`: it needs a wider section to stay a table. */
 function Table({
   caption,
   columns,
@@ -1492,7 +1655,7 @@ function Table({
   rows: { key: string; cells: ReactNode[] }[]
 }) {
   return (
-    <table className="place-table">
+    <table className={`place-table${columns.length > 3 ? ' is-wide' : ''}`}>
       <caption>{caption}</caption>
       <thead>
         <tr>
@@ -1850,14 +2013,15 @@ function SeaSection({ ctx }: { ctx: Ctx }) {
 
 // ------------------------------------------------------------------ 8 air
 
+/** The `dominant` codes of both indices, as the server names them (the
+ * Open-Meteo CAMS variable names, backend air.py). */
 const POLLUTANT_LABEL: Record<string, string> = {
   pm2_5: 'PM2.5',
   pm10: 'PM10',
-  o3: 'O₃',
-  no2: 'NO₂',
-  so2: 'SO₂',
-  co: 'CO',
-  dust: 'dust',
+  ozone: 'O₃',
+  nitrogen_dioxide: 'NO₂',
+  sulphur_dioxide: 'SO₂',
+  carbon_monoxide: 'CO',
 }
 
 function AirSection({ ctx }: { ctx: Ctx }) {
@@ -1879,7 +2043,7 @@ function AirSection({ ctx }: { ctx: Ctx }) {
     [t('place.label.dust'), now.dust_ugm3],
   ]
   const dominant = (code: string | null | undefined) =>
-    code ? (POLLUTANT_LABEL[code] ?? code) : null
+    code ? (POLLUTANT_LABEL[code] ?? (code === 'dust' ? t('place.label.dust') : code)) : null
   return (
     <Section
       id="air"
@@ -1906,6 +2070,7 @@ function AirSection({ ctx }: { ctx: Ctx }) {
               {us && isNum(us.value) ? (
                 <Fact label={t('place.label.us_aqi')}>
                   {`${fmt.n(us.value, 0)}${us.category ? ` · ${orRaw(t, `place.air.us.${us.category}`, us.category)}` : ''}`}
+                  {dominant(us.dominant) ? ` · ${t('place.air.dominant', { pollutant: dominant(us.dominant) ?? '' })}` : null}
                   {us.scale ? <span className="place-muted">{` (${us.scale})`}</span> : null}
                 </Fact>
               ) : null}
@@ -2065,20 +2230,25 @@ function RiskSection({ ctx }: { ctx: Ctx }) {
 
 // ------------------------------------------------------------------ 10 history
 
-function Decades({ rows, ctx }: { rows: DecadeCount[]; ctx: Ctx }) {
+/** Counts per decade, under a heading that names the catalogue: the history
+ * fold holds two of these lists, and a bare one cannot say what it counts. */
+function Decades({ title, rows, ctx }: { title: string; rows: DecadeCount[]; ctx: Ctx }) {
   const { t, fmt } = ctx
   if (rows.length === 0) return null
   return (
-    <ul className="place-decades">
-      {rows.map((row) => (
-        <li key={row.decade}>
-          <span className="place-decade">{t('place.history.decade', { decade: row.decade })}</span>{' '}
-          <span className="place-count">{fmt.n(row.count, 0)}</span>
-          {row.early ? <span className="place-muted">{` · ${t('place.history.incomplete')}`}</span> : null}
-          {row.partial ? <span className="place-muted">{` · ${t('place.history.partial')}`}</span> : null}
-        </li>
-      ))}
-    </ul>
+    <>
+      <h4 className="place-sub">{title}</h4>
+      <ul className="place-decades">
+        {rows.map((row) => (
+          <li key={row.decade}>
+            <span className="place-decade">{t('place.history.decade', { decade: row.decade })}</span>{' '}
+            <span className="place-count">{fmt.n(row.count, 0)}</span>
+            {row.early ? <span className="place-muted">{` · ${t('place.history.incomplete')}`}</span> : null}
+            {row.partial ? <span className="place-muted">{` · ${t('place.history.partial')}`}</span> : null}
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }
 
@@ -2109,6 +2279,27 @@ function QuakeList({ title, rows, ctx }: { title: string; rows: QuakeRow[]; ctx:
           )
         })}
       </ul>
+    </>
+  )
+}
+
+/** IBTrACS NATURE codes this panel puts in words. TS needs none (the list
+ * is of tropical cyclones); a code it does not know is shown as sent. */
+const STORM_NATURES = new Set(['DS', 'ET', 'SS', 'NR', 'MX'])
+
+/** What a storm was at its closest approach, in the catalogue's own terms.
+ * "Post-tropical" is the SERVER's verdict (`post_tropical`: seen within the
+ * radius only as extratropical), never inferred here from one point's code:
+ * a subtropical storm is counted as tropical, and NR means the agency
+ * reported no nature at all, which is not a classification. */
+function StormNature({ row, t }: { row: CycloneRow; t: T }) {
+  if (row.post_tropical === true) return <>{` · ${t('place.history.posttropical')}`}</>
+  const code = row.nature_at_closest
+  if (!code || code === 'TS') return null
+  return (
+    <>
+      {' · '}
+      {STORM_NATURES.has(code) ? t(`place.history.nature.${code}`) : <span className="place-token">{code}</span>}
     </>
   )
 }
@@ -2168,9 +2359,9 @@ function HistorySection({ ctx }: { ctx: Ctx }) {
         <>
           {quakes.status === 'ok' ? (
             <>
-              <QuakeList title={t('place.history.strongest')} rows={q.strongest ?? []} ctx={ctx} />
-              <QuakeList title={t('place.history.latest')} rows={q.latest ?? []} ctx={ctx} />
-              <Decades rows={q.by_decade ?? []} ctx={ctx} />
+              <QuakeList title={t('place.history.quakes.strongest')} rows={q.strongest ?? []} ctx={ctx} />
+              <QuakeList title={t('place.history.quakes.latest')} rows={q.latest ?? []} ctx={ctx} />
+              <Decades title={t('place.history.quakes.decades')} rows={q.by_decade ?? []} ctx={ctx} />
             </>
           ) : null}
           {significant.status === 'ok' && (s.events ?? []).length > 0 ? (
@@ -2260,7 +2451,7 @@ function HistorySection({ ctx }: { ctx: Ctx }) {
             <>
               {(cy.strongest ?? []).length > 0 ? (
                 <>
-                  <h4 className="place-sub">{t('place.history.strongest')}</h4>
+                  <h4 className="place-sub">{t('place.history.cyclones.strongest')}</h4>
                   <ul className="place-list">
                     {(cy.strongest ?? []).map((row, index) => (
                       <li key={row.sid ?? index}>
@@ -2271,9 +2462,7 @@ function HistorySection({ ctx }: { ctx: Ctx }) {
                           : null}
                         {row.wind_source ? <span className="place-muted">{` (${row.wind_source})`}</span> : null}
                         {isNum(row.closest_km) ? ` · ${t('place.sea.distance', { km: km(fmt, row.closest_km) ?? '' })}` : null}
-                        {row.nature_at_closest && row.nature_at_closest !== 'TS'
-                          ? ` · ${t('place.history.posttropical')}`
-                          : null}
+                        <StormNature row={row} t={t} />
                       </li>
                     ))}
                   </ul>
@@ -2281,10 +2470,15 @@ function HistorySection({ ctx }: { ctx: Ctx }) {
               ) : null}
               {isNum(cy.post_tropical_only) && cy.post_tropical_only > 0 ? (
                 <p className="place-line place-muted">
-                  {`${fmt.n(cy.post_tropical_only, 0)} ${t('place.history.posttropical')}`}
+                  {t('place.history.posttropical_only', { n: fmt.n(cy.post_tropical_only, 0) })}
                 </p>
               ) : null}
-              <Decades rows={cy.by_decade ?? []} ctx={ctx} />
+              {isNum(cy.other_nature_only) && cy.other_nature_only > 0 ? (
+                <p className="place-line place-muted">
+                  {t('place.history.other_nature_only', { n: fmt.n(cy.other_nature_only, 0) })}
+                </p>
+              ) : null}
+              <Decades title={t('place.history.cyclones.decades')} rows={cy.by_decade ?? []} ctx={ctx} />
             </>
           ) : null}
         </>
@@ -2345,14 +2539,33 @@ export interface PlaceReportProps {
   /** replaces the network call (tests, another origin). Read through a ref:
    * an inline arrow from the parent does not restart the fetch. */
   fetcher?: PlaceFetcher
-  /** a report already in hand, drawn at once if it is for these props */
-  initial?: PlaceResponse
+  /** a report already in hand, drawn at once if it is for these props, with
+   * the `Date.now()` of its ARRIVAL: every age runs from its server_time plus
+   * the time since then, so a report held ten minutes reads ten minutes
+   * older, never as if it had just come in */
+  initial?: Held
 }
 
-interface Held {
+export interface Held {
   body: PlaceResponse
   /** Date.now() when it arrived: ages run from server_time plus this delta */
   arrived: number
+}
+
+/** What the header says about a report that came back incomplete. */
+type PartialState = 'retrying' | 'spent' | null
+
+interface Failure {
+  query: PlaceQuery
+  text: string
+  /** the wait before the panel asks again by itself, when it will */
+  retryInS: number | null
+}
+
+/** The wait a refusal names, if the panel should honour it by itself. */
+function refusedWait(reason: unknown): number | null {
+  const wait = (reason as { retryAfterS?: unknown } | null)?.retryAfterS
+  return isNum(wait) && wait >= 0 && wait * 1000 < PLACE_REFRESH_MS ? Math.max(1, wait) : null
 }
 
 export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, initial }: PlaceReportProps) {
@@ -2371,11 +2584,16 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
   )
 
   const [held, setHeld] = useState<Held | null>(() =>
-    initial && isPlaceResponse(initial) && sameQuery(initial.query, query, false)
-      ? { body: initial, arrived: Date.now() }
+    initial &&
+    isPlaceResponse(initial.body) &&
+    isNum(initial.arrived) &&
+    sameQuery(initial.body.query, query, false)
+      ? // an arrival "in the future" would make the report look younger
+        { body: initial.body, arrived: Math.min(initial.arrived, Date.now()) }
       : null,
   )
-  const [failure, setFailure] = useState<{ query: PlaceQuery; text: string } | null>(null)
+  const [failure, setFailure] = useState<Failure | null>(null)
+  const [partial, setPartial] = useState<PartialState>(null)
   const [now, setNow] = useState(() => Date.now())
 
   const fetcherRef = useRef(fetcher)
@@ -2388,13 +2606,17 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
     let controller: AbortController | null = null
     let retryTimer: number | undefined
     let retries = 0
+    let refusals = 0
     let lastStart = 0
 
     const load = (retry: boolean) => {
       // A request still running is superseded, never stacked.
       controller?.abort()
       window.clearTimeout(retryTimer)
-      if (!retry) retries = 0
+      if (!retry) {
+        retries = 0
+        refusals = 0
+      }
       const current = new AbortController()
       controller = current
       lastStart = Date.now()
@@ -2408,7 +2630,8 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
         (body) => {
           if (!alive || current.signal.aborted) return
           if (!isPlaceResponse(body)) {
-            setFailure({ query, text: 'unexpected response from /api/place' })
+            setFailure({ query, text: 'unexpected response from /api/place', retryInS: null })
+            setPartial((state) => (state === 'retrying' ? 'spent' : state))
             return
           }
           // A late answer for another place never paints over this one.
@@ -2417,15 +2640,33 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
           setHeld({ body, arrived })
           setFailure(null)
           setNow(arrived)
-          if (!body.complete && retries < PLACE_PARTIAL_RETRIES) {
+          refusals = 0
+          if (body.complete) {
+            setPartial(null)
+          } else if (retries < PLACE_PARTIAL_RETRIES) {
             retries += 1
             const wait = isNum(body.retry_after_s) && body.retry_after_s > 0 ? body.retry_after_s : 5
             retryTimer = window.setTimeout(() => load(true), wait * 1000)
+            setPartial('retrying')
+          } else {
+            // nothing more is asked before the five-minute refresh: the
+            // header must stop saying the data is on its way
+            setPartial('spent')
           }
         },
         (reason: unknown) => {
           if (!alive || current.signal.aborted) return
-          setFailure({ query, text: errorText(reason) })
+          // A refusal that names its wait (429 + Retry-After) is asked again
+          // after it, a few times, instead of leaving the panel empty until
+          // the next refresh.
+          const wait = refusals < PLACE_REFUSED_RETRIES ? refusedWait(reason) : null
+          if (wait !== null) {
+            refusals += 1
+            retryTimer = window.setTimeout(() => load(true), wait * 1000)
+          } else {
+            setPartial((state) => (state === 'retrying' ? 'spent' : state))
+          }
+          setFailure({ query, text: errorText(reason), retryInS: wait })
         },
       )
     }
@@ -2458,7 +2699,8 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
   // What is drawn: only a report for THIS place (the language may lag one
   // fetch behind: only error.message changes with it).
   const report = held && sameQuery(held.body.query, query, false) ? held.body : null
-  const error = failure && sameQuery(failure.query, query, false) ? failure.text : null
+  const failed = failure && sameQuery(failure.query, query, false) ? failure : null
+  const error = failed ? failed.text : null
   const serverNow = report ? Date.parse(report.server_time) + Math.max(0, now - (held?.arrived ?? now)) : now
   const clock = useMemo<Clock>(() => ({ serverNow }), [serverNow])
   const ctx = useMemo<Ctx | null>(
@@ -2496,15 +2738,18 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
           </p>
         ) : null}
         {report && !report.complete ? (
-          <p className="state state-att place-partial" role="status">
+          <p className="state state-att place-partial" role="status" data-partial={partial ?? 'retrying'}>
             <span className="state-glyph" aria-hidden="true">
               ◷
             </span>
-            <span>{t('place.partial')}</span>
+            {/* "still arriving" only while a retry is really on its way */}
+            <span>{t(partial === 'spent' ? 'place.partial.spent' : 'place.partial')}</span>
           </p>
         ) : null}
         {error ? (
-          <p className="state state-att place-error">
+          // A first load that fails replaces the loading status: it is
+          // announced at once. A failed refresh over a kept report is polite.
+          <p className="state state-att place-error" role={report ? 'status' : 'alert'}>
             <span className="state-glyph" aria-hidden="true">
               ✕
             </span>
@@ -2514,6 +2759,7 @@ export function PlaceReport({ lat, lon, name, radiusKm, fetcher = fetchPlace, in
                     time: <time dateTime={report.server_time}>{fmt.dateTime(report.server_time)}</time>,
                   })
                 : t('place.error', { reason: error })}
+              {failed?.retryInS ? ` ${t('place.retry_after', { s: fmt.n(failed.retryInS, 0) })}` : null}
             </span>
           </p>
         ) : null}

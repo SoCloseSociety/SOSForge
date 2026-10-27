@@ -11,12 +11,14 @@
    flex rows wrap with a real basis and min-width: 0, grids use
    min(100%, ...) so a narrow card drops to one column, long tokens (raw
    METAR, station ids, WRI labels, error reasons) break anywhere, and tables
-   become stacked rows when the PANEL (not the window) is under 600 px.
-   Container and media queries go at the end of the sheet. */
+   become stacked rows when their SECTION (not the window, not the panel) is
+   too narrow for their columns. Container and media queries go at the end
+   of the sheet. */
 
-/* `container` makes the panel's own width the one the narrow layout keys
-   on. It also means the panel takes its width from its parent, never from
-   its content: mount it as a block, not inside a shrink-to-fit box. */
+/* `container` (inline-size containment) means the panel takes its width
+   from its parent, never from its content: a long METAR or a table can
+   never widen it. Mount it as a block, not inside a shrink-to-fit box. The
+   tables key on their SECTION's width (end of the sheet). */
 .place-report {
   container: place / inline-size;
   min-width: 0;
@@ -77,7 +79,10 @@
   align-items: start;
 }
 
+/* each section is the container its tables key on (end of the sheet): its
+   width comes from the grid track, never from its content */
 .place-report .place-section {
+  container: place-section / inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -535,12 +540,56 @@
   color: var(--t3);
 }
 
-/* ------------------------------------------------------------- narrow panel */
+/* ------------------------------------------------------------- narrow section */
 
 /* Tables become stacked rows: each cell on its own line, its column name in
-   front of it. Keyed on the PANEL's width, so a narrow column on a wide
-   screen stacks too. */
-@container place (max-width: 599px) {
+   front of it. Keyed on the SECTION's width, the box a table actually lives
+   in: on a wide panel the sections are a grid of about 22rem columns, and a
+   seven-column table kept as a table there broke its headers mid-word
+   ("Temp/erature", 40 px cells at a 1200 px panel, measured). A table of
+   more than three columns needs about 40rem; a three-column one fits in any
+   section the grid makes, so it stacks only below 22rem (a 280 px card).
+   rem, not px: at a 32 px root the thresholds double with the text. */
+@container place-section (max-width: 39.99rem) {
+  /* each cell says its column itself (::before below), so the header row
+     would only lay out off the card */
+  .place-report .place-table.is-wide thead {
+    display: none;
+  }
+
+  .place-report .place-table.is-wide,
+  .place-report .place-table.is-wide tbody,
+  .place-report .place-table.is-wide tr,
+  .place-report .place-table.is-wide td {
+    display: block;
+    width: 100%;
+  }
+
+  .place-report .place-table.is-wide tr {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .place-report .place-table.is-wide td {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
+    padding: 1px 0;
+    border-bottom: none;
+  }
+
+  .place-report .place-table.is-wide td::before {
+    content: attr(data-label);
+    flex: 1 1 10ch;
+    color: var(--t3);
+  }
+
+  .place-report .place-table.is-wide td > * {
+    flex: 999 1 12ch;
+  }
+}
+
+@container place-section (max-width: 21.99rem) {
   /* each cell says its column itself (::before below), so the header row
      would only lay out off the card */
   .place-report .place-table thead {
