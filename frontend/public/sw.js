@@ -23,7 +23,12 @@
  * Bump CACHE_VERSION on every release that changes what gets precached.
  * `activate` deletes every cache from a previous version, so nothing pinned
  * to an old build lingers forever. The basemap caches have their own
- * TILES_VERSION: a shell release must not throw away 35 MB of world map.
+ * TILES_VERSION: a shell release must not throw away a world map the reader
+ * chose to save (up to 35.5 MB stored).
+ *
+ * What it downloads ON ITS OWN is small on purpose (about 1.5 MB, see
+ * AUTO_MAX_ZOOM): the rest of the world map is fetched only when the reader
+ * asks for it, or on a connection that says it is unmetered.
  */
 
 // v2 (2026-10): the precached manifest changed colour with the Sentinel
@@ -35,8 +40,9 @@ const SHELL_CACHE = `sosforge-shell-${CACHE_VERSION}`
 const RUNTIME_CACHE = `sosforge-runtime-${CACHE_VERSION}`
 
 const TILES_VERSION = 't1'
-// World zooms 0..3, the style, its TileJSON, sprites and glyphs: the map of
-// the whole planet, offline. Never trimmed.
+// The world at zooms 0..1 (automatic) and 2..3 (when saved), the style, its
+// TileJSON, sprites and glyphs: the planet, offline. Never trimmed; only the
+// reader's 'sosforge:basemap-forget' takes the saved zooms back out.
 const TILES_BASE_CACHE = `sosforge-tiles-base-${TILES_VERSION}`
 // Tiles the reader browsed deeper than that: kept, but capped.
 const TILES_CACHE = `sosforge-tiles-${TILES_VERSION}`
@@ -81,24 +87,39 @@ const STYLE_URL = `${TILE_HOST}/styles/dark`
 // holds. What it cannot do is draw one with the network down.
 const TILE_PATH = /^\/planet\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf$/
 
-// The world, zooms 0 to 3: 85 tiles, 33.5 MB (measured 2026-10-27 on build
-// 20261025_080012_pt: z0 0.08, z1 0.81, z2 14.37, z3 18.24 MB).
-const PRECACHE_MAX_ZOOM = 3
+// Two sets, and only the small one is ever taken without asking.
+//
+// AUTOMATIC, on any connection that is not Save-Data or 2G: the world at
+// zooms 0 and 1 (the map a first visit opens on), the glyph ranges the labels
+// of those 5 tiles use, the sprites. Measured 2026-10-27 on build
+// 20261025_080012_pt: 30 files, 1.47 MB transferred, 2.63 MB stored.
+//
+// THE WHOLE WORLD, zooms 0 to 3, only when the reader asks for it
+// ('sosforge:basemap-save', the contract at the end of this file) or when the
+// connection says it is unmetered (see unmetered()): 114 files, 17.31 MB
+// transferred, 35.54 MB stored -- so about 15.8 MB more than the automatic
+// set. Tiles travel gzip-compressed: what a phone pays is the transfer.
+// Zooms 0..2 alone would be 17.23 MB stored (about 8.3 MB transferred): still
+// far too much to take silently, hence zoom 1.
+const AUTO_MAX_ZOOM = 1
+const WORLD_MAX_ZOOM = 3
 
-// Browsed tiles beyond the precached world. Insertion order (the Cache API
-// keeps it), oldest out first.
+// Browsed tiles beyond the world zooms. Insertion order (the Cache API keeps
+// it), oldest out first. Tiles at WORLD_MAX_ZOOM and below are kept with the
+// world, never trimmed (at most 85 of them).
 const MAX_BROWSED_TILES = 400
 
-// The glyph ranges the labels of zooms 0..3 need: every character of every
-// name in those 85 tiles (name:latin, name:nonlatin, name_en, name, ref),
-// minus the ideographs, kana and hangul that MapLibre draws with a local
-// font. Measured 2026-10-27, 23 ranges, 1.77 MB of "Noto Sans Regular".
-const GLYPH_RANGES = [
-  '0-255', '256-511', '512-767', '768-1023', '1024-1279', '1280-1535', '1536-1791', '1792-2047',
-  '2304-2559', '2816-3071', '3328-3583', '3584-3839', '3840-4095', '4096-4351', '4608-4863',
-  '4864-5119', '5120-5375', '5376-5631', '5888-6143', '6144-6399', '7680-7935', '8192-8447',
-  '11520-11775',
+// The glyph ranges each set's labels need: every character of every name in
+// its tiles (name:latin, name:nonlatin, name_en, name, ref), minus the
+// ideographs, kana and hangul that MapLibre draws with a local font.
+// Measured 2026-10-27 in "Noto Sans Regular": 19 ranges (1.47 MB stored) for
+// zooms 0..1, 23 (1.77 MB) for 0..3.
+const AUTO_GLYPH_RANGES = [
+  '0-255', '256-511', '768-1023', '1024-1279', '1280-1535', '1536-1791', '2304-2559', '2816-3071',
+  '3328-3583', '3584-3839', '4096-4351', '4608-4863', '4864-5119', '5120-5375', '5376-5631',
+  '5888-6143', '7680-7935', '8192-8447', '11520-11775',
 ]
+const WORLD_GLYPH_RANGES = [...AUTO_GLYPH_RANGES, '512-767', '1792-2047', '3840-4095', '6144-6399']
 
 // The style and the TileJSON are served from the cache at once and refreshed
 // behind (stale-while-revalidate), but only while the cached copy is younger
@@ -107,10 +128,15 @@ const GLYPH_RANGES = [
 const META_FRESH_MS = 7 * 24 * 3600 * 1000
 const META_TIMEOUT_MS = 6000
 
-// The world precache waits this long after the map starts, then fetches one
-// file at a time: it must never compete with the opening snapshot of the
+// The automatic precache waits this long after the map starts, then fetches
+// one file at a time: it must never compete with the opening snapshot of the
 // live feed, which is what the reader came for.
 const PRECACHE_DELAY_MS = 20000
+
+// A HEAD per missing file tells the real size before anything is downloaded
+// (Content-Length is a CORS-safelisted header, and it is the compressed size:
+// what the reader pays). Kept this long, then measured again.
+const SIZE_TTL_MS = 3600 * 1000
 
 const TILE_FETCH = { mode: 'cors', credentials: 'omit' }
 
@@ -131,17 +157,14 @@ self.addEventListener('activate', (event) => {
       .then((names) => Promise.all(names.filter((name) => !CURRENT_CACHES.has(name)).map((name) => caches.delete(name))))
       .then(() => self.clients.claim())
       .then(() => {
-        // Not awaited, on purpose: activation must not wait for 35 MB. A
+        // Not awaited, on purpose: activation must not wait for downloads. A
         // first visit loaded its map before this worker took control, so
         // without this kick it would precache nothing until the next visit.
-        precacheBasemap()
+        precacheBasemap('auto')
       }),
   )
 })
 
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'sosforge:precache-basemap') event.waitUntil(precacheBasemap())
-})
 
 // Lazy chunks and fonts named inside a bundle: `"assets/MapView-x.js"` (Vite's
 // preload map), `url(/assets/font.woff2)`, and `import("./MapView-x.js")` or
@@ -334,7 +357,7 @@ async function storeTile(url, build, z, x, y, cache, waitUntil) {
   }
   if (response.ok) {
     await cache.put(tileKey(z, x, y), stamp(response.clone(), fetched))
-    if (Number(z) > PRECACHE_MAX_ZOOM) waitUntil(trimBrowsed(cache))
+    if (Number(z) > WORLD_MAX_ZOOM) waitUntil(trimBrowsed(cache))
   }
   return response
 }
@@ -344,7 +367,7 @@ async function storeTile(url, build, z, x, y, cache, waitUntil) {
  * what the page would have fetched without this worker anyway. */
 async function serveTile(request, match, waitUntil) {
   const [, build, z, x, y] = match
-  const cache = await caches.open(Number(z) <= PRECACHE_MAX_ZOOM ? TILES_BASE_CACHE : TILES_CACHE)
+  const cache = await caches.open(Number(z) <= WORLD_MAX_ZOOM ? TILES_BASE_CACHE : TILES_CACHE)
   const cached = await cache.match(tileKey(z, x, y))
   if (cached) {
     if (buildOf(cached) < build) waitUntil(storeTile(request.url, build, z, x, y, cache, waitUntil).catch(() => {}))
@@ -374,29 +397,53 @@ function routeBasemap(event, url) {
   }
   if (!answer) return false
   event.respondWith(answer)
-  // The map is in use: a good moment to make sure the whole world is there.
-  waitUntil(precacheBasemap())
+  // The map is in use: a good moment to make sure the automatic set is there.
+  waitUntil(precacheBasemap('auto'))
   return true
 }
 
 // --------------------------------------------------------- basemap precache
 
-let precaching = null
-let basemapComplete = false
+let running = null
+let worldWanted = false
+let savingWorld = false
+let autoComplete = false
+let worldComplete = false
+let wake = null
+let sizes = null // { at, key, bytes }: the last measured size of what the world lacks
 
-/** Save-Data is the reader asking for less; 2G cannot carry 35 MB without
- * starving the live feed (a fresh tab needs its snapshot first). */
+/** Save-Data is the reader asking for less; 2G cannot carry even the small
+ * set without starving the live feed (a fresh tab needs its snapshot first).
+ * Applies to what this worker does ON ITS OWN only: a reader who asks for the
+ * world map gets it, whatever the connection. */
 function constrained() {
   const connection = self.navigator && self.navigator.connection
   return !!connection && (connection.saveData === true || /(^|-)2g$/.test(connection.effectiveType || ''))
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+/** true / false when the connection says what it is, null when it does not
+ * (desktop Chrome, Safari and Firefox expose no `type`): never assumed. Wi-Fi
+ * is taken at its word; a phone's hotspot also reports "wifi", a limit of the
+ * API that this worker cannot see past. */
+function unmetered() {
+  const connection = self.navigator && self.navigator.connection
+  if (!connection || !connection.type) return null
+  return (connection.type === 'wifi' || connection.type === 'ethernet') && connection.saveData !== true
 }
 
-/** What the offline world map needs: [url to fetch, cache key] pairs. */
-async function basemapManifest(waitUntil) {
+/** A sleep the reader's own request cuts short. */
+function sleep(ms) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    wake = () => {
+      clearTimeout(timer)
+      resolve()
+    }
+  })
+}
+
+/** [url to fetch, cache key] pairs for the world up to `maxZoom`. */
+async function basemapManifest(maxZoom, glyphRanges, waitUntil) {
   const style = await (await getMeta(STYLE_URL, waitUntil)).json()
   const wanted = []
   for (const source of Object.values(style.sources || {})) {
@@ -404,7 +451,7 @@ async function basemapManifest(waitUntil) {
     const tilejson = await (await getMeta(source.url, waitUntil)).json()
     const template = (tilejson.tiles || [])[0] || ''
     if (!TILE_PATH.test(template.replace('{z}/{x}/{y}', '0/0/0').replace(TILE_HOST, ''))) continue
-    for (let z = 0; z <= PRECACHE_MAX_ZOOM; z++) {
+    for (let z = 0; z <= maxZoom; z++) {
       for (let x = 0; x < 2 ** z; x++) {
         for (let y = 0; y < 2 ** z; y++) {
           wanted.push([template.replace('{z}', z).replace('{x}', x).replace('{y}', y), tileKey(z, x, y)])
@@ -423,7 +470,7 @@ async function basemapManifest(waitUntil) {
   }
   if (style.glyphs) {
     for (const stack of stacks) {
-      for (const range of GLYPH_RANGES) {
+      for (const range of glyphRanges) {
         // new URL() encodes the space exactly as the page's own request does,
         // so the key matches what MapLibre asks for.
         const url = new URL(style.glyphs.replace('{fontstack}', stack).replace('{range}', range)).href
@@ -434,38 +481,206 @@ async function basemapManifest(waitUntil) {
   return wanted
 }
 
-async function runPrecache() {
-  if (basemapComplete || constrained()) return 'skipped'
-  await sleep(PRECACHE_DELAY_MS)
-  if (constrained()) return 'skipped'
+const worldManifest = (waitUntil) => basemapManifest(WORLD_MAX_ZOOM, WORLD_GLYPH_RANGES, waitUntil)
+const autoManifest = (waitUntil) => basemapManifest(AUTO_MAX_ZOOM, AUTO_GLYPH_RANGES, waitUntil)
+
+async function missingFrom(cache, wanted) {
+  const missing = []
+  for (const entry of wanted) if (!(await cache.match(entry[1]))) missing.push(entry)
+  return missing
+}
+
+async function broadcast(message) {
+  for (const client of await self.clients.matchAll({ type: 'window', includeUncontrolled: true })) {
+    client.postMessage(message)
+  }
+}
+
+/** Fetches what `level` needs and is not cached yet.
+ *  - 'auto' waits, yields to Save-Data and 2G, and grows into 'world' only
+ *    on a connection that says it is unmetered;
+ *  - 'world' is the reader's request: no wait, no connection check, and every
+ *    tab is told its progress. */
+async function runPrecache(level) {
+  if (level === 'auto') {
+    if (constrained() || (autoComplete && (worldComplete || unmetered() !== true))) return 'skipped'
+    await sleep(PRECACHE_DELAY_MS)
+    if (worldWanted) return 'deferred' // the reader asked meanwhile: the world run follows
+    if (constrained()) return 'skipped'
+    if (unmetered() === true) level = 'world'
+  }
+  const asked = level === 'world'
+  savingWorld = asked
   const cache = await caches.open(TILES_BASE_CACHE)
   const pending = []
-  const wanted = await basemapManifest((p) => pending.push(p))
-  let missing = 0
-  for (const [url, key] of wanted) {
-    if (constrained()) return 'stopped'
-    if (await cache.match(key)) continue
-    missing++
-    const response = await fetch(url, TILE_FETCH)
-    if (response.ok) await cache.put(key, stamp(response, url))
+  const missing = await missingFrom(cache, await (asked ? worldManifest : autoManifest)((p) => pending.push(p)))
+  let done = 0
+  let failed = 0
+  let bytes = 0
+  for (const [url, key] of missing) {
+    if (!asked && constrained()) return 'stopped'
+    try {
+      const response = await fetch(url, TILE_FETCH)
+      if (!response.ok) throw new Error(String(response.status))
+      bytes += Number(response.headers.get('content-length')) || 0
+      await cache.put(key, stamp(response, url))
+      done++
+    } catch {
+      failed++
+    }
+    if (asked) await broadcast({ type: 'sosforge:basemap-progress', done, failed, total: missing.length, bytes })
   }
   await Promise.all(pending)
-  if (missing === 0) basemapComplete = true
-  return `fetched ${missing}`
+  sizes = null
+  if (failed === 0) {
+    autoComplete = true
+    if (asked) worldComplete = true
+  }
+  if (asked) {
+    await broadcast(
+      failed === 0
+        ? { type: 'sosforge:basemap-saved', files: done, bytes }
+        : { type: 'sosforge:basemap-failed', files: done, failed, bytes },
+    )
+  }
+  return `${level} fetched ${done}${failed ? `, failed ${failed}` : ''}`
 }
 
 /** One run at a time, resumable: each run fetches only what is missing, so
- * a worker stopped half-way simply carries on at the next visit. */
-function precacheBasemap() {
-  if (!precaching) {
-    precaching = runPrecache()
+ * a worker stopped half-way simply carries on at the next visit. A request
+ * for the world joins (or follows) whatever run is in progress. */
+function precacheBasemap(level = 'auto') {
+  if (level === 'world') {
+    worldWanted = true
+    if (wake) wake()
+  }
+  if (!running) {
+    running = (async () => {
+      let result
+      do {
+        const next = worldWanted ? 'world' : 'auto'
+        if (next === 'world') worldWanted = false
+        result = await runPrecache(next)
+      } while (worldWanted)
+      return result
+    })()
       .catch(() => 'failed')
       .finally(() => {
-        precaching = null
+        running = null
+        wake = null
+        savingWorld = false
       })
   }
-  return precaching
+  return running
 }
+
+/** The real size of what the world map lacks, measured now by HEAD requests
+ * (Content-Length: the compressed size, what the reader pays). What the host
+ * does not size is COUNTED, never guessed: measured 2026-10-27, the 80 tiles
+ * answer with a Content-Length (15.66 MB) and the 4 extra glyph files do not
+ * (about 0.2 MB by curl), so `bytes` is a floor whenever `unmeasured` > 0. */
+async function missingSize(missing) {
+  const key = missing.map((m) => m[1]).join('|')
+  if (sizes && sizes.key === key && Date.now() - sizes.at < SIZE_TTL_MS) return sizes
+  let bytes = 0
+  let unmeasured = 0
+  const queue = [...missing]
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      while (queue.length) {
+        const [url] = queue.shift()
+        try {
+          const head = await fetch(url, { ...TILE_FETCH, method: 'HEAD' })
+          const length = head.ok ? head.headers.get('content-length') : null
+          if (length === null) unmeasured++
+          else bytes += Number(length)
+        } catch {
+          unmeasured++
+        }
+      }
+    }),
+  )
+  sizes = { at: Date.now(), key, bytes, unmeasured }
+  return sizes
+}
+
+async function basemapStatus(waitUntil) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const wanted = await worldManifest(waitUntil)
+  const missing = await missingFrom(cache, wanted)
+  const size = missing.length ? await missingSize(missing) : { bytes: 0, unmeasured: 0 }
+  return {
+    type: 'sosforge:basemap-status',
+    saved: missing.length === 0,
+    saving: savingWorld || worldWanted,
+    files: wanted.length,
+    missingFiles: missing.length,
+    missingBytes: size.bytes,
+    unmeasuredFiles: size.unmeasured,
+    unmetered: unmetered(),
+  }
+}
+
+/** Back to the automatic set: the world tiles above it and the glyph ranges
+ * only they need leave the cache. */
+async function forgetWorld(waitUntil) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const keep = new Set((await autoManifest(waitUntil)).map((m) => m[1]))
+  for (const request of await cache.keys()) {
+    const path = new URL(request.url).pathname
+    const tile = /^\/planet\/(\d+)\/\d+\/\d+\.pbf$/.exec(path)
+    const extra = (tile && Number(tile[1]) > AUTO_MAX_ZOOM) || path.startsWith('/fonts/')
+    if (extra && !keep.has(request.url)) await cache.delete(request)
+  }
+  sizes = null
+  worldComplete = false
+}
+
+/* The page's side of the world map: postMessage to this worker.
+ *
+ *   { type: 'sosforge:basemap-status' }
+ *     -> { type: 'sosforge:basemap-status', saved, saving, files,
+ *          missingFiles, missingBytes, unmeasuredFiles, unmetered }
+ *        missingBytes: the transfer size of what is missing, measured now
+ *        (HEAD Content-Length), summed over the files the host sized;
+ *        unmeasuredFiles: how many it did not (a floor, then: today 4 small
+ *        glyph files, about 0.2 MB). Offline, every file is unmeasured: state
+ *        no size. 0 and 0 when saved.
+ *        unmetered: from navigator.connection.type; null when the browser
+ *        does not tell (desktop, Safari, Firefox).
+ *   { type: 'sosforge:basemap-save' }
+ *     -> starts (or joins) the download of the whole world map. Every tab
+ *        then gets { type: 'sosforge:basemap-progress', done, failed, total,
+ *        bytes } after each file, and finally { type: 'sosforge:basemap-saved',
+ *        files, bytes } or { type: 'sosforge:basemap-failed', files, failed,
+ *        bytes }. `bytes` counts the transfer of the files the host sized
+ *        (same floor as above). Sending 'save' again resumes: only what is
+ *        missing is fetched.
+ *   { type: 'sosforge:basemap-forget' }
+ *     -> drops the world zooms above the automatic set; replies with a fresh
+ *        status.
+ *
+ * Replies go to event.ports[0] when the page passes a MessageChannel port,
+ * otherwise to event.source. */
+self.addEventListener('message', (event) => {
+  const type = event.data && event.data.type
+  const target = event.ports && event.ports[0] ? event.ports[0] : event.source
+  const reply = (message) => target && target.postMessage(message)
+  const failed = () => reply({ type: 'sosforge:basemap-status', error: true })
+  const waitUntil = (p) => event.waitUntil(p)
+  if (type === 'sosforge:basemap-status') {
+    event.waitUntil(basemapStatus(waitUntil).then(reply, failed))
+  } else if (type === 'sosforge:basemap-save') {
+    event.waitUntil(precacheBasemap('world'))
+  } else if (type === 'sosforge:basemap-forget') {
+    event.waitUntil(
+      (running || Promise.resolve())
+        .then(() => forgetWorld(waitUntil))
+        .then(() => basemapStatus(waitUntil))
+        .then(reply, failed),
+    )
+  }
+})
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
