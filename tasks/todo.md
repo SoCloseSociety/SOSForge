@@ -973,9 +973,15 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 - [x] drill: the timeline hook raised on Hub.broadcast(..., lite=) and the
       drill server sent no tick at all (found by lane A); fixed in f97a4e8,
       `check` now asserts the heartbeat (mutation-checked), 75/75.
-- [ ] lane A paused its emulator at agentfarm's request (host swap 32.5 of
-      33.8 GB, farm posting first); 0.1.3 continues without it until
-      agentfarm pings; the offline style copy still needs an on-device run
+- [ ] app 0.1.3 (lane-a-app-0.1.3: 1997fe1 lite tick, measured; 5fa2760
+      offline packs through a stripped style copy, NOT proven on a device).
+      APK cd2219ad...955223, same signer, kept out of _apk-drops until the
+      proof. The emulator stays off: free swap 962 MB at 15:45, under
+      agentfarm's 3 GB line; agentfarm pings when the host is clear. If the
+      copy is not used, drop 5fa2760 and rebuild from 1997fe1.
+- [x] round 2 final head 138f632: pytest 981, vitest 468, agent 58, drills
+      75/75, CI green on PR #5 (backend, frontend, agent). Waiting for the
+      owner's go to merge and deploy (scripts ready in the scratchpad).
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
       app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
