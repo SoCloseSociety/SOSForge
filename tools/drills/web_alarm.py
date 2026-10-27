@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """The web's watch alarm, proven in a real browser against a drill server.
 
-Starts `tools/drill.py serve` on 127.0.0.1:8334, the worktree's Vite dev
-server on 127.0.0.1:5334 (proxying /api and /ws to the drill), and Chrome
+Starts `tools/drill.py serve` and the worktree's Vite dev server on two free
+loopback ports (`--drill-port` / `--vite-port` to choose; Vite proxies /api
+and /ws to the drill), and Chrome
 through Playwright with the notifications permission granted. The page
 watches Tokyo (the drill's home), the sound is switched on with a real click,
 and `Notification`, `ServiceWorkerRegistration.showNotification` and the
@@ -11,12 +12,14 @@ script asserts what rang, what did not, and what the alarm list shows.
 
     python3 tools/drills/web_alarm.py        # a python3 that has Playwright
 
-Needs `npm ci` in this worktree's frontend/ first. Stops both servers by
-port when it exits.
+Needs `npm ci` in this worktree's frontend/ first. Stops what it started BY
+PID, with their children, never by port (lesson 30), and removes its
+timeline dir, however it ends.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import re
@@ -30,11 +33,8 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
-
 ROOT = Path(__file__).resolve().parents[2]
-DRILL_PORT = 8334
-VITE_PORT = 5334
+DEV_ONLY_404 = "/download/latest.json"
 TOKYO = json.loads((ROOT / "tools" / "drills" / "homes.json").read_text())["tokyo"]
 SCENARIOS = [
     "01-quake-in-zone",
@@ -97,12 +97,42 @@ def free(port: int) -> bool:
     return not out.stdout.strip()
 
 
-def stop_port(port: int) -> None:
-    out = subprocess.run(
-        ["lsof", "-ti", f"tcp:{port}", "-sTCP:LISTEN"], capture_output=True, text=True
-    )
-    for pid in out.stdout.split():
-        os.kill(int(pid), signal.SIGTERM)
+def pick_port() -> int:
+    """A free loopback port: two runs, or a run next to lane A's drill on
+    8334, can never meet on the same one."""
+    import socket
+
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+class Owned:
+    """The processes THIS run started, stopped by PID with their children
+    (each one leads its own session: `npx` starts node), never by port --
+    a port is only yours while you hold it (lesson 30)."""
+
+    def __init__(self) -> None:
+        self.procs: list[subprocess.Popen] = []
+
+    def start(self, argv: list[str], **kwargs) -> subprocess.Popen:  # type: ignore[no-untyped-def]
+        proc = subprocess.Popen(argv, start_new_session=True, **kwargs)
+        self.procs.append(proc)
+        return proc
+
+    def stop(self, grace: float = 10.0) -> None:
+        for proc in reversed(self.procs):
+            # the group, even if its leader already exited: `npx` can be gone
+            # while the node server it started still listens
+            with contextlib.suppress(ProcessLookupError):
+                os.killpg(proc.pid, signal.SIGTERM)
+        for proc in reversed(self.procs):
+            try:
+                proc.wait(timeout=grace)
+            except subprocess.TimeoutExpired:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
 
 
 def wait_http(url: str, seconds: float) -> None:
@@ -122,210 +152,56 @@ def timeline_entries(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.read_text().splitlines() if line.strip()]
 
 
-def main() -> int:
-    for port in (DRILL_PORT, VITE_PORT):
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="the web's watch alarm in a real browser")
+    parser.add_argument("--drill-port", type=int, default=0, help="default: a free port")
+    parser.add_argument("--vite-port", type=int, default=0, help="default: a free port")
+    args = parser.parse_args(argv)
+    drill_port = args.drill_port or pick_port()
+    vite_port = args.vite_port or pick_port()
+    for port in (drill_port, vite_port):
         if not free(port):
-            raise SystemExit(f"web_alarm: port {port} is taken; stop it by port first")
-    timeline = Path(tempfile.mkdtemp(prefix="sosforge-web-drill-")) / "timeline.jsonl"
-    drill = subprocess.Popen(
-        [
-            str(ROOT / "backend" / ".venv" / "bin" / "python"),
-            str(ROOT / "tools" / "drill.py"),
-            "serve",
-            "--port",
-            str(DRILL_PORT),
-            "--wait-clients",
-            "1",
-            "--delay",
-            "6",
-            "--gap",
-            "4",
-            "--exit",
-            "--timeline",
-            str(timeline),
-            "--scenario",
-            *SCENARIOS,
-        ],
-        stdout=sys.stdout,
-        stderr=sys.stderr,
-    )
-    vite = subprocess.Popen(
-        ["npx", "vite", "--port", str(VITE_PORT), "--host", "127.0.0.1"],
-        cwd=ROOT / "frontend",
-        env={**os.environ, "SOS_API_URL": f"http://127.0.0.1:{DRILL_PORT}"},
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+            raise SystemExit(f"web_alarm: port {port} is taken")
+    timeline_dir = Path(tempfile.mkdtemp(prefix="sosforge-web-drill-"))
+    timeline = timeline_dir / "timeline.jsonl"
+    owned = Owned()
     rows: list[tuple[str, bool, str]] = []
     try:
-        wait_http(f"http://127.0.0.1:{DRILL_PORT}/healthz", 30)
-        wait_http(f"http://127.0.0.1:{VITE_PORT}/", 60)
-        with sync_playwright() as pw:
-            browser = pw.chromium.launch(channel="chrome", headless=True)
-            context = browser.new_context(
-                viewport={"width": 1440, "height": 900}, permissions=["notifications"]
-            )
-            context.add_init_script(SPY)
-            watch = {"lat": TOKYO["lat"], "lon": TOKYO["lon"], "name": "Tokyo (drill)"}
-            context.add_init_script(
-                f"localStorage.setItem('sosforge.watch', {json.dumps(json.dumps(watch))});"
-            )
-            page = context.new_page()
-            errors: list[str] = []
-
-            def on_console(message):  # type: ignore[no-untyped-def]
-                # the page reconnecting once the drill server has exited is the
-                # teardown, not a defect
-                if message.type == "error" and drill.poll() is None:
-                    errors.append(message.text)
-
-            page.on("console", on_console)
-            page.goto(f"http://127.0.0.1:{VITE_PORT}/")
-            page.locator("button.toggle[aria-pressed]").first.click()  # sound on, a real gesture
-            sound_on = page.locator("button.toggle[aria-pressed='true']").count() > 0
-
-            # follow the drill until it exits, sampling the alarm list
-            samples: list[tuple[float, list[str]]] = []
-            while drill.poll() is None:
-                texts = page.locator(".watch-alarms li").all_inner_texts()
-                samples.append((time.time() * 1000, texts))
-                time.sleep(0.5)
-            page.wait_for_timeout(2000)
-            notes = page.evaluate("window.__notes")
-            closed = page.evaluate("window.__closed")
-            beeps = page.evaluate("window.__beeps")
-            final_alarms = page.locator(".watch-alarms li").all_inner_texts()
-            browser.close()
-
-        entries = timeline_entries(timeline)
-        ids = {e.get("id") for e in entries if e.get("id")}
-        found = [re.search(r"drill([0-9a-f]{6})", i) for i in ids if i]
-        run = next((m.group(1) for m in found if m), "")
-        q1, e1, q2 = (
-            f"drill:usgs:drill{run}q1",
-            f"drill:jma_eew:drill{run}e1",
-            f"drill:usgs:drill{run}q2",
+        drill = owned.start(
+            [
+                str(ROOT / "backend" / ".venv" / "bin" / "python"),
+                str(ROOT / "tools" / "drill.py"),
+                "serve",
+                "--port",
+                str(drill_port),
+                "--wait-clients",
+                "1",
+                "--delay",
+                "6",
+                "--gap",
+                "4",
+                "--exit",
+                "--timeline",
+                str(timeline),
+                "--scenario",
+                *SCENARIOS,
+            ],
+            stdout=sys.stdout,
+            stderr=sys.stderr,
         )
-        tags = [n["tag"] for n in notes]
-
-        rows.append(
-            ("sound switched on by a click", sound_on, f"aria-pressed after click: {sound_on}")
+        owned.start(
+            ["npx", "vite", "--port", str(vite_port), "--host", "127.0.0.1"],
+            cwd=ROOT / "frontend",
+            env={**os.environ, "SOS_API_URL": f"http://127.0.0.1:{drill_port}"},
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
-        rows.append(
-            (
-                "severe quake 85 km away rings",
-                tags.count(q1) >= 1,
-                f"notifications for q1: {tags.count(q1)}",
-            )
-        )
-        rows.append(
-            (
-                "its escalation to extreme rings again",
-                tags.count(q1) >= 2,
-                f"notifications for q1: {tags.count(q1)} (severe, then escalated to extreme)",
-            )
-        )
-        rows.append(
-            ("the EEW rings", tags.count(e1) >= 1, f"notifications for e1: {tags.count(e1)}")
-        )
-        rows.append(
-            (
-                "the EEW escalation rings again",
-                tags.count(e1) >= 2,
-                f"notifications for e1: {tags.count(e1)}",
-            )
-        )
-        rows.append(
-            (
-                "never twice for the same revision",
-                tags.count(q1) <= 2 and tags.count(e1) <= 2,
-                f"q1 {tags.count(q1)}, e1 {tags.count(e1)} for 2 revisions each",
-            )
-        )
-        cancelled_listed = any("福島県沖" in t for t in final_alarms)
-        rows.append(
-            (
-                "the cancelled EEW leaves the alarm list",
-                not cancelled_listed,
-                f"final alarm list: {final_alarms or '[]'}",
-            )
-        )
-        rows.append(
-            (
-                "the cancelled EEW's notification is closed",
-                e1 in closed,
-                f"close() called for: {closed or 'nothing'}",
-            )
-        )
-        rows.append(
-            (
-                "the relocated quake rang while near",
-                tags.count(q2) == 1,
-                f"notifications for q2: {tags.count(q2)}",
-            )
-        )
-        relocated_listed = any("Tsuchiura" in t or "Kurilsk" in t for t in final_alarms)
-        rows.append(
-            (
-                "the relocated quake leaves the alarm list",
-                not relocated_listed,
-                f"final alarm list: {final_alarms or '[]'}",
-            )
-        )
-        far = [t for t in tags if t == f"drill:usgs:drill{run}f1"]
-        burst = [t for t in tags if t and t.startswith(f"drill:usgs:drill{run}b")]
-        rows.append(
-            (
-                "far extreme and minor burst stay silent",
-                not far and not burst,
-                f"far {len(far)}, burst {len(burst)}",
-            )
-        )
-
-        # Which broadcast each beep follows: the page and the drill share this
-        # machine's clock. Two things sound in this app: the watch alarm, and
-        # the feed's own alert for any breaking or escalated severe+ event.
-        def beeps_after(entry: dict) -> list[dict]:
-            t0 = datetime.fromisoformat(entry["server_time"]).timestamp() * 1000
-            return [b for b in beeps if t0 <= b["t"] <= t0 + 1500]
-
-        loud = [
-            e
-            for e in entries
-            if e.get("type") in ("event", "update")
-            and e.get("severity") in ("severe", "extreme")
-            and (e.get("breaking") or e.get("escalated"))
-        ]
-        for entry in loud:
-            got = beeps_after(entry)
-            label = f"{entry['type']} {entry['id'].split(':')[0]} {entry['severity']}"
-            rows.append(
-                (
-                    f"sound after {label}",
-                    bool(got),
-                    f"{len(got)} beep(s) at {sorted({b['hz'] for b in got}) or '-'} Hz",
-                )
-            )
-        quiet = [e for e in entries if e.get("id", "").startswith(f"drill:usgs:drill{run}b")]
-        burst_beeps = [b for e in quiet for b in beeps_after(e)]
-        rows.append(
-            ("the minor burst makes no sound", not burst_beeps, f"{len(burst_beeps)} beep(s)")
-        )
-        rows.append(("no console error", not errors, "; ".join(errors[:3]) or "none"))
-        print(
-            "\nnotifications:",
-            json.dumps(
-                [{k: n[k] for k in ("via", "title", "tag")} for n in notes], ensure_ascii=False
-            ),
-        )
+        rows = browse(drill, drill_port, vite_port, timeline)
     finally:
-        for proc in (drill, vite):
-            if proc.poll() is None:
-                proc.terminate()
-        time.sleep(1)
-        stop_port(DRILL_PORT)
-        stop_port(VITE_PORT)
-        shutil.rmtree(timeline.parent, ignore_errors=True)
+        owned.stop()
+        shutil.rmtree(timeline_dir, ignore_errors=True)
 
     print()
     failures = 0
@@ -334,6 +210,174 @@ def main() -> int:
         print(f"{'PASS' if ok else 'FAIL'}  {name:46s} {detail}")
     print(f"\n{len(rows) - failures} passed, {failures} failed")
     return 1 if failures else 0
+
+
+def browse(
+    drill: subprocess.Popen, drill_port: int, vite_port: int, timeline: Path
+) -> list[tuple[str, bool, str]]:
+    """Chrome against the page until the drill has played, then the verdicts."""
+    from playwright.sync_api import sync_playwright
+
+    rows: list[tuple[str, bool, str]] = []
+    wait_http(f"http://127.0.0.1:{drill_port}/healthz", 30)
+    wait_http(f"http://127.0.0.1:{vite_port}/", 60)
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(channel="chrome", headless=True)
+        context = browser.new_context(
+            viewport={"width": 1440, "height": 900}, permissions=["notifications"]
+        )
+        context.add_init_script(SPY)
+        watch = {"lat": TOKYO["lat"], "lon": TOKYO["lon"], "name": "Tokyo (drill)"}
+        context.add_init_script(
+            f"localStorage.setItem('sosforge.watch', {json.dumps(json.dumps(watch))});"
+        )
+        page = context.new_page()
+        errors: list[str] = []
+
+        def on_console(message):  # type: ignore[no-untyped-def]
+            # the page reconnecting once the drill server has exited is the
+            # teardown, not a defect
+            if message.type == "error" and drill.poll() is None:
+                where = (message.location or {}).get("url") or ""
+                # nginx serves the published APK's manifest from the downloads
+                # mount; the Vite dev server has none, so this 404 is the test
+                # bench, not the page
+                if where.endswith(DEV_ONLY_404):
+                    return
+                errors.append(f"{message.text} {where}".strip())
+
+        page.on("console", on_console)
+        page.goto(f"http://127.0.0.1:{vite_port}/")
+        page.locator("button.toggle[aria-pressed]").first.click()  # sound on, a real gesture
+        sound_on = page.locator("button.toggle[aria-pressed='true']").count() > 0
+
+        # follow the drill until it exits, sampling the alarm list
+        samples: list[tuple[float, list[str]]] = []
+        while drill.poll() is None:
+            texts = page.locator(".watch-alarms li").all_inner_texts()
+            samples.append((time.time() * 1000, texts))
+            time.sleep(0.5)
+        page.wait_for_timeout(2000)
+        notes = page.evaluate("window.__notes")
+        closed = page.evaluate("window.__closed")
+        beeps = page.evaluate("window.__beeps")
+        final_alarms = page.locator(".watch-alarms li").all_inner_texts()
+        browser.close()
+
+    entries = timeline_entries(timeline)
+    ids = {e.get("id") for e in entries if e.get("id")}
+    found = [re.search(r"drill([0-9a-f]{6})", i) for i in ids if i]
+    run = next((m.group(1) for m in found if m), "")
+    q1, e1, q2 = (
+        f"drill:usgs:drill{run}q1",
+        f"drill:jma_eew:drill{run}e1",
+        f"drill:usgs:drill{run}q2",
+    )
+    tags = [n["tag"] for n in notes]
+
+    rows.append(("sound switched on by a click", sound_on, f"aria-pressed after click: {sound_on}"))
+    rows.append(
+        (
+            "severe quake 85 km away rings",
+            tags.count(q1) >= 1,
+            f"notifications for q1: {tags.count(q1)}",
+        )
+    )
+    rows.append(
+        (
+            "its escalation to extreme rings again",
+            tags.count(q1) >= 2,
+            f"notifications for q1: {tags.count(q1)} (severe, then escalated to extreme)",
+        )
+    )
+    rows.append(("the EEW rings", tags.count(e1) >= 1, f"notifications for e1: {tags.count(e1)}"))
+    rows.append(
+        (
+            "the EEW escalation rings again",
+            tags.count(e1) >= 2,
+            f"notifications for e1: {tags.count(e1)}",
+        )
+    )
+    rows.append(
+        (
+            "never twice for the same revision",
+            tags.count(q1) <= 2 and tags.count(e1) <= 2,
+            f"q1 {tags.count(q1)}, e1 {tags.count(e1)} for 2 revisions each",
+        )
+    )
+    cancelled_listed = any("福島県沖" in t for t in final_alarms)
+    rows.append(
+        (
+            "the cancelled EEW leaves the alarm list",
+            not cancelled_listed,
+            f"final alarm list: {final_alarms or '[]'}",
+        )
+    )
+    rows.append(
+        (
+            "the cancelled EEW's notification is closed",
+            e1 in closed,
+            f"close() called for: {closed or 'nothing'}",
+        )
+    )
+    rows.append(
+        (
+            "the relocated quake rang while near",
+            tags.count(q2) == 1,
+            f"notifications for q2: {tags.count(q2)}",
+        )
+    )
+    relocated_listed = any("Tsuchiura" in t or "Kurilsk" in t for t in final_alarms)
+    rows.append(
+        (
+            "the relocated quake leaves the alarm list",
+            not relocated_listed,
+            f"final alarm list: {final_alarms or '[]'}",
+        )
+    )
+    far = [t for t in tags if t == f"drill:usgs:drill{run}f1"]
+    burst = [t for t in tags if t and t.startswith(f"drill:usgs:drill{run}b")]
+    rows.append(
+        (
+            "far extreme and minor burst stay silent",
+            not far and not burst,
+            f"far {len(far)}, burst {len(burst)}",
+        )
+    )
+
+    # Which broadcast each beep follows: the page and the drill share this
+    # machine's clock. Two things sound in this app: the watch alarm, and
+    # the feed's own alert for any breaking or escalated severe+ event.
+    def beeps_after(entry: dict) -> list[dict]:
+        t0 = datetime.fromisoformat(entry["server_time"]).timestamp() * 1000
+        return [b for b in beeps if t0 <= b["t"] <= t0 + 1500]
+
+    loud = [
+        e
+        for e in entries
+        if e.get("type") in ("event", "update")
+        and e.get("severity") in ("severe", "extreme")
+        and (e.get("breaking") or e.get("escalated"))
+    ]
+    for entry in loud:
+        got = beeps_after(entry)
+        label = f"{entry['type']} {entry['id'].split(':')[0]} {entry['severity']}"
+        rows.append(
+            (
+                f"sound after {label}",
+                bool(got),
+                f"{len(got)} beep(s) at {sorted({b['hz'] for b in got}) or '-'} Hz",
+            )
+        )
+    quiet = [e for e in entries if e.get("id", "").startswith(f"drill:usgs:drill{run}b")]
+    burst_beeps = [b for e in quiet for b in beeps_after(e)]
+    rows.append(("the minor burst makes no sound", not burst_beeps, f"{len(burst_beeps)} beep(s)"))
+    rows.append(("no console error", not errors, "; ".join(errors[:3]) or "none"))
+    print(
+        "\nnotifications:",
+        json.dumps([{k: n[k] for k in ("via", "title", "tag")} for n in notes], ensure_ascii=False),
+    )
+    return rows
 
 
 if __name__ == "__main__":

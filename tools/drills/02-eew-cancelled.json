@@ -157,7 +157,11 @@
     },
     "agent_tokyo": [
       "drill:jma_eew:drill{run}e1",
-      "drill:jma_eew:drill{run}e1"
+      "drill:jma_eew:drill{run}e1",
+      [
+        "drill:jma_eew:drill{run}e1",
+        "Cancelled"
+      ]
     ],
     "agent_paris": []
   }

@@ -43,11 +43,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import shutil
 import subprocess
 import sys
 import tempfile
-import time
 import urllib.request
+from pathlib import Path
 
 try:
     import websockets
@@ -234,48 +235,94 @@ REACH = r"""
 """
 
 
+class Chrome:
+    """One headless Chrome, on ITS OWN DevTools port and its own profile.
+
+    The port used to be fixed (9500 + index). Two overlapping runs then
+    collided: the second Chrome could not bind its port and carried on
+    without DevTools, and the second run, polling that port, attached to the
+    FIRST run's tab -- resizing and navigating someone else's page, so both
+    runs reported the wrong viewport. Port 0 lets Chrome pick a free port and
+    write it to `<profile>/DevToolsActivePort`; reading it from our own
+    profile is what proves the tab we drive is in the Chrome we started.
+
+    And the profile is removed when Chrome is closed: each viewport used to
+    leave a 10-13 MB `sosforge-responsive-*` dir behind, 27 per run.
+    """
+
+    def __init__(self) -> None:
+        self.profile = Path(tempfile.mkdtemp(prefix="sosforge-responsive-"))
+        self.proc: subprocess.Popen | None = None
+        self.port: int | None = None
+
+    async def open(self) -> str:
+        """Starts Chrome and returns its page's DevTools websocket URL."""
+        self.proc = subprocess.Popen(
+            [
+                # SwiftShader: WebGL without a GPU. Without it the map shows its
+                # "unavailable" fallback and "the map is non-zero" measures a
+                # placeholder, not a map.
+                CHROME,
+                "--headless=new",
+                "--disable-gpu",
+                "--use-angle=swiftshader",
+                "--enable-unsafe-swiftshader",
+                "--remote-debugging-port=0",
+                f"--user-data-dir={self.profile}",
+                "about:blank",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+        active = self.profile / "DevToolsActivePort"
+        for _ in range(150):
+            if self.proc.poll() is not None:
+                raise RuntimeError("Chrome exited before opening its debugging port")
+            lines = active.read_text().split() if active.exists() else []
+            if lines and lines[0].isdigit():
+                self.port = int(lines[0])
+                break
+            await asyncio.sleep(0.1)
+        else:
+            raise RuntimeError("Chrome did not open a debugging port")
+        for _ in range(60):
+            try:
+                tabs = await asyncio.to_thread(self._tabs)
+                pages = [t for t in tabs if t["type"] == "page"]
+                if pages:
+                    return str(pages[0]["webSocketDebuggerUrl"])
+            except Exception:
+                pass
+            await asyncio.sleep(0.2)
+        raise RuntimeError("Chrome opened no page")
+
+    def _tabs(self) -> list[dict]:
+        with urllib.request.urlopen(f"http://127.0.0.1:{self.port}/json", timeout=5) as resp:
+            return json.load(resp)
+
+    def close(self) -> None:
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.terminate()
+            try:
+                self.proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.proc.kill()
+                self.proc.wait()
+        shutil.rmtree(self.profile, ignore_errors=True)
+
+
 async def measure(
     url: str,
     width: int,
     height: int,
     scale: float,
-    port: int,
     shots: str | None = None,
     label: str = "",
     lang: str = "fr",
 ) -> dict:
-    profile = tempfile.mkdtemp(prefix="sosforge-responsive-")
-    chrome = subprocess.Popen(
-        [
-            # SwiftShader: WebGL without a GPU. Without it the map shows its
-            # "unavailable" fallback and "the map is non-zero" measures a
-            # placeholder, not a map.
-            CHROME,
-            "--headless=new",
-            "--disable-gpu",
-            "--use-angle=swiftshader",
-            "--enable-unsafe-swiftshader",
-            f"--remote-debugging-port={port}",
-            f"--user-data-dir={profile}",
-            "about:blank",
-        ],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    chrome = Chrome()
     try:
-        ws_url = None
-        for _ in range(60):
-            try:
-                tabs = json.load(urllib.request.urlopen(f"http://127.0.0.1:{port}/json"))
-                pages = [t for t in tabs if t["type"] == "page"]
-                if pages:
-                    ws_url = pages[0]["webSocketDebuggerUrl"]
-                    break
-            except Exception:
-                pass
-            time.sleep(0.4)
-        if not ws_url:
-            raise RuntimeError("Chrome did not open a debugging port")
+        ws_url = await chrome.open()
 
         async with websockets.connect(ws_url, max_size=None) as ws:
             counter = [0]
@@ -399,7 +446,7 @@ async def measure(
             measured["reach"] = res["result"]["result"].get("value") or {}
             return measured
     finally:
-        chrome.terminate()
+        chrome.close()
 
 
 def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
@@ -486,8 +533,8 @@ async def main() -> int:
         batch = chosen[start : start + args.parallel]
         measured = await asyncio.gather(
             *[
-                measure(args.url, w, h, scale, 9500 + start + i, args.shots, label, args.lang)
-                for i, (label, w, h, scale) in enumerate(batch)
+                measure(args.url, w, h, scale, args.shots, label, args.lang)
+                for label, w, h, scale in batch
             ]
         )
         for (label, w, h, scale), m in zip(batch, measured, strict=True):
