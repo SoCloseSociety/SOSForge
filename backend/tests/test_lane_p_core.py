@@ -227,6 +227,32 @@ class TestTheSharedSnapshot:
         assert len(compose_calls) == 2
 
 
+# ---------------------------------------------------------------- REST bytes
+
+
+def test_the_legacy_events_body_is_byte_for_byte_what_fastapi_rendered(v2, client, monkeypatch):
+    """The legacy `/api/events` now hands FastAPI a JSONResponse instead of a
+    dict, skipping `jsonable_encoder` (6.9 ms of 14). Same bytes as the dict
+    went out as, for the same store and clock."""
+    from fastapi.encoders import jsonable_encoder
+    from fastapi.responses import JSONResponse
+
+    fill(v2, 40)
+    frozen = main.utcnow()
+    monkeypatch.setattr(main, "utcnow", lambda: frozen)
+    events = v2.store.recent(limit=300, primary_only=True)
+    as_before = {
+        "count": len(events),
+        "server_time": frozen.isoformat(),
+        "events": [e.public() for e in events],
+    }
+    response = client.get("/api/events")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/json"
+    assert "etag" not in response.headers  # the legacy path stays without one
+    assert response.content == JSONResponse(jsonable_encoder(as_before)).body
+
+
 # ------------------------------------------------------------------- deduper
 
 
