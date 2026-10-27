@@ -1770,3 +1770,17 @@ one-file gaps above) can still be missed for one period; the window message
 stays a measured claim, not a guarantee. The frontend fixtures captured
 before this change still show the old sentence (verbatim captures, left as
 they are).
+
+### Integration review fixes merged (2026-10-27)
+
+- [x] place-fix-geo (1:10m coastline, Clipperton CP, Bouvet BV), place-fix-weather
+      (a COR wins its tie, `since` from the reads, METAR refresh every 3 min),
+      place-fix-web (icon-only label when it would wrap, the place flight padded
+      under the button even when it mounts late, the button only where
+      /api/version lists "place"). Each accepted by an adversarial verifier
+      (web after a second pass). Merged tree: pytest 1282, vitest 553, tsc,
+      mypy, ruff, build in 5 languages.
+- [x] The verifier's open note on Bouvet, measured instead of faked: 0 of the 89
+      live MET Norway warnings (feeds-norway, 2026-10-27) lack a position, all
+      carry polygons, so no unplaced NO warning exists to count there today; the
+      BV code itself is asserted in the shared country points.

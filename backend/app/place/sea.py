@@ -2,9 +2,10 @@
 
 The sea gate: these apply when the place is at sea or its nearest ocean
 coastline is 50 km away or less. Otherwise they are `not_applicable` /
-`inland` with the distance (Paris 150 km, Kathmandu 647 km). A sea value
-shown for a coastal place is the model's or the buoy's, never the place's
-own: every block says how far its cell or station is.
+`inland` with the distance to the 1:10m coastline, the country table's
+scale (Paris 149 km, Kathmandu 642 km). A sea value shown for a coastal
+place is the model's or the buoy's, never the place's own: every block
+says how far its cell or station is.
 
 - `sea.waves` (Meteo-France MFWAM) and `sea.level` (Meteo-France SMOC) come
   from the Open-Meteo bucket (`om.py`). Land cells are NaN: the nearest
