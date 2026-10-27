@@ -17,41 +17,54 @@ operator needs to read a log ("a zoned socket was refused 1008").
 from __future__ import annotations
 
 import logging
+import re
 from urllib.parse import unquote_plus
 
-# The parameters whose values say nothing about where anyone is.
-SAFE = frozenset(
-    {
-        "chunks",
-        "hours",
-        "kind",
-        "kinds",
-        "lang",
-        "limit",
-        "min_magnitude",
-        "min_severity",
-        "primary_only",
-        "since",
-    }
-)
+# The parameters whose values say nothing about where anyone is, each with
+# the only shape its value may have to be kept. A value of another shape is
+# blanked like any other: `kinds=earthquake;zones=48.85,2.35,25` (a ';'
+# typed for '&') is a `kinds` that carries a home.
+_NUMBER = re.compile(r"^\d{1,6}(\.\d{1,3})?$")
+_WORDS = re.compile(r"^[A-Za-z_,]{0,200}$")
+SAFE: dict[str, re.Pattern[str]] = {
+    "chunks": re.compile(r"^\d{1,2}$"),
+    "tick": re.compile(r"^[a-z]{1,16}$"),
+    "hours": _NUMBER,
+    "limit": _NUMBER,
+    "min_magnitude": _NUMBER,
+    "kind": _WORDS,
+    "kinds": _WORDS,
+    "lang": _WORDS,
+    "min_severity": _WORDS,
+    "primary_only": _WORDS,
+    "since": re.compile(r"^[0-9a-f]{1,16}:\d{1,12}$"),
+}
 BLANK = "-"
 # The loggers uvicorn writes request paths to.
 LOGGERS = ("uvicorn.access", "uvicorn.error")
+# The one outbound request that carries what a person typed: the place
+# search. httpx logs every request URL at INFO on its own logger.
+PRIVATE_HOSTS = ("https://nominatim.openstreetmap.org/",)
 
 
 def redact_query(path: str) -> str:
-    """The path with the value of every parameter not in SAFE replaced by
-    `-`. Everything else is kept byte for byte, malformed parts included."""
+    """The path with every query value blanked to `-`, except a SAFE
+    parameter's value of the expected shape. A part with no '=' is kept
+    only if it is a bare SAFE name (or empty): `zones48.85,2.35,25`, a bare
+    `48.85,2.35,25` and an encoded `zones%3D48.85,...` are blanked whole."""
     base, sep, query = path.partition("?")
     if not sep:
         return path
     parts = []
     for part in query.split("&"):
-        name, eq, _ = part.partition("=")
-        if eq and unquote_plus(name) not in SAFE:
-            parts.append(f"{name}={BLANK}")
-        else:
+        name, eq, value = part.partition("=")
+        key = unquote_plus(name)
+        if not eq:
+            parts.append(part if not part or key in SAFE else BLANK)
+        elif key in SAFE and SAFE[key].match(unquote_plus(value)):
             parts.append(part)
+        else:
+            parts.append(f"{name}={BLANK}")
     return f"{base}?{'&'.join(parts)}"
 
 
@@ -62,16 +75,24 @@ class RedactPlaces(logging.Filter):
 
     def filter(self, record: logging.LogRecord) -> bool:
         if isinstance(record.args, tuple) and record.args:
-            record.args = tuple(
-                redact_query(arg) if isinstance(arg, str) and arg.startswith("/") else arg
-                for arg in record.args
-            )
+            record.args = tuple(_redact_arg(arg) for arg in record.args)
         return True
+
+
+def _redact_arg(arg: object) -> object:
+    if isinstance(arg, str) and arg.startswith("/"):
+        return redact_query(arg)
+    # httpx passes the request URL as an `httpx.URL`, not a string
+    text = str(arg) if not isinstance(arg, (int, float)) else ""
+    for host in PRIVATE_HOSTS:
+        if text.startswith(host):
+            return host[:-1] + redact_query(text[len(host) - 1 :])
+    return arg
 
 
 def install() -> None:
     """Idempotent: one filter per logger, however many times it is called."""
-    for name in LOGGERS:
+    for name in (*LOGGERS, "httpx"):
         logger = logging.getLogger(name)
         if not any(isinstance(f, RedactPlaces) for f in logger.filters):
             logger.addFilter(RedactPlaces())
