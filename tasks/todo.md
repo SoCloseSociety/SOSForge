@@ -1177,3 +1177,20 @@ them as new at restart (lesson 4).
       stamps no country it cannot read; footer freshness = first-seen time of
       a NEW event + the newest event's own time (not "last poll returned
       something"); EEW/CENC preliminary; HANS NMI -> MP.
+
+## Lane C2 -- WMO targeted tier 2 (critical file `sources/alerts_world.py`)
+
+- [x] Global tier 2 rejected by measurement (rank 1: 59, rank 2: 223, mostly
+      relays of NWS / Meteoalarm / EA and "Forestfire"/"Low water" noise).
+      Targeted rule instead: keep `s=3` (Severe) ONLY when the ISSUER is not
+      one we ingest directly (no NWS relay, no Meteoalarm member) AND the
+      kind is one we have little or nothing of (heat, landslide, drought,
+      avalanche, flood), and never when the product severity comes out minor
+      or info. Issuer = the CAP source directory of the item (`co-ideam-es`).
+      Measure before shipping, with the CAP documents fetched: per issuer and
+      kind, placed share, country, duplicates against the direct sources.
+      Measured on the 10:47 aggregate (1314 items), every CAP fetched: top
+      tier 54 published today; IDEAM re-issues collapsed -> 48; targeted tier
+      2 -> 53 (+5: Colombia landslide 3, Syria flood 1, Chad heat 1, all
+      placed with a box). BOM excluded (5 more, 0 placed, licence). Live at
+      11:27: prod 63 WMO vs branch 58. Not shipped: numbers sent first.

@@ -449,7 +449,8 @@ WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     # (see nws.py), relayed here as "Hurricane Force Wind Warning"
     (("hurricane force",), Kind.STORM),
     (("cyclone", "hurricane", "typhoon", "tropical"), Kind.CYCLONE),
-    (("flood", "flooding", "inundation", "crue", "inundaci"), Kind.FLOOD),
+    # "فيضان" (Arabic, flood: Syria's "فيضان مفاجئ", flash flood)
+    (("flood", "flooding", "inundation", "crue", "inundaci", "فيضان"), Kind.FLOOD),
     # "Landslide warning" (Colombia, 15 live, 5 of them in the top tier) and
     # China's "Meteorological risk of geological disaster" -- the rain-driven
     # landslide and debris-flow warning. Both sat in OTHER.
@@ -457,7 +458,8 @@ WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("avalanche",), Kind.AVALANCHE),
     (("fire", "wildfire", "bushfire"), Kind.WILDFIRE),
     (("earthquake", "seismic"), Kind.EARTHQUAKE),
-    (("heat", "hot", "altas temperaturas"), Kind.HEAT),
+    # French "Chaleur" (Chad's heat warning), "Canicule" (heatwave)
+    (("heat", "hot", "altas temperaturas", "chaleur", "canicule"), Kind.HEAT),
     (("drought",), Kind.DROUGHT),
     (
         (
@@ -608,6 +610,53 @@ def parse_wmo(
     )
 
 
+# ------------------------------------------------------- targeted tier 2
+#
+# The top tier alone leaves whole kinds empty: on 2026-10-27 the live feed
+# had 0 heat, 0 drought, 0 avalanche, 7 landslide. Keeping the whole second
+# tier was measured and rejected (rank 1: 59 published, rank 2: 223 -- the
+# extra 164 being 55 "Forestfire", NWS relays, "Low water", Meteoalarm/EA
+# copies). So the second tier is kept only where nothing else speaks:
+#
+#   * not from an issuer this product reads DIRECTLY -- the NWS (both its
+#     land and marine feeds) and every Meteoalarm member -- whose alerts
+#     would arrive twice;
+#   * only for the kinds the feed has little or nothing of;
+#   * never when this product's own rank for it comes out minor or info.
+#
+# The issuer is the CAP source directory the aggregate links to
+# (`co-ideam-es/2026/...`): its first token is the country, written `uk` for
+# the United Kingdom.
+DIRECT_ISSUER_PREFIXES = ("us-noaa-nws",)
+# Kept out of the second tier: the Bureau of Meteorology. Its own API was
+# rejected because its payload forbids reuse (round 1), and its CAP documents
+# here carry no polygon -- 0 of 5 tier-2 BOM warnings could be placed on
+# 2026-10-27, so none could reach anyone by area.
+TIER2_EXCLUDED_ISSUER_PREFIXES = ("au-bom",)
+METEOALARM_MEMBERS = frozenset(
+    {
+        "at", "ba", "be", "bg", "ch", "cy", "cz", "de", "dk", "ee", "es", "fi", "fr",
+        "gb", "uk", "gr", "hr", "hu", "ie", "il", "is", "it", "lt", "lu", "lv", "md",
+        "me", "mk", "mt", "nl", "no", "pl", "pt", "ro", "rs", "se", "si", "sk", "ua",
+    }
+)  # fmt: skip
+TIER2_KINDS = frozenset({Kind.HEAT, Kind.LANDSLIDE, Kind.DROUGHT, Kind.AVALANCHE, Kind.FLOOD})
+
+
+def wmo_issuer(item: dict) -> str:
+    """`co-ideam-es` for an item whose CAP document is `co-ideam-es/2026/...`."""
+    return (wmo_cap_path(item) or "").split("/", 1)[0].strip().lower()
+
+
+def tier2_candidate(item: dict) -> bool:
+    issuer = wmo_issuer(item)
+    if not issuer or issuer.startswith(DIRECT_ISSUER_PREFIXES + TIER2_EXCLUDED_ISSUER_PREFIXES):
+        return False
+    if issuer.split("-", 1)[0] in METEOALARM_MEMBERS:
+        return False
+    return classify_wmo(item.get("event") or "") in TIER2_KINDS
+
+
 class WmoCapSource(JsonPollSource):
     """Worldwide CAP aggregate of the World Meteorological Organization.
 
@@ -629,6 +678,7 @@ class WmoCapSource(JsonPollSource):
         poll_seconds: float = 300.0,
         max_severity_rank: int = 1,
         cap_cache: Path | None = None,
+        targeted_tier2: bool = True,
     ):
         super().__init__(poll_seconds)
         self._last_modified: str | None = None
@@ -646,6 +696,8 @@ class WmoCapSource(JsonPollSource):
         # "the top tier only" -- instead of the bottom one.
         self.max_severity_rank = max_severity_rank
         self.min_rank = max(1, WMO_TIERS + 1 - max(1, max_severity_rank))
+        # Only meaningful in top-tier mode: one tier below it, targeted.
+        self.targeted_tier2 = targeted_tier2 and self.min_rank == WMO_TIERS
         self.areas = CapAreaCache(cap_cache)
 
     def select(self, data: Any) -> list[dict]:
@@ -656,9 +708,52 @@ class WmoCapSource(JsonPollSource):
                 rank = int(item.get("s"))
             except (TypeError, ValueError):
                 continue
-            if rank >= self.min_rank:
+            if rank >= self.min_rank or (
+                self.targeted_tier2 and rank == self.min_rank - 1 and tier2_candidate(item)
+            ):
                 kept.append(item)
-        return kept
+        return self.collapse_reissues(kept)
+
+    def collapse_reissues(self, items: list[dict]) -> list[dict]:
+        """One alert, however many times its issuer re-sent it.
+
+        Colombia's IDEAM re-sends an unchanged warning under a NEW identifier
+        every few hours, without `references` (16:05, 19:50 and 20:30 on
+        2026-10-26: same event, same 278 municipalities, same expiry). The
+        aggregate lists every copy, and so did this product: 6 extra
+        Colombian copies among 56 top-tier alerts on 2026-10-27, 10 among 71
+        with the targeted second tier. Identical content from one issuer --
+        event, tier, area and expiry -- keeps the newest copy; the older ones
+        are withdrawn, since they may already be on screen.
+        """
+        newest: dict[tuple, dict] = {}
+        passthrough: list[dict] = []
+        for item in items:
+            area = (item.get("areaDesc") or "").strip()
+            if not area:
+                passthrough.append(item)  # nothing to compare: never merged
+                continue
+            key = (
+                wmo_issuer(item),
+                item.get("event"),
+                str(item.get("s")),
+                area,
+                item.get("expires"),
+            )
+            best = newest.get(key)
+            if best is None:
+                newest[key] = item
+                continue
+            older, newer = sorted((best, item), key=lambda i: str(i.get("sent") or ""))
+            self.expirations.append(f"wmo:{older.get('id')}")
+            newest[key] = newer
+        return passthrough + list(newest.values())
+
+    def _below_top(self, item: dict) -> bool:
+        try:
+            return int(item.get("s") or 0) < self.min_rank
+        except (TypeError, ValueError):
+            return False
 
     def build_events(self, items: list[dict], now: datetime | None = None) -> list[Event]:
         now = now or datetime.now(UTC)
@@ -677,6 +772,12 @@ class WmoCapSource(JsonPollSource):
                 # The aggregate drops an alert at its expiry, but between two
                 # downloads (a 304 re-emits the last list) it must not be put
                 # back on the map past its end.
+                self.expirations.append(event.id)
+                continue
+            if self._below_top(item) and event.severity in (Severity.MINOR, Severity.INFO):
+                # A tier-2 alert is only worth a place when it ranks above
+                # minor here -- and it can drop below once its CAP document
+                # is read and turns out to carry no instruction.
                 self.expirations.append(event.id)
                 continue
             events.append(event)
