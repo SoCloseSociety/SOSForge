@@ -269,7 +269,10 @@ export function OfflineMapButton() {
       if (data.type === 'sosforge:basemap-progress') {
         setPhase({ kind: 'saving', done: data.done ?? 0, total: data.total ?? 0 })
       } else if (data.type === 'sosforge:basemap-saved') {
-        setPhase({ kind: 'saved' })
+        // our save finished: said on the button; a save the worker made on
+        // its own (over Wi-Fi, lane G) drops the offer instead
+        setPhase((p) => (p.kind === 'saving' || p.kind === 'stopped' ? { kind: 'saved' } : p))
+        setStatus((prev) => (prev ? { ...prev, saved: true, saving: false } : prev))
       } else if (data.type === 'sosforge:basemap-failed') {
         setPhase({ kind: 'failed', failed: data.failed ?? 0 })
         ask()

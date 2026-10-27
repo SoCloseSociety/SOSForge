@@ -202,6 +202,15 @@ describe('save the world map for offline use', () => {
     Object.defineProperty(navigator, 'connection', { configurable: true, value: undefined })
   })
 
+  it('saved by the worker on its own (Wi-Fi): the offer goes away', async () => {
+    const worker = fakeWorker(MISSING)
+    render(<OfflineMapButton />)
+    await ready()
+    await screen.findByRole('button', { name: /Save the world map/ })
+    worker.broadcast({ type: 'sosforge:basemap-saved', files: 118, bytes: 15_662_270 })
+    expect(screen.queryByRole('button', { name: /world map/ })).toBeNull()
+  })
+
   it('already saved, an error reply, or no worker: no button', async () => {
     fakeWorker({ ...MISSING, saved: true, missingFiles: 0, missingBytes: 0, unmeasuredFiles: 0 })
     const { unmount } = render(<OfflineMapButton />)
