@@ -29,6 +29,8 @@ export function ScopeBar({
   // unknown until the snapshot is whole: before it, "nothing severe
   // elsewhere" would be a claim about events not received yet
   const loading = useStore((s) => s.snapshotRemaining > 0 || !s.received)
+  // the link is down: "nothing severe elsewhere" is not known any more
+  const offline = useStore((s) => s.received && !s.connected)
   const t = useStore((s) => s.t)
   const showing = effectiveScope(scope, here, place)
 
@@ -105,7 +107,9 @@ export function ScopeBar({
               ? t('scope.elsewhere', { n: `${severeElsewhere}${loading ? '+' : ''}` })
               : loading
                 ? t('scope.elsewhere.loading')
-                : t('scope.elsewhere.none')}
+                : offline
+                  ? t('scope.elsewhere.offline')
+                  : t('scope.elsewhere.none')}
           </span>
         </button>
       ) : null}

@@ -79,9 +79,12 @@ export function SearchBar() {
     // closer only for a place smaller than that.
     setFocus({ lat: place.lat, lon: place.lon, zoom: Math.min(zoom, NEAR_ZOOM), name: place.name });
     const name = place.name.split(",")[0];
-    // Going to a place is also the clearest way to say "this is the place I
-    // care about": arming the arrival countdown here costs the user nothing.
-    setWatch({ lat: place.lat, lon: place.lon, name });
+    // With no watch yet, going to a place is the clearest way to say "this
+    // is the place I care about": the arrival countdown is armed there. An
+    // ARMED watch is not moved by a search: a reader in Hilo looking up
+    // Tokyo for the news lost the tsunami warning still in force at home,
+    // closed with the old place's notifications (review of PR #5, #30).
+    if (!useStore.getState().watch) setWatch({ lat: place.lat, lon: place.lon, name });
     // ... and the feed follows it, like Near me does for the reader's own
     // position. The TEXT filter goes: "koh samui" kept as a text match
     // emptied the feed (no event is titled after the island) and the owner

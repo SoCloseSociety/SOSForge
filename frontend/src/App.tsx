@@ -116,7 +116,7 @@ function Kpis({ now }: { now: number }) {
         <div className="label">{t("kpi.tracked")}</div>
         <div className="value">{stats?.total_buffered ?? "--"}</div>
         <div className="sub">
-          {stats ? t("kpi.tracked.sub", { n: stats.last_hour }) : "--"}
+          {received && stats ? t("kpi.tracked.sub", { n: stats.last_hour }) : "--"}
         </div>
       </div>
       <div className="kpi kpi-secondary">
@@ -133,10 +133,13 @@ function Kpis({ now }: { now: number }) {
 function Banner({ events, now }: { events: SosEvent[]; now: number }) {
   const t = useStore((s) => s.t);
   // the banner names what is happening now, not the next warning's onset
-  const critical = useMemo(
-    () => byRelevance(criticalEvents(events, now), now),
-    [events, now],
-  );
+  // A tsunami is named first, whatever is newer: on a phone held sideways
+  // the tsunami KPI is hidden, and an advisory under a newer storm was
+  // named nowhere above the feed (review of PR #5, #19).
+  const critical = useMemo(() => {
+    const ranked = byRelevance(criticalEvents(events, now), now);
+    return [...ranked.filter((e) => e.tsunami), ...ranked.filter((e) => !e.tsunami)];
+  }, [events, now]);
 
   if (critical.length === 0) return null;
   const top = critical[0];
@@ -160,9 +163,15 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
             {formatAge(t, (now - Date.parse(top.time)) / 1000)}
           </span>
           {critical.length > 1 ? (
-            <span className="banner-others">
-              {` · ${t("banner.others", { n: critical.length - 1 })}`}
-            </span>
+            <>
+              <span className="banner-others">
+                {` · ${t("banner.others", { n: critical.length - 1 })}`}
+              </span>
+              {/* the same count, short, where the long line does not fit */}
+              <span className="banner-others-short">
+                {` · ${t("banner.others.short", { n: critical.length - 1 })}`}
+              </span>
+            </>
           ) : null}
         </small>
       </span>
@@ -289,11 +298,24 @@ export default function App() {
   // reader's country without a position; what is severe beyond it is
   // COUNTED, permanently, so it never silently disappears -- and what is
   // severe with no position at all is counted apart, never "elsewhere".
-  const { visible, severeElsewhere, unlocated, unmatched } = useMemo(() => {
-    if (!center) return { visible: filtered, severeElsewhere: 0, unlocated: 0, unmatched: 0 };
+  const { visible, unmatched } = useMemo(() => {
+    if (!center) return { visible: filtered, unmatched: 0 };
     const split = splitByScope(filtered, center, countries);
-    return { ...split, visible: split.near };
+    return { visible: split.near, unmatched: split.unmatched };
   }, [filtered, center, countries]);
+  // The counts beside the scope are a claim about the WORLD: never narrowed
+  // by the reader's kinds, search or severity floor, and an alert still in
+  // force counts whatever its age -- the banner above names it. Taken from
+  // the filtered list, the bar read "Nothing severe elsewhere" under a
+  // "TSUNAMI ALERT" banner (review of PR #5, #3 to #5).
+  const windowMinutes = filters.windowMinutes;
+  const { severeElsewhere, unlocated } = useMemo(() => {
+    if (!center) return { severeElsewhere: 0, unlocated: 0 };
+    const cutoff = windowMinutes > 0 ? bucket * 10_000 - windowMinutes * 60_000 : null;
+    const inForce =
+      cutoff === null ? events : events.filter((e) => e.ongoing || Date.parse(e.time) >= cutoff);
+    return splitByScope(inForce, center, countries);
+  }, [events, windowMinutes, bucket, center, countries]);
 
   // Nothing within reach of the place: said honestly, AND the nearest recent
   // events with their distance instead of an empty list.
@@ -321,7 +343,13 @@ export default function App() {
         distanceKm(previous.lat, previous.lon, here.lat, here.lon) > 50
       ) {
         framed.current = { scope: "near", lat: here.lat, lon: here.lon };
-        setFocus({ lat: here.lat, lon: here.lon, zoom: NEAR_ZOOM, name: "near" });
+        // A position that ARRIVES (the first fix, or a move) does not pull
+        // the camera off an open event: a shared #e/<id> link to a quake in
+        // Chile stays on Chile (review of PR #5, #6). Pressing Near me does.
+        const automatic = !previous || previous.scope === "near";
+        if (!(automatic && useStore.getState().selected)) {
+          setFocus({ lat: here.lat, lon: here.lon, zoom: NEAR_ZOOM, name: "near" });
+        }
       }
     } else if (showing === "place" && place) {
       if (
@@ -373,6 +401,20 @@ export default function App() {
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selected) ?? null,
     [events, selected],
+  );
+  // The map draws what the feed lists, PLUS the open event wherever it is:
+  // an alarm or an arrival alert opens events beyond the scope, and the
+  // map flew to an empty spot with no marker and no popup (review, #7).
+  const feedEvents = useMemo(
+    () => (nearest.length > 0 ? nearest.map((n) => n.event) : visible),
+    [nearest, visible],
+  );
+  const mapEvents = useMemo(
+    () =>
+      selectedEvent && !feedEvents.some((e) => e.id === selectedEvent.id)
+        ? [...feedEvents, selectedEvent]
+        : feedEvents,
+    [feedEvents, selectedEvent],
   );
 
   useEffect(() => connectLive(), []);
@@ -469,7 +511,7 @@ export default function App() {
               lon={center.lon} name={centerName} />}. Nothing is rendered
               until it exists. */}
           <Feed
-            events={nearest.length > 0 ? nearest.map((n) => n.event) : visible}
+            events={feedEvents}
             now={now}
             remaining={remaining}
             emptyKey={emptyKey}
@@ -480,7 +522,7 @@ export default function App() {
         </section>
         <div className="map-column">
           <Suspense fallback={<div className="map-wrap map-fallback" />}>
-            <MapView events={visible} now={now} />
+            <MapView events={mapEvents} now={now} />
           </Suspense>
           {selectedEvent ? <LivePanel event={selectedEvent} now={now} /> : null}
         </div>

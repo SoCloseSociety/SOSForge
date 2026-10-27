@@ -777,6 +777,11 @@ a {
   font-size: var(--ts-meta);
 }
 
+/* the short form of the other alerts' count, for narrow and short screens */
+.banner-others-short {
+  display: none;
+}
+
 @keyframes rise-in {
   from {
     opacity: 0;
@@ -1294,6 +1299,31 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* In the dialog the chips WRAP, they do not scroll: a chip is allowed to
+   shrink and break its label rather than run past the sheet ("Space weather
+   12+" was 279 px in a 248 px sheet at 280 px and 200 % text: review of
+   PR #5, #16). The strip's `flex: 0 0 auto` was written for a scroller. */
+.filter-kinds .chip,
+.filter-severity .chip {
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: break-word;
+  text-align: start;
+}
+
+/* the label wraps at its spaces; the count drops under it before a word is
+   cut, and only a word wider than the whole sheet is broken */
+.chip-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.filter-kinds .chip .count {
+  white-space: nowrap;
 }
 
 /* ------------------------------------------------- Near me / World bar */
@@ -2346,8 +2376,18 @@ a {
   color: var(--red);
 }
 
+/* A pinned source is not in the scroller either: it wraps and shrinks, so
+   the state of a failing source is never cut at the screen edge ("GeoNet
+   volcanoes 0" was 272 px in a 256 px footer at 280 px, 200 % text:
+   review of PR #5, #17, #31). */
 .sources-pinned .source {
   border-color: currentColor;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: break-word;
+  text-align: start;
 }
 
 /* One source in full, behind a tap ("Show more" rule). */
@@ -2372,21 +2412,34 @@ a {
   color: var(--t1);
 }
 
+/* The label column takes at most 40 %: `auto` let "Dernier relevé réussi"
+   take 231 px at 200 % text and left the value 27 px, one letter per line
+   (review of PR #5, #18). Labels wrap instead. */
 .source-detail dl {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: fit-content(40%) minmax(0, 1fr);
   gap: 2px 12px;
   margin: 0;
 }
 
 .source-detail dt {
   color: var(--t3);
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .source-detail dd {
   margin: 0;
   font-family: var(--mono);
   overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* one failing feed per line, its own error beside it */
+.source-failed {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 /* The credits, one quiet line. The agency credit is not translated on
@@ -2734,9 +2787,14 @@ a {
     content: " · ";
   }
 
-  /* "2 other alerts ongoing" waits for a taller screen; the age stays */
+  /* "2 other alerts ongoing" shortens to "+2 ongoing": hiding it named the
+     other alerts nowhere above the feed (review of PR #5, #19) */
   .banner-others {
     display: none;
+  }
+
+  .banner-others-short {
+    display: inline;
   }
 
   /* the tools and the Near me / World bar side by side: landscape has the
@@ -2814,10 +2872,15 @@ a {
     font-size: var(--ts-body);
   }
 
-  /* "2 other alerts ongoing" waits for a wider screen: the feed lists them,
-     and the line pushed the first event off a 320x568 phone */
+  /* "2 other alerts ongoing" shortens to "+2 ongoing": the long line pushed
+     the first event off a 320x568 phone, and hiding it named the other
+     alerts nowhere above the feed (review of PR #5, #19) */
   .banner-others {
     display: none;
+  }
+
+  .banner-others-short {
+    display: inline;
   }
 }
 

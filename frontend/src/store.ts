@@ -530,11 +530,16 @@ export const useStore = create<State>((set, get) => ({
   setPlace: (place) => {
     const scope: Scope = place ? "place" : "near";
     saveScope({ scope, place });
-    set({ place, scope });
+    // a place is not the reader: the fix stops being followed (see setScope)
+    set(place ? { place, scope, here: null, locate: "idle" } : { place, scope });
   },
   setScope: (scope) => {
     saveScope({ scope });
-    set({ scope });
+    // Leaving Near me stops following the reader (useNearMe): the last fix
+    // no longer says where they are. Kept, "Use my location" armed the watch
+    // on Paris for a reader since gone to Lyon, and Near me came back on the
+    // old fix (review of PR #5, #11).
+    set(scope === "near" ? { scope } : { scope, here: null, locate: "idle" });
   },
   setHere: (here) => {
     const next = here ? { lat: coarse(here.lat), lon: coarse(here.lon) } : null;

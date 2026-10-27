@@ -101,6 +101,13 @@ export interface Stats {
   server_time: string;
 }
 
+/** One feed of a multi-feed source failing right now, as /api/sources
+ * sends it: `{"feed": "PAAQ", "error": "TimeoutError: "}`. */
+export interface FailedFeed {
+  feed: string;
+  error?: string | null;
+}
+
 export interface SourceHealth {
   name: string;
   connected: boolean;
@@ -114,7 +121,9 @@ export interface SourceHealth {
    * predates it omits the field). Read through `degradedFeeds()`, which
    * accepts the shapes a server may send: a flag, a list, an object. */
   degraded?: boolean | string[] | { failed?: string[]; feeds?: string[] } | null;
-  failed_feeds?: string[] | null;
+  /** The server sends `{feed, error}` objects (sources/base.py); a bare
+   * name is still read, for an older server. */
+  failed_feeds?: (string | FailedFeed)[] | null;
   /** when this source last delivered an EVENT (not a successful poll) */
   last_event_at?: string | null;
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { useStore } from '../store'
 import { SOURCE_LABEL, formatAge } from '../format'
-import { degradedFeeds } from '../sourceHealth'
+import { degradedFeeds, failedFeeds } from '../sourceHealth'
 import { useMediaQuery } from '../useMediaQuery'
 import type { SourceHealth } from '../types'
 
@@ -32,6 +32,7 @@ function SourceButton({
     <button
       type="button"
       className={`source source-${state}`}
+      data-source={source.name}
       aria-pressed={selected}
       aria-label={`${SOURCE_LABEL[source.name] ?? source.name}, ${t(`footer.source.${state}`)}`}
       onClick={() => onSelect(source.name)}
@@ -65,6 +66,7 @@ export function SourcesBar({ now }: { now: number }) {
   const sources = useStore((s) => s.sources)
   const clients = useStore((s) => s.clients)
   const received = useStore((s) => s.received)
+  const connected = useStore((s) => s.connected)
   const t = useStore((s) => s.t)
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [selected, setSelected] = useState<string | null>(null)
@@ -146,6 +148,13 @@ export function SourcesBar({ now }: { now: number }) {
     const d = drag.current
     const el = strip.current
     if (!d || !el) return
+    // the button was released somewhere else (no pointerup reached the
+    // strip): the drag is over, and a hovering mouse must not scroll the row
+    // or swallow the next click (review of PR #5, #26)
+    if (event.buttons === 0) {
+      drag.current = null
+      return
+    }
     const dx = event.clientX - d.x
     if (!d.moved && Math.abs(dx) > 4) {
       d.moved = true
@@ -170,15 +179,19 @@ export function SourcesBar({ now }: { now: number }) {
       <div className="sources-row">
         <p className="sources-summary">
           <span
-            className={`source-mark ${!received ? '' : up === sources.length ? 'all-up' : 'some-down'}`}
+            className={`source-mark ${!received || !connected ? '' : up === sources.length ? 'all-up' : 'some-down'}`}
             aria-hidden="true"
           >
-            {!received ? '○' : up === sources.length ? '●' : '▲'}
+            {!received || !connected ? '○' : up === sources.length ? '●' : '▲'}
           </span>
-          {/* before the feed has spoken, the counts are unknown, not zero */}
+          {/* before the feed has spoken, the counts are unknown, not zero;
+              link down, they are the LAST KNOWN ones and say so (a mint
+              "19/19 online" from a dead link vouched for it: review, #12) */}
           {!received
             ? t('footer.summary.waiting')
-            : clients === null
+            : !connected
+              ? t('footer.summary.offline', { up, total: sources.length })
+              : clients === null
               ? t('footer.summary.noclients', { up, total: sources.length })
               : t('footer.summary', { up, total: sources.length, n: clients })}
         </p>
@@ -218,6 +231,7 @@ export function SourcesBar({ now }: { now: number }) {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onLostPointerCapture={onPointerUp}
           >
             {healthy.map((source) => (
               <SourceButton
@@ -240,7 +254,22 @@ export function SourcesBar({ now }: { now: number }) {
         </div>
       </div>
 
-      {detail ? <SourceDetail source={detail} now={now} onClose={() => setSelected(null)} /> : null}
+      {detail ? (
+        <SourceDetail
+          source={detail}
+          now={now}
+          onClose={() => {
+            // focus goes back to the source the detail belongs to, BEFORE the
+            // Hide button unmounts: it dropped a keyboard user on <body>
+            // (review of PR #5, #25)
+            strip.current
+              ?.closest('.sources-bar')
+              ?.querySelector<HTMLButtonElement>(`.source[data-source="${detail.name}"]`)
+              ?.focus()
+            setSelected(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -249,7 +278,7 @@ export function SourcesBar({ now }: { now: number }) {
 function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: number; onClose: () => void }) {
   const t = useStore((s) => s.t)
   const state = stateOf(source)
-  const failed = degradedFeeds(source)
+  const failed = failedFeeds(source)
   const age = (iso: string | null | undefined) =>
     iso ? formatAge(t, (now - Date.parse(iso)) / 1000) : t('footer.never')
   return (
@@ -279,7 +308,21 @@ function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: num
         {failed && failed.length > 0 ? (
           <>
             <dt>{t('footer.failed.label')}</dt>
-            <dd>{failed.join(', ')}</dd>
+            <dd>
+              <ul className="source-failed">
+                {failed.map((f) => (
+                  <li key={f.feed}>
+                    {f.feed}
+                    {f.error ? (
+                      <>
+                        {' '}
+                        <code>{f.error}</code>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </dd>
           </>
         ) : null}
         {source.last_error ? (

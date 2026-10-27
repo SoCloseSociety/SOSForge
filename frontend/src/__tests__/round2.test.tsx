@@ -166,7 +166,7 @@ describe('Near me by default (owner: "le live sur la location de la personne")',
 
 describe('the scope bar', () => {
   it('in Near me, the count of severe events elsewhere is permanent, zero included, and opens World', () => {
-    useStore.setState({ scope: 'near', here: TOKYO, received: true })
+    useStore.setState({ scope: 'near', here: TOKYO, received: true, connected: true })
     const { rerender } = render(<ScopeBar severeElsewhere={0} />)
     expect(screen.getByRole('button', { name: /Nothing severe elsewhere/ })).toBeInTheDocument()
     rerender(<ScopeBar severeElsewhere={2} />)
@@ -262,11 +262,14 @@ describe('sources in a slider (owner: "met-les dans un slider")', () => {
   it('a source that is down or degraded is pinned OUTSIDE the scroll, always visible', () => {
     useStore.setState({
       received: true,
+      connected: true,
       clients: 3,
       sources: [
         source('emsc'),
         source('usgs'),
-        source('tsunami', { degraded: true, failed_feeds: ['PAAQ'] }),
+        // the server's shape (sources/base.py): one object per failing feed;
+        // a bare asyncio timeout reads "TimeoutError: " (str(exc) is empty)
+        source('tsunami', { degraded: true, failed_feeds: [{ feed: 'PAAQ', error: 'TimeoutError: ' }] }),
         source('noa', { connected: false, last_error: 'HTTP 503 from https://www.gein.noa.gr/' }),
       ],
     })
@@ -402,7 +405,8 @@ describe('"Use my location" names each failure (owner: "vérifie que use my loca
     geo(() => {
       throw new Error('must not ask')
     })
-    useStore.setState({ here: TOKYO })
+    // a fix Near me is following right now
+    useStore.setState({ scope: 'near', locate: 'ok', here: TOKYO })
     render(<WatchPanel alarms={[]} />)
     fireEvent.click(screen.getByRole('button', { name: /Use my location/ }))
     expect(useStore.getState().watch).toMatchObject({ lat: 35.68, lon: 139.69 })

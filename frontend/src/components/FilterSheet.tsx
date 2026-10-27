@@ -160,18 +160,25 @@ export function FilterSheet({
     wasOpen.current = open
   }, [open])
 
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation()
-      setOpen(false)
-      return
+  // Esc closes from ANYWHERE while open: on the dialog element alone, it
+  // died as soon as focus left it -- a click on a heading, or the "Show all"
+  // button unmounting itself under the focus (review of PR #5, #24).
+  useEffect(() => {
+    if (!open) return
+    const onEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
     }
+    document.addEventListener('keydown', onEscape)
+    return () => document.removeEventListener('keydown', onEscape)
+  }, [open])
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== 'Tab' || !dialog.current) return
     const items = focusables(dialog.current)
     if (items.length === 0) return
     const first = items[0]
     const last = items[items.length - 1]
-    if (event.shiftKey && document.activeElement === first) {
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog.current)) {
       event.preventDefault()
       last.focus()
     } else if (!event.shiftKey && document.activeElement === last) {
@@ -216,6 +223,7 @@ export function FilterSheet({
             role="dialog"
             aria-modal="true"
             aria-labelledby="filter-dialog-title"
+            tabIndex={-1}
             onKeyDown={onKeyDown}
           >
             <div className="filter-dialog-head">
@@ -251,7 +259,15 @@ export function FilterSheet({
                   {t('filters.kinds')}
                 </h3>
                 {filters.kinds.size < ALL_KINDS.length ? (
-                  <button type="button" className="btn btn-quiet btn-inline" onClick={resetKinds}>
+                  <button
+                    type="button"
+                    className="btn btn-quiet btn-inline"
+                    onClick={() => {
+                      resetKinds()
+                      // this button unmounts: focus stays inside the dialog
+                      dialog.current?.focus()
+                    }}
+                  >
                     {t('filters.all')}
                   </button>
                 ) : null}
@@ -259,17 +275,19 @@ export function FilterSheet({
               <div className="filter-kinds">
                 {ALL_KINDS.map((kind) => {
                   const n = counts.get(kind) ?? 0
+                  // "none of this kind" only once every event is in
+                  const none = received && !loading && n === 0
                   return (
                     <button
                       type="button"
                       key={kind}
-                      className={`chip${n === 0 ? ' empty' : ''}`}
+                      className={`chip${none ? ' empty' : ''}`}
                       aria-pressed={filters.kinds.has(kind)}
                       onClick={() => toggleKind(kind)}
-                      title={n === 0 ? t('filters.none', { kind: kindLabel(t, kind) }) : undefined}
+                      title={none ? t('filters.none', { kind: kindLabel(t, kind) }) : undefined}
                     >
                       <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
-                      {kindLabel(t, kind)}
+                      <span className="chip-label">{kindLabel(t, kind)}</span>
                       {/* unknown ("--") before the feed has spoken, a floor
                           ("12+") while the snapshot is still arriving */}
                       <span className="count">{!received ? '--' : `${n}${loading ? '+' : ''}`}</span>
@@ -329,7 +347,12 @@ export function FilterSheet({
                 {t('filters.reset')}
               </button>
               <button type="button" className="btn btn-primary" onClick={() => setOpen(false)}>
-                {t('filters.show', { n: resultCount })}
+                {/* unknown before the feed has spoken, a floor while the
+                    snapshot arrives: "Show 0 events" was a claim about data
+                    the page did not have (review of PR #5, #8, #9) */}
+                {!received
+                  ? t('filters.show.unknown')
+                  : t('filters.show', { n: `${resultCount}${loading ? '+' : ''}` })}
               </button>
             </div>
           </div>
@@ -349,22 +372,38 @@ export function ActiveFilters({ phone }: { phone: boolean }) {
   const setWindow = useStore((s) => s.setWindow)
   const t = useStore((s) => s.t)
   const chips = useActive(phone)
+  const list = useRef<HTMLUListElement>(null)
+  /** After a chip removes itself, where the focus goes: the chip now at
+   * its place, the one before, or -- the last one gone -- the Filters
+   * button. Removed with the focus on it, the chip dropped a keyboard user
+   * on <body> (review of PR #5, #25). */
+  const refocus = useRef<number | null>(null)
+  useEffect(() => {
+    const index = refocus.current
+    if (index === null) return
+    refocus.current = null
+    const buttons = list.current ? [...list.current.querySelectorAll<HTMLButtonElement>('button')] : []
+    const target = buttons[Math.min(index, buttons.length - 1)]
+    if (target) target.focus()
+    else document.querySelector<HTMLButtonElement>('.filter-trigger')?.focus()
+  })
   if (chips.length === 0) return null
-  const remove = (key: string) => {
+  const remove = (key: string, index: number) => {
+    refocus.current = index
     if (key === 'kinds') resetKinds()
     else if (key === 'severity') setMinSeverity('info')
     else if (key === 'magnitude') setMinMagnitude(0)
     else if (key === 'window') setWindow(DEFAULT_WINDOW)
   }
   return (
-    <ul className="filter-chips" aria-label={t('filters.active.list')}>
-      {chips.map((chip) => (
+    <ul ref={list} className="filter-chips" aria-label={t('filters.active.list')}>
+      {chips.map((chip, index) => (
         <li key={chip.key}>
           <button
             type="button"
             className="filter-chip"
             aria-label={t('filters.remove', { filter: chip.label })}
-            onClick={() => remove(chip.key)}
+            onClick={() => remove(chip.key, index)}
           >
             <span>{chip.label}</span>
             <span aria-hidden="true">✕</span>
