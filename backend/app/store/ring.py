@@ -63,6 +63,12 @@ class EventStore:
         # again: nine alarms for one swarm against the previous version, two
         # against the peak (its entry was purged and re-created in between).
         self._peaks: dict[str, tuple[int, bool]] = {}
+        # Bumped on every change a client could see: an insert, a revision, a
+        # removal, a promotion. Whoever caches something derived from the
+        # store (the shared websocket snapshot) compares it to know the cache
+        # is still exact. A `last_seen` refresh is not a change: nothing is
+        # broadcast for it either.
+        self.version = 0
 
         if self._persist and self._data_dir:
             self._data_dir.mkdir(parents=True, exist_ok=True)
@@ -92,6 +98,7 @@ class EventStore:
                 if not self._replaying:
                     self.counters[event.source] = self.counters.get(event.source, 0) + 1
                 self._peaks[event.id] = (severity_rank(event.severity), event.tsunami)
+                self.version += 1
                 self._write_jsonl(event, "new")
                 return event, "new"
 
@@ -121,6 +128,7 @@ class EventStore:
                 max(rank, severity_rank(event.severity)),
                 tsunami or event.tsunami,
             )
+            self.version += 1
             self._write_jsonl(event, "update")
             return event, "update"
 
@@ -160,6 +168,7 @@ class EventStore:
             if new_primary is None:
                 new_primary = event.id
             event.cluster_id = new_primary
+            self.version += 1
             if event.id == new_primary:
                 self._promotions.append(event)
 
@@ -189,6 +198,7 @@ class EventStore:
         kept = [e for e in self._ring if e.id not in dead]
         self._ring.clear()
         self._ring.extend(kept)
+        self.version += 1
         at = utcnow().isoformat()
         for event in events:
             self._by_id.pop(event.id, None)

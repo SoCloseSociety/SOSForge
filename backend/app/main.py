@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -225,11 +226,28 @@ def tick_message() -> dict:
     }
 
 
+def next_tick(deadline: float, now: float, period: float) -> float:
+    """When the next tick is due, on a fixed grid.
+
+    The heartbeat used to sleep a full period AFTER building and fanning out
+    each tick, so every tick came late by what the previous one cost:
+    measured 1.0019 s with one socket and 1.0256 s with a thousand, 92 ticks
+    short an hour at that load. On a grid the period is the period whatever
+    the fan-out costs. A loop stalled past a whole period resumes from now:
+    a burst of catch-up ticks would say nothing a single one does not.
+    """
+    deadline += period
+    return deadline if deadline > now else now
+
+
 async def heartbeat() -> None:
     """One tick per second: proves to the client that the feed is alive and
     resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time()
     while True:
-        await asyncio.sleep(settings.heartbeat_seconds)
+        deadline = next_tick(deadline, loop.time(), settings.heartbeat_seconds)
+        await asyncio.sleep(deadline - loop.time())
         # A single uncaught exception here killed the task for good: no more
         # ticks, so every client declared itself disconnected after 15 s and
         # looped on reconnection -- while /healthz answered "ok". That is the
@@ -743,6 +761,61 @@ WS_PARAMS = (*SCOPE_PARAMS, "chunks")
 # badly still fits.
 SNAPSHOT_CHUNK_EVENTS = 40
 SNAPSHOT_CHUNK_BYTES = 32_000
+# How long a shared snapshot may be reused while the store has not changed.
+# The store's version is what keeps it exact; this only bounds how stale
+# `last_seen` (refreshed in place on every re-mention, without a version
+# bump) can be in a snapshot.
+SNAPSHOT_CACHE_SECONDS = 1.0
+
+Chunks = list[tuple[str, int]]  # (events serialized as a JSON array, how many)
+# chunked -> (the store it was built from, its version then, when, chunks)
+_shared_snapshots: dict[bool, tuple[EventStore, int, float, Chunks]] = {}
+
+
+def serialize_chunks(publics: list[dict], chunked: bool) -> Chunks:
+    parts = split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
+    return [(json.dumps(part, default=str), len(part)) for part in parts]
+
+
+def shared_snapshot(chunked: bool) -> Chunks:
+    """The snapshot of an unscoped socket (the web, the agent), serialized
+    once per store version and shared by every socket that opens meanwhile.
+
+    It was composed and serialized for every socket: 6 ms with a full ring,
+    17 ms chunked, all of it on the event loop that owes every open tab a
+    tick each second. A thousand people opening the site after a large
+    quake -- the one moment this product exists for -- paid it a thousand
+    times over for identical bytes. Exact, not approximate: the store bumps
+    its version on every insert, revision, removal and promotion, so a
+    cached snapshot is only served while it is still what composing would
+    give.
+    """
+    now = time.monotonic()
+    hit = _shared_snapshots.get(chunked)
+    if (
+        hit is not None
+        and hit[0] is store
+        and hit[1] == store.version
+        and now - hit[2] < SNAPSHOT_CACHE_SECONDS
+    ):
+        return hit[3]
+    events, _ = compose(
+        store.recent(limit=settings.ring_size, primary_only=True),
+        settings.snapshot_size,
+        None,
+        pin=chunked,
+    )
+    chunks = serialize_chunks([e.public() for e in events], chunked)
+    _shared_snapshots[chunked] = (store, store.version, now, chunks)
+    return chunks
+
+
+def splice(head: dict, key: str, value_json: str, tail: dict) -> str:
+    """`json.dumps({**head, key: value, **tail})` with `value` already
+    serialized. Byte for byte the same text: `json.dumps` of a dict is its
+    members' serializations joined with the default separators."""
+    out = f"{json.dumps(head, default=str)[:-1]}, {json.dumps(key)}: {value_json}"
+    return f"{out}, {json.dumps(tail, default=str)[1:]}" if tail else f"{out}}}"
 
 
 def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
@@ -826,54 +899,54 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await hub.register(client)
 
     try:
-        # Composed and remembered with no await in between, and after the
-        # client is registered: every broadcast from here on is narrowed
-        # against a held set that already contains the snapshot, so a
-        # revision or a withdrawal of a snapshot event cannot slip past it.
-        snapshot, placed = compose(
-            store.recent(limit=settings.ring_size, primary_only=True),
-            settings.snapshot_size,
-            scope,
-            pin=chunked,
-        )
-        if scope is not None:
+        # Composed (or taken from the shared cache) with no await in between,
+        # and after the client is registered: every broadcast from here on
+        # reaches this client, and for a scoped one it is narrowed against a
+        # held set that already contains the snapshot, so a revision or a
+        # withdrawal of a snapshot event cannot slip past it.
+        tail: dict = {}
+        if scope is None:
+            chunks = shared_snapshot(chunked)
+        else:
+            snapshot, placed = compose(
+                store.recent(limit=settings.ring_size, primary_only=True),
+                settings.snapshot_size,
+                scope,
+                pin=chunked,
+            )
             # every chunked id too: a chunk still in flight is already held
             for event in snapshot:
                 client.hold(event.id)
-        publics = [e.public() for e in snapshot]
-        chunks = (
-            split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
-        )
-        remaining = len(publics) - len(chunks[0])
-        message: dict = {
-            "type": "snapshot",
-            "server_time": utcnow().isoformat(),
-            "events": chunks[0],
-            "stats": store.stats(),
-            "sources": [
-                {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
-            ],
-        }
+            chunks = serialize_chunks([e.public() for e in snapshot], chunked)
+        remaining = sum(count for _, count in chunks) - chunks[0][1]
+        tail["stats"] = store.stats()
+        tail["sources"] = [
+            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+        ]
         if chunked:
-            message["more"] = remaining
+            tail["more"] = remaining
         if scope is not None:
-            message["scope"] = scope.public()
-            message["unplaced"] = placed.public()
-        await ws.send_text(json.dumps(message, default=str))
+            tail["scope"] = scope.public()
+            tail["unplaced"] = placed.public()
+        await ws.send_text(
+            splice(
+                {"type": "snapshot", "server_time": utcnow().isoformat()},
+                "events",
+                chunks[0][0],
+                tail,
+            )
+        )
         # The rest of the snapshot, before the pump below starts: no queued
         # delta can overtake a chunk, so a revision always lands on top of
         # the version it revises.
-        for chunk in chunks[1:]:
-            remaining -= len(chunk)
+        for chunk_json, count in chunks[1:]:
+            remaining -= count
             await ws.send_text(
-                json.dumps(
-                    {
-                        "type": "snapshot_more",
-                        "events": chunk,
-                        "remaining": remaining,
-                        "server_time": utcnow().isoformat(),
-                    },
-                    default=str,
+                splice(
+                    {"type": "snapshot_more"},
+                    "events",
+                    chunk_json,
+                    {"remaining": remaining, "server_time": utcnow().isoformat()},
                 )
             )
 
