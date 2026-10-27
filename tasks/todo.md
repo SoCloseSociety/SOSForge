@@ -1079,6 +1079,75 @@ Residual risks:
   first event before and after, unchanged;
 - in landscape place mode the count wraps to three lines (59 px) in the
   right column: beside the feed, it no longer moves the fold.
+
+### Review -- recheck of the fold fix (63923e4, 2026-10-27)
+
+Each claim reproduced first (Vite :5342 from this worktree, API :8341, one
+Chrome at a time), then fixed or explained.
+
+- [x] FIXED, forced colours (medium + its low twin): at 320x568, forced
+      colours on, `.tools-row .search` border 0 / shadow none and
+      `.scope-switch` the same: no frame. The pressed segment was
+      indistinguishable too (pressed bg black, unpressed transparent on
+      black) at EVERY width, 1280x720 included: that half predates this
+      branch. Now an outline (1px CanvasText, offset -1px) in forced colours
+      at phone widths only (the desktop border is not doubled), and the
+      pressed segment in Highlight / HighlightText with
+      `forced-color-adjust: none`: without the opt-out Chrome painted its
+      Canvas backplate behind the HighlightText label, a black box where
+      "Near me" was (seen in the shot, then fixed). Normal rendering is
+      unchanged (same computed shadows, same block heights).
+- [x] FIXED, mouse on the phone layout: input 22.4 px in its 44 px frame,
+      `elementFromPoint` 4 px inside the top and bottom hit `div.search`.
+      `align-self: stretch`: input 44 px with a mouse AND with touch, all
+      three points hit the input.
+- [x] FIXED, id `kpi.tsunami.short` "Tsunami aktif" -> "Buletin tsunami":
+      92.0 px in a 95 px card at 320 (one line), two lines at 280 where
+      "M maks 1 jam" already took two: the counters' height is unchanged
+      (63 / 47 px).
+- [x] FIXED (comments), "one line per count": true only when the label fits;
+      ScopeBar.tsx and styles.css now say a longer label wraps inside the
+      control (344 px, French at 360), never out of it.
+- [ ] NOT FIXED, landscape 568x320: the far-danger count is fully visible
+      (16/16 px) but "9 severe without a location" shows 8 of 16 px (Near
+      me) and the clear button 23 of 44 (place); the page scrolls, nothing
+      is clipped. Structural: 320 - 238 = 82 px below the tools row cannot
+      hold two stacked 44 px targets (88 px), and moving the bar up beside
+      the tools (the base layout) drops the first event to 34 px. Needs a
+      DOM change (the watch line out of `.filters`), not a CSS tweak.
+- [ ] NOT FIXED here, the App.tsx conflict: still the one conflict against
+      0b809f8 AND the current head aeea1e3 (styles.css, i18n.ts, todo.md
+      merge cleanly). Resolution: keep the head's `.map-report` block, then
+      this branch's `panel-scoped` section line. Built that way in scratch:
+      tsc clean, vitest 567/567, and the unmodified tool (head version, with
+      `data-focus-at` and 568x320 at 200 %) passes --place 11/11 (the place
+      report opens, the place lands clear of its button) and --near 11/11
+      on the 11 small and reference viewports.
+- [x] EXPLAINED, place mode on this branch alone: every viewport fails only
+      on "the place report did not open" (and, with the tool's newer
+      version, "no data-focus-at"): both are the integration branch's
+      features, absent from b1e5bc2. On the merged tree both pass (above).
+- [ ] PRE-EXISTING, landscape map controls under the attribution: not
+      changed by this branch; a horizontal zoom group would collide with
+      the head's `.map-report` (it reserves only 56 px at the right edge).
+      To fix on the integration head.
+- [ ] PRE-EXISTING, found on the way: in forced colours no keyboard focus
+      shows at all (the global `:focus-visible` ring is a box-shadow with
+      `outline: none`; a focused button measured outline none, shadow
+      none). Needs a global forced-colors focus rule, every focusable
+      element, so not in this branch.
+
+Measured back to back, before = 6dbd086, after = 63923e4, en, fold.py (the
+tool's own measure() + verdict()): World, Near me and place 29/29 before
+and after; every block above the feed identical before/after on all 87
+rows (only feed length and live-data heights moved; the 50 px map change
+on 841x673 was A/B-checked with HEAD's stylesheet vs this one: 304 = 304).
+First event top / px visible, after (same as before): 280x653 513/140,
+561/92, 561/92; 320x568 465/103, 466/102, 466/102; 360x640 525/115,
+525/115, 573/67; 375x667 552/95, 552/115, 600/67; 568x320 286/34, 238/82,
+238/82 (World / Near me / place). The unmodified tool, current version:
+World 30/30, --near 30/30. Gates: tsc, vitest 482/482, build (the
+forced-colors rules survive minification).
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
       app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
