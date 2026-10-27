@@ -23,7 +23,7 @@ import type {
 
 const GUIDANCE_FEATURE = 'guidance'
 
-let versionPromise: Promise<ApiVersion | null> | null = null
+let versionPromise: Promise<ApiVersion | null | undefined> | null = null
 const guidanceByLang = new Map<string, Promise<GuidanceResponse | null>>()
 
 /** `null` is an ANSWER (no such endpoint, not JSON), `undefined` is a
@@ -46,16 +46,29 @@ async function getJson<T>(url: string): Promise<T | null | undefined> {
   }
 }
 
-/** The API's version and feature list, or null when the endpoint is absent. */
-export function apiVersion(): Promise<ApiVersion | null> {
+/** The version check itself: `undefined` while no answer came. */
+function askVersion(): Promise<ApiVersion | null | undefined> {
   versionPromise ??= getJson<ApiVersion>('/api/version').then((v) => {
     if (v === undefined) {
       versionPromise = null // ask again next time
-      return null
+      return undefined
     }
     return v && Array.isArray(v.features) ? v : null
   })
   return versionPromise
+}
+
+/** The API's version and feature list, or null when the endpoint is absent. */
+export async function apiVersion(): Promise<ApiVersion | null> {
+  return (await askVersion()) ?? null
+}
+
+/** Does this API serve `feature`? `undefined` when it could not be asked
+ * (network down, a 5xx): not a "no", so the caller can ask again instead of
+ * hiding the feature for the whole session. */
+export async function serves(feature: string): Promise<boolean | undefined> {
+  const version = await askVersion()
+  return version === undefined ? undefined : !!version?.features.includes(feature)
 }
 
 /** Does this API serve prevention guidance? */

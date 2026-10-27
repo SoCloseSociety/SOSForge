@@ -37,6 +37,7 @@ import {
 import { distanceKm } from "./arrival";
 import { useNearMe } from "./useNearMe";
 import { useCountries } from "./useCountries";
+import { useApiFeature } from "./useApiFeature";
 import { LANGS } from "./i18n";
 import { applyTheme, currentTheme, type Theme } from "./theme";
 import { SEVERITY_META, formatAge, formatClock, kindLabel } from "./format";
@@ -287,6 +288,9 @@ export default function App() {
   // Its countries, found in the page (the position never leaves it): the
   // alerts that carry no position but name one of them belong in this feed.
   const countries = useCountries(center, showing === "place" ? (place?.country ?? null) : null);
+  // The place report only where the API serves it (/api/version lists
+  // "place"): switched off, it answered every opening with a 404.
+  const placeServed = useApiFeature("place", showing === "place" && place !== null);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
@@ -530,8 +534,8 @@ export default function App() {
             Laid over the map, which is centred on that place: any row of
             its own pushed the first event below the fold on landscape
             phones (tools/responsive.py --place). First in the DOM, so Tab
-            reaches it before the feed. */}
-        {showing === "place" && place ? (
+            reaches it before the feed. Only once /api/version lists it. */}
+        {showing === "place" && place && placeServed ? (
           <div className="map-report">
             <PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />
           </div>
