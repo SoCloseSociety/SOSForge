@@ -5,7 +5,7 @@ import { useStore } from '../store'
 /* Two tools in the footer's credit line, where they cost the first screen
  * nothing: on a phone the live feed keeps the fold (tools/responsive.py),
  * on a wide screen the footer is always in view. The place report's button
- * (under the scope bar) shares their dialog.
+ * (laid over the map, App.tsx `.map-report`) shares their dialog.
  *
  *  - the climate indicators (lane C2's panel), in a dialog, loaded only
  *    when opened: the panel and its CSS stay out of the first paint, and

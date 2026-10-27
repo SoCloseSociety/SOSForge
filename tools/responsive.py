@@ -42,7 +42,8 @@ reader who said yes sees it. Without either, a headless page has no
 position and measures World: neither of the two views most readers get.
 
 Usage:  python3 tools/responsive.py [--url URL] [--json] [--shots DIR] [--only LABEL ...]
-                                    [--place LAT,LON,NAME]
+                                    [--parallel N] [--lang LANG]
+                                    [--place LAT,LON,NAME] [--near LAT,LON]
 Exit code 1 if any viewport fails, so `make responsive` can gate on it.
 """
 
@@ -571,7 +572,8 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = F
     return failures
 
 
-async def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Every flag, here and in the docstring's Usage line (tested)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="http://localhost:5380/")
     ap.add_argument("--json", action="store_true")
@@ -581,7 +583,11 @@ async def main() -> int:
     ap.add_argument("--lang", default="fr", help="language of the page (en, fr, es, ja, id)")
     ap.add_argument("--place", default=None, help='start on a place: "LAT,LON,NAME"')
     ap.add_argument("--near", default=None, help='Near me at a granted position: "LAT,LON"')
-    args = ap.parse_args()
+    return ap
+
+
+async def main() -> int:
+    args = build_parser().parse_args()
     place = parse_place(args.place) if args.place else None
     near = parse_near(args.near) if args.near else None
 

@@ -143,3 +143,16 @@ def test_near_mode_reads_a_position(responsive):
     assert responsive.parse_near("48.85,2.35") == (48.85, 2.35)
     with pytest.raises(ValueError):
         responsive.parse_near("48.85")
+
+
+def test_the_usage_line_names_every_flag(responsive):
+    """--near reached argparse and the prose, not the Usage line."""
+    usage = responsive.__doc__.split("Usage:", 1)[1].split("Exit code", 1)[0]
+    flags = [
+        option
+        for action in responsive.build_parser()._actions
+        for option in action.option_strings
+        if option.startswith("--") and option != "--help"
+    ]
+    assert "--near" in flags and len(flags) >= 8
+    assert [flag for flag in flags if f"[{flag}" not in usage] == []
