@@ -1,0 +1,829 @@
+{
+ "_captured": "2026-10-26 between 19:50 and 20:15 UTC (the ash SIGMETs: AWC archive for 2026-10-25 18:00 UTC); every value is copied unmodified from the named endpoint",
+ "ash_nzzo36_two_rings": {
+  "icaoId": "NZKL",
+  "firId": "NZZO",
+  "firName": "NZZO AUCKLAND OCEANIC",
+  "receiptTime": "2026-10-25T17:17:28.136Z",
+  "validTimeFrom": 1792948620,
+  "validTimeTo": 1792956240,
+  "seriesId": "36",
+  "hazard": "VA",
+  "qualifier": "MT",
+  "base": 0,
+  "top": 4000,
+  "geom": "AREAS",
+  "coords": [
+   [
+    {
+     "lon": 180,
+     "lat": -38.208
+    },
+    {
+     "lon": 180,
+     "lat": -38.026
+    },
+    {
+     "lon": 179.25,
+     "lat": -37.383
+    },
+    {
+     "lon": 179,
+     "lat": -37.333
+    },
+    {
+     "lon": 179,
+     "lat": -37.5
+    },
+    {
+     "lon": 179.833,
+     "lat": -38.167
+    },
+    {
+     "lon": 180,
+     "lat": -38.208
+    }
+   ],
+   [
+    {
+     "lon": 180,
+     "lat": -38.208
+    },
+    {
+     "lon": 180,
+     "lat": -38.026
+    },
+    {
+     "lon": 180.3,
+     "lat": -38.283
+    },
+    {
+     "lon": 180,
+     "lat": -38.208
+    }
+   ]
+  ],
+  "dir": null,
+  "spd": null,
+  "chng": null,
+  "rawSigmet": "WVPS21 NZKL 251709\nNZZO SIGMET 36 VALID 251717/252317 NZKL-\nNZZO AUCKLAND OCEANIC FIR VA ERUPTION MT WHAKAARI/WHITE ISLAND PSN\nS3731 E17711 VA CLD FCST AT 2256Z WI S3817 W17942 - S3810 E17950 -\nS3730 E17900 - S3720 E17900 - S3723 E17915 - S3817 W17942 SFC/FL040="
+ },
+ "ash_waaf10_one_ring": {
+  "icaoId": "WAAA",
+  "firId": "WAAF",
+  "firName": "WAAF UJUNG PANDANG",
+  "receiptTime": "2026-10-25T12:15:56.118Z",
+  "validTimeFrom": 1792930200,
+  "validTimeTo": 1792951800,
+  "seriesId": "10",
+  "hazard": "VA",
+  "qualifier": "ERUPTION MT KARANGETANG",
+  "base": 0,
+  "top": 8000,
+  "geom": "AREA",
+  "coords": [
+   {
+    "lon": 125.45,
+    "lat": 2.75
+   },
+   {
+    "lon": 125.267,
+    "lat": 2.717
+   },
+   {
+    "lon": 125.267,
+    "lat": 2.85
+   },
+   {
+    "lon": 125.45,
+    "lat": 2.817
+   },
+   {
+    "lon": 125.45,
+    "lat": 2.75
+   }
+  ],
+  "dir": "W",
+  "spd": "5",
+  "chng": "WKN",
+  "rawSigmet": "WVID21 WAAA 251210\nWAAF SIGMET 10 VALID 251210/251810 WAAA-\nWAAF UJUNG PANDANG  FIR VA\nERUPTION MT KARANGETANG PSN N0247 E12524 VA CLD OBS AT 1150Z WI N0245\nE12527 - N0243 E12516 - N0251 E12516 - N0249 E12527 - N0245 E12527\nSFC/FL080 MOV W 05KT WKN="
+ },
+ "bmkg_gempaterkini": {
+  "Infogempa": {
+   "gempa": [
+    {
+     "Tanggal": "22 Okt 2026",
+     "Jam": "17:57:49 WIB",
+     "DateTime": "2026-10-22T10:57:49+00:00",
+     "Coordinates": "-3.11,102.14",
+     "Lintang": "3.11 LS",
+     "Bujur": "102.14 BT",
+     "Magnitude": "5.2",
+     "Kedalaman": "120 km",
+     "Wilayah": "6 km BaratLaut LEBONG-BENGKULU",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "21 Okt 2026",
+     "Jam": "14:44:15 WIB",
+     "DateTime": "2026-10-21T07:44:15+00:00",
+     "Coordinates": "-7.75,128.18",
+     "Lintang": "7.75 LS",
+     "Bujur": "128.18 BT",
+     "Magnitude": "5.1",
+     "Kedalaman": "96 km",
+     "Wilayah": "62 km TimurLaut MALUKUBRTDAYA",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "20 Okt 2026",
+     "Jam": "23:29:35 WIB",
+     "DateTime": "2026-10-20T16:29:35+00:00",
+     "Coordinates": "3.79,95.72",
+     "Lintang": "3.79 LU",
+     "Bujur": "95.72 BT",
+     "Magnitude": "5.4",
+     "Kedalaman": "74 km",
+     "Wilayah": "59 km BaratDaya MEULABOH-ACEHBARAT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "18 Okt 2026",
+     "Jam": "15:00:08 WIB",
+     "DateTime": "2026-10-18T08:00:08+00:00",
+     "Coordinates": "-8.09,120.26",
+     "Lintang": "8.09 LS",
+     "Bujur": "120.26 BT",
+     "Magnitude": "5.3",
+     "Kedalaman": "10 km",
+     "Wilayah": "60 km TimurLaut LABUANBAJO-NTT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "12 Okt 2026",
+     "Jam": "04:34:53 WIB",
+     "DateTime": "2026-10-11T21:34:53+00:00",
+     "Coordinates": "0.64,121.75",
+     "Lintang": "0.64 LU",
+     "Bujur": "121.75 BT",
+     "Magnitude": "5.7",
+     "Kedalaman": "76 km",
+     "Wilayah": "29 km BaratLaut POHUWATO-GORONTALO",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "11 Okt 2026",
+     "Jam": "10:30:20 WIB",
+     "DateTime": "2026-10-11T03:30:20+00:00",
+     "Coordinates": "-8.73,106.47",
+     "Lintang": "8.73 LS",
+     "Bujur": "106.47 BT",
+     "Magnitude": "5.7",
+     "Kedalaman": "10 km",
+     "Wilayah": "193 km BaratDaya KAB-SUKABUMI-JABAR",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "09 Okt 2026",
+     "Jam": "12:11:04 WIB",
+     "DateTime": "2026-10-09T05:11:04+00:00",
+     "Coordinates": "0.77,126.03",
+     "Lintang": "0.77 LU",
+     "Bujur": "126.03 BT",
+     "Magnitude": "5.1",
+     "Kedalaman": "10 km",
+     "Wilayah": "125 km Tenggara BITUNG-SULUT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "08 Okt 2026",
+     "Jam": "15:07:56 WIB",
+     "DateTime": "2026-10-08T08:07:56+00:00",
+     "Coordinates": "5.66,125.19",
+     "Lintang": "5.66 LU",
+     "Bujur": "125.19 BT",
+     "Magnitude": "5.8",
+     "Kedalaman": "10 km",
+     "Wilayah": "230 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "07 Okt 2026",
+     "Jam": "03:15:26 WIB",
+     "DateTime": "2026-10-06T20:15:26+00:00",
+     "Coordinates": "-8.77,116.14",
+     "Lintang": "8.77 LS",
+     "Bujur": "116.14 BT",
+     "Magnitude": "5.2",
+     "Kedalaman": "92 km",
+     "Wilayah": "9 km Tenggara LOMBOKBARAT-NTB",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "06 Okt 2026",
+     "Jam": "20:11:23 WIB",
+     "DateTime": "2026-10-06T13:11:23+00:00",
+     "Coordinates": "4.94,118.77",
+     "Lintang": "4.94 LU",
+     "Bujur": "118.77 BT",
+     "Magnitude": "5.3",
+     "Kedalaman": "10 km",
+     "Wilayah": "219 km TimurLaut TARAKAN-KALTARA",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "04 Okt 2026",
+     "Jam": "06:37:31 WIB",
+     "DateTime": "2026-10-03T23:37:31+00:00",
+     "Coordinates": "4.56,94.97",
+     "Lintang": "4.56 LU",
+     "Bujur": "94.97 BT",
+     "Magnitude": "5.9",
+     "Kedalaman": "26 km",
+     "Wilayah": "68 km BaratDaya CALANG-ACEHJAYA",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "04 Okt 2026",
+     "Jam": "05:55:52 WIB",
+     "DateTime": "2026-10-03T22:55:52+00:00",
+     "Coordinates": "-9.70,118.92",
+     "Lintang": "9.70 LS",
+     "Bujur": "118.92 BT",
+     "Magnitude": "6.1",
+     "Kedalaman": "10 km",
+     "Wilayah": "14 km BaratDaya KODI-SUMBABARATDAYA-NTT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "01 Okt 2026",
+     "Jam": "21:20:00 WIB",
+     "DateTime": "2026-10-01T14:20:00+00:00",
+     "Coordinates": "-7.07,120.80",
+     "Lintang": "7.07 LS",
+     "Bujur": "120.80 BT",
+     "Magnitude": "5.1",
+     "Kedalaman": "10 km",
+     "Wilayah": "111 km Tenggara SELAYAR-SULSEL",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "22 Sep 2026",
+     "Jam": "06:48:13 WIB",
+     "DateTime": "2026-09-21T23:48:13+00:00",
+     "Coordinates": "4.74,125.30",
+     "Lintang": "4.74 LU",
+     "Bujur": "125.30 BT",
+     "Magnitude": "5.2",
+     "Kedalaman": "10 km",
+     "Wilayah": "127 km BaratLaut TAHUNA-KEP.SANGIHE-SULUT",
+     "Potensi": "Tidak berpotensi tsunami"
+    },
+    {
+     "Tanggal": "21 Sep 2026",
+     "Jam": "14:31:07 WIB",
+     "DateTime": "2026-09-21T07:31:07+00:00",
+     "Coordinates": "-0.70,122.45",
+     "Lintang": "0.70 LS",
+     "Bujur": "122.45 BT",
+     "Magnitude": "5.3",
+     "Kedalaman": "10 km",
+     "Wilayah": "26 km BaratDaya PULAUPUAH-SULTENG",
+     "Potensi": "Tidak berpotensi tsunami"
+    }
+   ]
+  }
+ },
+ "bmkg_autogempa": {
+  "Infogempa": {
+   "gempa": {
+    "Tanggal": "26 Okt 2026",
+    "Jam": "11:53:42 WIB",
+    "DateTime": "2026-10-26T04:53:42+00:00",
+    "Coordinates": "-8.45,121.45",
+    "Lintang": "8.45 LS",
+    "Bujur": "121.45 BT",
+    "Magnitude": "4.9",
+    "Kedalaman": "13 km",
+    "Wilayah": "Pusat gempa berada di laut 30 km timur laut Mbay, Nagekeo",
+    "Potensi": "Gempa ini dirasakan untuk diteruskan pada masyarakat",
+    "Dirasakan": "III Bajawa, III Maumere, II - III Ruteng",
+    "Shakemap": "20261026115342.mmi.jpg"
+   }
+  }
+ },
+ "bmkg_gempadirasakan": {
+  "Infogempa": {
+   "gempa": [
+    {
+     "Tanggal": "26 Okt 2026",
+     "Jam": "11:53:42 WIB",
+     "DateTime": "2026-10-26T04:53:42+00:00",
+     "Coordinates": "-8.45,121.45",
+     "Lintang": "8.45 LS",
+     "Bujur": "121.45 BT",
+     "Magnitude": "4.9",
+     "Kedalaman": "13 km",
+     "Wilayah": "Pusat gempa berada di laut 30 km timur laut Mbay, Nagekeo",
+     "Dirasakan": "III Bajawa, III Maumere, II - III Ruteng"
+    },
+    {
+     "Tanggal": "25 Okt 2026",
+     "Jam": "19:47:26 WIB",
+     "DateTime": "2026-10-25T12:47:26+00:00",
+     "Coordinates": "-0.73,131.39",
+     "Lintang": "0.73 LS",
+     "Bujur": "131.39 BT",
+     "Magnitude": "3.8",
+     "Kedalaman": "6 km",
+     "Wilayah": "Pusat gempa berada di laut 13 km timur laut Kota Sorong",
+     "Dirasakan": "II Kota Sorong"
+    },
+    {
+     "Tanggal": "25 Okt 2026",
+     "Jam": "14:40:01 WIB",
+     "DateTime": "2026-10-25T07:40:01+00:00",
+     "Coordinates": "4.24,97.65",
+     "Lintang": "4.24 LU",
+     "Bujur": "97.65 BT",
+     "Magnitude": "4.7",
+     "Kedalaman": "10 km",
+     "Wilayah": "Pusat gempa berada di darat 44 km barat Kab. Aceh Tamiang",
+     "Dirasakan": "IV Gayo Lues"
+    },
+    {
+     "Tanggal": "22 Okt 2026",
+     "Jam": "17:57:49 WIB",
+     "DateTime": "2026-10-22T10:57:49+00:00",
+     "Coordinates": "-3.11,102.14",
+     "Lintang": "3.11 LS",
+     "Bujur": "102.14 BT",
+     "Magnitude": "5.2",
+     "Kedalaman": "120 km",
+     "Wilayah": "Pusat gempa berada di darat 6 km BaratLaut Lebong",
+     "Dirasakan": "III Kota Bengkulu, II - III Curup, III Arga Makmur"
+    },
+    {
+     "Tanggal": "21 Okt 2026",
+     "Jam": "18:58:36 WIB",
+     "DateTime": "2026-10-21T11:58:36+00:00",
+     "Coordinates": "-5.40,104.68",
+     "Lintang": "5.40 LS",
+     "Bujur": "104.68 BT",
+     "Magnitude": "2.5",
+     "Kedalaman": "3 km",
+     "Wilayah": "Pusat gempa berada di darat 9 km utara Tanggamus",
+     "Dirasakan": "II Tanggamus"
+    },
+    {
+     "Tanggal": "21 Okt 2026",
+     "Jam": "18:03:28 WIB",
+     "DateTime": "2026-10-21T11:03:28+00:00",
+     "Coordinates": "-5.39,104.68",
+     "Lintang": "5.39 LS",
+     "Bujur": "104.68 BT",
+     "Magnitude": "3.9",
+     "Kedalaman": "10 km",
+     "Wilayah": "Pusat gempa berada di darat 10 km utara Tanggamus",
+     "Dirasakan": "III Ulu Belu, Tanggamus, III Pulau Panggung, Tanggamus"
+    },
+    {
+     "Tanggal": "20 Okt 2026",
+     "Jam": "23:29:35 WIB",
+     "DateTime": "2026-10-20T16:29:35+00:00",
+     "Coordinates": "3.79,95.72",
+     "Lintang": "3.79 LU",
+     "Bujur": "95.72 BT",
+     "Magnitude": "5.4",
+     "Kedalaman": "74 km",
+     "Wilayah": "Pusat gempa berada di laut 59 km barat daya Meulaboh",
+     "Dirasakan": "III Kab. Aceh Selatan, III Kab. Simeulue, III-IV Kab. Aceh Barat, III-IV Kab. Aceh Barat Daya, II Kab. Bener Meriah, II-III Kota Banda Aceh, II-III Kab. Aceh Besar , III-IV Kab. Nagan Raya"
+    },
+    {
+     "Tanggal": "20 Okt 2026",
+     "Jam": "18:28:11 WIB",
+     "DateTime": "2026-10-20T11:28:11+00:00",
+     "Coordinates": "-8.37,116.99",
+     "Lintang": "8.37 LS",
+     "Bujur": "116.99 BT",
+     "Magnitude": "3.7",
+     "Kedalaman": "15 km",
+     "Wilayah": "Pusat gempa berada di laut 6 km Barat Laut Pulau Saringi",
+     "Dirasakan": "III Kab. Sumbawa"
+    },
+    {
+     "Tanggal": "20 Okt 2026",
+     "Jam": "16:56:38 WIB",
+     "DateTime": "2026-10-20T09:56:38+00:00",
+     "Coordinates": "-10.19,123.71",
+     "Lintang": "10.19 LS",
+     "Bujur": "123.71 BT",
+     "Magnitude": "3.4",
+     "Kedalaman": "4 km",
+     "Wilayah": "Pusat gempa berada di darat 30km Barat Daya Kab. Kupang",
+     "Dirasakan": "III Kab. Kupang, III Kota Kupang"
+    },
+    {
+     "Tanggal": "19 Okt 2026",
+     "Jam": "20:46:11 WIB",
+     "DateTime": "2026-10-19T13:46:11+00:00",
+     "Coordinates": "4.16,97.51",
+     "Lintang": "4.16 LU",
+     "Bujur": "97.51 BT",
+     "Magnitude": "4.2",
+     "Kedalaman": "5 km",
+     "Wilayah": "Pusat gempa berada di darat 26 km Timur Laut Kab. Gayo Lues",
+     "Dirasakan": "III Kab. Gayo Lues, II Aceh Timur"
+    },
+    {
+     "Tanggal": "19 Okt 2026",
+     "Jam": "19:06:02 WIB",
+     "DateTime": "2026-10-19T12:06:02+00:00",
+     "Coordinates": "-7.99,120.09",
+     "Lintang": "7.99 LS",
+     "Bujur": "120.09 BT",
+     "Magnitude": "4.5",
+     "Kedalaman": "6 km",
+     "Wilayah": "Pusat gempa berada di laut 60 km Utara Labuanbajo",
+     "Dirasakan": "II Kab. Manggarai"
+    },
+    {
+     "Tanggal": "19 Okt 2026",
+     "Jam": "17:10:56 WIB",
+     "DateTime": "2026-10-19T10:10:56+00:00",
+     "Coordinates": "-7.97,120.06",
+     "Lintang": "7.97 LS",
+     "Bujur": "120.06 BT",
+     "Magnitude": "4.7",
+     "Kedalaman": "5 km",
+     "Wilayah": "Pusat gempa berada di laut 61 km utara Labuan Bajo",
+     "Dirasakan": "II Kab. Manggarai"
+    },
+    {
+     "Tanggal": "19 Okt 2026",
+     "Jam": "16:45:57 WIB",
+     "DateTime": "2026-10-19T09:45:57+00:00",
+     "Coordinates": "-8.12,120.05",
+     "Lintang": "8.12 LS",
+     "Bujur": "120.05 BT",
+     "Magnitude": "4.8",
+     "Kedalaman": "19 km",
+     "Wilayah": "Pusat gempa berada di laut 45 km timur laut Labuan Bajo",
+     "Dirasakan": "I-II Kab. Manggarai"
+    },
+    {
+     "Tanggal": "18 Okt 2026",
+     "Jam": "15:02:46 WIB",
+     "DateTime": "2026-10-18T08:02:46+00:00",
+     "Coordinates": "-8.14,120.29",
+     "Lintang": "8.14 LS",
+     "Bujur": "120.29 BT",
+     "Magnitude": "4.1",
+     "Kedalaman": "5 km",
+     "Wilayah": "Pusat gempa berada di laut 56 km utara Ruteng",
+     "Dirasakan": "II-III Kab. Manggarai"
+    },
+    {
+     "Tanggal": "18 Okt 2026",
+     "Jam": "15:00:08 WIB",
+     "DateTime": "2026-10-18T08:00:08+00:00",
+     "Coordinates": "-8.09,120.26",
+     "Lintang": "8.09 LS",
+     "Bujur": "120.26 BT",
+     "Magnitude": "5.3",
+     "Kedalaman": "10 km",
+     "Wilayah": "Pusat gempa berada di laut 60 km timur laut Labuan Bajo",
+     "Dirasakan": "IV-V Kab. Manggarai, III Kab. Manggarai Barat, II-III Kab. Bima, II-III Kota Bima, I-II Kab. Nagekeo"
+    }
+   ]
+  }
+ },
+ "nws_polygon_feature": {
+  "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.6c922802adb427e3e772da69c7d6fdfeff61d802.001.1",
+  "type": "Feature",
+  "geometry": {
+   "type": "Polygon",
+   "coordinates": [
+    [
+     [
+      -103.66,
+      29.09
+     ],
+     [
+      -103.58,
+      29.23
+     ],
+     [
+      -103.49,
+      29.2
+     ],
+     [
+      -103.4,
+      29.12
+     ],
+     [
+      -103.49,
+      29
+     ],
+     [
+      -103.66,
+      29.09
+     ]
+    ]
+   ]
+  },
+  "properties": {
+   "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.6c922802adb427e3e772da69c7d6fdfeff61d802.001.1",
+   "@type": "wx:Alert",
+   "id": "urn:oid:2.49.0.1.840.0.6c922802adb427e3e772da69c7d6fdfeff61d802.001.1",
+   "areaDesc": "Brewster, TX",
+   "geocode": {
+    "SAME": [
+     "048043"
+    ],
+    "UGC": [
+     "TXC043"
+    ]
+   },
+   "affectedZones": [
+    "https://api.weather.gov/zones/county/TXC043"
+   ],
+   "references": [],
+   "sent": "2026-10-26T13:33:00-05:00",
+   "effective": "2026-10-26T13:33:00-05:00",
+   "onset": "2026-10-26T13:33:00-05:00",
+   "expires": "2026-10-27T01:45:00-05:00",
+   "ends": "2026-10-28T01:00:00-05:00",
+   "status": "Actual",
+   "messageType": "Alert",
+   "category": "Met",
+   "severity": "Severe",
+   "certainty": "Likely",
+   "urgency": "Expected",
+   "event": "Flood Warning",
+   "sender": "w-nws.webmaster@noaa.gov",
+   "senderName": "NWS Midland/Odessa TX",
+   "headline": "Flood Warning issued October 26 at 1:33PM CDT until October 28 at 1:00AM CDT by NWS Midland/Odessa TX",
+   "description": "...The National Weather Service in Midland/Odessa has issued a Flood\nWarning for the following rivers in Texas...\n\nRio Grande at Rio Grande near Castolon, Texas affecting Brewster\nCounty.\n\n* WHAT...Minor flooding is occurring.\n\n* WHERE...Rio Grande at Rio Grande near Castolon, Texas.\n\n* WHEN...From this afternoon to late Tuesday night.\n\n* IMPACTS...At 13.0 feet, the river reaches bankfull, and no\nsignificant damage is expected. At 15.0 feet, the river reaches\nminor flood stage, and lowland flooding begins.  The river begins\nto flood the road between Santa Elena Canyon and Cottonwood\nCampground in Big Bend National Park.  The river begins to flood\nthe parking lot at Santa Elena Canyon, and cut off the nature trail\ninto the canyon.  Campers in Cottonwood Campground need to prepare\nfor possible evacuations.\n\n* ADDITIONAL DETAILS...\n- At 1:15 PM CDT Monday the stage was 15.1 feet (4.6 meters).\n- Bankfull stage is 13.0 feet (4.0 meters).\n- Recent Activity...The maximum river stage in the 24 hours ending\nat 1:15 PM CDT Monday was 15.2 feet (4.6 meters).\n- Forecast...The river will fall below flood stage this afternoon\nto 9.5 feet (2.9 meters) late this evening. It will then rise to\n11.3 feet (3.4 meters) late tonight. It will fall to 2.6 feet\n(0.8 meters) Friday afternoon then rise again.\n- Flood stage is 15.0 feet (4.6 meters).\n- Flood History...This crest compares to a previous crest of 15.1\nfeet (4.6 meters) on 09/04/2022.\n- http://www.weather.gov/safety/flood",
+   "instruction": "Caution is urged when walking near riverbanks.\n\nStay tuned to further developments by listening to your local radio,\ntelevision, or NOAA Weather Radio for further information.\n\nPlease report observed flooding to local emergency services or law\nenforcement and request they pass this information to the National\nWeather Service when you can do so safely.\n\nAdditional information is available at www.weather.gov.\n\nThe next statement will be issued late tonight at 145 AM CDT.",
+   "response": "Avoid",
+   "note": null,
+   "parameters": {
+    "AWIPSidentifier": [
+     "FLWMAF"
+    ],
+    "WMOidentifier": [
+     "WGUS44 KMAF 261833"
+    ],
+    "NWSheadline": [
+     "FLOOD WARNING IN EFFECT FROM THIS AFTERNOON TO LATE TUESDAY NIGHT"
+    ],
+    "BLOCKCHANNEL": [
+     "EAS",
+     "NWEM",
+     "CMAS"
+    ],
+    "EAS-ORG": [
+     "WXR"
+    ],
+    "VTEC": [
+     "/O.NEW.KMAF.FL.W.0011.261026T1833Z-261028T0600Z/"
+    ],
+    "eventEndingTime": [
+     "2026-10-28T01:00:00-05:00"
+    ]
+   },
+   "scope": "Public",
+   "code": "IPAWSv1.0",
+   "language": "en-US",
+   "web": "http://www.weather.gov",
+   "eventCode": {
+    "SAME": [
+     "FLW"
+    ],
+    "NationalWeatherService": [
+     "FLW"
+    ]
+   }
+  }
+ },
+ "nws_zone_feature": {
+  "id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.c62dad18688fd8f1e3ffaf4d02dea7fb551444bc.003.1",
+  "type": "Feature",
+  "geometry": null,
+  "properties": {
+   "@id": "https://api.weather.gov/alerts/urn:oid:2.49.0.1.840.0.c62dad18688fd8f1e3ffaf4d02dea7fb551444bc.003.1",
+   "@type": "wx:Alert",
+   "id": "urn:oid:2.49.0.1.840.0.c62dad18688fd8f1e3ffaf4d02dea7fb551444bc.003.1",
+   "areaDesc": "Bering Sea Offshore 171W to 180 and North of 56N",
+   "geocode": {
+    "SAME": [
+     "058412"
+    ],
+    "UGC": [
+     "PKZ412"
+    ]
+   },
+   "affectedZones": [
+    "https://api.weather.gov/zones/forecast/PKZ412"
+   ],
+   "references": [],
+   "sent": "2026-10-26T03:42:00-08:00",
+   "effective": "2026-10-26T03:42:00-08:00",
+   "onset": "2026-10-26T17:00:00-08:00",
+   "expires": "2026-10-26T17:30:00-08:00",
+   "ends": "2026-10-27T05:00:00-08:00",
+   "status": "Actual",
+   "messageType": "Alert",
+   "category": "Met",
+   "severity": "Severe",
+   "certainty": "Observed",
+   "urgency": "Immediate",
+   "event": "Storm Warning",
+   "sender": "w-nws.webmaster@noaa.gov",
+   "senderName": "NWS Anchorage AK",
+   "headline": "Storm Warning issued October 26 at 3:42AM AKDT until October 27 at 5:00AM AKDT by NWS Anchorage AK",
+   "description": "Offshore Waters Forecast for the Bering Sea\n\nWind forecasts reflect the predominant speed and direction\nexpected. Sea forecasts represent an average of the highest\none-third of the combined wind wave and swell height.\n\n.TODAY...S wind 30 to 45 kt. Seas 16 to 22 ft. Rain.\n.TONIGHT...S wind 35 to 50 kt. Seas 19 to 32 ft.\n.TUE...SW wind 25 to 40 kt diminishing to 10 to 25 kt in the\nafternoon. Seas 14 to 26 ft.\n.TUE NIGHT...SW wind 10 to 20 kt. Seas 10 to 15 ft.\n.WED...S wind 30 to 45 kt. Seas 9 to 17 ft.\n.THU...S wind 20 to 35 kt. Seas 16 to 24 ft.\n.FRI...NW wind 30 to 40 kt. Seas 18 to 23 ft.",
+   "instruction": null,
+   "response": "Avoid",
+   "note": null,
+   "parameters": {
+    "AWIPSidentifier": [
+     "OFFALU"
+    ],
+    "WMOidentifier": [
+     "FZAK62 PAFC 261142"
+    ],
+    "NWSheadline": [
+     "STORM WARNING TONIGHT"
+    ],
+    "BLOCKCHANNEL": [
+     "EAS",
+     "NWEM",
+     "CMAS"
+    ],
+    "VTEC": [
+     "/O.NEW.PAFC.SR.W.1777.261027T0100Z-261027T1300Z/"
+    ],
+    "eventEndingTime": [
+     "2026-10-27T05:00:00-08:00"
+    ]
+   },
+   "scope": "Public",
+   "code": "IPAWSv1.0",
+   "language": "en-US",
+   "web": "http://www.weather.gov",
+   "eventCode": {
+    "SAME": [
+     "NWS"
+    ],
+    "NationalWeatherService": [
+     "SRW"
+    ]
+   }
+  }
+ },
+ "nws_zone_PKZ412": {
+  "@context": {
+   "@version": "1.1"
+  },
+  "id": "https://api.weather.gov/zones/forecast/PKZ412",
+  "type": "Feature",
+  "geometry": {
+   "type": "Polygon",
+   "coordinates": [
+    [
+     [
+      -170.999043,
+      56.044541
+     ],
+     [
+      -180,
+      56.044541
+     ],
+     [
+      -180,
+      59
+     ],
+     [
+      -170.999043,
+      59
+     ],
+     [
+      -170.999043,
+      56.044541
+     ]
+    ]
+   ]
+  },
+  "properties": {
+   "@id": "https://api.weather.gov/zones/forecast/PKZ412",
+   "@type": "wx:Zone",
+   "id": "PKZ412",
+   "type": "offshore",
+   "name": "Bering Sea Offshore 171W to 180 and North of 56N",
+   "effectiveDate": "2026-04-16T18:00:00+00:00",
+   "expirationDate": "2200-01-01T00:00:00+00:00",
+   "state": null,
+   "forecastOffice": "https://api.weather.gov/offices/AFC",
+   "gridIdentifier": "ALU",
+   "awipsLocationIdentifier": "AFC",
+   "cwa": [
+    "AFC"
+   ],
+   "forecastOffices": [
+    "https://api.weather.gov/offices/ALU"
+   ],
+   "timeZone": [
+    "America/Anchorage"
+   ],
+   "observationStations": [],
+   "radarStation": null
+  }
+ },
+ "meteoalarm_uk_polygon": {
+  "alert": {
+   "code": [
+    "MCP:v2.0"
+   ],
+   "identifier": "2.49.0.1.826.1.20261026092056.130429",
+   "incidents": "Update",
+   "info": [
+    {
+     "area": [
+      {
+       "areaDesc": "Keswick Campsite",
+       "polygon": [
+        "54.59844,-3.1536 54.59838,-3.15425 54.60037,-3.15544 54.60037,-3.15483 54.60041,-3.15401 54.60059,-3.1534 54.60096,-3.15307 54.60182,-3.15317 54.60191,-3.15241 54.60216,-3.14799 54.60106,-3.14648 54.60107,-3.14657 54.60079,-3.14885 54.60072,-3.14893 54.60013,-3.14879 54.60005,-3.14889 54.59977,-3.14916 54.59987,-3.14935 54.59993,-3.14965 54.59999,-3.14981 54.59993,-3.15027 54.5999,-3.15036 54.5996,-3.15068 54.59944,-3.15089 54.59901,-3.15162 54.59886,-3.15169 54.59878,-3.15177 54.59865,-3.15195 54.5986,-3.15249 54.59859,-3.15302 54.59855,-3.15328 54.59844,-3.1536"
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "contact": "0345 988 1188",
+     "description": "Following heavy rain and strong winds over the weekend, river and lake levels remain above flood warning thresholds. Further rainfall and strong winds are expected. Locations most affected will be Keswick Campsite flooding from the lake and the River Greta. We continue to closely monitor the situation . Take care and avoid walking, cycling or driving through flood water. This message will be updated by 9:00AM on Tuesday 27 October or as the situation changes.",
+     "event": "Flood Warning: Keswick Campsite",
+     "expires": "2026-11-05T09:20:56+00:00",
+     "headline": "Flooding is expected: Keswick Campsite",
+     "instruction": "Act now \n \nYou should: \n- go to Check for flooding for a map of the area and to monitor up-to-date local flood information – https://check-for-flooding.service.gov.uk/target-area/011FWFNC6KC  \n- act on your personal flood plan if you have one - https://www.gov.uk/government/publications/personal-flood-plan \n- follow the guidance in 'What to do before or during a flood' - https://www.gov.uk/help-during-flood  \n \nYou can also read more about what flood warnings are – https://www.gov.uk/guidance/flood-alerts-and-warnings-what-they-are-and-what-to-do#flood-warning \n \nStay up to date \n \nTo get the latest flood information, you can: \n- go to Check for flooding \n- monitor local weather, news and travel updates \n- call Floodline on 0345 988 1188, using quickdial code 302056",
+     "language": "en-GB",
+     "onset": "2026-10-26T09:20:56+00:00",
+     "parameter": [
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "12; Flooding",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "Flooding is expected - act now",
+       "valueName": "impacts"
+      },
+      {
+       "value": "true",
+       "valueName": "use_polygon_over_geocode"
+      },
+      {
+       "value": "011FWFNC6KC",
+       "valueName": "uk_ea_ta_code"
+      }
+     ],
+     "responseType": [
+      "Monitor"
+     ],
+     "senderName": "Environment Agency",
+     "severity": "Severe",
+     "urgency": "Immediate",
+     "web": "https://check-for-flooding.service.gov.uk"
+    }
+   ],
+   "msgType": "Update",
+   "references": "www.gov.uk/environment-agency,2.49.0.1.826.1.20261024191454.129289,2026-10-24T19:14:54+00:00 www.gov.uk/environment-agency,2.49.0.1.826.1.20261025103427.129771,2026-10-25T10:34:27+00:00",
+   "scope": "Public",
+   "sender": "www.gov.uk/environment-agency",
+   "sent": "2026-10-26T09:20:56+00:00",
+   "source": "Flood warning service",
+   "status": "Actual"
+  },
+  "uuid": "6392d9c4-8706-482f-8025-4c11aa6c3463"
+ },
+ "wmo_item_no_met": {
+  "id": "2.49.0.1.578.0.20261026192509.094",
+  "event": "Gale",
+  "headline": "Storm, yellow level, Stad - Svinoey, 2026-10-26T21:00:00+00:00, 2026-10-27T13:00:00+00:00",
+  "sent": "2026-10-26 19:26:01",
+  "expires": "2026-10-27 13:00:00",
+  "areaDesc": "Stad - Svinoey",
+  "mid": "008",
+  "ra": "6",
+  "s": 2,
+  "u": 2,
+  "c": 3,
+  "url": "no-met-en/2026/10/26/19/26/01-f80c5bf22515925b76d421123c064a12.xml",
+  "effective": ""
+ }
+}

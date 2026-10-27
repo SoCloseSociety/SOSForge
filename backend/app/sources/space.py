@@ -361,10 +361,19 @@ class SpaceWeatherSource(JsonPollSource):
 
         valid_until = _parse_valid_until(message) or _implied_valid_until(message, issue_time)
         ongoing = valid_until is not None and valid_until > now
+        event_id = f"space:alert:{product_id}:{key}"
+        if valid_until is not None and valid_until <= now:
+            # Over, by the bulletin's own words. alerts.json keeps a bulletin
+            # listed for weeks: on 2026-10-26 a G3 warning valid until
+            # 2026-10-10 was still published, SEVERE, and -- severe and not an
+            # earthquake -- it escaped the horizon and was re-seen every cycle,
+            # so nothing ever removed it.
+            self.expirations.append(event_id)
+            return None
 
         kind_label = "watch" if code.startswith("WAT") else "warning"
         return Event(
-            id=f"space:alert:{product_id}:{key}",
+            id=event_id,
             source="space",
             source_id=f"{product_id}:{key}",
             kind=Kind.SPACE_WEATHER,
@@ -373,6 +382,7 @@ class SpaceWeatherSource(JsonPollSource):
             lon=None,
             severity=severity,
             ongoing=ongoing,
+            expires=valid_until,
             alert=code,
             title=f"Geomagnetic {kind_label}: {basis}",
             url="https://www.swpc.noaa.gov/noaa-scales-explanation",
@@ -397,14 +407,17 @@ class SpaceWeatherSource(JsonPollSource):
                     events = await self._poll_once(client)
                     for event in events:
                         await emit(event)
+                    await self.flush_retractions()
                     self.health.ok(len(events))
                 except Exception as exc:
                     self.health.fail(exc)
                     log.warning("%s: %s", self.name, exc)
                 await asyncio.sleep(self.poll_seconds)
 
-    async def _poll_once(self, client: httpx.AsyncClient) -> list[Event]:
-        now = utcnow()
+    async def _poll_once(
+        self, client: httpx.AsyncClient, now: datetime | None = None
+    ) -> list[Event]:
+        now = now or utcnow()
         resp = await client.get(self.build_url())
         resp.raise_for_status()
         events = self.parse_scales(resp.json(), now=now)
@@ -421,14 +434,20 @@ class SpaceWeatherSource(JsonPollSource):
                 events[0].raw["kp_forecast"] = kp_summary
                 kp_severity = _severity_from_scale(kp_summary["implied_g"])
                 events[0].severity = _max_severity(events[0].severity, kp_severity)
+            self.health.feed_ok("kp-forecast")
         except Exception as exc:
+            # Detail lost, outlook kept -- and said so in the footer, where
+            # it used to be a log line nobody reads.
+            self.health.feed_failed("kp-forecast", exc)
             log.warning("%s: kp forecast failed: %s", self.name, exc)
 
         try:
             alerts_resp = await client.get(self.alerts_url)
             alerts_resp.raise_for_status()
             events.extend(self.parse_alerts(alerts_resp.json(), now=now))
+            self.health.feed_ok("alerts")
         except Exception as exc:
+            self.health.feed_failed("alerts", exc)
             log.warning("%s: alerts failed: %s", self.name, exc)
 
         return events

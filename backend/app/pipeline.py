@@ -16,8 +16,8 @@ from app.core.config import settings
 from app.countries import resolve as resolve_country
 from app.dedupe import Deduper
 from app.hub import hub
-from app.models.event import Event, Kind, Severity
-from app.store.ring import EventStore
+from app.models.event import Event, Kind, Severity, utcnow
+from app.store.ring import EventStore, Removal, severity_rank
 
 log = logging.getLogger(__name__)
 
@@ -52,6 +52,20 @@ class Pipeline:
     async def _ingest(self, event: Event) -> None:
         if event.magnitude is not None and event.magnitude < settings.min_magnitude:
             self.dropped += 1
+            return
+
+        # An alert whose SOURCE says it is over does not enter, and if an
+        # earlier version is stored, this is the news that it ended. The sweep
+        # already purged on `expires`, but only the sweep did: a source that
+        # keeps listing an expired alert got it re-added as NEW on its next
+        # poll. Measured on production: two JMA tsunami forecasts lifted weeks
+        # earlier were ingested 3914 times in seven days, purge then re-add,
+        # every five minutes. Same rule as the sweep, so nothing it kept is
+        # cut here -- and over those seven days no NWS alert arrived expired.
+        if event.expires is not None and event.expires <= utcnow():
+            self.dropped += 1
+            if self.store.get(event.id) is not None:
+                await self.retract(event.id, "expired")
             return
 
         # A timestamp IN THE FUTURE is a source error (misapplied timezone,
@@ -102,6 +116,8 @@ class Pipeline:
         # from a text
         event.country_code = event.country_code or resolve_country(event.country, event.place)
 
+        # read BEFORE the upsert, which raises it
+        peak = self.store.peak(event.id)
         self.deduper.assign(event)
         stored, action = self.store.upsert(event)
         if action == "noop":
@@ -115,7 +131,21 @@ class Pipeline:
         # days: on the first cycle, a hundred old events come in at once. They
         # must appear on the map, but they must absolutely not blink or trigger
         # the sound as if they had just landed.
-        breaking = action == "new" and 0 <= stored.age_seconds <= settings.breaking_seconds
+        recent = 0 <= stored.age_seconds <= settings.breaking_seconds
+        breaking = action == "new" and recent
+        # ...but "an update" is not "nothing new" either. A JMA early warning
+        # keeps its EventID across serials: the Bonin Islands warning of
+        # 2026-10-25 went moderate -> severe -> extreme in 131 s, every step an
+        # update, and the jump to M7.5 sounded nowhere. Clients sound on
+        # `breaking or escalated`. The bar is the highest rank the event has
+        # EVER held, not the previous version: falling back and climbing to a
+        # rank already announced is not news (see EventStore._peaks).
+        escalated = (
+            action == "update"
+            and recent
+            and peak is not None
+            and (severity_rank(stored.severity) > peak[0] or (stored.tsunami and not peak[1]))
+        )
 
         await hub.broadcast(
             {
@@ -123,6 +153,7 @@ class Pipeline:
                 "event": stored.public(),
                 "primary": self.deduper.is_primary(stored),
                 "breaking": breaking,
+                "escalated": escalated,
             }
         )
         # A cluster whose representative was just evicted promoted a survivor.
@@ -131,9 +162,12 @@ class Pipeline:
         # left the feed on every open map.
         await self._flush_promotions()
 
-        if action == "new" and (stored.severity.value in ("severe", "extreme") or stored.tsunami):
+        if (action == "new" or escalated) and (
+            stored.severity.value in ("severe", "extreme") or stored.tsunami
+        ):
             log.info(
-                "ALERT %s %s M%s %s",
+                "ALERT%s %s %s M%s %s",
+                " (escalated)" if escalated else "",
                 stored.severity.value.upper(),
                 stored.kind.value,
                 stored.magnitude,
@@ -151,6 +185,7 @@ class Pipeline:
                     "primary": True,
                     # a promotion is bookkeeping, not news: no halo, no sound
                     "breaking": False,
+                    "escalated": False,
                 }
             )
 
@@ -171,7 +206,8 @@ class Pipeline:
         if not events:
             return
         self._forget(events)
-        await hub.broadcast({"type": "purge", "ids": [e.id for e in events], "reason": reason})
+        if not self.quiet:
+            await hub.broadcast({"type": "purge", "ids": [e.id for e in events], "reason": reason})
         await self._flush_promotions()
 
     async def sweep(self, max_silence_hours: float) -> list[Event]:
@@ -184,7 +220,8 @@ class Pipeline:
         """A source withdrew an event. The most critical case is a cancelled
         Japanese early warning: the source simply stops publishing it, and a
         store that can only add keeps the withdrawn alert on the map, red."""
-        removed = self.store.remove([event_id])
+        # the reason is journaled with the removal, so a restart keeps it gone
+        removed = self.store.remove([event_id], reason)
         await self._announce_purge(removed, reason)
         if removed:
             log.info("retracted %s (%s)", event_id, reason)
@@ -198,16 +235,23 @@ class Pipeline:
         and the EMSC solution restored from the journal no longer matched the
         USGS solution arriving two minutes later. Every restart injected a
         fresh crop of duplicates.
+
+        Removals are applied where they sit in the journal. Without them, a
+        cancelled early warning came back at every deploy.
         """
-        events = self.store.read_journal(path)
-        if not events:
+        entries = self.store.read_journal(path)
+        if not entries:
             return 0
         was_quiet, self.quiet = self.quiet, True
         before = self.ingested
         try:
             with self.store.replaying():
-                for event in events:
-                    await self.emit(event)
+                for entry in entries:
+                    if isinstance(entry, Removal):
+                        self._forget(self.store.remove([entry.id], entry.reason))
+                        await self._flush_promotions()
+                    else:
+                        await self.emit(entry)
         finally:
             self.quiet = was_quiet
         return self.ingested - before

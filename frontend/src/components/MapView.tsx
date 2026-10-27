@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl, { Map as MapLibreMap, Popup } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useStore } from '../store'
-import { SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
+import { SERIES, SEVERITY_META, formatAge, kindLabel, severityLabel } from '../format'
 import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
 import { forecastTracks } from '../tracks'
@@ -25,13 +25,14 @@ const REDUCED_MOTION = '(prefers-reduced-motion: reduce)'
 const BASEMAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/dark'
 
 /** What the map falls back to when the style above cannot be fetched (host
- * down, blocked by a stricter CSP, offline): a plain dark background. The
+ * down, blocked by a stricter CSP, offline): a plain dark background, the
+ * Lunar ground (`--ground`), so the fallback is the same black as the page. The
  * plate boundaries, the markers and the wave fronts still render on it. A
  * basemap outage must degrade the picture, never take the alerts down. */
 const FALLBACK_STYLE: maplibregl.StyleSpecification = {
   version: 8,
   sources: {},
-  layers: [{ id: 'base', type: 'background', paint: { 'background-color': '#0d0d0d' } }],
+  layers: [{ id: 'base', type: 'background', paint: { 'background-color': '#05070a' } }],
 }
 
 const SEVERITY_COLOR: maplibregl.ExpressionSpecification = [
@@ -51,15 +52,35 @@ const SEVERITY_COLOR: maplibregl.ExpressionSpecification = [
 /** Radius: magnitude when it exists, otherwise a fixed radius indexed on
  * severity. A magnitude 7 is not "3.5x" a magnitude 2: the scale is
  * logarithmic in energy, so we grow fast at the top of the spectrum. */
-const RADIUS: maplibregl.ExpressionSpecification = [
+const RADIUS_ZOOM_1 = ['interpolate', ['linear'], ['get', 'weight'], 0, 3, 3, 5, 5, 9, 7, 16, 9, 24]
+const RADIUS_ZOOM_6 = ['interpolate', ['linear'], ['get', 'weight'], 0, 6, 3, 10, 5, 18, 7, 32, 9, 48]
+
+const RADIUS = [
   'interpolate',
   ['linear'],
   ['zoom'],
   1,
-  ['interpolate', ['linear'], ['get', 'weight'], 0, 3, 3, 5, 5, 9, 7, 16, 9, 24],
+  RADIUS_ZOOM_1,
   6,
-  ['interpolate', ['linear'], ['get', 'weight'], 0, 6, 3, 10, 5, 18, 7, 32, 9, 48],
-]
+  RADIUS_ZOOM_6,
+] as unknown as maplibregl.ExpressionSpecification
+
+/** The same radius times `scale`, for the halo. The product goes INSIDE each
+ * zoom stop: MapLibre accepts `zoom` only as the input of a top-level
+ * interpolate, and `['*', RADIUS, k]` was rejected on every frame -- the halo
+ * never grew and the console filled with the same warning sixty times a
+ * second. */
+function scaledRadius(scale: number): maplibregl.ExpressionSpecification {
+  return [
+    'interpolate',
+    ['linear'],
+    ['zoom'],
+    1,
+    ['*', RADIUS_ZOOM_1, scale],
+    6,
+    ['*', RADIUS_ZOOM_6, scale],
+  ] as unknown as maplibregl.ExpressionSpecification
+}
 
 function toFeatureCollection(events: SosEvent[], fresh: Set<string>): GeoJSON.FeatureCollection {
   return {
@@ -104,13 +125,25 @@ function popupHtml(event: SosEvent, now: number): string {
 
   return `<div class="popup">
     <h3>${escape(event.place || event.title)}</h3>
-    <div style="color:${severity.text};font-size:12px">
-      ${severity.glyph} ${severityLabel(t, event.severity)} &middot; ${kindLabel(t, event.kind)}
-      &middot; <span class="popup-age">${formatAge(t, (now - Date.parse(event.time)) / 1000)}</span>
+    <div class="popup-meta"><span class="sev sev-${event.severity}"><span class="glyph" aria-hidden="true">${severity.glyph}</span> ${severityLabel(t, event.severity)}</span> <span>&middot; ${kindLabel(t, event.kind)}</span>
+      <span>&middot; <span class="popup-age">${formatAge(t, (now - Date.parse(event.time)) / 1000)}</span></span>
     </div>
     <dl>${rows.join('')}</dl>
-    ${event.url ? `<p style="margin:8px 0 0"><a href="${escape(event.url)}" target="_blank" rel="noreferrer">${t('detail.official')}</a></p>` : ''}
+    ${event.url ? `<p class="popup-link"><a href="${escape(event.url)}" target="_blank" rel="noreferrer">${t('detail.official')} ↗</a></p>` : ''}
   </div>`
+}
+
+/** How much of the map's right side the event panel covers, as camera
+ * padding: the selected event then lands in the part of the map that is
+ * still visible, instead of under the panel with half of its popup. Zero on
+ * a phone, where the panel is a sheet (fixed) rather than a card beside the
+ * map. Capped at half the map, so a narrow desktop keeps a usable view. */
+function coveredRight(mapEl: HTMLElement | null): number {
+  const panel = mapEl?.closest('.map-column')?.querySelector<HTMLElement>('.live-panel')
+  if (!mapEl || !panel || getComputedStyle(panel).position !== 'absolute') return 0
+  const map = mapEl.getBoundingClientRect()
+  const covered = map.right - panel.getBoundingClientRect().left + 12
+  return Math.max(0, Math.round(Math.min(covered, map.width / 2)))
 }
 
 export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
@@ -163,10 +196,19 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     // layers below would exist -- the whole map, markers included, would
     // stay blank because a third-party basemap was unreachable. Swap in the
     // local fallback style once; `load` then fires on the next frame.
+    //
+    // "Before the style is loaded" means before it ARRIVED, not
+    // `!isStyleLoaded()`: that one stays false while tiles are still loading,
+    // so a single tile timeout after `load` swapped the style, wiped every
+    // layer `load` had added, and left a black map with no marker on it.
     let fallbackApplied = false
+    let styleArrived = false
+    instance.on('style.load', () => {
+      styleArrived = true
+    })
     instance.on('error', (event) => {
       console.warn('maplibre:', event.error?.message ?? event)
-      if (!fallbackApplied && !instance.isStyleLoaded()) {
+      if (!fallbackApplied && !styleArrived && !instance.isStyleLoaded()) {
         fallbackApplied = true
         console.warn('basemap unavailable: showing the events on a plain background')
         instance.setStyle(FALLBACK_STYLE)
@@ -175,6 +217,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
 
     instance.on('load', () => {
+      styleArrived = true
       // Tectonic plate boundaries, at the very bottom of the stack.
       //
       // This is the only static layer in the product, and it earns its place:
@@ -208,7 +251,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         source: 'waves',
         filter: ['==', ['get', 'phase'], 'p'],
         paint: {
-          'line-color': '#9ec5f4',
+          'line-color': SERIES.waveP,
           'line-width': 1.2,
           'line-opacity': ['*', ['get', 'opacity'], 0.55],
         },
@@ -219,7 +262,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         source: 'waves',
         filter: ['==', ['get', 'phase'], 's'],
         paint: {
-          'line-color': SEVERITY_META.severe.color,
+          'line-color': SERIES.waveS,
           'line-width': 2,
           'line-opacity': ['*', ['get', 'opacity'], 0.8],
         },
@@ -237,7 +280,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         source: 'tracks',
         filter: ['==', ['geometry-type'], 'LineString'],
         paint: {
-          'line-color': SEVERITY_META.severe.color,
+          'line-color': SERIES.track,
           'line-width': 2,
           'line-dasharray': [2, 2],
           'line-opacity': 0.85,
@@ -250,7 +293,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         filter: ['==', ['geometry-type'], 'Point'],
         paint: {
           'circle-radius': 3.5,
-          'circle-color': SEVERITY_META.severe.color,
+          'circle-color': SERIES.track,
           'circle-opacity': 0.9,
           'circle-stroke-width': 1,
           'circle-stroke-color': 'rgba(0,0,0,0.5)',
@@ -375,11 +418,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       const instance = map.current
       if (instance && ready && instance.getLayer('events-halo')) {
         instance.setPaintProperty('events-halo', 'circle-opacity', 0.25)
-        instance.setPaintProperty('events-halo', 'circle-radius', [
-          '*',
-          RADIUS,
-          1.8,
-        ] as unknown as maplibregl.ExpressionSpecification)
+        instance.setPaintProperty('events-halo', 'circle-radius', scaledRadius(1.8))
       }
       return
     }
@@ -389,11 +428,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       if (instance && ready && instance.getLayer('events-halo')) {
         const phase = (Date.now() % 1600) / 1600
         instance.setPaintProperty('events-halo', 'circle-opacity', 0.3 * (1 - phase))
-        instance.setPaintProperty('events-halo', 'circle-radius', [
-          '*',
-          RADIUS,
-          1 + phase * 2.2,
-        ] as unknown as maplibregl.ExpressionSpecification)
+        instance.setPaintProperty('events-halo', 'circle-radius', scaledRadius(1 + phase * 2.2))
       }
       frame = requestAnimationFrame(animate)
     }
@@ -413,9 +448,13 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     center: [number, number],
     zoom: number,
     speed: number,
+    right = 0,
   ) => {
-    if (reduceMotion) instance.jumpTo({ center, zoom })
-    else instance.flyTo({ center, zoom, speed, curve: 1.5, essential: true })
+    // Always an explicit padding: MapLibre KEEPS the last one, so a flight
+    // made while the panel was open would offset every later one.
+    const padding = { top: 0, bottom: 0, left: 0, right }
+    if (reduceMotion) instance.jumpTo({ center, zoom, padding })
+    else instance.flyTo({ center, zoom, speed, curve: 1.5, essential: true, padding })
   }
 
   // --- search: go to the requested area
@@ -464,7 +503,13 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     // administrative zone (NWS, GDACS) only makes sense at regional scale --
     // pulling it in to 300 m would show nothing but a field.
     const pointLike = event.source !== 'nws' && event.source !== 'gdacs'
-    moveCamera(instance, [event.lon, event.lat], pointLike ? 11 : 8, 1.4)
+    moveCamera(
+      instance,
+      [event.lon, event.lat],
+      pointLike ? 11 : 8,
+      1.4,
+      coveredRight(container.current),
+    )
     popup.current = new maplibregl.Popup({ closeButton: true, maxWidth: '320px' })
       .setLngLat([event.lon, event.lat])
       .setHTML(popupHtml(event, latest.current.now))
@@ -513,8 +558,12 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
           {(['extreme', 'severe', 'moderate', 'minor', 'info'] as const).map((key) => (
             <li key={key}>
               <span className="swatch" style={{ background: SEVERITY_META[key].color }} />
-              <span aria-hidden="true">{SEVERITY_META[key].glyph}</span>
-              {severityLabel(t, key)}
+              <span className={`sev sev-${key}`}>
+                <span className="glyph" aria-hidden="true">
+                  {SEVERITY_META[key].glyph}
+                </span>
+                {severityLabel(t, key)}
+              </span>
             </li>
           ))}
         </ul>

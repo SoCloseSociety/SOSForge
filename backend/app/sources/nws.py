@@ -15,10 +15,12 @@ import logging
 import re
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import Any
 
 import httpx
 
 from app.models.event import Event, Kind, severity_for_cap, to_utc
+from app.sources import geometry
 from app.sources.base import Emit, Source
 from app.sources.nws_zones import ZoneResolver
 
@@ -57,6 +59,12 @@ def _matches(text: str, words: set[str], patterns: tuple[str, ...]) -> bool:
 KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("tsunami",), Kind.TSUNAMI),
     (("volcano", "volcanic", "ash", "ashfall"), Kind.VOLCANO),
+    # BEFORE the cyclone rule. "Hurricane Force Wind Warning" is the NWS
+    # marine product for a NON-tropical low with hurricane-force winds (the
+    # tropical one is "Hurricane Warning"). Read on the word "hurricane", two
+    # Alaskan gale centres were published as EXTREME tropical cyclones on
+    # 2026-10-26 -- a cyclone marker in the Bering Sea in October.
+    (("hurricane force",), Kind.STORM),
     (("hurricane", "tropical", "typhoon", "surge"), Kind.CYCLONE),
     (("flood", "flooding"), Kind.FLOOD),
     (("fire", "wildfire", "flag"), Kind.WILDFIRE),
@@ -76,9 +84,17 @@ KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
             "freezing",
             "frost",
             "gale",
+            # The marine "Storm Warning" (48-63 kt) and "Storm Watch", and the
+            # "Dust Storm Warning": none of them matched, and the 21 live
+            # Storm Warnings of 2026-10-26 sat in OTHER at SEVERE. Tropical
+            # Storm and Storm Surge are caught by the cyclone rule above first.
+            "storm",
         ),
         Kind.STORM,
     ),
+    # A Kind of its own since Meteoalarm brought avalanches in; NWS issues
+    # Avalanche Warning / Watch / Advisory and they were filed under OTHER.
+    (("avalanche",), Kind.AVALANCHE),
     (("drought",), Kind.DROUGHT),
 ]
 
@@ -119,6 +135,25 @@ def _centroid(geometry: dict | None) -> tuple[float | None, float | None]:
     return lat, lon
 
 
+def _points(feature_geometry: dict | None) -> list[tuple[float, float]]:
+    """(lat, lon) of every vertex of a GeoJSON geometry, any nesting depth."""
+    points: list[tuple[float, float]] = []
+
+    def walk(node: Any) -> None:
+        if (
+            isinstance(node, (list, tuple))
+            and len(node) == 2
+            and all(isinstance(v, (int, float)) for v in node)
+        ):
+            points.append((float(node[1]), float(node[0])))
+        elif isinstance(node, (list, tuple)):
+            for child in node:
+                walk(child)
+
+    walk((feature_geometry or {}).get("coordinates"))
+    return points
+
+
 def _parse_time(value: str | None) -> datetime:
     return to_utc(value) or datetime.now(UTC)
 
@@ -132,13 +167,22 @@ def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | N
     event_name = props.get("event") or "alert"
     kind = classify(event_name)
     lat, lon = _centroid(feature.get("geometry"))
+    extent = geometry.extent(_points(feature.get("geometry")))
+    affected = props.get("affectedZones") or []
     if (lat is None or lon is None) and zones is not None:
         # The alert did not draw itself, but it said which zones it covers.
-        for zone in props.get("affectedZones") or []:
+        for zone in affected:
             known = zones.known(zone)
             if known:
                 lat, lon = known
                 break
+    if extent is None and zones is not None and affected:
+        # Its extent is the union of those zones -- and only once EVERY one is
+        # known: a box over half the zones is not a smaller truth, it is a
+        # wrong one, and the reader falls back to the centre meanwhile.
+        boxes = [zones.extent(zone) for zone in affected]
+        if all(box is not None for box in boxes):
+            extent = geometry.union(boxes)
     # The NWS publishes all three CAP axes on every alert and only `severity`
     # was read. Measured on the live feed of 2026-08-26: a "Fire Weather Watch"
     # (Severe, but urgency Future and certainty Possible -- the forecaster is
@@ -180,6 +224,7 @@ def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | N
         time=_parse_time(props.get("sent") or props.get("effective")),
         lat=lat,
         lon=lon,
+        bbox=extent,
         place=props.get("areaDesc") or "unspecified area",
         country="United States",
         severity=severity,

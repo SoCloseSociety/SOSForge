@@ -1,45 +1,211 @@
-/* SOSForge -- dark interface. Severity color comes from the "status" palette
-   (good/warning/serious/critical): it's reserved, it's never used to
-   distinguish a series, and it never carries meaning on its own -- every
-   level is always paired with an icon and a label. */
+/* SOSForge -- the Sentinel House design language (2026-10).
+
+   TOKEN SOURCE. Values are ALIGNED with SentinelHouse
+   `08-sentinel-home/sentinel_home/ui/charte.css` at commit 59f93fe5 (Lunaire on
+   `:root`, Doux on `:root[data-theme="doux"]`), itself built on `sentinel.css`
+   vendored from the NeoBot cockpit (source commit a05042e). Same VALUES, not a
+   copy of the file: SOSForge is written in English, so the names are English
+   and this table is the bridge. Change a value here only after it changed there.
+
+     charte.css            here              charte.css            here
+     --e-fond              --ground          --surface-carte       --surface-card
+     --bg-0 .. --bg-4      same              --surface-mini        same
+     --t1 .. --t4          same              --surface-pill        same
+     --line*               same              --surface-panneau     --surface-panel
+     --mint --cyan         same              --primaire-fond/encre --primary-bg/ink
+     --amber --red         same              --focus-anneau/halo   --focus-ring/halo
+     --violet              same              --anneau              --ring
+     --vitale-fond(-2)     --vital-bg(-2)    --rayon / --rayon-sm  --radius / -sm
+     --ts-titre-2          --ts-title-2      --rp                  --pill
+     --ts-rangee           --ts-row          --d1 --d2 --d3 --ease same
+     --ts-carte --ts-corps --ts-card/body    --ls-sur / --ls-pill  --ls-over/-pill
+     --ts-sous --ts-libelle --ts-sub/label   --cible-souris/doigt  --target
+     --ts-meta --ts-sur    --ts-meta/over    data-theme="doux"     data-theme="soft"
+
+   Additions of this product, not in the charte, each for a measured reason:
+     --edge       the outline of a control that must be FOUND (chips, the
+                  window switch, the search field): 3:1 against the surface
+                  (WCAG 1.4.11). The charte's --line-strong measures 1.7:1, which
+                  is fine for a divider and is what the 2026-09 audit fixed here.
+     --sev-*      the reserved SEVERITY palette. Fills are fixed (the map is dark
+                  in both themes); text shades keep the fill's hue and
+                  saturation, only the lightness moves per theme, until the
+                  worst surface clears 4.5:1 (pinned by contrast.test.ts).
+     --series-*   map series (wave fronts, forecast tracks): never a severity.
+
+   RULES OF THIS SHEET
+   - Mint is the brand thread AND "it is OK / it is on". It never encodes a
+     severity, and a severity colour never becomes decoration. A choice and the
+     focus are BONE WHITE (--t1), never mint, never a severity.
+   - Severity never travels by colour alone: a glyph of its own shape (format.ts)
+     and a word go with it everywhere.
+   - Capitals only for overlines and pills (mono). Titles, buttons, labels: sans,
+     sentence case.
+   - Text sizes are in rem, so the reader's own browser text size scales them
+     (measured up to 24 px root); the floor is 12 px at the default size.
+   - Motion animates transform and opacity only, and every continuous animation
+     stops under prefers-reduced-motion.
+   - Nothing overflows its card: flex rows wrap with a real basis and
+     min-width: 0, long tokens break (overflow-wrap: anywhere).
+   - Width frontiers are 599/600 and 779/780, nothing else (useMediaQuery.ts
+     holds the same 779/780 for the components; tools/responsive.py checks the
+     two agree). MEDIA QUERIES GO AT THE END OF THIS FILE.
+   - Every `.maplibregl-*` override is scoped under `.map` (MapLibre's sheet is
+     injected after this one), and the map container stays `.map-wrap > .map`. */
+
+/* ------------------------------------------------------------- tokens: Lunar */
 
 :root {
   color-scheme: dark;
 
-  --plane: #0d0d0d;
-  --surface: #111214;
-  --surface-2: #17181b;
-  --surface-3: #1f2024;
+  --ground: #05070a;
+  --bg-0: #06080a;
+  --bg-1: #0a0d10;
+  --bg-2: #0e1318;
+  --bg-3: #121922;
+  --bg-4: #182230;
+  --t1: #e9eef2;
+  --t2: #97a6b2;
+  --t3: #7c8a96;
+  --t4: #778593;
+  --line: rgba(160, 185, 205, 0.13);
+  --line-soft: rgba(160, 185, 205, 0.07);
+  --line-strong: rgba(170, 195, 215, 0.26);
+  --edge: rgba(170, 195, 215, 0.5);
 
-  --ink: #ffffff;
-  --ink-2: #c3c2b7;
-  --ink-muted: #898781;
-  --hairline: rgba(255, 255, 255, 0.1);
-  /* Same colour, enough alpha to clear 3:1 against --surface (measured 3.33:1
-     at this value; 0.1 measured 1.30:1). For edges that must be FOUND, not for
-     the dividers that merely organise. */
-  --hairline-strong: rgba(255, 255, 255, 0.36);
-  --grid: #2c2c2a;
+  --mint: #34e5a0;
+  --cyan: #45c9e6;
+  --amber: #e8b13a;
+  --red: #ff5e5e;
+  --violet: #7c8cff;
 
-  /* status palette, fixed */
+  --surface-card: rgba(14, 19, 24, 0.88);
+  --surface-mini: rgba(10, 13, 16, 0.72);
+  --surface-pill: rgba(10, 13, 16, 0.8);
+  --surface-panel: var(--bg-1);
+  /* The event panel floating over the map: --surface-panel at .96, NOT
+     opaque. See `.live-panel` for the measured reason. */
+  --surface-float: rgba(10, 13, 16, 0.96);
+
+  --primary-bg: var(--t1);
+  --primary-ink: var(--bg-1);
+  --focus-ring: var(--t1);
+  --focus-halo: var(--ground);
+
+  /* The vital alert: the same reds in both themes, a danger does not change
+     colour with the theme. White on --vital-bg measures 6.9:1. */
+  --vital-bg: #b3111f;
+  --vital-bg-2: #7a0a14;
+  --vital-ink: #ffffff;
+
+  --shadow-panel: 0 18px 50px -18px rgba(0, 0, 0, 0.85);
+  --shadow-menu: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
+
+  /* severity: fills (map, swatches) and words (text) */
   --sev-info: #6f7379;
-  /* Text variants: the fills measured 3.9:1 as words on the panel, below the
-     4.5:1 the smallest labels need. See format.ts for the measurements. */
-  --sev-info-text: #8b9098;
   --sev-minor: #0ca30c;
   --sev-moderate: #fab219;
   --sev-severe: #ec835a;
   --sev-extreme: #d03b3b;
-  --sev-extreme-text: #f0605f;
+  --sev-info-text: #8c9096;
+  --sev-minor-text: #0ca80c;
+  --sev-moderate-text: #fab219;
+  --sev-severe-text: #ec835a;
+  --sev-extreme-text: #dd7070;
 
-  --accent: #3987e5;
-  /* White on --accent measures 3.64:1; the filter badge is small bold text and
-     needs 4.5. This darker shade measures 5.06:1. */
-  --accent-deep: #2f6fbf;
+  --series-p: #9ec5f4;
+  --series-s: #7c8cff;
 
-  --radius: 10px;
-  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", "Hiragino Sans",
+    "Noto Sans JP", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* type (rem: 1rem = 16 px at the default browser size) */
+  --ts-title-2: 1.625rem; /* 26 */
+  --ts-row: 1.1875rem; /* 19 */
+  --ts-card: 1.0625rem; /* 17 */
+  --ts-body: 0.9375rem; /* 15 */
+  --ts-sub: 0.875rem; /* 14 */
+  --ts-label: 0.8125rem; /* 13 */
+  --ts-meta: 0.78125rem; /* 12.5 */
+  --ts-over: 0.75rem; /* 12, the floor */
+  --ls-over: 0.22em;
+  --ls-pill: 0.1em;
+  --ls-title: -0.012em;
+  --lh-title: 1.2;
+  --lh-body: 1.4;
+
+  /* shape, space, targets */
+  --radius: 14px;
+  --radius-sm: 10px;
+  --pill: 999px;
+  --pad-card: 16px;
+  --gap: 12px;
+  --target: 36px;
+  --btn-h: 40px;
+  --field-h: 44px;
+
+  /* motion and focus */
+  --d1: 180ms;
+  --d2: 240ms;
+  --d3: 380ms;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ring-w: 2px;
+  --ring-gap: 3px;
+  --ring: 0 0 0 var(--ring-w) var(--focus-ring),
+    0 0 0 calc(var(--ring-w) + var(--ring-gap)) var(--focus-halo);
+  --ring-inset: inset 0 0 0 var(--ring-w) var(--focus-ring);
 }
+
+/* -------------------------------------------------------------- tokens: Soft */
+
+/* Same components, same sizes: only colours change. Signal hues are deeper
+   than in Lunar -- a light mint on cream measures 1.6:1. The severity FILLS do
+   not change (the map stays dark); their text shades get darker, same hue. */
+:root[data-theme="soft"] {
+  color-scheme: light;
+
+  --ground: #f3ecdf;
+  --bg-0: #f3ecdf;
+  --bg-1: #f8f3e9;
+  --bg-2: #fcf9f2;
+  --bg-3: #ffffff;
+  --bg-4: #efe6d6;
+  --t1: #27221d;
+  --t2: #5a524a;
+  --t3: #6b635a;
+  --t4: #6b635a;
+  --line: rgba(90, 70, 50, 0.12);
+  --line-soft: rgba(90, 70, 50, 0.07);
+  --line-strong: rgba(90, 70, 50, 0.22);
+  --edge: rgba(90, 70, 50, 0.62);
+
+  --mint: #0b7556;
+  --cyan: #0b6f86;
+  --amber: #8a5a00;
+  --red: #c03a2b;
+  --violet: #4f5bc4;
+
+  --surface-card: rgba(255, 255, 255, 0.96);
+  --surface-mini: rgba(255, 253, 248, 0.92);
+  --surface-pill: rgba(255, 255, 255, 0.9);
+  --surface-float: rgba(248, 243, 233, 0.96);
+
+  --primary-ink: #fcf9f2;
+  --focus-halo: var(--bg-1);
+
+  --shadow-panel: -30px 0 70px -30px rgba(90, 60, 30, 0.35),
+    0 18px 50px -18px rgba(90, 60, 30, 0.4);
+  --shadow-menu: 0 12px 34px -8px rgba(90, 60, 30, 0.3);
+
+  --sev-info-text: #5e6166;
+  --sev-minor-text: #087108;
+  --sev-moderate-text: #815903;
+  --sev-severe-text: #a93d13;
+  --sev-extreme-text: #b42b2b;
+}
+
+/* ---------------------------------------------------------------------- base */
 
 * {
   box-sizing: border-box;
@@ -56,11 +222,13 @@ body {
   /* no element should be able to widen the page: on phone, horizontal
      overflow makes the whole dashboard unusable */
   overflow-x: hidden;
-  background: var(--plane);
-  color: var(--ink);
-  font-family: var(--font);
-  font-size: 14px;
+  background: var(--ground);
+  color: var(--t1);
+  font-family: var(--sans);
+  font-size: var(--ts-body);
+  line-height: var(--lh-body);
   -webkit-font-smoothing: antialiased;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
 button {
@@ -71,7 +239,286 @@ button {
   cursor: pointer;
 }
 
-/* ------------------------------------------------------------------ layout */
+a {
+  color: var(--cyan);
+  text-underline-offset: 2px;
+}
+
+::selection {
+  background: var(--line-strong);
+  color: var(--t1);
+}
+
+/* THE focus, everywhere: a bone-white ring and a ring of the ground around it,
+   the television's focus at desk scale. Never a mint outline, never colour
+   alone. Rows and cards that sit flush against a scroller's edge get the inset
+   variant below, or the outer ring would be cut off. */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Visible to a screen reader, invisible on screen. Used where a glyph or a
+   colour carries meaning that must also exist as words. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/* ---------------------------------------------------------------- components */
+
+/* Overline: the only place, with pills, where capitals are allowed. */
+.overline {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 500;
+  letter-spacing: var(--ls-over);
+  text-transform: uppercase;
+  color: var(--t3);
+  overflow-wrap: anywhere;
+}
+
+/* Card: translucent surface, hairline inside, radius 14. */
+.card {
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--pad-card);
+  min-width: 0;
+}
+
+.card-title {
+  margin: 0;
+  font-size: var(--ts-card);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
+  overflow-wrap: anywhere;
+}
+
+/* Buttons. Pill, sans 600, sentence case, verb first.
+   primary   : bone white, ONE per screen (the watch funnel's step action)
+   secondary : the surface + an outline that can be found
+   quiet     : words only */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--btn-h);
+  min-width: var(--target);
+  max-width: 100%;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: var(--pill);
+  font-family: var(--sans);
+  font-size: var(--ts-body);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transition: transform var(--d1) var(--ease);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.btn-primary {
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+}
+
+.btn-secondary {
+  background: var(--bg-2);
+  border-color: var(--edge);
+  color: var(--t1);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-3);
+}
+
+.btn-secondary[aria-pressed="true"] {
+  background: var(--bg-4);
+  border-color: var(--t1);
+}
+
+.btn-quiet {
+  color: var(--t2);
+  padding: 0 10px;
+}
+
+.btn-quiet:hover {
+  color: var(--t1);
+  background: var(--bg-2);
+}
+
+.btn-compact {
+  min-height: var(--target);
+  padding: 0 12px;
+  font-size: var(--ts-label);
+  font-weight: 500;
+}
+
+.btn-icon {
+  padding: 0;
+  width: var(--target);
+  min-height: var(--target);
+  font-size: var(--ts-body);
+}
+
+/* A button inside a sentence ("Send a test", "Show more" in the footer). */
+.btn-inline {
+  min-height: var(--target);
+  padding: 0 10px;
+  font-size: var(--ts-label);
+  font-weight: 500;
+}
+
+.btn-more {
+  justify-self: start;
+  align-self: flex-start;
+  min-height: var(--target);
+  padding: 0 4px;
+  font-size: var(--ts-label);
+  font-weight: 500;
+  color: var(--t2);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+
+/* An honest state, said in place: a glyph of its own shape, then the words.
+   The glyph is coloured (mint OK, amber attention, red alert); the words stay
+   readable ink. Wraps rather than overflows. */
+.state {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  margin: 0;
+  font-size: var(--ts-sub);
+  line-height: var(--lh-body);
+  color: var(--t2);
+}
+
+.state > span:not(.state-glyph) {
+  flex: 1 1 14ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.state-glyph {
+  flex: 0 0 1.1em;
+  text-align: center;
+  font-family: var(--mono);
+  color: var(--t3);
+}
+
+.state-ok .state-glyph {
+  color: var(--mint);
+}
+
+.state-att .state-glyph {
+  color: var(--amber);
+}
+
+/* severity badge: colour + glyph + word, never the colour alone */
+.sev {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--ts-meta);
+  font-weight: 500;
+}
+
+.sev .glyph {
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+.sev-info {
+  color: var(--sev-info-text);
+}
+.sev-minor {
+  color: var(--sev-minor-text);
+}
+.sev-moderate {
+  color: var(--sev-moderate-text);
+}
+.sev-severe {
+  color: var(--sev-severe-text);
+}
+.sev-extreme {
+  color: var(--sev-extreme-text);
+}
+
+/* Pill tag on a feed row: mono capitals, hairline. */
+.tag {
+  padding: 1px 8px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line-strong);
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.5;
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+/* What to DO, in one word. A response is not a severity, so it borrows no
+   severity colour (an "Evacuate" tag in red on a minor alert read as extreme):
+   the word carries it, the heavier outline marks the two that move people. */
+.tag-do {
+  border-color: var(--edge);
+  color: var(--t1);
+}
+
+.tag-do-evacuate,
+.tag-do-shelter {
+  border-color: var(--t1);
+  font-weight: 600;
+}
+
+/* An automatic solution wearing its uncertainty. Deliberately quiet -- it is a
+   caveat, not an alarm -- but never invisible: it is what stops the wrong
+   number from being screenshotted as a fact. Dashed: uncertain, by shape. */
+.tag-preliminary {
+  border-style: dashed;
+  border-color: var(--t2);
+  color: var(--t1);
+}
+
+.flag {
+  font-size: 0.95em;
+  line-height: 1;
+  margin-right: 6px;
+}
+
+/* ------------------------------------------------------------------- layout */
 
 /* flex rather than grid: the alert banner appears and disappears, and a
    grid with named rows would shift every time */
@@ -94,164 +541,328 @@ button {
   min-width: 0;
 }
 
-/* ------------------------------------------------------------------ header */
+/* ------------------------------------------------------------------- header */
 
 .header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
-  padding: 12px 18px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--hairline);
+  gap: 8px 14px;
+  padding: 10px 16px;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
 }
 
 .brand {
   display: flex;
+  flex-wrap: wrap;
   align-items: baseline;
-  gap: 10px;
+  gap: 2px 10px;
+  min-width: 0;
 }
 
-.brand strong {
-  font-size: 18px;
-  letter-spacing: 0.02em;
+/* The brand is the document's h1; it must keep looking like the brand. */
+.brand h1 {
+  margin: 0;
+  font-size: var(--ts-row);
+  font-weight: 600;
+  letter-spacing: var(--ls-title);
 }
 
-.brand span {
-  color: var(--ink-muted);
-  font-size: 12px;
+.brand .tagline {
+  color: var(--t3);
+  font-size: var(--ts-sub);
 }
 
-.spacer {
-  flex: 1;
+.header-tools {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
+/* The freshness pill. Mint and a dot when the feed is live, amber and a
+   TRIANGLE when it is not: the state changes shape, not only hue. */
 .live {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
+  min-height: 28px;
+  padding: 0 12px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-pill);
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 500;
+  letter-spacing: var(--ls-pill);
+  text-transform: uppercase;
+}
+
+.live.on {
+  color: var(--mint);
+}
+
+.live.off {
+  color: var(--amber);
 }
 
 .live .dot {
+  position: relative;
+  flex: 0 0 auto;
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--sev-minor);
-}
-
-.live.on .dot {
-  animation: pulse 1.6s ease-out infinite;
+  background: var(--mint);
 }
 
 .live.off .dot {
-  background: var(--sev-extreme);
+  width: 10px;
+  height: 9px;
+  border-radius: 0;
+  background: var(--amber);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
 }
 
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.55);
+/* The pulse of the live feed: one of the three continuous animations the
+   language allows, on transform and opacity only. */
+.live.on .dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--mint);
+  animation: live-pulse 1.6s var(--ease) infinite;
+}
+
+@keyframes live-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.55;
   }
-  70% {
-    box-shadow: 0 0 0 7px rgba(12, 163, 12, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(12, 163, 12, 0);
+  to {
+    transform: scale(2.8);
+    opacity: 0;
   }
 }
 
 .clock {
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
-  font-size: 13px;
+  font-size: var(--ts-label);
+  color: var(--t2);
 }
 
-.toggle {
+/* ------------------------------------------------------------------ language */
+
+.lang {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px 11px;
-  border-radius: 999px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-  font-size: 12px;
-  color: var(--ink-2);
+  gap: 6px;
+  min-height: var(--target);
+  padding: 0 10px 0 12px;
+  border-radius: var(--pill);
+  border: 1px solid var(--edge);
+  background: var(--bg-2);
 }
 
-.toggle[aria-pressed="true"] {
-  color: var(--ink);
-  border-color: rgba(57, 135, 229, 0.6);
+.lang:focus-within {
+  box-shadow: var(--ring);
 }
 
-/* --------------------------------------------------------------- kpi bar */
+.lang select {
+  min-width: 0;
+  background: none;
+  border: none;
+  color: var(--t1);
+  font: inherit;
+  font-size: var(--ts-label);
+  padding: 2px 0;
+  cursor: pointer;
+}
 
+.lang select:focus-visible {
+  box-shadow: none;
+}
+
+.lang option {
+  background: var(--bg-2);
+  color: var(--t1);
+}
+
+/* ------------------------------------------------------------------ counters */
+
+/* Five numbers, one card each. Value in mono, label in sans: the "figure"
+   card of the language. */
 .kpis {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1px;
-  background: var(--hairline);
-  border-bottom: 1px solid var(--hairline);
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .kpi {
-  background: var(--surface);
-  padding: 10px 16px;
+  min-width: 0;
+  padding: 8px 14px;
+  background: var(--surface-mini);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
 }
 
 .kpi .label {
-  color: var(--ink-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
+  color: var(--t2);
+  font-size: var(--ts-label);
+  overflow-wrap: anywhere;
 }
 
 .kpi .value {
-  font-size: 24px;
-  font-weight: 650;
-  line-height: 1.25;
+  font-family: var(--mono);
+  font-size: var(--ts-title-2);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.kpi .value .glyph {
+  font-size: 0.7em;
 }
 
 .kpi .sub {
-  color: var(--ink-2);
-  font-size: 12px;
+  color: var(--t3);
+  font-size: var(--ts-meta);
+  overflow-wrap: anywhere;
 }
 
-/* ------------------------------------------------------------------ alert */
+/* ------------------------------------------------------------ the vital alert */
 
+/* Tsunami and extreme events. The one filled red of the product, the same in
+   both themes: a danger does not change colour with the theme. */
 .banner {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
-  padding: 10px 18px;
-  background: rgba(208, 59, 59, 0.16);
-  border-bottom: 1px solid rgba(208, 59, 59, 0.5);
-  color: var(--ink);
-  font-weight: 600;
-  animation: banner-in 0.3s ease-out;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  background: var(--vital-bg);
+  color: var(--vital-ink);
+  animation: rise-in var(--d2) var(--ease);
 }
 
-@keyframes banner-in {
+.banner .icon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+.banner-text {
+  flex: 1 1 20ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.banner strong {
+  font-family: var(--mono);
+  font-weight: 600;
+  letter-spacing: var(--ls-pill);
+}
+
+.banner small {
+  font-size: var(--ts-meta);
+}
+
+@keyframes rise-in {
   from {
     opacity: 0;
     transform: translateY(-6px);
   }
 }
 
-.banner .icon {
-  font-size: 18px;
+/* Inbound seismic waves: the only element on screen with a deadline, so it
+   takes the top and it is allowed to be loud. It disappears on its own once
+   the wave has passed. */
+.arrival {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  width: 100%;
+  padding: 10px 16px;
+  text-align: left;
+  background: var(--vital-bg-2);
+  color: var(--vital-ink);
+  animation: rise-in var(--d2) var(--ease);
 }
 
-.banner small {
-  font-weight: 400;
-  color: var(--ink-2);
+.arrival:focus-visible {
+  box-shadow: var(--ring-inset);
 }
 
-/* ------------------------------------------------------------------- panel */
+.arrival-count {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-width: 68px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--vital-bg);
+  font-family: var(--mono);
+  font-size: var(--ts-title-2);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* the alert's pulse: a ring that grows and fades, transform + opacity */
+.arrival-count::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--vital-ink);
+  animation: alert-pulse 1s var(--ease) infinite;
+}
+
+@keyframes alert-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  to {
+    transform: scale(1.18);
+    opacity: 0;
+  }
+}
+
+.arrival-count small {
+  font-size: var(--ts-over);
+  font-weight: 500;
+}
+
+.arrival-text {
+  display: grid;
+  gap: 2px;
+  flex: 1 1 22ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.arrival-text strong {
+  font-size: var(--ts-body);
+}
+
+.arrival-text span {
+  font-size: var(--ts-label);
+}
+
+.arrival-phase {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -------------------------------------------------------------------- panel */
 
 /* The sidebar scrolls as one piece, filters included.
    It used to be the feed alone that scrolled, with the filters holding a fixed
@@ -264,8 +875,9 @@ button {
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  background: var(--surface);
-  border-right: 1px solid var(--hairline);
+  overscroll-behavior: contain;
+  background: var(--ground);
+  border-right: 1px solid var(--line);
 }
 
 .filters {
@@ -274,35 +886,192 @@ button {
      gives a 339 px sidebar and a 1440 px one gives 432 px, and the right
      answer differs. */
   container-type: inline-size;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--hairline);
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--gap);
 }
+
+/* ------------------------------------------------------------------- search */
+
+.search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--field-h);
+  padding: 0 6px 0 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+  background: var(--bg-1);
+}
+
+.search:focus-within {
+  box-shadow: var(--ring);
+}
+
+.search-icon {
+  color: var(--t3);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  background: none;
+  border: none;
+  color: var(--t1);
+  font: inherit;
+  font-size: var(--ts-body);
+  outline: none;
+}
+
+.search input:focus-visible {
+  box-shadow: none;
+}
+
+.search input::placeholder {
+  color: var(--t3);
+}
+
+/* the native Safari/Chrome clear button duplicates our own */
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search-clear {
+  display: grid;
+  place-items: center;
+  min-width: var(--target);
+  min-height: var(--target);
+  border-radius: var(--pill);
+  color: var(--t2);
+  line-height: 1;
+}
+
+.search-clear:hover {
+  color: var(--t1);
+  background: var(--bg-3);
+}
+
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 5;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--bg-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-menu);
+}
+
+.search-results button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.search-results button:hover {
+  background: var(--bg-3);
+}
+
+.search-results button:focus-visible {
+  box-shadow: var(--ring-inset);
+}
+
+.search-results strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 500;
+  letter-spacing: var(--ls-pill);
+  text-transform: uppercase;
+  color: var(--t3);
+}
+
+.search-results span {
+  display: block;
+  font-size: var(--ts-label);
+  color: var(--t1);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.search-none {
+  padding: 8px 10px;
+  font-size: var(--ts-label);
+  color: var(--t3);
+}
+
+/* ------------------------------------------------------------- time window */
+
+.segmented {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg-1);
+  border: 1px solid var(--edge);
+  border-radius: var(--pill);
+}
+
+.segmented button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 6px;
+  border-radius: var(--pill);
+  font-size: var(--ts-label);
+  font-weight: 500;
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.segmented button:hover {
+  color: var(--t1);
+}
+
+/* the choice is bone white, never mint and never a severity */
+.segmented button[aria-pressed="true"] {
+  background: var(--bg-4);
+  color: var(--t1);
+  box-shadow: inset 0 0 0 1px var(--t2);
+}
+
+.segmented button:focus-visible {
+  box-shadow: var(--ring-inset);
+}
+
+/* -------------------------------------------------------------------- chips */
 
 .chips {
   /* One scrolling row, at every size. Wrapped, these eleven chips measured
      210 px in a 339 px sidebar -- five rows of filters sitting on top of the
      feed on a laptop, which is how the feed ended up with 47 px and two
      events. The fade on the right edge says the row continues; without it a
-     cut-off chip reads as a rendering bug. */
+     cut-off chip reads as a rendering bug. The padding leaves the focus ring
+     room inside the scroller, which would otherwise cut it off. */
   display: flex;
   flex-wrap: nowrap;
   overflow-x: auto;
   gap: 6px;
+  margin: calc(-1 * (var(--ring-w) + var(--ring-gap)));
+  padding: calc(var(--ring-w) + var(--ring-gap));
   scrollbar-width: none;
-  padding-bottom: 2px;
-  -webkit-mask-image: linear-gradient(to right, #000 92%, transparent);
-  mask-image: linear-gradient(to right, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, #000 90%, transparent);
+  mask-image: linear-gradient(to right, #000 90%, transparent);
 }
 
 .chips::-webkit-scrollbar {
   display: none;
-}
-
-.chip {
-  flex: 0 0 auto;
 }
 
 /* Where the column is wide enough, every kind is visible at once -- a filter
@@ -318,47 +1087,208 @@ button {
 }
 
 .chip {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-  color: var(--ink-muted);
-  font-size: 12px;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: var(--pill);
+  border: 1px solid var(--edge);
+  background: var(--bg-1);
+  color: var(--t2);
+  font-size: var(--ts-label);
+  font-weight: 500;
 }
 
 .chip[aria-pressed="true"] {
-  color: var(--ink);
-  background: var(--surface-3);
-  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--t1);
+  background: var(--bg-4);
+  border-color: var(--t1);
 }
 
-.count {
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-muted);
-  font-size: 11px;
+.chip[aria-disabled="true"] {
+  cursor: default;
 }
+
+/* A covered type with no event stays visible, quieter: it's information
+   ("no tsunami in progress"), not an absence of information. It used to be
+   dimmed by opacity, which took the text to 1.96:1; --t3 stays above 4.5. */
+.chip.empty {
+  color: var(--t3);
+}
+
+.chip .count,
+.count {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--t3);
+  font-size: var(--ts-over);
+}
+
+/* ------------------------------------------------------------------- slider */
 
 .slider {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  color: var(--ink-2);
-  font-size: 12px;
+  gap: 6px 10px;
+  color: var(--t2);
+  font-size: var(--ts-label);
 }
 
 .slider input {
-  flex: 1;
-  accent-color: var(--accent);
+  flex: 1 1 120px;
+  min-width: 0;
+  accent-color: var(--t1);
 }
 
 .slider output {
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
   min-width: 34px;
   text-align: right;
-  color: var(--ink);
+  color: var(--t1);
+}
+
+/* ---------------------------------------------- collapsed filter bar (phone) */
+
+.filters-toggle,
+.sources-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--btn-h);
+  padding: 0 16px;
+  border-radius: var(--pill);
+  border: 1px solid var(--edge);
+  background: var(--bg-2);
+  color: var(--t1);
+  font-size: var(--ts-label);
+  font-weight: 500;
+}
+
+.filters-toggle {
+  width: 100%;
+}
+
+.filters-toggle .badge {
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: var(--pill);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 600;
+}
+
+.sources-toggle {
+  min-height: var(--target);
+  padding: 0 12px;
+  font-size: var(--ts-meta);
+}
+
+/* ---------------------------------------------------------- location watch */
+
+.watch {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.watch-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.watch-place {
+  flex: 1 1 10ch;
+  min-width: 0;
+  font-size: var(--ts-card);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.watch-note {
+  margin: 0;
+  font-size: var(--ts-sub);
+  color: var(--t2);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+
+.watch-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.watch-kinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.watch-rule-list {
+  margin: 0;
+  padding-left: 1.1em;
+  display: grid;
+  gap: 4px;
+  font-size: var(--ts-label);
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.watch-alarms {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.watch-alarms button {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  width: 100%;
+  min-height: var(--target);
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.watch-alarms button:hover {
+  background: var(--bg-2);
+  color: var(--t1);
+}
+
+.watch-alarm-text {
+  flex: 1 1 16ch;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.watch-alarm-text strong {
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.watch-states {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
 }
 
 /* --------------------------------------------------------------------- feed */
@@ -372,77 +1302,106 @@ button {
 
 .feed-empty {
   padding: 28px 16px;
-  color: var(--ink-muted);
+  color: var(--t3);
   text-align: center;
 }
 
+/* The snapshot is still arriving: said once, above the rows, in words. */
+.feed-loading {
+  margin: 0;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: var(--ts-meta);
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
 .item {
+  position: relative;
   display: grid;
-  grid-template-columns: 44px 1fr auto;
-  gap: 10px;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  gap: 12px;
   align-items: center;
   width: 100%;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--hairline);
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
   text-align: left;
-  border-left: 3px solid transparent;
 }
 
 /* A grid column sized `1fr` does NOT shrink below the intrinsic width of its
    content unless it is told to. Without this, one long region name ("Norte y
    nordeste de Mallorca") pushed the row wider than the screen and threw the
    age out of view -- measured at 360 px, where the age ended 4 px past the
-   right edge. It only shows on the narrowest phones, which is exactly where
-   nobody was looking. */
+   right edge. */
 .item > * {
   min-width: 0;
 }
 
 .item:hover {
-  background: var(--surface-2);
+  background: var(--bg-2);
 }
 
-.item[aria-selected="true"] {
-  background: var(--surface-3);
-  border-left-color: var(--accent);
+/* The open event: bone-white rule and a raised surface. (This was keyed on
+   aria-selected while the rows carry aria-pressed, so it never applied.) */
+.item[aria-pressed="true"] {
+  background: var(--bg-3);
+  box-shadow: inset 3px 0 0 var(--t1);
 }
 
-.item.fresh {
-  animation: flash 1.4s ease-out;
+/* rows are flush with the scroller's edges: the ring goes inside */
+.item:focus-visible {
+  box-shadow: var(--ring-inset);
 }
 
-@keyframes flash {
+/* "This just happened": a veil that fades, on opacity only. */
+.item.fresh::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--t1);
+  opacity: 0;
+  pointer-events: none;
+  animation: fresh-veil 1.4s var(--ease);
+}
+
+@keyframes fresh-veil {
   from {
-    background: rgba(57, 135, 229, 0.22);
+    opacity: 0.14;
   }
 }
 
 .mag {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius);
-  background: var(--surface-3);
+  align-content: center;
+  width: 52px;
+  min-height: 48px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  font-weight: 650;
-  font-size: 16px;
-  border: 1px solid var(--hairline);
+  font-weight: 500;
+  font-size: var(--ts-card);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .mag small {
   display: block;
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--ink-muted);
+  font-size: var(--ts-over);
+  font-weight: 400;
+  color: var(--t3);
   letter-spacing: 0.04em;
 }
 
 .item .place {
-  font-weight: 550;
+  font-weight: 500;
   line-height: 1.3;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -450,61 +1409,33 @@ button {
 
 .item .meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
-  margin-top: 3px;
-  color: var(--ink-muted);
-  font-size: 11.5px;
+  gap: 4px 8px;
+  margin-top: 4px;
+  color: var(--t3);
+  font-size: var(--ts-meta);
+}
+
+.item .meta > * {
+  min-width: 0;
 }
 
 .item .age {
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
-  color: var(--ink-2);
-  font-size: 12px;
+  color: var(--t2);
+  font-size: var(--ts-meta);
   white-space: nowrap;
 }
 
-/* severity badge: color + icon + label, never the color alone */
-.sev {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  letter-spacing: 0.02em;
-}
-
-.sev .glyph {
-  font-size: 11px;
-  line-height: 1;
-}
-
-.sev-info {
-  color: var(--sev-info-text);
-}
-.sev-minor {
-  color: var(--sev-minor);
-}
-.sev-moderate {
-  color: var(--sev-moderate);
-}
-.sev-severe {
-  color: var(--sev-severe);
-}
-.sev-extreme {
-  color: var(--sev-extreme-text);
-}
-
-.tag {
-  padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--surface-3);
-  border: 1px solid var(--hairline);
-  font-size: 10.5px;
-  color: var(--ink-2);
-  letter-spacing: 0.03em;
-}
-
 /* ---------------------------------------------------------------------- map */
+
+.map-column {
+  position: relative;
+  min-height: 0;
+  display: grid;
+}
 
 .map-wrap {
   position: relative;
@@ -518,7 +1449,7 @@ button {
    a height of 0 px, MapLibre fell back to its 400x300 default canvas, and the
    map was a black rectangle on the live site while WebGL, the tiles and the
    feed all worked. The extra selector level wins on specificity, whatever the
-   load order. Verified on https://sosforge.soclose.co with the built bundle. */
+   load order. Never lower it back to one class. */
 .map-wrap > .map {
   position: absolute;
   inset: 0;
@@ -529,29 +1460,33 @@ button {
   place-items: center;
   padding: 24px;
   text-align: center;
-  color: var(--ink-2);
-  background: var(--surface-2);
+  color: var(--t2);
+  background: var(--bg-1);
 }
 
+/* Map overlays sit on OPAQUE surfaces: a translucent card over a white map
+   label would fall below 4.5:1, and the label can be anywhere. */
 .legend {
   position: absolute;
   left: 12px;
-  bottom: 26px;
+  bottom: 28px;
   z-index: 2;
-  background: rgba(17, 18, 20, 0.92);
-  border: 1px solid var(--hairline);
+  max-width: calc(100% - 24px);
+  background: var(--surface-panel);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  padding: 10px 12px;
-  backdrop-filter: blur(6px);
+  padding: 10px 14px;
+  box-shadow: var(--shadow-menu);
 }
 
 .legend h4 {
-  margin: 0 0 7px;
-  font-size: 11px;
+  margin: 0 0 8px;
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 500;
+  letter-spacing: var(--ls-over);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ink-muted);
-  font-weight: 600;
+  color: var(--t3);
 }
 
 .legend ul {
@@ -565,221 +1500,173 @@ button {
 .legend li {
   display: flex;
   align-items: center;
-  gap: 7px;
-  font-size: 12px;
-  color: var(--ink-2);
+  gap: 8px;
+  font-size: var(--ts-label);
+  color: var(--t2);
 }
 
+/* the marker's own fill, outlined so it can be found on either theme */
 .legend .swatch {
+  flex: 0 0 auto;
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 0 1px var(--t3);
 }
 
-/* --------------------------------------------------------------------- popup */
+/* wave fronts: the legend only appears when waves are in progress */
+.legend-waves {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 8px 0 0;
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: 4px;
+}
 
-/* Same trap as `.map-wrap > .map` above: MapLibre's stylesheet arrives
-   after this one and sets `.maplibregl-popup-content { background: #fff }`
-   at the same specificity. With one class each, MapLibre won: the popup
-   opened white with our white text on it -- five labels and no values, on
-   every marker click. Scoped under `.map` so ours wins whatever the order. */
+.legend-waves li {
+  font-size: var(--ts-meta);
+  overflow-wrap: anywhere;
+}
+
+.wave-line {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 0;
+  border-top-style: solid;
+}
+
+.wave-line.p {
+  border-top-width: 1.5px;
+  border-top-color: var(--series-p);
+}
+
+.wave-line.s {
+  border-top-width: 2.5px;
+  border-top-color: var(--series-s);
+}
+
+/* -------------------------------------------------------------------- popup */
+
+/* Same trap as `.map-wrap > .map` above: MapLibre's stylesheet arrives after
+   this one and sets `.maplibregl-popup-content { background: #fff }` at the
+   same specificity. With one class each, MapLibre won: the popup opened white
+   with white text on it. Every override is scoped under `.map`, and the tip is
+   recoloured per anchor (MapLibre colours one border side per anchor, with two
+   classes: three here win without !important). */
 .map .maplibregl-popup-content {
-  background: var(--surface-2);
-  color: var(--ink);
-  border: 1px solid var(--hairline);
+  background: var(--bg-2);
+  color: var(--t1);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  padding: 12px 14px;
-  font-family: var(--font);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  padding: 14px 16px;
+  font-family: var(--sans);
+  box-shadow: var(--shadow-panel);
 }
 
-.map .maplibregl-popup-tip {
-  border-top-color: var(--surface-2) !important;
-  border-bottom-color: var(--surface-2) !important;
+.map .maplibregl-popup-anchor-bottom .maplibregl-popup-tip,
+.map .maplibregl-popup-anchor-bottom-left .maplibregl-popup-tip,
+.map .maplibregl-popup-anchor-bottom-right .maplibregl-popup-tip {
+  border-top-color: var(--bg-2);
+}
+
+.map .maplibregl-popup-anchor-top .maplibregl-popup-tip,
+.map .maplibregl-popup-anchor-top-left .maplibregl-popup-tip,
+.map .maplibregl-popup-anchor-top-right .maplibregl-popup-tip {
+  border-bottom-color: var(--bg-2);
+}
+
+.map .maplibregl-popup-anchor-left .maplibregl-popup-tip {
+  border-right-color: var(--bg-2);
+}
+
+.map .maplibregl-popup-anchor-right .maplibregl-popup-tip {
+  border-left-color: var(--bg-2);
 }
 
 .map .maplibregl-popup-close-button {
-  color: var(--ink-muted);
-  font-size: 17px;
-  padding: 2px 7px;
+  min-width: var(--target);
+  min-height: var(--target);
+  border-radius: 0 var(--radius) 0 var(--radius-sm);
+  color: var(--t2);
+  font-size: 1.1rem;
+}
+
+.map .maplibregl-popup-close-button:hover {
+  color: var(--t1);
+  background: var(--bg-3);
 }
 
 .popup h3 {
-  margin: 0 0 4px;
-  font-size: 14px;
+  /* room for the close button, which sits in the corner */
+  margin: 0 calc(var(--target) - 12px) 6px 0;
+  font-size: var(--ts-body);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.popup-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  font-size: var(--ts-meta);
+  color: var(--t2);
 }
 
 .popup dl {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 3px 10px;
-  font-size: 12px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  font-size: var(--ts-label);
 }
 
 .popup dt {
-  color: var(--ink-muted);
+  color: var(--t3);
 }
 
 .popup dd {
   margin: 0;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.popup a {
-  color: var(--accent);
-  font-size: 12px;
+.popup-link {
+  margin: 10px 0 0;
+  font-size: var(--ts-label);
 }
 
-/* ------------------------------------------------------------------ footer */
-
-.footer {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
-  padding: 7px 18px;
-  background: var(--surface);
-  border-top: 1px solid var(--hairline);
-  font-size: 11.5px;
-  color: var(--ink-muted);
-}
-
-/* Agency credit: one discreet line on its own row at the very bottom of the
-   footer, in every language (it is not translated on purpose). Same muted
-   ink as the rest of the footer. A plain link loads nothing, so the CSP
-   (default-src 'self') is untouched. */
-.footer .credit {
-  flex-basis: 100%;
-  font-size: 11px;
-  color: var(--ink-muted);
-  text-align: right;
-}
-
-.footer .credit a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  text-decoration-color: var(--hairline-strong);
-}
-
-.footer .credit a:hover {
-  color: var(--ink-2);
-}
-
-.source {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.source .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.source .dot.up {
-  background: var(--sev-minor);
-}
-
-.source .dot.down {
-  background: var(--sev-extreme);
-}
-
-.source .mode {
-  color: var(--ink-muted);
-  font-size: 10px;
-  letter-spacing: 0.05em;
-}
-
-/* ------------------------------------------------------------- time window */
-
-.segmented {
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-}
-
-.segmented button {
-  flex: 1;
-  padding: 5px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--ink-muted);
-  white-space: nowrap;
-}
-
-.segmented button:hover {
-  color: var(--ink-2);
-}
-
-.segmented button[aria-pressed="true"] {
-  background: var(--surface-3);
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14);
-}
-
-/* ------------------------------------------------------------------ language */
-
-.lang {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 3px 8px 3px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-}
-
-.lang select {
-  background: none;
-  border: none;
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 12px;
-  padding: 2px 0;
-  cursor: pointer;
-}
-
-.lang select:focus-visible {
-  outline: 2px solid var(--accent);
-  border-radius: 4px;
-}
-
-.lang option {
-  background: var(--surface-2);
-  color: var(--ink);
-}
-
-/* --------------------------------------------------------------- map column */
-
-.map-column {
-  position: relative;
-  min-height: 0;
-  display: grid;
-}
-
-/* ------------------------------------------------- card + live views */
+/* ------------------------------------------------------- event detail panel */
 
 .live-panel {
   position: absolute;
   top: 12px;
   right: 56px;
   z-index: 3;
-  width: min(330px, calc(100% - 72px));
+  width: min(380px, calc(100% - 72px));
   max-height: calc(100% - 90px);
   overflow-y: auto;
-  background: rgba(17, 18, 20, 0.96);
-  border: 1px solid var(--hairline);
+  overscroll-behavior: contain;
+  /* Translucent on purpose, and the reason is measured, not taste. With an
+     OPAQUE background Chrome composites this scroller, and the part of its
+     scrolling contents below the clip was painted as a slab of the page
+     ground: a cream (Soft) or black (Lunar) rectangle from the panel's
+     bottom edge down to the bottom of the map, hiding the map under it.
+     elementsFromPoint saw only the canvas there; hiding the panel brought
+     the map back; `overflow: hidden` did too; contain: paint, isolation,
+     will-change, a square corner and overscroll-behavior did not. Any alpha
+     under 1 (or a backdrop-filter) keeps it clean. contrast.test.ts pins
+     both the alpha and the text contrast on it, over the map's darkest and
+     lightest pixel. */
+  background: var(--surface-float);
+  border: 1px solid var(--line-strong);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-panel);
+  animation: rise-in var(--d2) var(--ease);
 }
 
 .live-panel header {
@@ -788,61 +1675,193 @@ button {
   gap: 10px;
 }
 
+.live-head {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .live-panel h3 {
-  margin: 0;
-  font-size: 14.5px;
-  line-height: 1.3;
+  margin: 4px 0 0;
+  font-size: var(--ts-row);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: var(--ls-title);
+  overflow-wrap: anywhere;
 }
 
 .live-panel h4 {
-  margin: 14px 0 7px;
-  font-size: 11px;
+  margin: 18px 0 8px;
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  font-weight: 500;
+  letter-spacing: var(--ls-over);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ink-muted);
-  font-weight: 600;
-}
-
-.live-panel header button {
-  margin-left: auto;
-  color: var(--ink-muted);
-  font-size: 15px;
-  line-height: 1;
-  padding: 2px 4px;
-}
-
-.live-panel header button:hover {
-  color: var(--ink);
+  color: var(--t3);
 }
 
 .live-meta {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 6px;
+  margin: 6px 0 0;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.live-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  gap: 2px;
+  margin: -6px -8px 0 0;
 }
 
 .live-facts {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 3px 12px;
-  margin: 10px 0 0;
-  font-size: 12.5px;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 14px 0 0;
+  font-size: var(--ts-label);
 }
 
 .live-facts dt {
-  color: var(--ink-muted);
+  color: var(--t3);
 }
 
 .live-facts dd {
   margin: 0;
+  font-family: var(--mono);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+/* The instruction sits above every other detail on purpose: someone reading
+   this panel from inside a warning area needs it before the magnitude, the
+   depth or the source. It is the only block here that asks something of them,
+   so it carries the bone-white rule. */
+.live-todo,
+.live-wave {
+  margin: 14px 0 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  box-shadow: inset 3px 0 0 var(--t1);
+}
+
+/* A gauge actually measured this: a quieter rule, it is a fact, not an ask. */
+.live-wave {
+  box-shadow: inset 3px 0 0 var(--t3);
+}
+
+.live-panel .live-todo h4,
+.live-panel .live-wave h4 {
+  margin: 0 0 6px;
+}
+
+.live-todo p {
+  margin: 0;
+  font-size: var(--ts-body);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.live-wave p {
+  margin: 0;
+  font-size: var(--ts-card);
+  overflow-wrap: anywhere;
+}
+
+.live-wave strong {
+  font-family: var(--mono);
+  font-weight: 500;
+}
+
+.live-eta {
+  margin: 8px 0;
+  font-size: var(--ts-label);
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.live-about {
+  margin: 12px 0;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.live-about summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--target);
+  cursor: pointer;
+  color: var(--t2);
+  font-weight: 500;
+}
+
+.live-about p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .live-official {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target);
+  margin-top: 4px;
+  font-size: var(--ts-label);
+}
+
+/* Prevention: before / during / after, each line with its authority. */
+.live-guidance {
+  display: grid;
+  /* minmax(0, ...): an auto track grows to its widest child's min-content,
+     and a long publisher name pushed the whole block 54 px past a 280 px
+     card at the largest text size (measured) */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.guidance-phase h5 {
+  margin: 4px 0 6px;
+  font-size: var(--ts-label);
+  font-weight: 600;
+  color: var(--t1);
+}
+
+.guidance-phase ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.guidance-phase li {
+  font-size: var(--ts-sub);
+  line-height: 1.45;
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.guidance-phase a {
+  font-size: var(--ts-meta);
+  overflow-wrap: anywhere;
+}
+
+/* A wording still under review: said after the source, quietly, in words
+   (a dashed rule marks it apart without a colour that could read as a
+   state or a rank). */
+.guidance-review {
   display: inline-block;
-  margin-top: 10px;
-  color: var(--accent);
-  font-size: 12px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border: 1px dashed var(--t3);
+  border-radius: var(--pill);
+  font-size: var(--ts-over);
+  color: var(--t3);
 }
 
 .live-links {
@@ -850,34 +1869,37 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
 
 .live-links a {
   display: block;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  border: 1px solid var(--hairline);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
   text-decoration: none;
-  color: var(--ink);
+  color: var(--t1);
 }
 
 .live-links a:hover {
-  border-color: rgba(57, 135, 229, 0.6);
+  border-color: var(--edge);
 }
 
 .live-links strong {
   display: block;
-  font-size: 12.5px;
+  font-size: var(--ts-label);
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .live-links span {
   display: block;
-  font-size: 11.5px;
-  color: var(--ink-muted);
+  font-size: var(--ts-meta);
+  color: var(--t3);
   margin-top: 1px;
+  overflow-wrap: anywhere;
 }
 
 .live-cams {
@@ -885,444 +1907,164 @@ button {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .live-cams a {
   display: block;
   text-decoration: none;
-  color: var(--ink-2);
-  font-size: 11px;
+  color: var(--t2);
+  font-size: var(--ts-meta);
+  overflow-wrap: anywhere;
 }
 
 .live-cams img {
   width: 100%;
-  height: 68px;
+  height: 72px;
   object-fit: cover;
-  border-radius: 6px;
-  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  border: 1px solid var(--line);
   display: block;
-  margin-bottom: 3px;
+  margin-bottom: 4px;
 }
 
 .live-note {
   margin: 0;
-  font-size: 12px;
-  color: var(--ink-muted);
+  font-size: var(--ts-label);
+  color: var(--t3);
   line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
-.flag {
-  font-size: 13px;
-  line-height: 1;
-  margin-right: 5px;
-  /* the flag is a hint, not the subject: it must not steal the line */
-  opacity: 0.95;
-}
+/* ------------------------------------------------------------------- footer */
 
-/* --------------------------------------------------------------- search */
-
-.search {
-  position: relative;
+.footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
+  gap: 6px 14px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--ground);
+  border-top: 1px solid var(--line);
+  font-size: var(--ts-meta);
+  color: var(--t3);
 }
 
-.search:focus-within {
-  border-color: rgba(57, 135, 229, 0.65);
-}
-
-.search-icon {
-  color: var(--ink-muted);
-  font-size: 15px;
-  line-height: 1;
-}
-
-.search input {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 0;
-  background: none;
-  border: none;
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-}
-
-.search input::placeholder {
-  color: var(--ink-muted);
-}
-
-/* the native Safari/Chrome clear button duplicates our own */
-.search input::-webkit-search-cancel-button {
-  display: none;
-}
-
-.search-clear {
-  color: var(--ink-muted);
-  font-size: 13px;
-  line-height: 1;
-  padding: 2px 4px;
-}
-
-.search-clear:hover {
-  color: var(--ink);
-}
-
-.search-results {
-  position: absolute;
-  top: calc(100% + 5px);
-  left: 0;
-  right: 0;
-  z-index: 5;
-  margin: 0;
-  padding: 4px;
-  list-style: none;
-  background: var(--surface-3);
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55);
-}
-
-.search-results button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 7px 9px;
-  border-radius: 6px;
-}
-
-.search-results button:hover {
-  background: var(--surface-2);
-}
-
-.search-results strong {
-  display: block;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--accent);
-}
-
-.search-results span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--ink-2);
-  line-height: 1.35;
-}
-
-.search-none {
-  padding: 8px 10px;
-  font-size: 12.5px;
-  color: var(--ink-muted);
-}
-
-/* ------------------------------------------------------------ phone */
-
-/* Measured before rewriting, at 390x844 (iPhone 14, device emulation, not a
-   resized desktop window -- Chrome laid the page out at 500 px when asked for
-   390, and a measurement taken there describes no real phone):
-
-     header  92 px | counters ~200 | banner ~50 | filters 266 | footer 139
-     => .feed ended up 0 px tall. The product showed NO events on a phone.
-
-   The old block tried to fit everything into one non-scrolling screen and let
-   the feed lose the fight. A phone screen is not a dashboard: it scrolls. So
-   here the page becomes a document, the map takes a bounded slice of it, and
-   the feed takes whatever it needs -- it can no longer be squeezed to nothing
-   by anything above it. */
-
-/* Narrow OR short. A phone held sideways is 844 px wide and 390 px tall: wide
-   enough for the desktop grid, far too short for it, and the feed came out at
-   zero pixels there exactly as it did on a portrait phone. The breakpoint has
-   to watch both axes. */
-
-/* -------------------------------------------------- collapsed filter bar */
-
-.filters-toggle,
-.sources-toggle {
+.source {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border-radius: 9px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 13px;
-}
-
-.filters-toggle {
-  width: 100%;
-  justify-content: center;
-}
-
-.filters-toggle .badge {
-  min-width: 18px;
-  padding: 1px 6px;
-  border-radius: 999px;
-  background: var(--accent-deep);
-  color: #fff;
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.sources-toggle {
-  padding: 4px 9px;
-  font-size: 11px;
-}
-
-/* Touch, not mouse: a 21 px tall control is a control you miss. Apple asks
-   for 44 pt, Material for 48 dp; 44 is the floor here. Keyed on the POINTER,
-   not on the width -- a touchscreen laptop is not a phone but the thumb is
-   still a thumb. */
-
-.live-actions {
-  margin-left: auto;
-  display: inline-flex;
-  gap: 2px;
-}
-
-.live-actions button {
-  color: var(--ink-muted);
-  font-size: 14px;
-  line-height: 1;
-  padding: 3px 5px;
-  border-radius: 6px;
-}
-
-.live-actions button:hover {
-  color: var(--ink);
-  background: var(--surface-2);
-}
-
-/* wave fronts: the legend only appears when waves are in progress */
-.legend-waves {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 8px 0 0;
-  border-top: 1px solid var(--hairline);
-  display: grid;
-  gap: 4px;
-}
-
-.legend-waves li {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11.5px;
-  color: var(--ink-2);
-}
-
-.wave-line {
-  width: 14px;
-  height: 0;
-  border-top-style: solid;
-}
-
-.wave-line.p {
-  border-top-width: 1.5px;
-  border-top-color: #9ec5f4;
-}
-
-.wave-line.s {
-  border-top-width: 2.5px;
-  border-top-color: var(--sev-severe);
-}
-
-/* A covered type with no event stays visible, dimmed: it's information
-   ("no tsunami in progress"), not an absence of information. */
-/* Was 0.45, which measured 1.96:1 -- the comment in App.tsx says a zero count
-   is information ("no tsunami in progress"), and at that ratio the information
-   was simply not there in daylight. 0.8 keeps it clearly secondary while
-   staying readable. */
-.chip.empty {
-  opacity: 0.8;
-}
-
-.chip.empty:hover {
-  opacity: 0.75;
-}
-
-/* ------------------------------------------------- inbound seismic waves */
-
-/* The only element on screen with a deadline, so it takes the top and it is
-   allowed to be loud. It disappears on its own once the wave has passed. */
-.arrival {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  padding: 10px 18px;
-  text-align: left;
-  background: rgba(208, 59, 59, 0.2);
-  border-bottom: 1px solid var(--sev-extreme);
-  animation: arrival-in 0.25s ease-out;
-}
-
-@keyframes arrival-in {
-  from {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-}
-
-.arrival:hover {
-  background: rgba(208, 59, 59, 0.28);
-}
-
-.arrival-count {
-  display: grid;
-  place-items: center;
-  min-width: 62px;
-  padding: 4px 8px;
-  border-radius: var(--radius);
-  background: var(--sev-extreme);
-  color: #fff;
-  font-size: 26px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  line-height: 1.1;
-  animation: arrival-pulse 1s ease-in-out infinite;
-}
-
-.arrival-count small {
-  font-size: 11px;
-  font-weight: 500;
-  opacity: 0.85;
-}
-
-@keyframes arrival-pulse {
-  50% {
-    box-shadow: 0 0 0 6px rgba(208, 59, 59, 0.28);
-  }
-}
-
-.arrival-text {
-  display: grid;
-  gap: 1px;
-  min-width: 0;
-}
-
-.arrival-text strong {
-  font-size: 14px;
-}
-
-.arrival-text span {
-  font-size: 12px;
-  color: var(--ink-2);
-}
-
-.arrival-phase {
-  font-variant-numeric: tabular-nums;
-}
-
-/* --------------------------------------------------- location watch */
-
-.watch {
-  display: grid;
   gap: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
+  min-width: 0;
 }
 
-.watch-cta {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 4px;
-  font-size: 12.5px;
-  color: var(--ink);
-}
-
-.watch-cta:hover {
-  color: var(--accent);
-}
-
-.watch-note {
-  margin: 0;
-  font-size: 11px;
-  color: var(--ink-muted);
-  line-height: 1.4;
-}
-
-.watch-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.watch-place {
-  font-size: 12.5px;
-  font-weight: 550;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.watch-actions {
-  margin-left: auto;
-  display: inline-flex;
-  gap: 2px;
-}
-
-.watch-actions button {
-  color: var(--ink-muted);
-  font-size: 12px;
-  padding: 2px 5px;
-  border-radius: 5px;
-}
-
-.watch-actions button:hover {
-  color: var(--ink);
-  background: var(--surface-3);
-}
-
-.watch-quiet {
-  margin: 0;
-  font-size: 11.5px;
-  color: var(--ink-muted);
-}
-
-.watch-alarms {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 3px;
-}
-
-.watch-alarms button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  width: 100%;
-  text-align: left;
-  padding: 4px 2px;
-  font-size: 11.5px;
-  color: var(--ink-2);
-}
-
-.watch-alarms button:hover {
-  color: var(--ink);
-}
-
-.watch-dot {
+/* Each state has its own SHAPE: a dot online, a triangle degraded, a cross
+   offline. A green dot and a red dot measure 1.43:1 against each other: for a
+   deuteranopic reader the source list said nothing at all. */
+.source .dot {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  flex: 0 0 auto;
+}
+
+.source .dot.up {
+  background: var(--mint);
+}
+
+.source .dot.degraded,
+.source .dot.down {
+  display: none;
+}
+
+.source-mark {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.source-degraded,
+.source-degraded .source-mark {
+  color: var(--amber);
+}
+
+.source-down,
+.source-down .source-mark {
+  color: var(--red);
+}
+
+.footer-compact .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.footer-compact .dot.up {
+  background: var(--mint);
+}
+
+.footer-compact .dot.down {
+  width: 9px;
+  height: 8px;
+  border-radius: 0;
+  background: var(--amber);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+/* Long detail, behind "Show more": the full line, wrapped, never clipped. */
+.source-errors {
+  flex-basis: 100%;
+  min-width: 0;
+}
+
+.source-errors ul {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.source-errors li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.source-errors li > * {
+  min-width: 0;
+}
+
+.source-errors strong {
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.source-errors code {
+  font-family: var(--mono);
+  color: var(--t3);
+  overflow-wrap: anywhere;
+}
+
+/* Agency credit: one discreet line on its own row at the very bottom of the
+   footer, in every language (it is not translated on purpose). A plain link
+   loads nothing, so the CSP (default-src 'self') is untouched. */
+.footer .credit {
+  flex-basis: 100%;
+  color: var(--t3);
+  text-align: right;
+}
+
+.footer .credit a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--line-strong);
+}
+
+.footer .credit a:hover {
+  color: var(--t2);
 }
 
 /* --------------------------------------------------------------- crash page */
@@ -1331,205 +2073,41 @@ button {
   max-width: 34rem;
   margin: 4rem auto;
   padding: 0 1.5rem;
-  color: var(--ink);
+  color: var(--t1);
 }
 
 .crash h1 {
-  font-size: 18px;
+  font-size: var(--ts-row);
+  font-weight: 600;
 }
 
 .crash p,
 .crash li {
-  color: var(--ink-2);
-  font-size: 13px;
+  color: var(--t2);
+  font-size: var(--ts-sub);
   line-height: 1.5;
-}
-
-.crash a {
-  color: var(--accent);
 }
 
 .crash button {
   margin-top: 12px;
-  padding: 7px 14px;
-  border-radius: 8px;
-  border: 1px solid var(--hairline);
-  background: var(--surface-2);
-  font-size: 13px;
+  min-height: var(--btn-h);
+  padding: 0 18px;
+  border-radius: var(--pill);
+  background: var(--primary-bg);
+  color: var(--primary-ink);
+  font-weight: 600;
 }
 
 .crash pre {
   margin-top: 18px;
-  padding: 10px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  color: var(--ink-muted);
-  font-size: 11px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-2);
+  color: var(--t3);
+  font-family: var(--mono);
+  font-size: var(--ts-over);
   white-space: pre-wrap;
-}
-
-/* Motion is decoration here, never information: the halo, the pulse and the
-   wave animation all have a static equivalent. Someone who asked their system
-   for less motion must not have to endure a counter that throbs. */
-
-/* ------------------------------------------------- accessibility helpers */
-
-/* Visible to a screen reader, invisible on screen. Used where a glyph or a
-   colour carries meaning that must also exist as words. */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* A green dot and a red dot measure 1.43:1 against each other: for a
-   deuteranopic reader the source list said nothing at all. The cross does the
-   work; the colour reinforces it. */
-.source-mark {
-  color: var(--sev-extreme-text);
-  font-weight: 700;
-  line-height: 1;
-}
-
-.source-down {
-  color: var(--sev-extreme-text);
-}
-
-/* Severity in the watch list was a bare coloured dot -- the same violation,
-   in the panel that speaks about the reader's OWN location. */
-.watch-sev {
-  font-size: 11px;
-  line-height: 1;
-  margin-right: 4px;
-}
-
-/* The brand is the document's h1 now; it must keep looking like the brand. */
-.brand h1 {
-  font-size: 18px;
-  letter-spacing: 0.02em;
-  font-weight: 650;
-  margin: 0;
-}
-
-/* Watch actions had min-height but no min-width: about 22 px wide, on the
-   controls that arm and disarm an alarm for your own position. */
-.watch-actions button {
-  min-width: 44px;
-}
-
-/* An automatic solution wearing its uncertainty. Deliberately quiet -- it is a
-   caveat, not an alarm -- but never invisible: it is what stops the wrong
-   number from being screenshotted as a fact. */
-.tag-preliminary {
-  border-color: rgba(250, 178, 25, 0.45);
-  color: var(--sev-moderate);
-}
-
-/* Interactive boundaries. `--hairline` measures 1.30:1 against the panel --
-   fine for a decorative divider, below the 3:1 that WCAG 1.4.11 asks of a
-   control's own edge. Chips, toggles and the segmented control are found by
-   their outline before their text, especially in sunlight. */
-.chip,
-.segmented button,
-.toggle,
-.search,
-.filters-toggle,
-.sources-toggle {
-  border-color: var(--hairline-strong);
-}
-
-/* ------------------------------------------------- what to do about it */
-
-/* The instruction sits above every other detail on purpose: someone reading
-   this panel from inside a warning area needs it before the magnitude, the
-   depth or the source. It is the only block here that asks something of them. */
-.live-todo {
-  margin: 12px 0 4px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border-left: 3px solid var(--accent);
-  background: var(--surface-2);
-}
-
-.live-todo h4,
-.live-wave h4 {
-  margin: 0 0 5px;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: var(--ink-muted);
-}
-
-.live-todo p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink);
-}
-
-/* A gauge actually measured this. It is the only measurement in a tsunami
-   bulletin, and the difference between a cancelled advisory and Tohoku. */
-.live-wave {
-  margin: 10px 0 4px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border-left: 3px solid var(--sev-extreme);
-  background: var(--surface-2);
-}
-
-.live-wave p {
-  margin: 0;
-  font-size: 15px;
-  color: var(--ink);
-}
-
-.live-eta {
-  margin: 6px 0;
-  font-size: 12.5px;
-  color: var(--ink-2);
-}
-
-.live-about {
-  margin: 10px 0;
-  font-size: 12.5px;
-  color: var(--ink-2);
-}
-
-.live-about summary {
-  cursor: pointer;
-  color: var(--ink-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.live-about p {
-  margin: 6px 0 0;
-  line-height: 1.5;
-}
-
-/* One word saying what is being asked. The glyph never carries it alone --
-   the label is always next to it, per the palette rule. */
-.tag-do {
-  border-color: var(--hairline-strong);
-  color: var(--ink);
-}
-
-.tag-do-evacuate,
-.tag-do-shelter {
-  border-color: rgba(208, 59, 59, 0.55);
-  color: var(--sev-extreme-text);
-}
-
-.tag-do-avoid {
-  border-color: rgba(236, 131, 90, 0.5);
-  color: var(--sev-severe);
+  overflow-wrap: anywhere;
 }
 
 /* =========================================================================
@@ -1541,18 +2119,39 @@ button {
    looks right, and the page is simply wrong on a phone.
    Anything added below a media block is a rule that phone users will not get.
    Add new base rules ABOVE this banner.
+
+   Frontiers: 599/600 and 779/780 only (Sentinel House). Below 780 the content
+   is one column at phone scale; below 600 the header drops its words.
    ========================================================================= */
 
-@media (max-width: 820px) {
-  .live-panel {
-    right: 12px;
-    top: 12px;
-    width: calc(100% - 24px);
-    max-height: 55%;
+/* the one-column type scale (charte: under 780 px) */
+@media (max-width: 779px) {
+  :root {
+    --ts-title-2: 1.375rem; /* 22 */
+    --ts-row: 1.125rem; /* 18 */
+    /* 16 px in a field: iOS does not zoom on focus */
+    --ts-body: 1rem;
+    --pad-card: 14px;
+    --btn-h: 44px;
   }
 }
 
-@media (max-width: 820px), (max-height: 560px) {
+/* Measured before rewriting, at 390x844 (iPhone 14, device emulation, not a
+   resized desktop window -- Chrome laid the page out at 500 px when asked for
+   390, and a measurement taken there describes no real phone):
+
+     header  92 px | counters ~200 | banner ~50 | filters 266 | footer 139
+     => .feed ended up 0 px tall. The product showed NO events on a phone.
+
+   The old block tried to fit everything into one non-scrolling screen and let
+   the feed lose the fight. A phone screen is not a dashboard: it scrolls. So
+   here the page becomes a document, the map takes a bounded slice of it, and
+   the feed takes whatever it needs.
+
+   Narrow OR short. A phone held sideways is 844 px wide and 390 px tall: wide
+   enough for the desktop grid, far too short for it. The same expression is
+   PHONE in useMediaQuery.ts. */
+@media (max-width: 779px), (max-height: 560px) {
   html,
   body,
   #root {
@@ -1571,57 +2170,56 @@ button {
     position: sticky;
     top: 0;
     z-index: 20;
-    flex-wrap: wrap;
     gap: 6px 10px;
     padding: 8px 12px;
   }
 
-  .brand strong {
-    font-size: 16px;
+  .brand h1 {
+    font-size: var(--ts-card);
   }
 
   /* the tagline took four lines on its own */
-  .brand span,
-  .header .spacer,
+  .brand .tagline,
   .header .clock {
     display: none;
   }
 
-  /* Five counters at two per row cost 200 px before the reader saw a single
-     event. One scrolling row costs 68. */
+  /* Five counters in a grid cost 200 px before the reader saw a single
+     event. One scrolling row costs 70. */
   .kpis {
     display: flex;
     grid-template-columns: none;
     overflow-x: auto;
     scrollbar-width: none;
     gap: 0;
+    padding: 0;
+    /* A strip that scrolls with no edge treatment reads as a strip that is
+       BROKEN -- the last counter looks chopped off rather than continued. */
+    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
+    mask-image: linear-gradient(to right, #000 88%, transparent);
   }
 
   .kpis::-webkit-scrollbar {
     display: none;
   }
 
-  /* A strip that scrolls with no edge treatment reads as a strip that is
-     BROKEN -- the last counter looks chopped off rather than continued. The
-     fade says "there is more this way" without adding a control. */
-  .kpis {
-    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
-    mask-image: linear-gradient(to right, #000 88%, transparent);
-  }
-
+  /* On a phone the counters are one flat strip, not five cards: the card
+     padding and the gaps cost 37 px of the first screen (102 px against 65),
+     and in landscape that was the difference between one event above the
+     fold and none (tools/responsive.py). */
   .kpi {
     flex: 0 0 auto;
     min-width: 132px;
-    padding: 7px 14px;
-    border-right: 1px solid var(--hairline);
+    max-width: 200px;
+    padding: 6px 14px;
+    background: none;
+    border: none;
+    border-right: 1px solid var(--line);
+    border-radius: 0;
   }
 
   .kpi .value {
-    font-size: 19px;
-  }
-
-  .kpi .sub {
-    font-size: 11px;
+    font-size: var(--ts-row);
   }
 
   .body {
@@ -1633,6 +2231,7 @@ button {
   }
 
   .panel {
+    order: 2;
     border-right: none;
     /* here the PAGE is the scroller: on touch, an inner scroller steals the
        swipe that should move the page */
@@ -1642,20 +2241,15 @@ button {
 
   /* The map comes FIRST on a phone, and this was measured the hard way: with
      the feed above it, the map sat at y=20968 -- three hundred events and
-     twenty thousand pixels below the fold. Nobody scrolls to that. Bounded to
-     a third of the screen so it cannot eat the feed, always one flick away. */
+     twenty thousand pixels below the fold. Bounded to a third of the screen
+     so it cannot eat the feed, always one flick away. No px floor above 140:
+     a 240 px floor on a 390 px landscape screen pushed the first event below
+     the fold on its own. */
   .map-column {
     order: 1;
     height: 36dvh;
-    /* No fixed floor. A 240 px floor on a 390 px landscape screen pushed the
-       first event below the fold on its own -- the map was taller than the
-       room left for it. `dvh` already scales; a floor in px does not. */
     min-height: 140px;
-    border-bottom: 1px solid var(--hairline);
-  }
-
-  .panel {
-    order: 2;
+    border-bottom: 1px solid var(--line);
   }
 
   /* Three hundred rows is twenty thousand pixels of layout on a device that
@@ -1664,28 +2258,17 @@ button {
      honest so the page does not jump while scrolling. */
   .item {
     content-visibility: auto;
-    contain-intrinsic-size: auto 72px;
+    contain-intrinsic-size: auto 76px;
+    padding: 11px 12px;
   }
 
-  /* One row, not two: a sticky header is paid for on every screen, and it was
-     costing 102 px of 844. The sound label and the spelled-out language name
-     go first -- the icon and the flag say the same thing in a quarter of the
-     width.
-
-     The <select> is NOT hidden, it is made transparent on top of the flag:
+  /* The <select> is NOT hidden, it is made transparent on top of the flag:
      hiding it would leave a phone with no way to change language at all, and
      this product ships in five. It stays a native select, so it stays
      keyboard- and screen-reader-operable. */
-  .toggle .label {
-    display: none;
-  }
-
   .lang {
-    position: relative;
-    padding: 0 2px;
-    /* the select sits on top of the flag and is out of flow, so the label has
-       to hold the tap target open by itself */
     min-width: 44px;
+    padding: 0 2px;
     justify-content: center;
   }
 
@@ -1700,31 +2283,17 @@ button {
      rather than 266 px pushing it off screen. */
   .filters-collapsed {
     padding: 8px 12px;
-    border-bottom: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--line);
   }
 
   .filters {
     padding: 10px 12px;
-    gap: 8px;
+    gap: 10px;
   }
 
   .chips {
     flex-wrap: nowrap;
     overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 2px;
-  }
-
-  .chips::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chip {
-    flex: 0 0 auto;
-  }
-
-  .item {
-    padding: 11px 12px;
   }
 
   /* it was eating a third of an already tiny map */
@@ -1732,26 +2301,25 @@ button {
     display: none;
   }
 
-  /* A card floating over a 46vh map covers the map. On a phone it becomes
+  /* A card floating over a 36dvh map covers the map. On a phone it becomes
      what it always was in intent: a sheet, at the bottom, thumb-reachable. */
   .live-panel {
     position: fixed;
     inset: auto 0 0 0;
     width: 100%;
     max-height: 62dvh;
-    border-radius: 14px 14px 0 0;
+    border-radius: var(--radius) var(--radius) 0 0;
     border-left: none;
     border-right: none;
     border-bottom: none;
     z-index: 30;
-    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    padding: 14px 16px max(14px, env(safe-area-inset-bottom));
   }
 
   .footer {
-    font-size: 11px;
     gap: 6px 10px;
-    padding: 7px 12px;
-    padding-bottom: max(7px, env(safe-area-inset-bottom));
+    padding: 8px 12px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 
   .footer .spacer {
@@ -1763,7 +2331,46 @@ button {
   }
 }
 
-@media (pointer: coarse) {
+/* A phone held sideways: 390 px tall for everything. The counters keep their
+   number and lose their footnote, and the vital banner tightens: the first
+   event has to make it above the fold (it did not, measured at 844x390). */
+@media (max-height: 560px) {
+  .kpi .sub {
+    display: none;
+  }
+
+  .banner,
+  .arrival {
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+}
+
+/* Under 600 px the header keeps its icons and drops their words: the sound
+   bell, the theme half-disc and the flag say the same thing in a quarter of
+   the width, and a sticky header is paid for on every screen. */
+@media (max-width: 599px) {
+  .header-tools .label {
+    display: none;
+  }
+
+  .header-tools .btn-compact {
+    padding: 0;
+    width: 44px;
+  }
+}
+
+/* Touch, not mouse: a 21 px tall control is a control you miss. Apple asks
+   for 44 pt, Material for 48 dp; 44 is the floor here. Keyed on the POINTER
+   and on the absence of hover, not on the width -- a touchscreen laptop is
+   not a phone but the thumb is still a thumb, and a foldable's WebView can
+   answer `pointer: fine` with `hover: none`. */
+@media (pointer: coarse), (hover: none) {
+  :root {
+    --target: 44px;
+    --btn-h: 44px;
+  }
+
   button,
   select,
   input,
@@ -1777,14 +2384,16 @@ button {
     padding: 12px 0;
   }
 
-  .live-actions button,
-  .search-clear,
-  .sources-toggle {
+  .footer .credit a {
+    display: inline-flex;
+    align-items: center;
     min-height: 44px;
-    min-width: 44px;
   }
 }
 
+/* Motion is decoration here, never information: the halo, the pulse and the
+   wave animation all have a static equivalent. Someone who asked their system
+   for less motion must not have to endure a counter that throbs. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

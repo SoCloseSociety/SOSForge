@@ -13,12 +13,34 @@ import threading
 from collections import deque
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from app.models.event import Event, Kind, utcnow
+from app.models.event import Event, Kind, Severity, utcnow
 
 log = logging.getLogger(__name__)
+
+_LADDER = list(Severity)
+
+
+def severity_rank(severity: Severity) -> int:
+    """0 for info up to 4 for extreme: the enum is declared in that order."""
+    return _LADDER.index(severity)
+
+
+@dataclass(frozen=True)
+class Removal:
+    """A journal line saying an event LEFT the store, and why.
+
+    The journal used to record only what arrived. A cancelled early warning,
+    a lifted tsunami advisory, an alert the sweep retired: none of them wrote
+    anything, so the next restart replayed the event back onto the map --
+    after every single deploy, the withdrawn warning was live again.
+    """
+
+    id: str
+    reason: str
 
 
 class EventStore:
@@ -34,6 +56,13 @@ class EventStore:
         # in its place. The store is synchronous and the hub is not, so the
         # promotion is recorded here and drained by whoever can await.
         self._promotions: list[Event] = []
+        # The highest (severity rank, tsunami) each stored event has EVER
+        # held. An escalation is measured against this, not against the
+        # previous version: measured over seven days of production, The
+        # Geysers swarm crossed the 30-quake line, fell back and crossed it
+        # again: nine alarms for one swarm against the previous version, two
+        # against the peak (its entry was purged and re-created in between).
+        self._peaks: dict[str, tuple[int, bool]] = {}
 
         if self._persist and self._data_dir:
             self._data_dir.mkdir(parents=True, exist_ok=True)
@@ -62,6 +91,7 @@ class EventStore:
                 # observability the events_seen/ingested split exists to avoid.
                 if not self._replaying:
                     self.counters[event.source] = self.counters.get(event.source, 0) + 1
+                self._peaks[event.id] = (severity_rank(event.severity), event.tsunami)
                 self._write_jsonl(event, "new")
                 return event, "new"
 
@@ -86,8 +116,19 @@ class EventStore:
                 if e.id == event.id:
                     self._ring[i] = event
                     break
+            rank, tsunami = self._peaks.get(event.id, (0, False))
+            self._peaks[event.id] = (
+                max(rank, severity_rank(event.severity)),
+                tsunami or event.tsunami,
+            )
             self._write_jsonl(event, "update")
             return event, "update"
+
+    def peak(self, event_id: str) -> tuple[int, bool] | None:
+        """The highest (severity rank, tsunami) this event has held so far, or
+        None if it is not stored. Read it BEFORE the upsert that may raise it."""
+        with self._lock:
+            return self._peaks.get(event_id)
 
     def _forget(self, evicted: Event) -> None:
         """One event just left the ring. Drop it from the index, and PROMOTE a
@@ -106,6 +147,7 @@ class EventStore:
         # id that is still current.
         if self._by_id.get(evicted.id) is evicted:
             self._by_id.pop(evicted.id, None)
+            self._peaks.pop(evicted.id, None)
         if evicted.cluster_id == evicted.id:
             self._promote_orphans(evicted.id)
 
@@ -129,7 +171,7 @@ class EventStore:
             out, self._promotions = self._promotions, []
         return out
 
-    def remove(self, event_ids: Iterable[str]) -> list[Event]:
+    def remove(self, event_ids: Iterable[str], reason: str = "removed") -> list[Event]:
         """Explicit removal. Returns what was really removed, so the caller
         never announces the disappearance of something that was not there."""
         wanted = set(event_ids)
@@ -137,22 +179,31 @@ class EventStore:
             gone = [e for e in self._ring if e.id in wanted]
             if not gone:
                 return []
-            self._drop(gone)
+            self._drop(gone, {e.id: reason for e in gone})
         return gone
 
-    def _drop(self, events: list[Event]) -> None:
-        """Removes a batch from the ring and the index. Caller holds the lock."""
+    def _drop(self, events: list[Event], reasons: dict[str, str]) -> None:
+        """Removes a batch from the ring and the index, and journals why.
+        Caller holds the lock."""
         dead = {e.id for e in events}
         kept = [e for e in self._ring if e.id not in dead]
         self._ring.clear()
         self._ring.extend(kept)
+        at = utcnow().isoformat()
         for event in events:
             self._by_id.pop(event.id, None)
+            self._peaks.pop(event.id, None)
+            self._write_line(
+                {"action": "remove", "id": event.id, "reason": reasons[event.id], "at": at}
+            )
         for orphaned in {e.cluster_id for e in events if e.cluster_id == e.id}:
             if orphaned:
                 self._promote_orphans(orphaned)
 
     def _write_jsonl(self, event: Event, action: str) -> None:
+        self._write_line({"action": action, **event.model_dump(mode="json")})
+
+    def _write_line(self, record: dict) -> None:
         # `_replaying` avoids duplicating the journal on every restart: without
         # this guard, re-reading 400 events immediately rewrote them.
         if self._replaying or not (self._persist and self._data_dir):
@@ -161,10 +212,7 @@ class EventStore:
         path = self._data_dir / f"events-{day}.jsonl"
         try:
             with path.open("a", encoding="utf-8") as fh:
-                fh.write(
-                    json.dumps({"action": action, **event.model_dump(mode="json")}, default=str)
-                    + "\n"
-                )
+                fh.write(json.dumps(record, default=str) + "\n")
         except OSError as exc:  # the disk must never kill the live feed
             log.warning("jsonl persistence failed: %s", exc)
 
@@ -238,7 +286,13 @@ class EventStore:
             ]
             if not stale:
                 return []
-            self._drop(stale)
+            self._drop(
+                stale,
+                {
+                    e.id: "expired" if e.expires is not None and e.expires < now else "stale"
+                    for e in stale
+                },
+            )
         return stale
 
     def stats(self) -> dict:
@@ -248,12 +302,26 @@ class EventStore:
         last_hour = [e for e in events if e.time > now - timedelta(hours=1)]
         quakes = [e for e in last_hour if e.kind.value == "earthquake"]
         mags = [e.magnitude for e in quakes if e.magnitude is not None]
+        # A tsunami is active while it is IN FORCE, not while it is recent. A
+        # JMA advisory is dated when it is issued and stays in force for
+        # hours: counting only the last hour showed 0 through the rest of the
+        # warning, next to a map still showing it. An ongoing alert counts
+        # until it expires or is lifted (which removes it); a point-in-time
+        # statement riding on a quake (BMKG "berpotensi tsunami") keeps the
+        # one-hour reading it always had.
+        tsunamis = [
+            e
+            for e in events
+            if e.tsunami
+            and (e.expires is None or e.expires > now)
+            and (e.ongoing or e.time > now - timedelta(hours=1))
+        ]
         return {
             "total_buffered": len(events),
             "last_hour": len(last_hour),
             "earthquakes_last_hour": len(quakes),
             "max_magnitude_last_hour": max(mags) if mags else None,
-            "tsunami_active": sum(1 for e in last_hour if e.tsunami),
+            "tsunami_active": len(tsunamis),
             "by_source": dict(self.counters),
             "server_time": now.isoformat(),
         }
@@ -281,26 +349,34 @@ class EventStore:
         return removed
 
     @staticmethod
-    def read_journal(path: Path, max_age_hours: float = 24.0) -> list[Event]:
-        """Reads a JSONL back into events. Reads only -- writing them is the
-        pipeline's job, so that a restored event goes through dedup like any
-        other. It used to store them directly, and the deduper therefore woke
-        up blind at every restart."""
+    def read_journal(path: Path, max_age_hours: float = 24.0) -> list[Event | Removal]:
+        """Reads a JSONL back, IN ORDER: events and the removals between them.
+        Reads only -- writing them is the pipeline's job, so that a restored
+        event goes through dedup like any other. It used to store them
+        directly, and the deduper therefore woke up blind at every restart.
+
+        Order is the whole point of a removal: it cancels what came before it
+        and nothing after, so an advisory lifted and then re-issued is back.
+        A journal written before removals were journaled simply has none.
+        """
         if not path.exists():
             return []
         cutoff = utcnow() - timedelta(hours=max_age_hours)
-        events: list[Event] = []
+        entries: list[Event | Removal] = []
         for line in path.read_text(encoding="utf-8").splitlines():
             try:
                 data = json.loads(line)
-                data.pop("action", None)
+                action = data.pop("action", None)
+                if action == "remove":
+                    entries.append(Removal(str(data["id"]), str(data.get("reason") or "removed")))
+                    continue
                 event = Event.model_validate(data)
             except Exception:
                 continue
             if event.time.replace(tzinfo=event.time.tzinfo or UTC) < cutoff:
                 continue
-            events.append(event)
-        return events
+            entries.append(event)
+        return entries
 
     @contextmanager
     def replaying(self) -> Iterator[None]:

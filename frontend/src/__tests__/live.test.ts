@@ -98,8 +98,20 @@ describe('connectLive: URL', () => {
     stop = connectLive()
     // jsdom serves the page on http://localhost:3000: the socket must target
     // the same host (the /ws proxy), never a hard-coded one.
-    expect(lastSocket().url).toBe(`ws://${location.host}/ws`)
-    expect(lastSocket().url).toBe('ws://localhost:3000/ws')
+    expect(lastSocket().url).toBe(`ws://${location.host}/ws?chunks=1`)
+    expect(lastSocket().url).toBe('ws://localhost:3000/ws?chunks=1')
+  })
+
+  /* The chunked snapshot is OPT-IN (decision 2026-10-26): a server sends
+   * chunks only to a client that asks, so a tab on an older build keeps
+   * receiving the snapshot whole. This build reads chunks, so it asks --
+   * and every reconnect asks again. */
+  it('asks for the chunked snapshot, on every connection', () => {
+    stop = connectLive()
+    expect(new URL(lastSocket().url).searchParams.get('chunks')).toBe('1')
+    lastSocket().close()
+    vi.advanceTimersByTime(1000)
+    expect(new URL(lastSocket().url).searchParams.get('chunks')).toBe('1')
   })
 })
 
@@ -269,5 +281,38 @@ describe('connectLive: cleanup', () => {
     vi.advanceTimersByTime(120_000)
     expect(FakeWebSocket.instances).toHaveLength(1)
     stop = null
+  })
+})
+
+describe('connectLive: a socket stuck in CONNECTING (audit 2026-10, #12)', () => {
+  /* The watchdog only looks at a link it believes connected, and the
+   * reconnect only starts from `onclose`. A handshake that never completes
+   * (a captive portal, a proxy holding the upgrade) fired neither: the tab
+   * sat on "RECONNECTING" forever and never tried again. */
+  it('gives up on a handshake after 10 s and tries again', () => {
+    stop = connectLive()
+    const stuck = lastSocket()
+    // never opens, never closes, never errors
+    vi.advanceTimersByTime(9_999)
+    expect(FakeWebSocket.instances).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(stuck.closeCalls).toBe(1)
+    expect(useStore.getState().connected).toBe(false)
+    // then the ordinary backoff: first step, 1 s
+    expectReconnectAfter(1000)
+  })
+
+  it('leaves a socket that opened in time alone', () => {
+    stop = connectLive()
+    const socket = lastSocket()
+    vi.advanceTimersByTime(3_000)
+    socket.open()
+    socket.message(tick())
+    for (let i = 0; i < 4; i += 1) {
+      vi.advanceTimersByTime(5_000)
+      socket.message(tick())
+    }
+    expect(socket.closeCalls).toBe(0)
+    expect(FakeWebSocket.instances).toHaveLength(1)
   })
 })

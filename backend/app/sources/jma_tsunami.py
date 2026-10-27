@@ -46,12 +46,12 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import httpx
 
-from app.models.event import Event, Kind, Severity, to_utc
+from app.models.event import Event, Kind, Severity, to_utc, utcnow
 from app.sources.base import Emit, Source
 from app.sources.regional import parse_iso6709
 
@@ -117,7 +117,8 @@ class JmaTsunamiSource(Source):
         # removes the event. This only catches the case where we never see it.
         self.max_advisory_hours = max_advisory_hours
 
-    def parse_payload(self, data: Any) -> list[Event]:
+    def parse_payload(self, data: Any, now: datetime | None = None) -> list[Event]:
+        now = now or utcnow()
         # Group by EVENT, not by bulletin, and keep the most recent bulletin
         # that actually states a tsunami category. `ctt` is the bulletin
         # creation stamp in compact JST: zero-padded and fixed width, so
@@ -134,8 +135,17 @@ class JmaTsunamiSource(Source):
         events: list[Event] = []
         for eid, row in latest.items():
             event = self._parse_row(eid, row)
-            if event is not None:
-                events.append(event)
+            if event is None:
+                continue
+            # Past our own ceiling: over. The list keeps an event for weeks,
+            # so re-emitting it made a loop -- on 2026-10-26 two forecasts of
+            # 2026-09-30 and 2026-10-10 were purged by the sweep every five
+            # minutes and put straight back by the next 30 s poll, announced
+            # to every open tab as new events each time.
+            if event.expires is not None and event.expires <= now:
+                self.expirations.append(event.id)
+                continue
+            events.append(event)
         events.sort(key=lambda e: e.time, reverse=True)
         return events
 
@@ -193,7 +203,15 @@ class JmaTsunamiSource(Source):
             severity=severity,
             ongoing=True,
             expires=time + timedelta(hours=self.max_advisory_hours),
-            tsunami=True,
+            # The tsunami FLAG is the alarm, and a forecast is not one. JMA's
+            # lowest category reads 「津波予報（若干の海面変動）」 -- "slight
+            # sea-level change", the tier BELOW an advisory, where no damage is
+            # expected. It is the counterpart of NOAA's "Information" bulletin,
+            # which `tsunami.py` already keeps flag-free, and every one of the
+            # 29 areas of the live list on 2026-10-26 was at that tier. Flagged,
+            # a ripple forecast for Japan from a quake in Central America
+            # counted as a tsunami alert for its whole 12 h ceiling.
+            tsunami=severity is not Severity.INFO,
             alert=label,
             title=f"JMA {label} for Japan -- epicentre {epicentre}"
             + (f" (M {magnitude})" if magnitude is not None else ""),

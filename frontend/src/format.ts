@@ -2,27 +2,43 @@ import type { Kind, Severity, SosEvent } from './types'
 
 export type T = (key: string, vars?: Record<string, string | number>) => string
 
-/** Severity: color from the status palette + glyph. The LABEL comes from
- * i18n -- all three always travel together on display, the color alone must
- * never carry the information. */
-/** Two colours per rank, and the difference is not cosmetic.
+/** Severity: a FILL colour, a glyph and (from i18n) a word. All three travel
+ * together on display: the colour alone never carries the information.
  *
- * `color` is the FILL: a map marker, the banner background, a dot. It is
- * judged against 3:1 for non-text, and it is the colour people recognise.
+ * Each rank has a glyph of a DIFFERENT SHAPE -- circle, diamond, triangle,
+ * square, letter -- so a reader who cannot tell the hues apart (or a phone in
+ * full sun) still tells the ranks apart. Moderate and severe used to be two
+ * triangles (`▲` and `⚠`), which separated nothing once the colour was gone.
+ * `●` and `▲` are also the alert and attention marks of the Sentinel House
+ * pills, so the two products read the same way.
  *
- * `text` is the same rank rendered as WORDS on a dark surface, where the bar
- * is 4.5:1. Measured, the fills fell short of that: `info` at 3.93:1 and
- * `extreme` at 3.90:1 on the panel background, 3.5:1 on a selected row. The
- * most severe label in the product was the one a sunlit phone could not read.
- * Every `text` value below now measures 5.2:1 or better on both surfaces.
+ * `color` is the FILL: a map marker, a legend swatch. The map is dark in both
+ * themes, so one fill per rank is enough (3:1 non-text, on the dark basemap).
+ *
+ * The same rank rendered as WORDS lives in styles.css (`--sev-*-text`), once
+ * per theme: same hue and saturation as the fill, only the lightness moves,
+ * until the worst surface of that theme clears 4.5:1. The ratios are pinned
+ * by `__tests__/contrast.test.ts`, which reads the stylesheet itself. A text
+ * colour hard-coded here could not follow the theme, which is why there is
+ * none any more.
  */
-export const SEVERITY_META: Record<Severity, { glyph: string; color: string; text: string }> = {
-  info: { glyph: 'i', color: '#6f7379', text: '#8b9098' },
-  minor: { glyph: '▪', color: '#0ca30c', text: '#3fc23f' },
-  moderate: { glyph: '▲', color: '#fab219', text: '#fab219' },
-  severe: { glyph: '⚠', color: '#ec835a', text: '#f0a07d' },
-  extreme: { glyph: '⛔', color: '#d03b3b', text: '#f0605f' },
+export const SEVERITY_META: Record<Severity, { glyph: string; color: string }> = {
+  info: { glyph: 'i', color: '#6f7379' },
+  minor: { glyph: '■', color: '#0ca30c' },
+  moderate: { glyph: '▲', color: '#fab219' },
+  severe: { glyph: '◆', color: '#ec835a' },
+  extreme: { glyph: '●', color: '#d03b3b' },
 }
+
+/** Map series that are NOT severities: the wave fronts and the forecast
+ * tracks. They used to be drawn in the severe orange, which made a series look
+ * like a rank -- an S-wave ring around a minor quake read as a severe alert.
+ * Violet is the Sentinel House series colour (`--violet`), never a state. */
+export const SERIES = {
+  waveP: '#9ec5f4',
+  waveS: '#7c8cff',
+  track: '#7c8cff',
+} as const
 
 export const KIND_GLYPH: Record<Kind, string> = {
   earthquake: '🌍',

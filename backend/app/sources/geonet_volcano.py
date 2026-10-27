@@ -188,9 +188,13 @@ class GeonetVolcanoSource(Source):
                         if previous is None or published > previous[0]:
                             found[volcano_id] = (published, level, title, entry.get("link"))
         except Exception as exc:
+            # Degraded, not down: the levels are still published, undated.
+            self.health.feed_failed("news-bulletins", exc)
             log.warning("geonet-volcano: bulletins unavailable (%s), levels undated", exc)
             if self._bulletins:
                 return
+        else:
+            self.health.feed_ok("news-bulletins")
 
         self._bulletins = found or self._bulletins
         self._bulletins_at = now

@@ -54,15 +54,34 @@ off. Concretely:
   `value` (the text is for humans: "Magnitude 5.8M, Depth:54.7km"). The unit
   changes with the type: M, km/h, ha. One event has several episodes: the stable
   key is `eventid`. The server regularly takes 60 s to return 1.2 MB, so a wide
-  timeout is mandatory.
+  timeout is mandatory. `gdacs:iscurrent=false` is GDACS saying the event is
+  **over** (all 43 such items had a past `todate`): it is withdrawn. Published
+  anyway, four orange droughts closed on 2026-10-24 -- one open since
+  December 2025 -- stayed on screen as severe and ongoing, re-listed every
+  cycle, so the silence sweep never fired.
 - **tsunami.gov**: the category (Information / Watch / Advisory / Warning) and
   the magnitude live in the `summary` HTML, served sometimes escaped and
   sometimes as real elements (which then come back prefixed by the Atom
   namespace). So we regex on the **stripped** text, never on the markup. PHEB's
-  `link rel="self"` wrongly points at PAAQ: do not trust it.
+  `link rel="self"` wrongly points at PAAQ: do not trust it. The two centres
+  fail independently (PAAQ timed out on 2026-10-26 while PHEB answered): one
+  dead centre is `degraded` with its name in `failed_feeds`, never plain green.
+- **Ash SIGMETs (AWC `isigmet`)**: `coords` has **two shapes**, told apart by
+  `geom`: `"AREA"` is one ring of `{lat, lon}`, `"AREAS"` a LIST of rings. The
+  second one took the source down for 15.6 h on production (2026-10-25 17:21
+  -> 10-26 08:58 UTC, "'list' object has no attribute 'get'"): a Whakaari plume
+  split at the antimeridian, one ring written with **lon 180.3**. Wrap every
+  longitude and use `sources/geometry.py`, which knows the antimeridian. New
+  Zealand writes `qualifier: "MT"` and names the volcano only in `rawSigmet`.
+  `validTimeTo` is the end (not always +6 h: 2.1 h seen).
 - **NWS**: identifying User-Agent mandatory; `limit` returns 400 on
   `/alerts/active`; `geometry` is often `null` (UGC zones) -- the alert must stay
-  usable without a position.
+  usable without a position. **"Hurricane Force Wind Warning" is NOT a
+  hurricane**: it is the marine product for a non-tropical low (the tropical
+  one is "Hurricane Warning"). Read on the word "hurricane", Alaskan gales
+  were published as EXTREME cyclones, here and in the WMO relay. The full
+  event vocabulary is `GET /alerts/types` (111 names): measure a classifier
+  change against it, not against today's handful.
 - **HANS volcanoes**: no coordinates in the response. They come from the
   Smithsonian Holocene catalogue, joined on `vnum` == `Volcano_Number`. The key
   is the VOLCANO, not the bulletin, otherwise notices stack up as markers.
@@ -74,7 +93,23 @@ off. Concretely:
 - **JMA EEW / CENC (Wolfx relay)**: the magnitude key is misspelled
   `Magunitude`; the CENC payload is a dict indexed `No1`/`No2`, not an array;
   both timestamp in **local time without an offset** (Tokyo, Beijing); a
-  cancelled EEW must disappear.
+  cancelled EEW must disappear. The EEW payload also carries `isTraining` and
+  `isCancel`: a drill must never be published, whatever its magnitude.
+- **JMA tsunami**: the list keeps an event for **weeks**, so our own 12 h
+  ceiling (`expires`) is the only exit -- an advisory past it is withdrawn,
+  never re-emitted. Re-emitted, two forecasts of 2026-09-30 and 2026-10-10
+  were purged by every sweep and put back by the next poll, announced to every
+  open tab as new events every five minutes. 「津波予報（若干の海面変動）」
+  ("slight sea-level change") is the tier BELOW an advisory: a TSUNAMI-kind
+  event at INFO, without the tsunami flag -- NOAA's "Information" rule.
+- **BMKG**: `gempaterkini` is only the 15 latest **M5+**; with no M5 in three
+  days the horizon drops all of them and BMKG publishes nothing (30 seen, 0
+  ingested, 2026-10-26). `gempadirasakan` (felt quakes, any magnitude) and
+  `autogempa` (the latest) key the same quake by the same `DateTime`: merge
+  them. **`autogempa` reuses `Potensi` for something else** ("Gempa ini
+  dirasakan untuk diteruskan pada masyarakat" -- felt, pass it on): the
+  tsunami flag needs the word "tsunami", or a felt M4.9 becomes an EXTREME
+  tsunami. Times: `DateTime` is UTC with an offset; `Jam` is WIB (UTC+7).
 - **AFAD**: `date` is **UTC** (proven by cross-checking EMSC). `limit` truncates
   **before** sorting, so `orderby=timedesc&limit=3` returns the three OLDEST of
   the window: use a short window, a large limit, and sort client-side. Answers
@@ -85,7 +120,13 @@ off. Concretely:
   publishes **no geometry**: 28896 of 28898 area blocks carry an `EMMA_ID`
   (`NUTS3` for France, `WARNCELLID` for Germany) and no shape, and no public
   endpoint turns those codes into one. The UK Met Office is the single
-  exception -- it fills `area[].polygon`, a LIST of CAP rings.
+  exception -- it fills `area[].polygon`, a LIST of CAP rings. **The feed keeps
+  listing a warning for days after its `expires`**: on 2026-10-26, 241 of the
+  276 orange-and-red warnings served were already over (median 30 h, worst
+  127 h; German storm gusts of the 21st). `expires` is the warning's end
+  (verified on those DWD gusts), so it is mapped and an expired warning is
+  withdrawn. Greece escapes `&amp;` inside the JSON (`"East Sterea &amp;
+  Evvoia"`, `headline` + `areaDesc` only): decoded there and nowhere else.
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
@@ -95,7 +136,54 @@ off. Concretely:
   homogeneous between countries. The aggregate carries **no coordinates at
   all**; the CAP document it links does, for about half the Severe/Extreme
   alerts, and it is named `url` on some items and **`capURL` on the other
-  977** -- read both.
+  977** -- read both. The aggregate's `expires` is the CAP document's, in UTC
+  (ten issuers from UTC-5 to UTC+8, 10/10 to the second): it is the alert's
+  end. Colombia (IDEAM) sets `headline` to the literal
+  **"CAP Alert"** on every message; the real name is in `event`. The `event`
+  values are in Spanish, French, Indonesian too ("Inundación urbana",
+  "ORAGE", "Hujan Lebat dan Petir"): the patterns carry those words.
+- **SWPC alerts**: `alerts.json` keeps a bulletin listed for weeks after its
+  "Valid To". A G3 warning valid until 2026-10-10 was still published, SEVERE,
+  on the 26th: severe and not a quake, it escaped the horizon and nothing ever
+  removed it. The validity is now `expires`, and an expired bulletin is
+  withdrawn.
+- **IMO Iceland** (`api.vedur.is/quakes/events`, CC BY 4.0): the old
+  `POST /skjalftalisa/v1/quake/array` that most clients still call is **404**.
+  Magnitudes go **negative** and carry six decimals. `type` is not the closed
+  list its OpenAPI claims: `null` on fresh automatic events, and
+  `"anthropogenic event"` appears though the enum omits it. **"not existing"
+  is a DELETED detection and the default listing still returns it** -- the
+  GeoNet trap: withdraw it. "not locatable" ships coordinates that mean
+  nothing: skip it. A third of the M1+ events are offshore ("Reykjaneshryggur"
+  is the Reykjanes RIDGE): never stamp Iceland from the source. Slow (1.5 to
+  10 s) and flaky. Volcano levels (`/volcanoes/volcanoes`): ground level in
+  `vals.current.alert_level_info.code_en`, aviation colour in `vona`; it also
+  watches Beerenberg, which is Norwegian and says so in `country`.
+- **JMA volcanoes** (`bosai/volcano/data/warning.json`): the list is the
+  volcanoes under a warning PLUS the ones just lowered (lowered = lifted, not
+  published). The level is read from the **wording**, never the bare `code`
+  (lesson 27), and its digits are **full-width** (`レベル２`): NFKC first.
+  Volcanoes without levels say 「火口周辺危険」 and submarine ones
+  「周辺海域警戒」. `reportDatetime` is when the level was last changed or
+  re-issued -- Iwo Jima's is from 2007 and still in force. No coordinates:
+  join `bosai/volcano/const/volcano_list.json` on `eventId == code`
+  (`latlon` = two STRINGS, latitude first).
+- **NCS India** (`riseq.seismo.gov.in`): **no API at all**; each event is a
+  JSON string in the `data-json` attribute of an `<li class="... event_list">`
+  of the home page (630 KB). Times end in **`IST`** (+05:30, proven by the
+  EMSC/USGS offset histogram peaking at exactly 0 h after conversion); refuse
+  any other suffix. The web server's `Date` header runs ~48 min slow: never
+  date anything from it. Magnitude and depth share one string (`"M: 4.0 , D:
+  10km"`). Mostly FOREIGN events (Tajikistan, Tibet, Afghanistan): no country
+  stamped at the source.
+- **Rejected after checking** (2026-10-26): Chile CSN (HTML only, fully relayed
+  by EMSC, licence limited to academic use), KOERI (non-commercial clause, AFAD
+  already covers Turkey), IGEPN (page frozen since June, Cloudflare), Geoscience
+  Australia (clean CC BY, but every event already in EMSC; its
+  `epicentral_time` is LOCAL time wrongly suffixed `Z` -- read `origin_time`),
+  MAGMA Indonesia (API returns 500, no reuse grant), ReliefWeb (approved
+  `appname` now mandatory), Taiwan CWA / Korea KMA (key mandatory), Colombia
+  SGC (403 from every egress tried -- retest from the hub).
 
 ## Pattern matching on natural language
 
@@ -148,14 +236,16 @@ runs `uvicorn app.main:app`: a `pkill -f "uvicorn app.main:app"` also kills
 ScanGithub (`:8894`) and the others on the same machine. That mistake has
 already cost a neighbouring session three in-flight GitHub sweeps, and sent it
 hunting for the failure inside its own code. Use `make stop-api` (which targets
-port 8300) or `lsof -ti tcp:8300 | xargs kill`.
+port 8300) or `lsof -ti tcp:8300 -sTCP:LISTEN | xargs kill` (`-sTCP:LISTEN` is
+load-bearing: without it lsof also returns the CLIENT sockets connected to the
+port, so the kill hits the browser tab or the Vite proxy instead of the API).
 
 ## Commands
 
 ```bash
 make install      # backend venv + npm install
 make dev-api      # API on :8300
-make dev-web      # UI on :5273
+make dev-web      # UI on :5380
 make test         # backend + frontend tests
 make lint typecheck
 make stop-api     # stop by PORT, never by process pattern

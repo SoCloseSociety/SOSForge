@@ -17,6 +17,8 @@ interface Props {
   /** current server timestamp, refreshed every second */
   now: number;
   emptyKey: string;
+  /** snapshot events still on their way (chunked snapshot) */
+  remaining?: number;
 }
 
 function Row({ event, now }: { event: SosEvent; now: number }) {
@@ -40,7 +42,9 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
       aria-pressed={selected}
       onClick={() => select(selected ? null : event.id)}
     >
-      <span className="mag" style={{ color: severity.text }}>
+      {/* The rank colours the number through a class, not an inline colour:
+          the text shade differs per theme (styles.css, --sev-*-text). */}
+      <span className={`mag sev-${event.severity}`}>
         {chip.value}
         {chip.unit ? <small>{chip.unit}</small> : null}
       </span>
@@ -152,10 +156,10 @@ const RESPONSE_GLYPH: Record<string, string> = {
   Assess: "📋",
 };
 
-export function Feed({ events, now, emptyKey }: Props) {
+export function Feed({ events, now, emptyKey, remaining = 0 }: Props) {
   const t = useStore((s) => s.t);
   if (events.length === 0) {
-    return <div className="feed-empty">{t(emptyKey)}</div>;
+    return <div className="feed-empty">{t(emptyKey, { n: remaining })}</div>;
   }
   return (
     // NO aria-live here, and no role="feed".
@@ -170,6 +174,13 @@ export function Feed({ events, now, emptyKey }: Props) {
     // when something arrives and is otherwise silent.
     <>
       <NewEventAnnouncer events={events} />
+      {/* The list is not the whole picture yet: say so above it, with the
+          number still coming, until the last snapshot chunk lands. */}
+      {remaining > 0 ? (
+        <p className="feed-loading" role="status">
+          {t("feed.loading", { n: remaining })}
+        </p>
+      ) : null}
       <div className="feed">
         {events.map((event) => (
           <Row key={event.id} event={event} now={now} />

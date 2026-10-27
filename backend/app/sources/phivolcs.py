@@ -383,7 +383,9 @@ class PhivolcsSource(Source):
                 # successes is not `ok()`, however many pages we asked for.
                 successes = 0
                 last_error: Exception | None = None
-                for url in pages_to_poll(datetime.now(UTC)):
+                pages = pages_to_poll(datetime.now(UTC))
+                self.health.keep_feeds(set(pages))
+                for url in pages:
                     try:
                         resp = await client.get(url)
                         if resp.status_code == 404 and url != LATEST_URL:
@@ -391,12 +393,15 @@ class PhivolcsSource(Source):
                             # the normal state of the archive, not an outage.
                             log.info("phivolcs: %s not archived yet", url)
                             successes += 1
+                            self.health.feed_ok(url)
                             continue
                         resp.raise_for_status()
                         events.extend(self.parse_payload(resp.text))
                         successes += 1
+                        self.health.feed_ok(url)
                     except Exception as exc:
                         last_error = exc
+                        self.health.feed_failed(url, exc)
                         log.warning("%s: %s (%s)", self.name, exc, url)
 
                 if successes:

@@ -394,10 +394,20 @@ def test_parse_alert_ongoing_while_valid():
     assert event.ongoing is True
 
 
-def test_parse_alert_not_ongoing_once_expired():
+def test_parse_alert_carries_its_own_end():
+    before_expiry = datetime(2026, 8, 18, 6, 0, tzinfo=UTC)
+    event = SpaceWeatherSource().parse_alerts([ALERT_WARK05], now=before_expiry)[0]
+    assert event.expires == datetime(2026, 8, 18, 12, 0, tzinfo=UTC)
+
+
+def test_parse_alert_withdrawn_once_expired():
+    """Emitted with ongoing=False, an expired SEVERE bulletin still escaped
+    the horizon (severe and not a quake) and was re-seen every cycle: a G3
+    warning valid until 2026-10-10 was still on screen on 2026-10-26."""
     after_expiry = datetime(2026, 8, 18, 13, 0, tzinfo=UTC)
-    event = SpaceWeatherSource().parse_alerts([ALERT_WARK05], now=after_expiry)[0]
-    assert event.ongoing is False
+    source = SpaceWeatherSource()
+    assert source.parse_alerts([ALERT_WARK05], now=after_expiry) == []
+    assert source.expirations == ["space:alert:K05W:2259"]
 
 
 def test_parse_alert_watch_ongoing_uses_implied_window():
@@ -406,7 +416,8 @@ def test_parse_alert_watch_ongoing_uses_implied_window():
     events_within = SpaceWeatherSource().parse_alerts([ALERT_WATA20_WATCH], now=within_window)
     events_past = SpaceWeatherSource().parse_alerts([ALERT_WATA20_WATCH], now=past_window)
     assert events_within[0].ongoing is True
-    assert events_past[0].ongoing is False
+    # past the implied window the watch is over, and withdrawn
+    assert events_past == []
 
 
 def test_parse_alerts_skips_item_without_message_code():
@@ -426,7 +437,8 @@ def test_parse_alerts_empty_and_none_input():
 def test_parse_alerts_serial_missing_falls_back_to_issue_time():
     message = ALERT_WARK05["message"].replace("Serial Number: 2259\r\n", "")
     no_serial = {**ALERT_WARK05, "message": message}
-    event = SpaceWeatherSource().parse_alerts([no_serial])[0]
+    before_expiry = datetime(2026, 8, 18, 6, 0, tzinfo=UTC)
+    event = SpaceWeatherSource().parse_alerts([no_serial], now=before_expiry)[0]
     assert event.id == "space:alert:K05W:2026-08-18T02:27:00.810000+00:00"
 
 
@@ -552,7 +564,8 @@ async def test_poll_once_combines_all_three_products():
 
     source = SpaceWeatherSource()
     async with _mock_client(handler) as client:
-        events = await source._poll_once(client)
+        # while WARK05 was still valid (it ran to 12:00 UTC)
+        events = await source._poll_once(client, now=datetime(2026, 8, 18, 6, 0, tzinfo=UTC))
 
     # one outlook event (from scales.json) + one kept alert (WARK05; ALTK05 dropped)
     assert len(events) == 2

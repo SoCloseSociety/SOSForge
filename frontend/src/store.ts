@@ -11,6 +11,57 @@ import { detectLang, persistLang, translate, type Lang } from "./i18n";
 
 const MAX_EVENTS = 1000;
 
+/** How long a server-clock sample is kept. In TIME, not in messages: a
+ * slow snapshot delivers ~18 chunks and then ~20 queued ticks, and a
+ * 30-message window dropped the one good sample (the first chunk) while the
+ * queue was still draining -- the clock was still 8 s behind (measured). */
+const SKEW_WINDOW_MS = 60_000;
+
+/** The server clock offset, from a message's server_time and its arrival.
+ *
+ * A message can wait in the socket: on a slow link the snapshot chunks are
+ * sent at once and received over twenty seconds, and the ticks emitted
+ * meanwhile queue behind them. Each of those, read on its own, said the
+ * server clock was up to 20 s late -- the header showed a time 20 s in the
+ * past and every "N s ago" was 20 s too young (measured in Chrome, Slow 3G).
+ * A transit delay can only make the server look BEHIND, never ahead, so the
+ * least delayed recent message is the truest: the offset is the max of the
+ * samples of the last minute. A new snapshot (a new connection) starts a new
+ * window. The price: if the browser clock jumps forward, the old offset holds
+ * for up to a minute. */
+function nextSkew(
+  samples: [number, number][],
+  serverTime: string,
+  arrival: number,
+  fresh = false,
+): { clockSkew: number; skewSamples: [number, number][] } {
+  const sample = new Date(serverTime).getTime() - arrival;
+  const kept = (fresh ? [] : samples).filter(([at]) => arrival - at <= SKEW_WINDOW_MS);
+  const next: [number, number][] = Number.isFinite(sample)
+    ? [...kept, [arrival, sample]]
+    : kept;
+  return {
+    clockSkew: next.length ? Math.max(...next.map(([, value]) => value)) : 0,
+    skewSamples: next,
+  };
+}
+
+/** The buffer cap, applied to what is OVER only. The list is sorted by event
+ * time, so a plain `slice` dropped the OLDEST first -- which is exactly where
+ * a volcano alert open for a month or a tsunami advisory issued this morning
+ * sits. They are still in force; the server keeps them in its snapshot, and
+ * the client must not quietly cut them on the next quake. Ongoing events are
+ * kept whatever their age, and the cap applies to the rest. */
+function capEvents(events: SosEvent[]): SosEvent[] {
+  if (events.length <= MAX_EVENTS) return events;
+  let kept = 0;
+  return events.filter((event) => {
+    if (event.ongoing) return true;
+    kept += 1;
+    return kept <= MAX_EVENTS;
+  });
+}
+
 export interface Filters {
   kinds: Set<Kind>;
   minMagnitude: number;
@@ -31,6 +82,19 @@ export interface Filters {
  */
 export const WINDOWS: number[] = [15, 60, 360, 1440, 0];
 
+/** The place the user wants to be warned about.
+ *
+ * `kinds` is what the reader chose to be alarmed for, in step 2 of the watch
+ * funnel. ABSENT means "not chosen yet": every kind alarms (the safe default)
+ * and the panel asks the question. A watch armed from the search bar arrives
+ * without it, and so does one saved before the funnel existed. */
+export interface Watch {
+  lat: number;
+  lon: number;
+  name: string;
+  kinds?: Kind[];
+}
+
 interface State {
   events: SosEvent[];
   connected: boolean;
@@ -40,6 +104,9 @@ interface State {
   clients: number;
   /** browser clock -> server clock offset, in ms */
   clockSkew: number;
+  /** [arrival, server_time - arrival] of the last minute; `clockSkew` is
+   * the max of their values */
+  skewSamples: [number, number][];
   lastMessageAt: number;
   selected: string | null;
   soundOn: boolean;
@@ -50,7 +117,16 @@ interface State {
   focus: { lat: number; lon: number; zoom: number; name: string } | null;
   /** the place the user wants to be warned about. Wave arrival is computed
    * against this point, so it is opt-in and never guessed silently. */
-  watch: { lat: number; lon: number; name: string } | null;
+  watch: Watch | null;
+  /** ids of the events that already raised a watch alarm for this place.
+   * In the store, and persisted, because the component that used to keep it
+   * (the watch panel) mounts and unmounts with the phone filter sheet: every
+   * opening forgot it and the whole last hour alarmed again. */
+  alarmed: Set<string>;
+  /** snapshot events still on their way (`snapshot.more`, then each chunk's
+   * `remaining`). While above zero, nothing on screen may claim the picture
+   * is complete: no "no event", no final count. */
+  snapshotRemaining: number;
 
   ingest: (message: ServerMessage) => void;
   setConnected: (value: boolean) => void;
@@ -62,6 +138,7 @@ interface State {
   setQuery: (query: string) => void;
   setFocus: (focus: State["focus"]) => void;
   setWatch: (watch: State["watch"]) => void;
+  markAlarmed: (ids: string[]) => void;
   setLang: (lang: Lang) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
@@ -131,27 +208,63 @@ const WATCH_KEY = "sosforge.watch";
 
 /** The watched place survives a reload: an alert you have to re-arm on every
  * visit is an alert you will not have when it matters. */
-function loadWatch(): { lat: number; lon: number; name: string } | null {
+function loadWatch(): Watch | null {
   try {
     const raw = localStorage.getItem(WATCH_KEY);
     if (!raw) return null;
     const saved = JSON.parse(raw);
     if (typeof saved?.lat !== "number" || typeof saved?.lon !== "number")
       return null;
-    return { lat: saved.lat, lon: saved.lon, name: String(saved.name ?? "") };
+    const watch: Watch = {
+      lat: saved.lat,
+      lon: saved.lon,
+      name: String(saved.name ?? ""),
+    };
+    // Only kinds this build knows: a hand-edited or future value must not
+    // smuggle an unknown kind into the alarm filter.
+    if (Array.isArray(saved.kinds)) {
+      watch.kinds = saved.kinds.filter((k: unknown): k is Kind =>
+        ALL_KINDS.includes(k as Kind),
+      );
+    }
+    return watch;
   } catch {
     return null;
   }
 }
 
-function saveWatch(
-  watch: { lat: number; lon: number; name: string } | null,
-): void {
+function saveWatch(watch: Watch | null): void {
   try {
     if (watch) localStorage.setItem(WATCH_KEY, JSON.stringify(watch));
     else localStorage.removeItem(WATCH_KEY);
   } catch {
     /* private mode: it just will not persist */
+  }
+}
+
+const ALARMED_KEY = "sosforge.alarmed";
+/** Enough for weeks of alarms at one place; the oldest ids go first. */
+const ALARMED_MAX = 500;
+
+/** Already-alarmed ids survive a reload too. An ongoing alert stays
+ * alarm-worthy for as long as it runs (days, for a heat wave): without this,
+ * every reload of the tab rang it again. */
+function loadAlarmed(): Set<string> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ALARMED_KEY) ?? "[]");
+    return new Set(
+      Array.isArray(saved) ? saved.filter((id) => typeof id === "string") : [],
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function saveAlarmed(ids: Set<string>): void {
+  try {
+    localStorage.setItem(ALARMED_KEY, JSON.stringify([...ids].slice(-ALARMED_MAX)));
+  } catch {
+    /* private mode: alarms may repeat after a reload, nothing worse */
   }
 }
 
@@ -203,6 +316,7 @@ export const useStore = create<State>((set, get) => ({
   sources: [],
   clients: 0,
   clockSkew: 0,
+  skewSamples: [],
   lastMessageAt: 0,
   selected: null,
   soundOn: false,
@@ -220,6 +334,8 @@ export const useStore = create<State>((set, get) => ({
   fresh: new Set(),
   focus: null,
   watch: loadWatch(),
+  alarmed: loadAlarmed(),
+  snapshotRemaining: 0,
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -254,7 +370,33 @@ export const useStore = create<State>((set, get) => ({
   setFocus: (focus) => set({ focus }),
   setWatch: (watch) => {
     saveWatch(watch);
-    set({ watch });
+    // A NEW place starts with a clean memory: an event already alarmed for
+    // Osaka has never been announced for Sendai. Changing what is watched at
+    // the same place keeps it.
+    const previous = get().watch;
+    const moved =
+      !watch ||
+      !previous ||
+      previous.lat !== watch.lat ||
+      previous.lon !== watch.lon;
+    if (moved) {
+      const alarmed = new Set<string>();
+      saveAlarmed(alarmed);
+      set({ watch, alarmed });
+    } else {
+      set({ watch });
+    }
+  },
+  markAlarmed: (ids) => {
+    if (ids.length === 0) return;
+    const alarmed = new Set(get().alarmed);
+    for (const id of ids) {
+      // re-inserted at the end, so the cap drops the oldest
+      alarmed.delete(id);
+      alarmed.add(id);
+    }
+    saveAlarmed(alarmed);
+    set({ alarmed });
   },
   setLang: (lang) => {
     persistLang(lang);
@@ -270,22 +412,44 @@ export const useStore = create<State>((set, get) => ({
         events: message.events,
         stats: message.stats,
         sources: message.sources,
-        clockSkew: new Date(message.server_time).getTime() - now,
+        ...nextSkew(get().skewSamples, message.server_time, now, true),
         lastMessageAt: now,
         connected: true,
         // a reconnection starts from a clean state: without this, "just
         // happened" halos would survive an outage of several minutes
         fresh: new Set(),
+        snapshotRemaining: Math.max(0, Number(message.more) || 0),
       });
       return;
     }
+
+    if (message.type === "snapshot_more") {
+      // The rest of the snapshot: HISTORY, upserted like the snapshot's own
+      // events -- no halo, no sound, nothing "breaking" about an event that
+      // was already in the buffer before this tab connected.
+      set((s) => {
+        const byId = new Map(s.events.map((e) => [e.id, e]));
+        for (const event of message.events ?? []) byId.set(event.id, event);
+        const events = [...byId.values()].sort(
+          (a, b) => Date.parse(b.time) - Date.parse(a.time),
+        );
+        return {
+          events: capEvents(events),
+          ...nextSkew(s.skewSamples, message.server_time, now),
+          lastMessageAt: now,
+          snapshotRemaining: Math.max(0, Number(message.remaining) || 0),
+        };
+      });
+      return;
+    }
+
 
     if (message.type === "tick") {
       set({
         stats: message.stats,
         sources: message.sources,
         clients: message.clients,
-        clockSkew: new Date(message.server_time).getTime() - now,
+        ...nextSkew(get().skewSamples, message.server_time, now),
         lastMessageAt: now,
       });
       return;
@@ -301,6 +465,13 @@ export const useStore = create<State>((set, get) => ({
         fresh: new Set([...s.fresh].filter((id) => !gone.has(id))),
         lastMessageAt: now,
       }));
+      return;
+    }
+
+    // A frame type this build does not know (a newer server): alive, but
+    // not an event. Reading it as one threw on `undefined.id`.
+    if (message.type !== "event" && message.type !== "update") {
+      set({ lastMessageAt: now });
       return;
     }
 
@@ -323,8 +494,11 @@ export const useStore = create<State>((set, get) => ({
     // `breaking` comes from the server: it distinguishes "just happened"
     // from "just arrived in the buffer". Without it, the first GDACS cycle
     // would make a hundred alerts several days old flash.
+    // `escalated` is the same urgency reached by an UPDATE: a quake revised
+    // from M5.9 to M7.1 two minutes after it struck, a bulletin that gained
+    // its tsunami flag. Checking `breaking` alone let those pass in silence.
     let fresh = state.fresh;
-    if (message.breaking) {
+    if (message.breaking || message.escalated) {
       fresh = new Set(state.fresh);
       fresh.add(incoming.id);
       // the halo fades out on its own after 30 s
@@ -342,7 +516,7 @@ export const useStore = create<State>((set, get) => ({
       }
     }
 
-    set({ events: events.slice(0, MAX_EVENTS), lastMessageAt: now, fresh });
+    set({ events: capEvents(events), lastMessageAt: now, fresh });
   },
 }));
 

@@ -71,6 +71,30 @@ const MIN_SEVERITY: Record<Kind, Severity> = {
 
 const RANK: Record<Severity, number> = { info: 0, minor: 1, moderate: 2, severe: 3, extreme: 4 }
 
+/** The rules above, as one readable list: what the watch panel offers in
+ * its "what to watch" step and shows under "Show more", so the reader knows
+ * what WILL and will not wake them. The same tables, not a copy -- a rule the
+ * panel describes is the rule that fires. Earthquakes carry `reachKm: 0`
+ * because their reach is computed from the magnitude (`reachOf`). Space
+ * weather is left out: it has no position, so it never alarms by proximity,
+ * and offering it as a choice would promise an alarm that cannot happen. */
+export const ALARM_RULES: { kind: Kind; reachKm: number; minSeverity: Severity }[] = (
+  Object.keys(REACH_KM) as Kind[]
+)
+  .filter((kind) => kind !== 'space_weather')
+  .map((kind) => ({ kind, reachKm: REACH_KM[kind], minSeverity: MIN_SEVERITY[kind] }))
+
+/** A tsunami alarms whatever the reader unticked: it is the one hazard where
+ * the minutes between the alert and the water decide everything. */
+export function alwaysAlarms(event: SosEvent): boolean {
+  return event.tsunami || event.kind === 'tsunami'
+}
+
+/** How far back an event can be and still be worth an alarm. Beyond an hour,
+ * you already know: you felt it, or it is not about you. Ongoing alerts are
+ * exempt (see `concerns`). */
+export const ALARM_MAX_AGE_S = 3600
+
 /** An earthquake's felt radius, roughly. Empirical and deliberately generous:
  * missing a quake that was felt is worse than one alarm too many. */
 export function reachOf(event: SosEvent): number {
@@ -87,15 +111,19 @@ export interface Alarm {
   reachKm: number
 }
 
-/** Does this event concern the watched place, right now? */
+/** Does this event concern the watched place, right now?
+ *
+ * `kinds` is what the reader chose to watch; absent means everything. */
 export function concerns(
   event: SosEvent,
   lat: number,
   lon: number,
   maxAgeSeconds: number,
   now: number,
+  kinds?: readonly Kind[],
 ): Alarm | null {
   if (event.lat === null || event.lon === null) return null
+  if (kinds && !kinds.includes(event.kind) && !alwaysAlarms(event)) return null
 
   const age = (now - Date.parse(event.time)) / 1000
   // An ongoing alert stays relevant for as long as it runs; a past earthquake
@@ -122,9 +150,10 @@ export function alarmsFor(
   lon: number,
   maxAgeSeconds: number,
   now: number,
+  kinds?: readonly Kind[],
 ): Alarm[] {
   return events
-    .map((event) => concerns(event, lat, lon, maxAgeSeconds, now))
+    .map((event) => concerns(event, lat, lon, maxAgeSeconds, now, kinds))
     .filter((a): a is Alarm => a !== null)
     .sort((a, b) => a.distanceKm - b.distanceKm)
 }

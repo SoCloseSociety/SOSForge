@@ -3,22 +3,43 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from fastapi import FastAPI, HTTPException, Query, Response, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    HTTPException,
+    Query,
+    Request,
+    Response,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
+from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
 from app.core.config import settings
 from app.dedupe import Deduper
 from app.geocode import search as geocode_search
+from app.guidance import Lang, catalogue
 from app.hub import Client, ConnectionQuota, hub
-from app.models.event import Kind, utcnow
+from app.models.event import Event, Kind, utcnow
 from app.nearby import deep_links, windy_webcams
 from app.pipeline import Pipeline
+from app.scope import (
+    SCOPE_PARAMS,
+    Scope,
+    ScopeError,
+    compose,
+    parse_point_scope,
+    parse_scope,
+    split,
+)
 from app.sources.aftershock import AftershockSource
 from app.sources.alerts_world import MeteoalarmSource, WmoCapSource
 from app.sources.base import Source
@@ -41,6 +62,7 @@ from app.sources.regional import (
     IngvSource,
     JmaSource,
 )
+from app.sources.registry import extra_sources
 from app.sources.space import SpaceWeatherSource
 from app.sources.ssn import SsnSource
 from app.sources.tsunami import TsunamiSource
@@ -184,7 +206,23 @@ def build_sources() -> list[Source]:
                 min_level=settings.geonet_volcano_min_level,
             )
         )
+    # Lane C's four sources (IMO quakes and volcanoes, JMA volcanic warnings,
+    # NCS India) carry their own SOS_ settings in the registry.
+    built.extend(extra_sources())
     return built
+
+
+def tick_message() -> dict:
+    """The freshness proof: server clock, store stats, every source's health."""
+    return {
+        "type": "tick",
+        "server_time": utcnow().isoformat(),
+        "stats": store.stats(),
+        "sources": [
+            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+        ],
+        "clients": hub.client_count,
+    }
 
 
 async def heartbeat() -> None:
@@ -199,18 +237,7 @@ async def heartbeat() -> None:
         try:
             if not hub.client_count:
                 continue
-            await hub.broadcast(
-                {
-                    "type": "tick",
-                    "server_time": utcnow().isoformat(),
-                    "stats": store.stats(),
-                    "sources": [
-                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
-                        for s in sources
-                    ],
-                    "clients": hub.client_count,
-                }
-            )
+            await hub.broadcast(tick_message())
         except Exception as exc:
             log.warning("heartbeat: %s", exc)
 
@@ -310,6 +337,10 @@ async def lifespan(app: FastAPI):
         log.warning("backfill failed (%s), cold start", exc)
     finally:
         pipeline.quiet = False
+    # The journal and the backfill went in without a message. The change log
+    # must still know what they look like, or the first revision of each one
+    # could not tell whether a polling client held it.
+    hub.changelog.seed(store.recent(limit=settings.ring_size))
 
     # 2. start the ingesters + the heartbeat
     # a source must be able to WITHDRAW an event, not only publish one: a
@@ -387,8 +418,111 @@ async def readyz(response: Response) -> dict:
     }
 
 
-@app.get("/api/events")
+# ------------------------------------------------------------ API v2 contract
+#
+# Everything below is ADDITIVE. A request without any of the new parameters
+# gets the body it always got. The native app relies on three things here:
+# a zone scope (the same object the websocket uses, so polling and listening
+# agree), a cursor (a 15-minute poll on mobile data must not re-read 300
+# events to learn that two changed), and an ETag (so that poll costs a 304
+# when nothing changed).
+
+API_VERSION = 2
+FEATURES = [
+    "ws_zones",  # /ws?zones=&min_severity=&kinds=&unplaced=
+    "ws_out_of_scope",  # a held event leaving the scope arrives as purge reason=out_of_scope
+    "ws_error",  # bad /ws params: one `error` message, then close 1008
+    "snapshot_pinned",  # with chunks=1 (and v2 REST full reads): latest N + every pinned event
+    "events_zone",  # /api/events?lat=&lon=&radius_km= (and the ws scope params)
+    "events_cursor",  # /api/events?since=<cursor> -> events, removed, cursor, reset
+    "events_etag",  # ETag / If-None-Match -> 304 on every v2 read
+    "guidance",  # /api/guidance?lang=en|fr|es|ja|id
+    "escalated",  # `update` messages may carry escalated: true, forwarded untouched
+    "snapshot_chunked",  # /ws?chunks=1: snapshot + `more`, then snapshot_more chunks
+]
+
+
+def _refuse(exc: ScopeError) -> HTTPException:
+    return HTTPException(status_code=400, detail={"code": exc.code, "reason": exc.reason})
+
+
+def _passes(
+    event: Event,
+    kind: str | None,
+    min_magnitude: float | None,
+    after: datetime | None,
+    primary_only: bool,
+) -> bool:
+    """The `/api/events` base filters, asked of ONE event. Mirrors
+    `EventStore.recent`, which applies them to the whole ring: a cursor
+    delta looks events up by id and must apply the same rules."""
+    if kind and event.kind.value != kind:
+        return False
+    if min_magnitude is not None and (event.magnitude or 0) < min_magnitude:
+        return False
+    if after and event.time < after:
+        return False
+    return not (primary_only and event.cluster_id and event.cluster_id != event.id)
+
+
+def _was_in(
+    touched: Touched,
+    scope: Scope | None,
+    kind: str | None,
+    min_magnitude: float | None,
+    primary_only: bool,
+) -> bool:
+    """Could the client have held this event at its cursor?
+
+    Errs toward yes: a removal the client did not need costs it nothing, a
+    removal it needed and did not get is a cancelled alert left on its
+    screen. The `hours` window is not applied -- an event ageing out of it is
+    not a change."""
+    if touched.before == NEW:
+        return False
+    prev = touched.prev
+    if touched.before == UNKNOWN or prev is None:
+        return True
+    if kind and prev.kind != kind:
+        return False
+    if min_magnitude is not None and (prev.magnitude or 0) < min_magnitude:
+        return False
+    if primary_only and not prev.primary:
+        return False
+    return scope is None or scope.matches_fields(
+        prev.lat, prev.lon, prev.severity, prev.kind, prev.country_code, prev.bbox
+    )
+
+
+def _etag(events: list[Event], removed: list[str], reset: bool) -> str:
+    """Identity of the RESULT, not of the response: `server_time` changes on
+    every call, the cursor on every change anywhere on the planet, and
+    `last_seen` on every poll of an unchanged alert, so none belongs here.
+    What does: each event's id and revision (bumped by the store on every
+    real change), the removals, and whether this is a full read."""
+    digest = hashlib.sha1(b"full" if reset else b"delta")
+    for event in events:
+        digest.update(f"\n{event.id}|{event.revision}|{event.updated_at}".encode())
+    digest.update(("\n-" + ",".join(sorted(removed))).encode())
+    return f'"{digest.hexdigest()[:20]}"'
+
+
+def _matches_if_none_match(header: str | None, etag: str) -> bool:
+    if not header:
+        return False
+    for candidate in header.split(","):
+        tag = candidate.strip()
+        # a proxy that compresses the body is allowed to weaken the tag
+        if tag.startswith("W/"):
+            tag = tag[2:]
+        if tag == "*" or tag == etag:
+            return True
+    return False
+
+
+@app.get("/api/events", response_model=None)
 async def api_events(
+    request: Request,
     limit: int = Query(300, ge=1, le=2000),
     # A typo in `kind` used to return an empty list, which on this product reads
     # as "nothing is happening" -- the worst possible answer to a bad question.
@@ -396,20 +530,138 @@ async def api_events(
     min_magnitude: float | None = Query(None, ge=0, le=12),
     hours: float | None = Query(None, ge=0.01, le=720),
     primary_only: bool = True,
-) -> dict:
-    since = utcnow() - timedelta(hours=hours) if hours else None
-    events = store.recent(
-        limit=limit,
-        kind=kind.value if kind else None,
-        min_magnitude=min_magnitude,
-        since=since,
-        primary_only=primary_only,
-    )
-    return {
+    # --- v2: one zone as three numbers (all three or none); ranges are
+    # checked by the scope parser so REST and websocket refuse identically
+    lat: float | None = None,
+    lon: float | None = None,
+    radius_km: float | None = None,
+    # ... or the exact websocket scope parameters
+    zones: str | None = Query(None, max_length=400),
+    min_severity: str | None = Query(None, max_length=16),
+    kinds: str | None = Query(None, max_length=200),
+    unplaced: str | None = Query(None, max_length=40),
+    # --- v2: incremental read. Empty = "everything, and give me a cursor".
+    since: str | None = Query(None, max_length=40),
+) -> dict | Response:
+    try:
+        point = parse_point_scope(lat, lon, radius_km)
+        if point:
+            zones = f"{point};{zones}" if zones else point
+        scope = parse_scope(
+            {"zones": zones, "min_severity": min_severity, "kinds": kinds, "unplaced": unplaced}
+        )
+    except ScopeError as exc:
+        raise _refuse(exc) from None
+
+    after = utcnow() - timedelta(hours=hours) if hours else None
+    kind_value = kind.value if kind else None
+
+    if scope is None and since is None:
+        # the legacy request, answered exactly as before -- no ETag either: a
+        # browser revalidating it would hand the page a cached `server_time`,
+        # and the clock skew every age on screen is computed from
+        legacy = store.recent(
+            limit=limit,
+            kind=kind_value,
+            min_magnitude=min_magnitude,
+            since=after,
+            primary_only=primary_only,
+        )
+        return {
+            "count": len(legacy),
+            "server_time": utcnow().isoformat(),
+            "events": [e.public() for e in legacy],
+        }
+
+    if since and not ChangeLog.well_formed(since):
+        raise _refuse(ScopeError("bad_since", "since is a cursor returned by this endpoint"))
+
+    # The cursor is minted BEFORE the store is read. A change landing between
+    # the two is then both in this body and in the next delta -- a harmless
+    # repeat. The other order would lose it.
+    next_cursor = hub.changelog.cursor()
+    reset_reason: str | None = "no_cursor"
+    events: list[Event] = []
+    removed: list[str] = []
+    placed = None
+
+    if since:
+        delta = hub.changelog.since(since)
+        reset_reason = delta.reset
+        if reset_reason is None:
+            for touched in delta.touched:
+                current = None if touched.removed else store.get(touched.event_id)
+                if (
+                    current is not None
+                    and _passes(current, kind_value, min_magnitude, after, primary_only)
+                    and (scope is None or scope.matches(current))
+                ):
+                    events.append(current)
+                elif _was_in(touched, scope, kind_value, min_magnitude, primary_only):
+                    # gone, filtered out, or out of the scope: for the client
+                    # these are all the same thing -- drop what you hold
+                    removed.append(touched.event_id)
+            if len(events) > limit:
+                # Cut, a delta would silently lose changes. A full read is
+                # what the client would have to do anyway.
+                reset_reason, events, removed = "too_many_changes", [], []
+            elif not events and not removed:
+                # Nothing for THIS client. Handing its own cursor back keeps
+                # the next poll's URL identical, so any HTTP cache revalidates
+                # it and gets a 304 instead of an empty 200.
+                next_cursor = since
+            events.sort(key=lambda e: e.time, reverse=True)
+
+    if reset_reason is not None:
+        candidates = store.recent(
+            limit=settings.ring_size,
+            kind=kind_value,
+            min_magnitude=min_magnitude,
+            since=after,
+            primary_only=primary_only,
+        )
+        # same composition as the websocket snapshot, so the poll fallback
+        # and the socket cannot disagree about what is current
+        events, placed = compose(candidates, limit, scope)
+
+    etag = _etag(events, removed, reset_reason is not None)
+    # `no-cache` = store it, but always ask before reusing it: a cache must
+    # never serve an emergency feed without checking it is still current
+    headers = {"ETag": etag, "Cache-Control": "no-cache"}
+    if _matches_if_none_match(request.headers.get("if-none-match"), etag):
+        return Response(status_code=304, headers=headers)
+
+    body: dict = {
         "count": len(events),
         "server_time": utcnow().isoformat(),
         "events": [e.public() for e in events],
+        "cursor": next_cursor,
+        "reset": reset_reason is not None,
+        "reset_reason": reset_reason,
+        "removed": removed,
+        "scope": scope.public() if scope is not None else None,
+        # what a zoned full read could not place (see app/scope.py); null on
+        # a delta, where nothing was counted
+        "unplaced": placed.public() if placed is not None and scope and scope.zoned else None,
     }
+    return JSONResponse(body, headers=headers)
+
+
+@app.get("/api/version")
+async def api_version() -> dict:
+    return {"api": API_VERSION, "features": FEATURES, "app": app.version}
+
+
+@app.get("/api/guidance")
+async def api_guidance(lang: Lang = Lang.EN) -> dict:
+    """What to do before, during and after each kind of hazard, in the
+    requested language, every line carrying the official page it
+    paraphrases. Loaded once from `app/data/guidance.json`."""
+    try:
+        return catalogue().for_language(lang)
+    except (OSError, ValueError) as exc:
+        log.error("guidance unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail="guidance catalogue unavailable") from None
 
 
 # MIND the order: the `:path` converter swallows slashes, so the generic
@@ -477,8 +729,75 @@ async def api_sources() -> dict:
 # ----------------------------------------------------------------------- websocket
 
 
+WS_QUERY_MAX = 2000
+WS_PARAMS = (*SCOPE_PARAMS, "chunks")
+# `chunks=1`: the snapshot a chunk-aware client opts into. Without it, the
+# snapshot is the rule every client had before v2 (latest `snapshot_size`
+# primaries, no pinning, no `more`): web builds from before chunking THROW on
+# an unknown frame, and the installed macOS agents are old. With it, the
+# composed snapshot (latest + every pinned event) goes out as `snapshot` +
+# `snapshot_more` chunks, none of them long on a slow link.
+# Chosen by measurement on live data (tasks/todo.md, lane B, chunking): with
+# permessage-deflate the 32 KB JSON budget gave messages of at most 6.0 KiB
+# on the wire, half the 12 KiB ceiling, so a day that compresses twice as
+# badly still fits.
+SNAPSHOT_CHUNK_EVENTS = 40
+SNAPSHOT_CHUNK_BYTES = 32_000
+
+
+def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
+    """The socket's scope and whether it takes a chunked snapshot. Strict on
+    purpose: an unknown parameter is a typo (`zone=` for `zones=`), and a
+    client that misspelled its zone and silently got the whole planet would
+    take every alert it receives for a local one."""
+    params = ws.query_params
+    if len(ws.url.query) > WS_QUERY_MAX:
+        raise ScopeError("too_long", f"query string longer than {WS_QUERY_MAX} characters")
+    unknown = sorted(set(params.keys()) - set(WS_PARAMS))
+    if unknown:
+        raise ScopeError(
+            "unknown_param",
+            f"unknown parameter(s): {', '.join(unknown)} (accepted: {', '.join(WS_PARAMS)})",
+        )
+    for key in params:
+        if len(params.getlist(key)) > 1:
+            raise ScopeError(f"bad_{key}", f"{key} given more than once")
+    chunks = params.get("chunks")
+    if chunks is not None and chunks != "1":
+        raise ScopeError("bad_chunks", f"chunks only takes 1 -- got {chunks!r}")
+    return parse_scope({k: params.get(k) for k in SCOPE_PARAMS}), chunks == "1"
+
+
+async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
+    """Accept, say why, close. Closing before the handshake would reach the
+    client as a bare HTTP 403 with no reason, and a socket accepted and then
+    left silent is exactly what the freshness rule forbids."""
+    try:
+        await ws.accept()
+        await ws.send_text(
+            json.dumps(
+                {
+                    "type": "error",
+                    "code": exc.code,
+                    "reason": exc.reason,
+                    "server_time": utcnow().isoformat(),
+                }
+            )
+        )
+        await ws.close(code=1008, reason=exc.code)  # 1008 = policy violation
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
+    try:
+        scope, chunked = ws_params(ws)
+    except ScopeError as refused:
+        log.info("websocket refused: %s (%s)", refused.code, refused.reason)
+        await refuse_ws(ws, refused)
+        return
+
     # Refuse BEFORE accepting: an accepted connection has already cost a
     # snapshot, and refusing after would be the expensive half of the work we
     # are declining to do.
@@ -489,26 +808,60 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         return
 
     await ws.accept()
-    client = Client(uuid.uuid4().hex[:8])
+    client = Client(uuid.uuid4().hex[:8], scope)
     await hub.register(client)
 
     try:
-        snapshot = store.recent(limit=settings.snapshot_size, primary_only=True)
-        await ws.send_text(
-            json.dumps(
-                {
-                    "type": "snapshot",
-                    "server_time": utcnow().isoformat(),
-                    "events": [e.public() for e in snapshot],
-                    "stats": store.stats(),
-                    "sources": [
-                        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)}
-                        for s in sources
-                    ],
-                },
-                default=str,
-            )
+        # Composed and remembered with no await in between, and after the
+        # client is registered: every broadcast from here on is narrowed
+        # against a held set that already contains the snapshot, so a
+        # revision or a withdrawal of a snapshot event cannot slip past it.
+        snapshot, placed = compose(
+            store.recent(limit=settings.ring_size, primary_only=True),
+            settings.snapshot_size,
+            scope,
+            pin=chunked,
         )
+        if scope is not None:
+            # every chunked id too: a chunk still in flight is already held
+            for event in snapshot:
+                client.hold(event.id)
+        publics = [e.public() for e in snapshot]
+        chunks = (
+            split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
+        )
+        remaining = len(publics) - len(chunks[0])
+        message: dict = {
+            "type": "snapshot",
+            "server_time": utcnow().isoformat(),
+            "events": chunks[0],
+            "stats": store.stats(),
+            "sources": [
+                {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+            ],
+        }
+        if chunked:
+            message["more"] = remaining
+        if scope is not None:
+            message["scope"] = scope.public()
+            message["unplaced"] = placed.public()
+        await ws.send_text(json.dumps(message, default=str))
+        # The rest of the snapshot, before the pump below starts: no queued
+        # delta can overtake a chunk, so a revision always lands on top of
+        # the version it revises.
+        for chunk in chunks[1:]:
+            remaining -= len(chunk)
+            await ws.send_text(
+                json.dumps(
+                    {
+                        "type": "snapshot_more",
+                        "events": chunk,
+                        "remaining": remaining,
+                        "server_time": utcnow().isoformat(),
+                    },
+                    default=str,
+                )
+            )
 
         async def pump() -> None:
             getter = asyncio.ensure_future(client.queue.get())
