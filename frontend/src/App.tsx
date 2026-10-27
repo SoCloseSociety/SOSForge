@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { filterEvents, useStore } from "./store";
 import { emptyReason } from "./emptyReason";
-import { criticalEvents, isCritical } from "./critical";
+import { criticalEvents, inForce, isCritical } from "./critical";
 import { byRelevance } from "./relevance";
 import { connectLive } from "./live";
 import { syncDeepLink } from "./deeplink";
@@ -299,7 +299,12 @@ export default function App() {
   const filtered = useMemo(
     () =>
       byRelevance(
-        filterEvents(events, filters, bucket * 10_000, { keepOngoing: scoped }),
+        filterEvents(
+          events,
+          filters,
+          bucket * 10_000,
+          scoped ? { keep: (e) => inForce(e, bucket * 10_000) || isCritical(e, bucket * 10_000) } : {},
+        ),
         bucket * 10_000,
       ),
     [events, filters, bucket, scoped],
@@ -323,23 +328,26 @@ export default function App() {
     if (!center) return { severeElsewhere: 0, unlocated: 0 };
     const at = bucket * 10_000;
     const cutoff = windowMinutes > 0 ? at - windowMinutes * 60_000 : null;
-    // in force, or within the window, or named by the banner
-    const inForce =
+    // within the window, or in force, or named by the banner
+    const counted =
       cutoff === null
         ? events
-        : events.filter((e) => e.ongoing || Date.parse(e.time) >= cutoff || isCritical(e, at));
-    return splitByScope(inForce, center, countries);
+        : events.filter((e) => Date.parse(e.time) >= cutoff || inForce(e, at) || isCritical(e, at));
+    return splitByScope(counted, center, countries);
   }, [events, windowMinutes, bucket, center, countries]);
 
   // Nothing within reach of the place: said honestly, AND the nearest recent
   // events with their distance instead of an empty list.
-  const nearest = useMemo(
-    () =>
-      center && visible.length === 0 && filtered.length > 0 && remaining === 0
-        ? nearestEvents(filtered, center)
-        : [],
-    [center, visible.length, filtered, remaining],
-  );
+  // The fallback keeps to the window it names ("nothing ... in this
+  // window"): what the scoped list keeps beyond it (alerts in force, what
+  // the banner names) is about THIS place, not a ranking of every alert
+  // running on the planet by distance (recheck of PR #5).
+  const nearest = useMemo(() => {
+    if (!center || visible.length > 0 || filtered.length === 0 || remaining > 0) return [];
+    const cutoff = windowMinutes > 0 ? bucket * 10_000 - windowMinutes * 60_000 : null;
+    const inWindow = cutoff === null ? filtered : filtered.filter((e) => Date.parse(e.time) >= cutoff);
+    return nearestEvents(inWindow, center);
+  }, [center, visible.length, filtered, remaining, windowMinutes, bucket]);
 
   // The camera follows the scope: a regional view on the reader, the world
   // otherwise. Moved again only when the reader moved far (50 km): a reader

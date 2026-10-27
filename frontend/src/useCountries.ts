@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { countriesAt, countriesNow } from './countries'
+import { OVERSEAS_PARENT, countriesAt, countriesNow } from './countries'
 
 /** The countries of the point the feed is around (see countries.ts), or
  * null while they are not known: the table still loading, or failed to.
@@ -39,6 +39,11 @@ export function useCountries(
     const found = loaded ? (countriesNow(lat, lon) ?? null) : null
     const code = known?.toUpperCase() ?? null
     if (!code) return found
+    // the geocoder's "FR" for a place the table puts in Reunion is the parent
+    // state, not the place's own warning area: the overseas code alone stands
+    if (found?.some((c) => OVERSEAS_PARENT[c] === code)) return found
+    // a state with territories waits for the table: "FR" alone could be Reunion
+    if (found === null && Object.values(OVERSEAS_PARENT).includes(code)) return null
     return found ? [...new Set([...found, code])].sort() : [code]
   }, [key, loaded, known])
 }

@@ -735,16 +735,17 @@ export function filterEvents(
   events: SosEvent[],
   filters: Filters,
   now: number,
-  /** an alert still IN FORCE passes the window whatever its onset: the
-   * scoped views (Near me, a place) ask for it -- a severe WMO storm for
-   * Guayas, issued two days ago and in force, was missing 45 km from the
-   * reader under the 24 h window (final review of PR #5). The world view
-   * keeps the window strict: there, it would flood "Live" with every
-   * warning running on the planet. */
-  options: { keepOngoing?: boolean } = {},
+  /** What passes the window whatever its onset. The scoped views (Near me,
+   * a place) keep an alert still IN FORCE and what the banner names: a
+   * severe WMO storm for Guayas, issued two days ago and in force, was
+   * missing 45 km from the reader under the 24 h window, and Padang under
+   * the Live window read "Nothing in this window" below "TSUNAMI ALERT"
+   * (reviews of PR #5). The world view keeps the window strict: there, it
+   * would flood "Live" with every warning running on the planet. */
+  options: { keep?: (event: SosEvent) => boolean } = {},
 ): SosEvent[] {
   const { kinds, minMagnitude, windowMinutes, query } = filters;
-  const keepOngoing = options.keepOngoing === true;
+  const keep = options.keep;
   const minRank = SEVERITY_RANK[filters.minSeverity ?? "info"];
   const cutoff = windowMinutes > 0 ? now - windowMinutes * 60_000 : null;
   const needle = query.trim().toLowerCase();
@@ -756,7 +757,7 @@ export function filterEvents(
       if (!haystack.toLowerCase().includes(needle)) return false;
     }
     // window first: it's what separates live from historical
-    if (cutoff !== null && Date.parse(event.time) < cutoff && !(keepOngoing && event.ongoing)) return false;
+    if (cutoff !== null && Date.parse(event.time) < cutoff && !keep?.(event)) return false;
     if (!kinds.has(event.kind)) return false;
     // a tsunami flag is never filtered away by rank: it is the one alert
     // whose label can lag behind the danger

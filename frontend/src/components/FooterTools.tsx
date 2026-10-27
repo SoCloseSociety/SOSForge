@@ -132,14 +132,24 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                 <ChunkBoundary
                   key={attempt}
                   fallback={(error) => (
-                    <div className="climate-dialog-wait" role="alert">
-                      <p>{t('climate.failed')}</p>
-                      <p>
-                        <code>{error.message}</code>
+                    // A plain sentence first. After a deploy the old chunk is a
+                    // 404 that no retry can fetch: reloading is what works. The
+                    // raw text (an unbreakable asset URL that ran past a 280 px
+                    // card) waits behind "Show more" (recheck of PR #5).
+                    <div className="climate-dialog-wait climate-failed" role="alert">
+                      <p>{t('climate.failed.reload')}</p>
+                      <p className="climate-failed-actions">
+                        <button type="button" className="btn btn-secondary" onClick={() => location.reload()}>
+                          {t('climate.reload')}
+                        </button>
+                        <button type="button" className="btn btn-quiet" onClick={() => setAttempt((n) => n + 1)}>
+                          {t('climate.retry')}
+                        </button>
                       </p>
-                      <button type="button" className="btn btn-secondary" onClick={() => setAttempt((n) => n + 1)}>
-                        {t('climate.retry')}
-                      </button>
+                      <details className="climate-failed-more">
+                        <summary>{t('more.show')}</summary>
+                        <code>{error.message}</code>
+                      </details>
                     </div>
                   )}
                 >
@@ -236,6 +246,9 @@ export function OfflineMapButton() {
   const [manual] = useState(constrained)
   const lastWord = useRef(0)
   const askRef = useRef<() => void>(() => undefined)
+  /** One status question in flight at most: each one re-sizes (HEAD) every
+   * file still missing. Cleared by the answer, or after STALL_MS without one. */
+  const inFlight = useRef(0)
 
   useEffect(() => {
     const worker = navigator.serviceWorker
@@ -244,10 +257,13 @@ export function OfflineMapButton() {
     const ask = () => {
       const controller = worker.controller
       if (!controller) return
+      if (inFlight.current && Date.now() - inFlight.current < STALL_MS) return
+      inFlight.current = Date.now()
       setAsked(true)
       const channel = new MessageChannel()
       channel.port1.onmessage = (event) => {
         channel.port1.close() // one question, one answer
+        inFlight.current = 0
         if (!alive) return
         // an error reply, or a shape we do not know: no button, no claim
         const next = isStatus(event.data) ? event.data : null
@@ -299,52 +315,63 @@ export function OfflineMapButton() {
     }
   }, [ready, manual])
 
-  // a save that stops talking is asked how it stands
+  // A save that stops talking is asked how it stands -- not on Save-Data or
+  // 2G, where only what the reader asks is asked: there, pressing the button
+  // while it says "Saving" is the question (recheck of PR #5).
   const saving = phase.kind === 'saving' || (phase.kind === 'idle' && !!status?.saving)
   useEffect(() => {
-    if (!saving) return
+    if (!saving || manual) return
     const timer = window.setInterval(() => {
       if (Date.now() - lastWord.current >= STALL_MS) askRef.current()
     }, STALL_MS)
     return () => window.clearInterval(timer)
-  }, [saving])
+  }, [saving, manual])
 
   const save = () => {
-    if (phase.kind === 'saving' || phase.kind === 'saved') return
+    if (manual && (!asked || status === null)) {
+      askRef.current()
+      return
+    }
+    if (phase.kind === 'saved' || status?.saved) return
+    if (phase.kind === 'saving' || status?.saving) {
+      if (manual) askRef.current()
+      return
+    }
     lastWord.current = Date.now()
     setPhase({ kind: 'saving', done: 0, total: status?.missingFiles ?? 0 })
     navigator.serviceWorker?.controller?.postMessage({ type: 'sosforge:basemap-save' })
   }
 
   const controlled = !!navigator.serviceWorker?.controller
-  // Save-Data / 2G: nothing is asked by itself; the button asks first, then
-  // offers the measured size
-  if (manual && !asked) {
-    return controlled ? (
-      <button type="button" className="footer-tool" onClick={() => askRef.current()}>
-        <span aria-hidden="true">⤓</span> {t('offline.save.nosize')}
-      </button>
-    ) : null
-  }
-  if (phase.kind !== 'saved' && (!status || status.saved)) return null
+  // Save-Data / 2G: nothing is asked by itself; the SAME button asks first,
+  // then offers the measured size -- swapped for another, it took the focus
+  // with it (recheck of PR #5). Asked there and found saved, it says so
+  // instead of vanishing under the reader's finger.
+  // (and while that first answer is on its way: unmounted then, the button
+  // dropped the focus between the press and the reply)
+  const waiting = manual && (!asked || status === null)
+  const savedNow = phase.kind === 'saved' || (manual && asked && !!status?.saved)
+  if (waiting && !controlled) return null
+  if (!waiting && !savedNow && (!status || status.saved)) return null
 
-  const label =
-    phase.kind === 'saving'
+  const label = waiting
+    ? t('offline.save.nosize')
+    : phase.kind === 'saving'
       ? phase.done > 0
         ? t('offline.progress', { done: phase.done, total: phase.total })
         : t('offline.saving')
-      : phase.kind === 'saved'
+      : savedNow
         ? t('offline.saved')
         : status?.saving
           ? t('offline.saving')
           : status
             ? saveLabel(t, status)
             : ''
-  const busy = phase.kind === 'saving' || phase.kind === 'saved' || (phase.kind === 'idle' && !!status?.saving)
+  const busy = !waiting && (phase.kind === 'saving' || savedNow || (phase.kind === 'idle' && !!status?.saving))
   const said =
     phase.kind === 'saving'
       ? t('offline.saving')
-      : phase.kind === 'saved'
+      : savedNow
         ? t('offline.saved')
         : phase.kind === 'failed'
           ? t('offline.failed', { failed: phase.failed })
