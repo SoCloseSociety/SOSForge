@@ -2,8 +2,15 @@
 
 - `weather_now`: the nearest METAR station of 50 km or less whose report is
   3 h old or less, from AWC's global cache file (one read every 5 minutes
-  serves every place). Wind, gust, visibility and QNH from the raw report
-  (`metar.py` says why the CSV columns are lossy).
+  serves every place). The file holds only its last 70 to 80 minutes of
+  reports (measured 15:24-16:32 at 16:34Z): read alone, the 3 h window
+  could never be reached, and Ko Samui's VTSM, 7 km away and reporting
+  hourly, was "no station" 90 minutes after its 15:00Z report. So every
+  read is MERGED into the reports already held (newest per station, none
+  past 3 h), and the index says since when its cover is unbroken: after a
+  restart, "no station" names that hour instead of claiming 3 h. Wind,
+  gust, visibility and QNH from the raw report (`metar.py` says why the CSV
+  columns are lossy).
 - `forecast_*`: one MET Norway Locationforecast `complete` read per 0.01 deg
   point, revalidated with If-Modified-Since, fresh until MET's `Expires`.
   MET's first step can be the PAST hour (10:00Z in a body fetched at
@@ -116,6 +123,41 @@ class MetarIndex:
     cells: dict[tuple[int, int], list[Station]]
     newest: datetime | None
     rows: int
+    # every report from here on is held: the oldest one of the first file
+    # read, carried across merges while each read overlaps the last
+    since: datetime | None = None
+
+
+def _index(latest: dict[str, Station], rows: int, since: datetime | None) -> MetarIndex:
+    cells: dict[tuple[int, int], list[Station]] = defaultdict(list)
+    for station in latest.values():
+        cells[(math.floor(station.lat), math.floor(station.lon))].append(station)
+    newest = max((s.time for s in latest.values()), default=None)
+    return MetarIndex(dict(cells), newest, rows, since)
+
+
+def merge_metar(held: MetarIndex | None, fresh: MetarIndex) -> MetarIndex:
+    """The fresh file over the reports already held: the newest report per
+    station, none older than STATION_MAX_AGE before the newest one. A file
+    that does not reach back to the last one held (the reads failed for
+    longer than the file's window) starts the cover over."""
+    if (
+        held is None
+        or held.newest is None
+        or fresh.newest is None
+        or fresh.since is None
+        or held.newest < fresh.since
+    ):
+        return fresh
+    horizon = fresh.newest - STATION_MAX_AGE
+    latest = {s.icao: s for cell in held.cells.values() for s in cell if s.time >= horizon}
+    for cell in fresh.cells.values():
+        for station in cell:
+            kept = latest.get(station.icao)
+            if kept is None or station.time > kept.time:
+                latest[station.icao] = station
+    since = max(held.since or fresh.since, horizon)
+    return _index(latest, fresh.rows, since)
 
 
 def parse_metar_cache(gz: bytes) -> MetarIndex:
@@ -165,11 +207,7 @@ def parse_metar_cache(gz: bytes) -> MetarIndex:
         held = latest.get(station.icao)
         if held is None or station.time > held.time:
             latest[station.icao] = station
-    cells: dict[tuple[int, int], list[Station]] = defaultdict(list)
-    for station in latest.values():
-        cells[(math.floor(station.lat), math.floor(station.lon))].append(station)
-    newest = max((s.time for s in latest.values()), default=None)
-    return MetarIndex(dict(cells), newest, rows)
+    return _index(latest, rows, min((s.time for s in latest.values()), default=None))
 
 
 async def _load_metar(previous: fetch.Entry) -> fetch.Loaded:
@@ -177,7 +215,8 @@ async def _load_metar(previous: fetch.Entry) -> fetch.Loaded:
     index = await fetch.in_thread(parse_metar_cache, response.content)
     if not index.rows:
         raise fetch.FetchError("upstream_parse", "the aviationweather.gov cache file has no row")
-    return fetch.Loaded(index, 300.0, size=len(response.content))
+    held = previous.value if isinstance(previous.value, MetarIndex) else None
+    return fetch.Loaded(merge_metar(held, index), 300.0, size=len(response.content))
 
 
 def rh_pct(temp: float, dew: float) -> int:
@@ -208,6 +247,15 @@ def nearest_station(
 
 def now_block(index: MetarIndex, ctx: Context) -> B.Block:
     found = nearest_station(index, ctx.lat, ctx.lon, ctx.now)
+    if found is None and index.since is not None and ctx.now - index.since < STATION_MAX_AGE:
+        since = index.since.strftime("%H:%M")
+        return B.unavailable(
+            SPEC_NOW,
+            "no_station",
+            f"no METAR within {STATION_KM:g} km reported since {since} UTC",
+            km=int(STATION_KM),
+            since=since,
+        )
     if found is None:
         return B.unavailable(
             SPEC_NOW,

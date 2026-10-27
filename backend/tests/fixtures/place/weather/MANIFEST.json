@@ -11,6 +11,22 @@
    "bytes": 564,
    "sha256": "9446585065457958c4dd3f36e2e81074445ccc8f8b7c965a9ea8201d6ccd198e"
   },
+  "awc_metars_cache_global_pair_a.csv.gz": {
+   "bytes": 258847,
+   "sha256": "765e03643c7c61af48f8ada65be3add5bbde75f1ad1c95d352de43cb9730b77f"
+  },
+  "awc_metars_cache_global_pair_a.csv.gz.meta.json": {
+   "bytes": 692,
+   "sha256": "9f89e1168d0d326b9d522e97439ee82237451be7340fde578bbe80757142c7e3"
+  },
+  "awc_metars_cache_global_pair_b.csv.gz": {
+   "bytes": 254779,
+   "sha256": "97b3de4848b8b7d8969252dcd9781160af72cb7ef9a918f17d34feefe7dc08b6"
+  },
+  "awc_metars_cache_global_pair_b.csv.gz.meta.json": {
+   "bytes": 719,
+   "sha256": "fa1d91bca2f194f90a523f629e46094eae905631959e3d846ec57044e75e3d75"
+  },
   "metno_complete_anchorage.json": {
    "bytes": 61302,
    "sha256": "3b8b69b703523e5cf32984cfb86cc42b2cb74e041a3d58f3858c11d6b0090a3d"
@@ -59,5 +75,18 @@
    "bytes": 893,
    "sha256": "fd3cec08d454c6c23c05e0e1b2014e9961aceb7183c430dc3f9542088903cfc4"
   }
- }
+ },
+ "additions": [
+  {
+   "utc": "2026-10-27T17:45:00Z",
+   "source": "fresh captures by the integrator (SOSForge User-Agent), bodies byte for byte",
+   "added": [
+    "awc_metars_cache_global_pair_a.csv.gz",
+    "awc_metars_cache_global_pair_a.csv.gz.meta.json",
+    "awc_metars_cache_global_pair_b.csv.gz",
+    "awc_metars_cache_global_pair_b.csv.gz.meta.json"
+   ],
+   "removed": []
+  }
+ ]
 }

@@ -1,0 +1,9 @@
+{
+ "url": "https://aviationweather.gov/data/cache/metars.cache.csv.gz",
+ "status": 200,
+ "fetched_at_utc": "2026-10-27T17:39:18Z",
+ "raw_headers": "HTTP 200\ndate: Tue, 27 Oct 2026 17:39:18 GMT\ncontent-type: application/octet-stream\ncontent-length: 254779\nconnection: close\nlast-modified: Tue, 27 Oct 2026 17:38:09 GMT\netag: \"6ae0e181-3e33b\"\ncache-control: max-age=30\nx-azure-ref: 20261027T173918Z-r1789d6887b2jtnrhC1KULpfv4000000039g00000000uy30\nx-fd-int-roxy-purgeid: 66959009\nx-cache-info: L2_T2\nx-cache: TCP_REMOTE_HIT\naccept-ranges: bytes\n",
+ "bytes": 254779,
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "one of a pair read about 15 min apart, body byte for byte (gzip)"
+}

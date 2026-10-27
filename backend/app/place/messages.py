@@ -77,6 +77,13 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "この場所の近くで最近報告した観測所はありません。",
         "id": "Tidak ada stasiun di dekat tempat ini yang melapor baru-baru ini.",
     },
+    "no_station:km,since": {
+        "en": "No station within {km} km has reported since {since} UTC.",
+        "fr": "Aucune station à moins de {km} km n’a transmis depuis {since} UTC.",
+        "es": "Ninguna estación a menos de {km} km ha informado desde las {since} UTC.",
+        "ja": "{km} km 以内に、{since} UTC 以降に報告した観測所はありません。",
+        "id": "Tidak ada stasiun dalam {km} km yang melapor sejak {since} UTC.",
+    },
     "no_station:km,hours": {
         "en": "No station within {km} km has reported in the last {hours} hours.",
         "fr": "Aucune station à moins de {km} km n’a transmis depuis {hours} heures.",
