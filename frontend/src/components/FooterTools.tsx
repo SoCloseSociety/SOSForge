@@ -1,10 +1,11 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../store'
 
 /* Two tools in the footer's credit line, where they cost the first screen
  * nothing: on a phone the live feed keeps the fold (tools/responsive.py),
- * on a wide screen the footer is always in view.
+ * on a wide screen the footer is always in view. The place report's button
+ * (under the scope bar) shares their dialog.
  *
  *  - the climate indicators (lane C2's panel), in a dialog, loaded only
  *    when opened: the panel and its CSS stay out of the first paint, and
@@ -51,9 +52,34 @@ class ChunkBoundary extends Component<
 }
 
 const loadPanel = () => import('./ClimatePanel').then((m) => ({ default: m.ClimatePanel }))
+const loadPlace = () => import('./PlaceReport').then((m) => ({ default: m.PlaceReport }))
 
-/** The climate indicators, behind one button. */
-export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } = {}) {
+/** The words one panel's button and dialog say, as i18n keys. */
+interface PanelWords {
+  title: string
+  close: string
+  loading: string
+  failed: string
+}
+
+/** A panel behind one button, loaded only when opened, in a dialog over
+ * everything (a bottom sheet on a phone): the panel and its CSS stay out of
+ * the first paint, and nothing is fetched for a reader who never looks. */
+function PanelButton<P extends object>({
+  load,
+  panel,
+  words,
+  icon,
+  label,
+  className,
+}: {
+  load: () => Promise<{ default: ComponentType<P> }>
+  panel: P
+  words: PanelWords
+  icon: string
+  label: string
+  className: string
+}) {
   const t = useStore((s) => s.t)
   const [open, setOpen] = useState(false)
   // React.lazy keeps a rejection forever: a retry needs a new one
@@ -99,12 +125,12 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
       <button
         type="button"
         ref={trigger}
-        className="footer-tool"
+        className={className}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <span aria-hidden="true">◔</span> {t('climate.title')}
+        <span aria-hidden="true">{icon}</span> {label}
       </button>
       {open
         ? createPortal(
@@ -115,7 +141,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                 className="climate-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-label={t('climate.title')}
+                aria-label={t(words.title)}
                 tabIndex={-1}
                 onKeyDown={onKeyDown}
               >
@@ -123,7 +149,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                   <button
                     type="button"
                     className="btn btn-quiet btn-icon"
-                    aria-label={t('climate.close')}
+                    aria-label={t(words.close)}
                     onClick={() => setOpen(false)}
                   >
                     ✕
@@ -137,7 +163,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                     // raw text (an unbreakable asset URL that ran past a 280 px
                     // card) waits behind "Show more" (recheck of PR #5).
                     <div className="climate-dialog-wait climate-failed" role="alert">
-                      <p>{t('climate.failed.reload')}</p>
+                      <p>{t(words.failed)}</p>
                       <p className="climate-failed-actions">
                         <button type="button" className="btn btn-secondary" onClick={() => location.reload()}>
                           {t('climate.reload')}
@@ -153,8 +179,8 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                     </div>
                   )}
                 >
-                  <Suspense fallback={<p className="climate-dialog-wait">{t('climate.loading')}</p>}>
-                    <Panel />
+                  <Suspense fallback={<p className="climate-dialog-wait">{t(words.loading)}</p>}>
+                    <Panel {...panel} />
                   </Suspense>
                 </ChunkBoundary>
               </div>
@@ -163,6 +189,68 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
           )
         : null}
     </>
+  )
+}
+
+const CLIMATE_WORDS: PanelWords = {
+  title: 'climate.title',
+  close: 'climate.close',
+  loading: 'climate.loading',
+  failed: 'climate.failed.reload',
+}
+const NO_PROPS = {}
+
+/** The climate indicators, behind one button. */
+export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } = {}) {
+  const t = useStore((s) => s.t)
+  return (
+    <PanelButton
+      load={load}
+      panel={NO_PROPS}
+      words={CLIMATE_WORDS}
+      icon="◔"
+      label={t('climate.title')}
+      className="footer-tool"
+    />
+  )
+}
+
+const PLACE_WORDS: PanelWords = {
+  title: 'place.title',
+  close: 'place.close',
+  loading: 'place.loading',
+  failed: 'place.failed.reload',
+}
+
+/** The place report (weather, sea, wind, air, risks, history) of a place
+ * the reader SEARCHED or CLICKED, behind one button under the scope bar.
+ * Never give it the device position: /api/place sends its point to about
+ * fifteen third parties, and "your location never leaves your device" is
+ * a promise. Inline, the report took about two phone screens and pushed
+ * every live event below the fold; here it costs one row, and it is
+ * fetched only when opened. */
+export function PlaceReportButton({
+  lat,
+  lon,
+  name,
+  load = loadPlace,
+}: {
+  lat: number
+  lon: number
+  name: string
+  load?: typeof loadPlace
+}) {
+  const t = useStore((s) => s.t)
+  const panel = useMemo(() => ({ lat, lon, name }), [lat, lon, name])
+  return (
+    <PanelButton
+      load={load}
+      panel={panel}
+      words={PLACE_WORDS}
+      icon="☁"
+      label={t('place.open', { place: name })}
+      className="place-open"
+    />
   )
 }
 

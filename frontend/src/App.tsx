@@ -24,7 +24,7 @@ import { ActiveFilters, FilterSheet, WindowSwitch } from "./components/FilterShe
 import { ScopeBar } from "./components/ScopeBar";
 import { SourcesBar } from "./components/SourcesBar";
 import { GetAppBanner, GetAppLink } from "./components/GetApp";
-import { ClimateButton, OfflineMapButton } from "./components/FooterTools";
+import { ClimateButton, OfflineMapButton, PlaceReportButton } from "./components/FooterTools";
 import {
   NEAR_RADIUS_KM,
   NEAR_ZOOM,
@@ -546,15 +546,13 @@ export default function App() {
             {isPhone ? null : <WindowSwitch />}
           </div>
           <ScopeBar severeElsewhere={severeElsewhere} unlocated={unlocated} />
-          {/* PLACE REPORT SLOT. <PlaceReport lat lon name /> (weather, sea,
-              wind, air, risk and history for a place) mounts HERE, under the
-              scope bar, ONLY for a place the reader searched or clicked:
-              {showing === "place" && place && <PlaceReport lat={place.lat}
-              lon={place.lon} name={place.name} />}. NEVER with `center`:
-              in Near me `center` is the DEVICE position, and /api/place
-              sends its point to about fifteen third parties, which breaks
-              "your location never leaves your device". Nothing is rendered
-              until it is wired. */}
+          {/* The place report, ONLY for a place the reader searched or
+              clicked. NEVER with `center`: in Near me `center` is the DEVICE
+              position, and /api/place sends its point to about fifteen third
+              parties, which breaks "your location never leaves your device". */}
+          {showing === "place" && place ? (
+            <PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />
+          ) : null}
           <Feed
             events={feedEvents}
             now={now}

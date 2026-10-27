@@ -364,6 +364,9 @@ const fr: Dict = {
   // place report (2026-10-27): PlaceReport panel
   "place.title": "Rapport du lieu",
   "place.loading": "Chargement du rapport du lieu...",
+  "place.open": "Météo, mer, air, risques et historique : {place}",
+  "place.close": "Fermer le rapport du lieu",
+  "place.failed.reload": "Le rapport du lieu n'a pas pu être chargé. Rechargez la page pour obtenir la version à jour.",
   "place.error": "Rapport du lieu indisponible : {reason}",
   "place.error.kept": "Échec de l’actualisation : {reason}. Affichage du rapport envoyé par le serveur le {time}.",
   "place.summary": "{ok} à jour, {unavailable} indisponibles, {na} sans objet",
@@ -977,6 +980,9 @@ const en: Dict = {
   // place report (2026-10-27): PlaceReport panel
   "place.title": "Place report",
   "place.loading": "Loading the place report...",
+  "place.open": "Weather, sea, air, risks and history: {place}",
+  "place.close": "Close the place report",
+  "place.failed.reload": "The place report could not be loaded. Reload the page to get the current version.",
   "place.error": "Place report unavailable: {reason}",
   "place.error.kept": "Refresh failed: {reason}. Showing the report the server sent at {time}.",
   "place.summary": "{ok} up to date, {unavailable} unavailable, {na} not applicable",
@@ -1590,6 +1596,9 @@ const es: Dict = {
   // place report (2026-10-27): PlaceReport panel -- draft, needs a native reader
   "place.title": "Informe del lugar",
   "place.loading": "Cargando el informe del lugar...",
+  "place.open": "Tiempo, mar, aire, riesgos e historial: {place}",
+  "place.close": "Cerrar el informe del lugar",
+  "place.failed.reload": "No se pudo cargar el informe del lugar. Recargue la página para obtener la versión actual.",
   "place.error": "Informe del lugar no disponible: {reason}",
   "place.error.kept": "La actualización falló: {reason}. Se muestra el informe que envió el servidor el {time}.",
   "place.summary": "{ok} al día, {unavailable} no disponibles, {na} no aplicables",
@@ -2201,6 +2210,9 @@ const ja: Dict = {
   // place report (2026-10-27): PlaceReport panel -- draft, needs a native reader
   "place.title": "地点レポート",
   "place.loading": "地点レポートを読み込み中...",
+  "place.open": "天気・海・大気・リスク・履歴：{place}",
+  "place.close": "地点レポートを閉じる",
+  "place.failed.reload": "地点レポートを読み込めませんでした。最新版を取得するにはページを再読み込みしてください。",
   "place.error": "地点レポートを取得できません: {reason}",
   "place.error.kept": "更新に失敗しました: {reason}。サーバーが {time} に送ったレポートを表示しています。",
   "place.summary": "最新 {ok}、取得不可 {unavailable}、対象外 {na}",
@@ -2816,6 +2828,9 @@ const id: Dict = {
   // place report (2026-10-27): PlaceReport panel -- draft, needs a native reader
   "place.title": "Laporan lokasi",
   "place.loading": "Memuat laporan lokasi...",
+  "place.open": "Cuaca, laut, udara, risiko, dan riwayat: {place}",
+  "place.close": "Tutup laporan lokasi",
+  "place.failed.reload": "Laporan lokasi tidak dapat dimuat. Muat ulang halaman untuk mendapatkan versi terbaru.",
   "place.error": "Laporan lokasi tidak tersedia: {reason}",
   "place.error.kept": "Pembaruan gagal: {reason}. Menampilkan laporan yang dikirim server pada {time}.",
   "place.summary": "{ok} terkini, {unavailable} tidak tersedia, {na} tidak berlaku",

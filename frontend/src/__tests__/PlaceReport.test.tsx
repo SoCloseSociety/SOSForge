@@ -1047,10 +1047,11 @@ describe('the request', () => {
 })
 
 describe('where the panel is mounted, and how its tables lay out', () => {
-  it('the App slot says to mount it for a chosen place only, never with the device position', () => {
-    const slot = appSource.slice(appSource.indexOf('PLACE REPORT SLOT'))
-    expect(slot.slice(0, 900)).toContain('showing === "place" && place && <PlaceReport')
-    expect(appSource).not.toMatch(/center\s*&&\s*<PlaceReport/)
+  it('App mounts it for a chosen place only, never with the device position', () => {
+    // the behaviour is in placeMount.test.tsx; this pins the one mount line
+    expect(appSource).toContain('{showing === "place" && place ? (')
+    expect(appSource).toContain('<PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />')
+    expect(appSource).not.toMatch(/<PlaceReport(Button)?\b[^>]*\b(center|here)\b/)
   })
 
   it('tables stack on their SECTION’s width, which is a container', () => {

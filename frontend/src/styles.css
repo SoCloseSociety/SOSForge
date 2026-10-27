@@ -1341,6 +1341,31 @@ a {
   flex: 0 1 auto;
 }
 
+/* The place report's button, one row under the scope bar: the report
+   itself opens in the shared dialog, so the live feed keeps the fold. The
+   label carries the place's name, which can be long: it wraps. */
+.place-open {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-pill);
+  color: var(--t1);
+  font: inherit;
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.place-open:hover {
+  background: var(--surface-panel);
+}
+
 .scope-switch button {
   /* shrinks and wraps its word at 200 % text on a 320 px phone, where two
      fixed buttons ran 19 px past the bar (tools/responsive.py) */
@@ -3039,7 +3064,8 @@ a {
   .source,
   .filter-chip,
   .scope-elsewhere,
-  .footer-tool {
+  .footer-tool,
+  .place-open {
     min-height: 44px;
   }
 
