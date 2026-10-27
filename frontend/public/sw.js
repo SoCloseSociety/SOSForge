@@ -219,7 +219,12 @@ async function precacheBuild() {
  * other navigation, and a navigation is not always a page. */
 async function networkFirstShell(request) {
   try {
-    const response = await fetch(request)
+    // cache: 'no-cache' -- "network first" must mean the SERVER, not the
+    // browser's HTTP cache. A shell served without Cache-Control is cached
+    // heuristically (the four language shells were, until 2026-10-27), and a
+    // plain fetch() then answered from that copy: an old shell, naming
+    // bundles a later deploy removed. Revalidating costs a 304.
+    const response = await fetch(request, { cache: 'no-cache' })
     if (response && response.ok && (response.headers.get('content-type') || '').includes('text/html')) {
       const cache = await caches.open(SHELL_CACHE)
       cache.put(request, response.clone())

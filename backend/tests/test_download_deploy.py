@@ -11,6 +11,7 @@ then the longest prefix, then the regexes in file order unless the prefix is
 from __future__ import annotations
 
 import importlib.util
+import json
 import re
 import sys
 from pathlib import Path
@@ -54,7 +55,20 @@ def directives(body: str) -> list[str]:
     `types {}` (it has no semicolon of its own)."""
     out = ["types {}"] if EMPTY_TYPES.search(body) else []
     body = EMPTY_TYPES.sub("", body)
-    return out + [" ".join(s.split()) for s in body.split(";") if s.strip()]
+    # split on ';' outside quotes: the CSP value is full of them
+    parts, current, quote = [], [], ""
+    for ch in body:
+        if quote:
+            quote = "" if ch == quote else quote
+        elif ch in "\"'":
+            quote = ch
+        elif ch == ";":
+            parts.append("".join(current))
+            current = []
+            continue
+        current.append(ch)
+    parts.append("".join(current))
+    return out + [" ".join(s.split()) for s in parts if s.strip()]
 
 
 def resolve(uri: str) -> tuple[str, str]:
@@ -207,10 +221,94 @@ def test_every_add_header_is_at_server_level():
     included): the file's own rule, kept true by the download block too."""
     for header, body in LOCATIONS:
         assert "add_header" not in body, header
-    server = blocks(CONF, "server")[0][1]
-    assert "add_header Content-Disposition $sos_content_disposition always;" in " ".join(
-        server.split()
-    ).replace(" ;", ";")
+    server = server_directives()
+    assert "add_header Content-Disposition $sos_content_disposition" in server
+    assert "add_header Cache-Control $sos_cache_control" in server
+
+
+def server_directives() -> list[str]:
+    """The server block's own directives, locations removed."""
+    body = blocks(CONF, "server")[0][1]
+    for _, location in LOCATIONS:
+        body = body.replace(location, "")
+    return directives(body)
+
+
+def test_what_describes_the_file_is_not_sent_on_an_error_page():
+    """A 404 for an APK not uploaded yet must not be cacheable for a year,
+    nor offered as an attachment: no `always` on those two. The security
+    headers keep it -- an error page needs its CSP as much as any page."""
+    server = server_directives()
+    for header in ("Cache-Control", "Content-Disposition"):
+        line = next(d for d in server if d.startswith(f"add_header {header} "))
+        assert not line.endswith(" always"), line
+    for header in ("Content-Security-Policy", "X-Content-Type-Options", "Referrer-Policy"):
+        line = next(d for d in server if d.startswith(f"add_header {header} "))
+        assert line.endswith(" always"), line
+
+
+def prerendered_languages() -> list[str]:
+    """What scripts/prerender-langs.mjs writes: one shell per key of seo.json."""
+    seo = json.loads((ROOT / "frontend" / "src" / "seo.json").read_text())
+    return sorted(seo)
+
+
+@pytest.mark.parametrize("uri", ["/index.html", "/download/index.html", "/download/"])
+def test_the_main_shells_are_revalidated(uri):
+    assert map_value("$sos_cache_control", uri) == "no-cache"
+
+
+def test_every_language_shell_is_revalidated():
+    """/fr/ is served as /fr/index.html after the index redirect; it was
+    missing from the map and production sent it with no Cache-Control."""
+    langs = [lang for lang in prerendered_languages() if lang != "en"]
+    assert {"fr", "es", "ja", "id"} <= set(langs)
+    for lang in langs:
+        for uri in (f"/{lang}/index.html", f"/{lang}/"):
+            assert map_value("$sos_cache_control", uri) == "no-cache", uri
+    # and the generic shapes do not swallow what must stay long-cached
+    assert (
+        map_value("$sos_cache_control", "/assets/index-abc.js")
+        == "public, max-age=31536000, immutable"
+    )
+    assert (
+        map_value("$sos_cache_control", "/download/sosforge-v0.1.1.apk")
+        == "public, max-age=31536000, immutable"
+    )
+
+
+PLACE_CARRIERS = (
+    "$request ",
+    '$request"',
+    "$request_uri",
+    "$args",
+    "$query_string",
+    "$arg_",
+    "$http_x_forwarded_for",
+    "$proxy_add_x_forwarded_for",
+    "$http_referer",
+)
+
+
+def test_the_access_log_holds_no_query_string_and_no_visitor_address():
+    """/ws?zones=lat,lon,r and /api/geocode?q=<a street> are someone's
+    places; the stock `main` format logged them next to X-Forwarded-For."""
+    match = re.search(r"log_format\s+sos_private\s+((?:'[^']*'\s*)+);", CONF)
+    assert match, "no sos_private log_format"
+    fmt = "".join(re.findall(r"'([^']*)'", match.group(1)))
+    for carrier in PLACE_CARRIERS:
+        assert carrier not in fmt + " ", carrier
+    assert "$uri$is_args" in fmt
+    logs = [d for d in server_directives() if d.startswith("access_log")]
+    assert logs == ["access_log /var/log/nginx/access.log sos_private"]
+    assert not any("access_log" in body for _, body in LOCATIONS)
+
+
+def test_the_web_container_log_is_bounded():
+    web = COMPOSE[COMPOSE.index("\n  web:") :]
+    assert "driver: json-file" in web
+    assert re.search(r"max-size: '\d+m'", web)
+    assert re.search(r"max-file: '\d+'", web)
 
 
 def test_every_name_the_publisher_writes_is_routed():

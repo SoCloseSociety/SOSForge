@@ -456,6 +456,14 @@ describe('what the worker must leave alone', () => {
     expect((await fetchThrough(`${ORIGIN}/download/`, 'navigate')).response).not.toBe('passthrough')
   })
 
+  it('asks the server, not the HTTP cache, for every shell', async () => {
+    for (const path of ['/', '/fr/', '/ja/', '/download/']) {
+      network.mockClear()
+      await fetchThrough(`${ORIGIN}${path}`, 'navigate')
+      expect(network.mock.calls[0][1], path).toMatchObject({ cache: 'no-cache' })
+    }
+  })
+
   it('does not keep a navigation that is not a page', async () => {
     network.mockImplementation(async (input: Request | string) =>
       Object.defineProperty(new Response('%PDF', { headers: { 'content-type': 'application/pdf' } }), 'url', {
