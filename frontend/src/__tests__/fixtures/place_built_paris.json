@@ -1,0 +1,839 @@
+{
+ "_built_from": {
+  "note": "NOT a dev-server capture: built by place/frontend_capture/build_fixtures.py from verbatim upstream captures (2026-10-27). Blocks without a capture are unavailable/budget. Replace with real /api/place bodies once the backend runs.",
+  "blocks": {
+   "weather_now": [
+    "bodies/awc_metars_cache_global.csv.gz"
+   ],
+   "drought": [
+    "fixtures/risk/gdo_hst_spi_paris.json",
+    "bodies/gdo_hst_smang_paris.json",
+    "fixtures/risk/gdo_hst_rdria_paris.json"
+   ],
+   "history.significant_earthquakes": [
+    "fixtures/history/ncei_earthquakes_paris.json",
+    "fixtures/history/ncei_earthquakes_newest_global.json"
+   ],
+   "alerts_now": [
+    "bodies/sosforge_api_events_zone_paris.json",
+    "bodies/sosforge_api_sources.json"
+   ],
+   "place.coast_km sea.*": [
+    "sea_work/ne/ne_50m_coastline.geojson"
+   ]
+  }
+ },
+ "api": 2,
+ "server_time": "2026-10-27T13:27:30Z",
+ "query": {
+  "lat": 48.86,
+  "lon": 2.35,
+  "radius_km": 300,
+  "lang": "en"
+ },
+ "place": {
+  "country_code": "FR",
+  "country_codes": [
+   "FR"
+  ],
+  "at_sea": false,
+  "coast_km": 150.2
+ },
+ "complete": false,
+ "retry_after_s": 5,
+ "counts": {
+  "ok": 4,
+  "unavailable": 14,
+  "not_applicable": 4
+ },
+ "blocks": {
+  "weather_now": {
+   "status": "ok",
+   "nature": "observation",
+   "as_of": "2026-10-27T13:00:00Z",
+   "as_of_kind": "observed",
+   "stale": false,
+   "max_age_s": 10800,
+   "fetched_at": "2026-10-27T13:25:27Z",
+   "source": {
+    "name": "NOAA Aviation Weather Center, METAR",
+    "url": "https://aviationweather.gov/data/cache/metars.cache.csv.gz",
+    "attribution": "METAR reports relayed by the NOAA/NWS Aviation Weather Center",
+    "licence": "US government work, public domain"
+   },
+   "error": null,
+   "missing": [],
+   "data": {
+    "station": {
+     "icao": "LFPB",
+     "distance_km": 13.2,
+     "elevation_m": 50
+    },
+    "raw": "METAR LFPB 271300Z AUTO 20009KT 160V230 9999 OVC017 16/12 Q1015 BECMG BKN014 BKN022",
+    "temp_c": 16.0,
+    "dewpoint_c": 12.0,
+    "rh_pct": 77,
+    "wind_ms": 4.6,
+    "wind_from_deg": 200,
+    "calm": false,
+    "wind_variable": false,
+    "gust_ms": null,
+    "visibility_km": 10.0,
+    "visibility_at_least": true,
+    "qnh_hpa": 1015,
+    "wx": null,
+    "clouds": [
+     {
+      "cover": "OVC",
+      "base_ft": 1700
+     }
+    ],
+    "flight_category": "MVFR",
+    "derived": [
+     "rh_pct"
+    ]
+   }
+  },
+  "forecast_hourly": {
+   "status": "unavailable",
+   "nature": "forecast",
+   "as_of": null,
+   "as_of_kind": "issued",
+   "stale": false,
+   "max_age_s": 43200,
+   "fetched_at": null,
+   "source": {
+    "name": "MET Norway Locationforecast 2.0",
+    "url": "https://api.met.no/weatherapi/locationforecast/2.0/documentation",
+    "attribution": "Data from MET Norway",
+    "licence": "CC BY 4.0 and NLOD 2.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "forecast_daily": {
+   "status": "unavailable",
+   "nature": "forecast",
+   "as_of": null,
+   "as_of_kind": "issued",
+   "stale": false,
+   "max_age_s": 43200,
+   "fetched_at": null,
+   "source": {
+    "name": "MET Norway Locationforecast 2.0",
+    "url": "https://api.met.no/weatherapi/locationforecast/2.0/documentation",
+    "attribution": "Data from MET Norway",
+    "licence": "CC BY 4.0 and NLOD 2.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "wind": {
+   "status": "unavailable",
+   "nature": "forecast",
+   "as_of": null,
+   "as_of_kind": "issued",
+   "stale": false,
+   "max_age_s": 43200,
+   "fetched_at": null,
+   "source": {
+    "name": "MET Norway Locationforecast 2.0",
+    "url": "https://api.met.no/weatherapi/locationforecast/2.0/documentation",
+    "attribution": "Data from MET Norway",
+    "licence": "CC BY 4.0 and NLOD 2.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "sea.waves": {
+   "status": "not_applicable",
+   "nature": "model",
+   "as_of": null,
+   "as_of_kind": "model_run",
+   "stale": false,
+   "max_age_s": 129600,
+   "fetched_at": null,
+   "source": {
+    "name": "Météo-France MFWAM via Open-Meteo",
+    "url": "https://open-meteo.com/",
+    "attribution": "Weather data by Open-Meteo.com, Météo-France MFWAM wave model",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "inland",
+    "reason": "nearest ocean coastline 150 km (gate 50 km)",
+    "message": "Inland: the nearest ocean coastline is 150 km away."
+   },
+   "missing": [],
+   "data": null
+  },
+  "sea.level": {
+   "status": "not_applicable",
+   "nature": "model",
+   "as_of": null,
+   "as_of_kind": "model_run",
+   "stale": false,
+   "max_age_s": 216000,
+   "fetched_at": null,
+   "source": {
+    "name": "Météo-France SMOC via Open-Meteo",
+    "url": "https://open-meteo.com/",
+    "attribution": "Weather data by Open-Meteo.com, Météo-France SMOC currents and sea level",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "inland",
+    "reason": "nearest ocean coastline 150 km (gate 50 km)",
+    "message": "Inland: the nearest ocean coastline is 150 km away."
+   },
+   "missing": [],
+   "data": null
+  },
+  "sea.temperature": {
+   "status": "not_applicable",
+   "nature": "observation",
+   "as_of": null,
+   "as_of_kind": "valid_for",
+   "stale": false,
+   "max_age_s": 432000,
+   "fetched_at": null,
+   "source": {
+    "name": "NOAA CoastWatch Blended SST",
+    "url": "https://coastwatch.noaa.gov/erddap/griddap/noaacwBLENDEDsstDNDaily.html",
+    "attribution": "NOAA CoastWatch, Geo-Polar Blended sea surface temperature analysis",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "inland",
+    "reason": "nearest ocean coastline 150 km (gate 50 km)",
+    "message": "Inland: the nearest ocean coastline is 150 km away."
+   },
+   "missing": [],
+   "data": null
+  },
+  "sea.buoy": {
+   "status": "not_applicable",
+   "nature": "observation",
+   "as_of": null,
+   "as_of_kind": "observed",
+   "stale": false,
+   "max_age_s": 10800,
+   "fetched_at": null,
+   "source": {
+    "name": "NOAA National Data Buoy Center",
+    "url": "https://www.ndbc.noaa.gov/",
+    "attribution": "NOAA National Data Buoy Center and partner stations",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "inland",
+    "reason": "nearest ocean coastline 150 km (gate 50 km)",
+    "message": "Inland: the nearest ocean coastline is 150 km away."
+   },
+   "missing": [],
+   "data": null
+  },
+  "air": {
+   "status": "unavailable",
+   "nature": "model",
+   "as_of": null,
+   "as_of_kind": "model_run",
+   "stale": false,
+   "max_age_s": 129600,
+   "fetched_at": null,
+   "source": {
+    "name": "CAMS global atmospheric composition via Open-Meteo",
+    "url": "https://open-meteo.com/",
+    "attribution": "Generated using Copernicus Atmosphere Monitoring Service information 2026, via Open-Meteo.com; AQI modified",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "pollen": {
+   "status": "unavailable",
+   "nature": "model",
+   "as_of": null,
+   "as_of_kind": "model_run",
+   "stale": false,
+   "max_age_s": 216000,
+   "fetched_at": null,
+   "source": {
+    "name": "CAMS European air quality via Open-Meteo",
+    "url": "https://open-meteo.com/",
+    "attribution": "Generated using Copernicus Atmosphere Monitoring Service information 2026, via Open-Meteo.com",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "drought": {
+   "status": "ok",
+   "nature": "monitoring",
+   "as_of": "2026-10-01T00:00:00Z",
+   "as_of_kind": "period_start",
+   "stale": false,
+   "max_age_s": 3024000,
+   "fetched_at": "2026-10-27T13:25:35Z",
+   "source": {
+    "name": "Copernicus Global Drought Observatory (JRC)",
+    "url": "https://drought.emergency.copernicus.eu/",
+    "attribution": "Copernicus Emergency Management Service, Global Drought Observatory, JRC",
+    "licence": "CC BY 4.0"
+   },
+   "error": null,
+   "missing": [],
+   "data": {
+    "cell": {
+     "lat": 48.85,
+     "lon": 2.35
+    },
+    "spi_3": {
+     "value": -1.92,
+     "period_start": "2026-10-11",
+     "class": "severely_dry"
+    },
+    "soil_moisture_anomaly": {
+     "value": -3.14,
+     "period_start": "2026-10-11"
+    },
+    "agri_risk": {
+     "class": 2,
+     "label": "medium",
+     "period_start": "2026-10-01"
+    }
+   }
+  },
+  "fire.hotspots": {
+   "status": "unavailable",
+   "nature": "observation",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": 43200,
+   "fetched_at": null,
+   "source": {
+    "name": "NASA FIRMS, VIIRS NOAA-20 and NOAA-21",
+    "url": "https://firms.modaps.eosdis.nasa.gov/",
+    "attribution": "NASA Fire Information for Resource Management System (FIRMS)",
+    "licence": "NASA open data"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "fire.danger": {
+   "status": "unavailable",
+   "nature": "forecast",
+   "as_of": null,
+   "as_of_kind": "valid_for",
+   "stale": false,
+   "max_age_s": 86400,
+   "fetched_at": null,
+   "source": {
+    "name": "GWIS fire danger forecast (ECMWF FWI)",
+    "url": "https://gwis.jrc.ec.europa.eu/",
+    "attribution": "Copernicus Emergency Management Service, GWIS, ECMWF fire weather index",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "risk.water": {
+   "status": "unavailable",
+   "nature": "static",
+   "as_of": null,
+   "as_of_kind": "published",
+   "stale": false,
+   "max_age_s": null,
+   "fetched_at": null,
+   "source": {
+    "name": "WRI Aqueduct 4.0",
+    "url": "https://www.wri.org/aqueduct",
+    "attribution": "World Resources Institute, Aqueduct 4.0 water risk indicators",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "risk.country": {
+   "status": "unavailable",
+   "nature": "static",
+   "as_of": null,
+   "as_of_kind": "published",
+   "stale": false,
+   "max_age_s": 34560000,
+   "fetched_at": null,
+   "source": {
+    "name": "INFORM Risk Index (European Commission JRC)",
+    "url": "https://drmkc.jrc.ec.europa.eu/inform-index",
+    "attribution": "INFORM Risk Index, European Commission Disaster Risk Management Knowledge Centre",
+    "licence": "CC BY 4.0"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "history.earthquakes": {
+   "status": "unavailable",
+   "nature": "catalogue",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": 172800,
+   "fetched_at": null,
+   "source": {
+    "name": "USGS ComCat earthquake catalogue",
+    "url": "https://earthquake.usgs.gov/fdsnws/event/1/",
+    "attribution": "U.S. Geological Survey, ANSS Comprehensive Catalog; distances and decades modified",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "history.significant_earthquakes": {
+   "status": "ok",
+   "nature": "catalogue",
+   "as_of": "2026-10-22T14:33:40Z",
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": null,
+   "fetched_at": "2026-10-27T10:46:21Z",
+   "source": {
+    "name": "NOAA NCEI Significant Earthquake Database",
+    "url": "https://www.ngdc.noaa.gov/hazel/view/hazards/earthquake/search",
+    "attribution": "NOAA National Centers for Environmental Information, Global Significant Earthquake Database",
+    "licence": "US government work, public domain"
+   },
+   "error": null,
+   "missing": [],
+   "data": {
+    "total": 8,
+    "events": [
+     {
+      "date": {
+       "year": 1983,
+       "month": 11,
+       "day": 8
+      },
+      "mag": 5,
+      "vei": null,
+      "name": "BELGIUM",
+      "deaths": 2,
+      "deaths_order": 1,
+      "deaths_total": 2,
+      "deaths_total_order": 1,
+      "damage_musd": 50,
+      "damage_order": 4,
+      "tsunami": false,
+      "distance_km": 297
+     },
+     {
+      "date": {
+       "year": 1580,
+       "month": 4,
+       "day": 6
+      },
+      "mag": 5.8,
+      "vei": null,
+      "name": "UNITED KINGDOM:  DOVER STRAITS",
+      "deaths": null,
+      "deaths_order": 1,
+      "deaths_total": null,
+      "deaths_total_order": 1,
+      "damage_musd": null,
+      "damage_order": 2,
+      "tsunami": true,
+      "distance_km": 250
+     },
+     {
+      "date": {
+       "year": 2007,
+       "month": 4,
+       "day": 28
+      },
+      "mag": 4.6,
+      "vei": null,
+      "name": "UNITED KINGDOM:  ENGLAND:  FOLKESTONE",
+      "deaths": null,
+      "deaths_order": null,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": 60,
+      "damage_order": 4,
+      "tsunami": false,
+      "distance_km": 265
+     },
+     {
+      "date": {
+       "year": 854,
+       "month": null,
+       "day": null
+      },
+      "mag": null,
+      "vei": null,
+      "name": "FRANCE:  CAMBRAI,TOURNAI,MAYENCE",
+      "deaths": null,
+      "deaths_order": null,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": null,
+      "damage_order": 2,
+      "tsunami": false,
+      "distance_km": 148
+     },
+     {
+      "date": {
+       "year": 1286,
+       "month": null,
+       "day": null
+      },
+      "mag": null,
+      "vei": null,
+      "name": "FRANCE:  VANNES",
+      "deaths": null,
+      "deaths_order": null,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": null,
+      "damage_order": 2,
+      "tsunami": false,
+      "distance_km": 163
+     },
+     {
+      "date": {
+       "year": 1593,
+       "month": 4,
+       "day": 8
+      },
+      "mag": null,
+      "vei": null,
+      "name": "FRANCE:  CHINON",
+      "deaths": null,
+      "deaths_order": null,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": null,
+      "damage_order": 2,
+      "tsunami": false,
+      "distance_km": 258
+     },
+     {
+      "date": {
+       "year": 1657,
+       "month": 2,
+       "day": 15
+      },
+      "mag": null,
+      "vei": null,
+      "name": "FRANCE:  SAINTE MAURE",
+      "deaths": null,
+      "deaths_order": 1,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": null,
+      "damage_order": 2,
+      "tsunami": false,
+      "distance_km": 235
+     },
+     {
+      "date": {
+       "year": 1711,
+       "month": 10,
+       "day": 6
+      },
+      "mag": null,
+      "vei": null,
+      "name": "FRANCE:  MONCONTOUR,LOUDUN",
+      "deaths": null,
+      "deaths_order": null,
+      "deaths_total": null,
+      "deaths_total_order": null,
+      "damage_musd": null,
+      "damage_order": 3,
+      "tsunami": false,
+      "distance_km": 266
+     }
+    ]
+   }
+  },
+  "history.tsunamis": {
+   "status": "unavailable",
+   "nature": "catalogue",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": null,
+   "fetched_at": null,
+   "source": {
+    "name": "NOAA NCEI Global Historical Tsunami Database",
+    "url": "https://www.ngdc.noaa.gov/hazel/view/hazards/tsunami/event-search",
+    "attribution": "NOAA National Centers for Environmental Information, Global Historical Tsunami Database",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "history.eruptions": {
+   "status": "unavailable",
+   "nature": "catalogue",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": null,
+   "fetched_at": null,
+   "source": {
+    "name": "NOAA NCEI Significant Volcanic Eruptions Database",
+    "url": "https://www.ngdc.noaa.gov/hazel/view/hazards/volcano/event-search",
+    "attribution": "NOAA National Centers for Environmental Information, Significant Volcanic Eruptions Database",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "history.volcanoes": {
+   "status": "unavailable",
+   "nature": "catalogue",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": null,
+   "fetched_at": null,
+   "source": {
+    "name": "Smithsonian Global Volcanism Program, Volcanoes of the World",
+    "url": "https://volcano.si.edu/",
+    "attribution": "Global Volcanism Program, Smithsonian Institution, Volcanoes of the World v. 5",
+    "licence": "free use with citation"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "history.cyclones": {
+   "status": "unavailable",
+   "nature": "catalogue",
+   "as_of": null,
+   "as_of_kind": "through",
+   "stale": false,
+   "max_age_s": 1209600,
+   "fetched_at": null,
+   "source": {
+    "name": "NOAA IBTrACS v04r01",
+    "url": "https://www.ncei.noaa.gov/products/international-best-track-archive",
+    "attribution": "Knapp et al., International Best Track Archive for Climate Stewardship (IBTrACS) v04r01",
+    "licence": "US government work, public domain"
+   },
+   "error": {
+    "code": "budget",
+    "reason": "budget of 8.0 s spent; the fetch continues and fills the cache",
+    "message": "Still being fetched: this part of the report will appear shortly."
+   },
+   "missing": [],
+   "data": null
+  },
+  "alerts_now": {
+   "status": "ok",
+   "nature": "live",
+   "as_of": "2026-10-27T13:27:30Z",
+   "as_of_kind": "live",
+   "stale": false,
+   "max_age_s": 300,
+   "fetched_at": "2026-10-27T13:27:30Z",
+   "source": {
+    "name": "SOSForge live feed",
+    "url": "https://sosforge.soclose.co/api/sources",
+    "attribution": "SOSForge, merging the official public sources listed in /api/sources",
+    "licence": "per source, see /api/sources"
+   },
+   "error": null,
+   "missing": [],
+   "data": {
+    "radius_km": 300,
+    "total": 3,
+    "events": [
+     {
+      "id": "emsc:20261026_0000284",
+      "source": "emsc",
+      "source_id": "20261026_0000284",
+      "kind": "earthquake",
+      "time": "2026-10-26T21:31:55.409899Z",
+      "received_at": "2026-10-26T21:35:13.532287Z",
+      "updated_at": "2026-10-26T21:35:12.026947Z",
+      "lat": 47.8016,
+      "lon": -0.8185,
+      "depth_km": 5.0,
+      "magnitude": 2.3,
+      "mag_type": "ml",
+      "place": "FRANCE",
+      "region": "FRANCE",
+      "country": null,
+      "country_code": "FR",
+      "severity": "info",
+      "preliminary": false,
+      "intensity_mmi": null,
+      "felt_reports": null,
+      "intensity_cdi": null,
+      "ongoing": false,
+      "expires": null,
+      "tsunami": false,
+      "alert": null,
+      "title": "M 2.3 -- FRANCE",
+      "url": "https://www.seismicportal.eu/eventdetails.html?unid=20261026_0000284",
+      "instruction": null,
+      "description": null,
+      "response_type": null,
+      "wave_eta": null,
+      "wave_eta_site": null,
+      "wave_max_m": null,
+      "wave_max_site": null,
+      "forecast_track": null,
+      "cluster_id": "emsc:20261026_0000284",
+      "revision": 0
+     },
+     {
+      "id": "emsc:20261026_0000147",
+      "source": "emsc",
+      "source_id": "20261026_0000147",
+      "kind": "earthquake",
+      "time": "2026-10-26T11:51:05.945414Z",
+      "received_at": "2026-10-26T11:56:23.946184Z",
+      "updated_at": "2026-10-26T11:56:21.045638Z",
+      "lat": 46.8925,
+      "lon": -0.319,
+      "depth_km": 5.0,
+      "magnitude": 2.3,
+      "mag_type": "ml",
+      "place": "FRANCE",
+      "region": "FRANCE",
+      "country": null,
+      "country_code": "FR",
+      "severity": "info",
+      "preliminary": false,
+      "intensity_mmi": null,
+      "felt_reports": null,
+      "intensity_cdi": null,
+      "ongoing": false,
+      "expires": null,
+      "tsunami": false,
+      "alert": null,
+      "title": "M 2.3 -- FRANCE",
+      "url": "https://www.seismicportal.eu/eventdetails.html?unid=20261026_0000147",
+      "instruction": null,
+      "description": null,
+      "response_type": null,
+      "wave_eta": null,
+      "wave_eta_site": null,
+      "wave_max_m": null,
+      "wave_max_site": null,
+      "forecast_track": null,
+      "cluster_id": "emsc:20261026_0000147",
+      "revision": 0
+     },
+     {
+      "id": "emsc:20261026_0000188",
+      "source": "emsc",
+      "source_id": "20261026_0000188",
+      "kind": "earthquake",
+      "time": "2026-10-26T11:03:59.882478Z",
+      "received_at": "2026-10-26T14:21:14.495981Z",
+      "updated_at": "2026-10-26T14:21:12.567193Z",
+      "lat": 46.3482,
+      "lon": 2.3055,
+      "depth_km": 5.0,
+      "magnitude": 2.3,
+      "mag_type": "ml",
+      "place": "FRANCE",
+      "region": "FRANCE",
+      "country": null,
+      "country_code": "FR",
+      "severity": "info",
+      "preliminary": false,
+      "intensity_mmi": null,
+      "felt_reports": null,
+      "intensity_cdi": null,
+      "ongoing": false,
+      "expires": null,
+      "tsunami": false,
+      "alert": null,
+      "title": "M 2.3 -- FRANCE",
+      "url": "https://www.seismicportal.eu/eventdetails.html?unid=20261026_0000188",
+      "instruction": null,
+      "description": null,
+      "response_type": null,
+      "wave_eta": null,
+      "wave_eta_site": null,
+      "wave_max_m": null,
+      "wave_max_site": null,
+      "forecast_track": null,
+      "cluster_id": "emsc:20261026_0000188",
+      "revision": 0
+     }
+    ],
+    "unplaced_in_country": 0,
+    "sources_down": []
+   }
+  }
+ }
+}
