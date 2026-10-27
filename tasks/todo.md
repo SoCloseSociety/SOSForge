@@ -915,8 +915,15 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       lane H's report), place search scopes the feed with nearest events,
       climate panel, offline map button, honest footer freshness. Gates on
       the merged tree: pytest 900, vitest 428 (39 files), tsc, build
-- [ ] final review of PR #5 (recheck of the 35 + fresh finders on core,
-      sources, climate, download/sw, deploy, new web code) -> fixes
+- [x] final review of PR #5 (92 agents): recheck 34/35 fixed (#4 partly:
+      a non-ongoing tsunami-flagged quake vs the window); new findings
+      outside sources: 34 confirmed, 0 high, 16 medium, 18 low. Routed with
+      evidence: H 17 + #4, G 11 (nginx access log with query + IP, language
+      shells uncached, sw Wi-Fi upgrade continuing on mobile, publish_apk
+      downgrade check local only), C2 3 (ENSO synopsis, NSIDC caveat), P 3
+      (httpx and ScopeError logs carry places). Sources findings: skeptics
+      re-running after the rate limit.
+- [ ] fixes landed and re-verified
 - [ ] then merge lane C2's WMO country flags (9603657: 58/58 WMO alerts
       flagged, 0 in production; Greek pairs titled by hazard) and the
       Meteoalarm colour floor (owner rule: an official orange is never shown
