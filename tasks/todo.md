@@ -1289,3 +1289,47 @@ today): the source list grows with every `last_error` it carries.
 through the same filter (Nominatim URLs redacted), the geocode warning logs
 no URL, a refused socket logs its code only, and redact_query blanks bare
 parts and safe names holding a value of the wrong shape.
+
+## Place report (2026-10-27) -- plan (critical files main.py, core/config.py, core/privacy.py, pyproject.toml)
+
+The owner, after searching "koh samui" and seeing nothing: "notre systeme
+devrait tout donner! meteo, mers, vent, air, risque etc, tout l'historique".
+`GET /api/place?lat=&lon=` builds a report of 22 blocks for one searched or
+clicked point (never the device position: "your location never leaves your
+device" stays true). Contract v1 (corrected) is the spec; this is the order
+of work and what each critical file gets.
+
+- [ ] Base: this lane starts from `feat/sosforge-round2-2026-10` (privacy.py,
+      climate.py, `geocode.AddressBudget` and lesson 30 live there, not on main).
+- [ ] `pyproject.toml`: `numpy==2.5.4`, `omfiles==1.2.0` (exact pins). Gate
+      before the first commit: `pip install .` in `python:3.12-slim`
+      linux/amd64, `app/data/*.json` present in the installed package, one
+      real `.om` read from the Open-Meteo bucket. Fails -> `air`, `pollen`,
+      `sea.waves`, `sea.level` are removed from this work, never placeholders.
+- [ ] `core/config.py`: `enable_place`, `place_budget_seconds` (8),
+      `place_max_upstream` (16), `place_rate_burst` (4), `place_rate_per_second`
+      (0.0667), `place_cache_entries` (4096), `place_history_cache_mb` (64).
+- [ ] `core/privacy.py`: an httpx filter that rewrites every URL argument
+      (`str` or `httpx.URL`) for a `place.fetch.HOSTS` host to `scheme://host`
+      (NWS carries the point in the PATH: `/points/61.2180,-149.9000`).
+      `lat`, `lon`, `radius_km` stay outside `SAFE`, so access logs blank them.
+- [ ] `main.py`: one route `GET /api/place` (strict query read from
+      `request.query_params`: 400 `bad_point` / `bad_radius` / `bad_lang` /
+      `unknown_param`, duplicates refused, -0.00 normalised; 404
+      `place_disabled`; 429 `rate_limited` + Retry-After from its own
+      `AddressBudget(4, 1/15)`, spent only when the report starts a new
+      upstream fetch; ETag = sha1 of the body minus `server_time` and every
+      `fetched_at`, 304 on If-None-Match, `Cache-Control: no-cache`), and
+      `"place"` in FEATURES when enabled. The alerts block reads the store
+      through a provider main.py passes in; the package never imports main.
+- [ ] `backend/app/place/`: block envelope + messages (5 languages), fetch
+      layer (UA, HOSTS, global 16 / per-host caps, token buckets, queue bound
+      -> `busy`, timeouts, retry-once, single flight, LRU + byte-bounded caches,
+      60 s failure memory, URL-free reasons, a 4-thread executor), geo
+      (country rule of `countries.ts` ported, NEAR_BORDER_KM 25, coast distance
+      with a bbox prefilter, sea gate), `.om` range adapter (thread -> loop,
+      If-Match, meta re-check), PNG decoder, METAR parser, and the 22 blocks.
+- [ ] Tests offline only, on verbatim fixtures copied with a MANIFEST per family.
+- [ ] Live: API on :8338 (PID recorded, stopped by PID), the 8 places, each
+      block's status and as_of recorded below; no coordinate or place-host URL
+      path in any log line (grep recorded).
