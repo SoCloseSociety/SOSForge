@@ -1,15 +1,19 @@
 """`weather_now`, `forecast_hourly`, `forecast_daily`, `wind`.
 
 - `weather_now`: the nearest METAR station of 50 km or less whose report is
-  3 h old or less, from AWC's global cache file (one read every 5 minutes
+  3 h old or less, from AWC's global cache file (one read every 3 minutes
   serves every place). The file holds only its last 70 to 80 minutes of
   reports (measured 15:24-16:32 at 16:34Z): read alone, the 3 h window
   could never be reached, and Ko Samui's VTSM, 7 km away and reporting
   hourly, was "no station" 90 minutes after its 15:00Z report. So every
   read is MERGED into the reports already held (newest per station, none
-  past 3 h), and the index says since when its cover is unbroken: after a
-  restart, "no station" names that hour instead of claiming 3 h. Wind,
-  gust, visibility and QNH from the raw report (`metar.py` says why the CSV
+  past 3 h; a same-time correction wins), and the index says since when
+  its cover is unbroken: from the first read's own time, while reads stay
+  closer than a report can stay listed. The file is read every 3 minutes
+  in the background (`keep_metar_fresh`), so that cover does not depend on
+  visitors. "No station" claims 3 h only once the cover holds them, names
+  its start once it holds an hour, and no window before that. Wind, gust,
+  visibility and QNH from the raw report (`metar.py` says why the CSV
   columns are lossy).
 - `forecast_*`: one MET Norway Locationforecast `complete` read per 0.01 deg
   point, revalidated with If-Modified-Since, fresh until MET's `Expires`.
@@ -26,13 +30,16 @@
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import gzip
 import io
+import logging
 import math
 import re
+import time
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -41,6 +48,8 @@ from app.place import block as B
 from app.place import fetch, metar
 from app.place.context import Context
 from app.place.geo import haversine_km
+
+log = logging.getLogger(__name__)
 
 METAR_URL = "https://aviationweather.gov/data/cache/metars.cache.csv.gz"
 MET_URL = "https://api.met.no/weatherapi/locationforecast/2.0/complete"
@@ -51,6 +60,25 @@ NWS_COUNTRIES = frozenset({"US", "PR", "VI", "GU", "AS", "MP"})
 STATION_KM = 50.0
 STATION_MAX_AGE = timedelta(hours=3)
 HOURS = 48
+
+# The cache file: its copy is fresh this long, and it is read again then
+# whether a report asks or not (`keep_metar_fresh`). Read every 3 min, the
+# files are 2.8 to 4.1 min apart by Last-Modified (the series below), about
+# 5 when one failed read is retried 60 s later.
+METAR_TTL_S = 180.0
+# Two reads further apart than this may have missed a report. Measured on
+# 58 one-minute reads (18:21-19:20Z, 2026-10-27): of the 79 reports seen
+# arrive and then leave with no newer one of their station, the shortest
+# stayed 6.9 to 10 min (KOYE's 18:30Z, listed 18:31-18:38Z; KOYE and KW63
+# report every 20 min). Read every 10 min, KOYE was missed twice in that
+# hour. What no cadence catches, measured too: a late copy listed for one
+# or two files and superseded within 6 min (SVMI's 18:00Z, listed at
+# 18:54Z only), and a report missing from one file and back in the next
+# (PAAD's 19:15Z at 19:18Z): the next read or report catches up.
+METAR_MAX_GAP = timedelta(minutes=5, seconds=30)
+# A cover shorter than this names no window: METAR stations report hourly,
+# and "none since 17:38 UTC" at 17:40Z is true and says nothing.
+METAR_MIN_COVER = timedelta(hours=1)
 
 SRC_METAR = B.Source(
     "NOAA Aviation Weather Center, METAR",
@@ -123,44 +151,84 @@ class MetarIndex:
     cells: dict[tuple[int, int], list[Station]]
     newest: datetime | None
     rows: int
-    # every report from here on is held: the oldest one of the first file
-    # read, carried across merges while each read overlaps the last
+    # when the last file read was current: its Last-Modified, never later
+    # than the read itself. None for a bare parse (no read behind it).
+    read_at: datetime | None = None
+    # the start of the unbroken cover: every report observed from then on
+    # was in a file read here. The first read's own time, never its oldest
+    # row (the file is not a window by observation time), carried across
+    # merges while no two reads are further apart than METAR_MAX_GAP.
     since: datetime | None = None
 
 
-def _index(latest: dict[str, Station], rows: int, since: datetime | None) -> MetarIndex:
+def _index(
+    latest: dict[str, Station],
+    rows: int,
+    read_at: datetime | None = None,
+    since: datetime | None = None,
+) -> MetarIndex:
     cells: dict[tuple[int, int], list[Station]] = defaultdict(list)
     for station in latest.values():
         cells[(math.floor(station.lat), math.floor(station.lon))].append(station)
     newest = max((s.time for s in latest.values()), default=None)
-    return MetarIndex(dict(cells), newest, rows, since)
+    return MetarIndex(dict(cells), newest, rows, read_at, since)
+
+
+def file_time(last_modified: str | None, read: datetime) -> datetime:
+    """When a file read at `read` was current: its Last-Modified (the file
+    is rewritten once a minute, and a CDN copy can be older than the read),
+    never later than the read itself (a missing or a future header)."""
+    try:
+        modified = parsedate_to_datetime(last_modified or "").astimezone(UTC)
+    except (TypeError, ValueError):
+        return read
+    return min(modified, read)
+
+
+def stamped(index: MetarIndex, at: datetime) -> MetarIndex:
+    """A file just read, as a cover of its own: it was current at `at`, and
+    it vouches for nothing observed before that."""
+    return replace(index, read_at=at, since=at)
 
 
 def merge_metar(held: MetarIndex | None, fresh: MetarIndex) -> MetarIndex:
     """The fresh file over the reports already held: the newest report per
     station, none older than STATION_MAX_AGE before the newest one. A
-    same-time tie goes to the fresh file: it is the issuer's correction
+    same-time tie goes to the newer file: it is the issuer's correction
     (ETAR's 17:10Z SPECI re-issued as COR, 4000 BR -> 9999), and the
-    original it retracts is never served as current. A file that does not
-    reach back to the last one held (the reads failed for longer than the
-    file's window) starts the cover over."""
-    if (
-        held is None
-        or held.newest is None
-        or fresh.newest is None
-        or fresh.since is None
-        or held.newest < fresh.since
-    ):
+    original it retracts is never served as current.
+
+    The file is the "current" report of each station, not a window: a
+    report can leave it, with no newer one of its station, while older
+    rows stay (KOYE's 17:10Z was listed at 17:24Z and gone at 17:39Z, next
+    to 16:30Z rows). Two reads further apart than METAR_MAX_GAP may have
+    missed one, and a station whose newer report came and went unseen
+    would be served its superseded one: the cover starts over from the
+    fresh file alone. Without read times (bare parses) the reports are
+    merged and no cover is claimed."""
+    if held is None or held.newest is None or fresh.newest is None:
+        return fresh
+    held_at, fresh_at = held.read_at, fresh.read_at
+    gap = fresh_at - held_at if held_at is not None and fresh_at is not None else None
+    if gap is not None and gap > METAR_MAX_GAP:
         return fresh
     horizon = fresh.newest - STATION_MAX_AGE
+    # a CDN copy older than the file held does not overturn what that held
+    fresh_wins_ties = gap is None or gap >= timedelta(0)
     latest = {s.icao: s for cell in held.cells.values() for s in cell if s.time >= horizon}
     for cell in fresh.cells.values():
         for station in cell:
             kept = latest.get(station.icao)
-            if kept is None or station.time >= kept.time:
+            if (
+                kept is None
+                or station.time > kept.time
+                or (station.time == kept.time and fresh_wins_ties)
+            ):
                 latest[station.icao] = station
-    since = max(held.since or fresh.since, horizon)
-    return _index(latest, fresh.rows, since)
+    if held_at is None or fresh_at is None:
+        return _index(latest, fresh.rows)
+    since = held.since if held.since is not None else fresh.since
+    return _index(latest, fresh.rows, max(held_at, fresh_at), since)
 
 
 def parse_metar_cache(gz: bytes) -> MetarIndex:
@@ -210,16 +278,46 @@ def parse_metar_cache(gz: bytes) -> MetarIndex:
         held = latest.get(station.icao)
         if held is None or station.time > held.time:
             latest[station.icao] = station
-    return _index(latest, rows, min((s.time for s in latest.values()), default=None))
+    return _index(latest, rows)
 
 
 async def _load_metar(previous: fetch.Entry) -> fetch.Loaded:
     response = await fetch.get(METAR_URL)
+    read = datetime.now(UTC)
     index = await fetch.in_thread(parse_metar_cache, response.content)
     if not index.rows:
         raise fetch.FetchError("upstream_parse", "the aviationweather.gov cache file has no row")
+    index = stamped(index, file_time(response.headers.get("last-modified"), read))
     held = previous.value if isinstance(previous.value, MetarIndex) else None
-    return fetch.Loaded(merge_metar(held, index), 300.0, size=len(response.content))
+    return fetch.Loaded(merge_metar(held, index), METAR_TTL_S, size=len(response.content))
+
+
+async def keep_metar_fresh() -> None:
+    """The cache file read again each time its copy expires, whether a
+    report asks or not: left to visitors, an idle spell longer than
+    METAR_MAX_GAP broke the cover and "no station" could never name more
+    than the last visit. Through the same cache entry as the reports (one
+    read in flight, shared), and the product's own read: no client's
+    token. A failed read is retried when its 60 s failure memory ends.
+    One GET of 255 to 275 KB per METAR_TTL_S (480 a day); AWC's data API
+    page says the file is rewritten once a minute."""
+    while True:
+        until = time.monotonic() + fetch.FAILURE_MEMORY_S
+        try:
+            entry = await fetch.obtain(_metar_cache, "global", _load_metar, _no_claim, swr=True)
+            task = entry.task
+            if task is not None:
+                await asyncio.shield(task)
+            until = entry.fresh_until
+            if entry.error is not None:
+                until = max(until, entry.error_until)
+        except Exception as exc:  # noqa: BLE001 -- the reports still read on demand
+            log.warning("place METAR refresh: %s", type(exc).__name__)
+        await asyncio.sleep(max(1.0, until - time.monotonic()))
+
+
+def _no_claim() -> None:
+    """The background read spends no client's budget."""
 
 
 def rh_pct(temp: float, dew: float) -> int:
@@ -248,18 +346,13 @@ def nearest_station(
     return best
 
 
-def now_block(index: MetarIndex, ctx: Context) -> B.Block:
-    found = nearest_station(index, ctx.lat, ctx.lon, ctx.now)
-    if found is None and index.since is not None and ctx.now - index.since < STATION_MAX_AGE:
-        since = index.since.strftime("%H:%M")
-        return B.unavailable(
-            SPEC_NOW,
-            "no_station",
-            f"no METAR within {STATION_KM:g} km reported since {since} UTC",
-            km=int(STATION_KM),
-            since=since,
-        )
-    if found is None:
+def no_station(index: MetarIndex, now: datetime) -> B.Block:
+    """What "no station" can claim is what the cover holds: 3 h unbroken,
+    the last 3 hours; at least METAR_MIN_COVER, since its start (rounded UP
+    to the minute: a 17:38Z report is not vouched for by a cover from
+    17:38:09); less, or no read time at all, no window."""
+    start = index.since
+    if start is not None and now - start >= STATION_MAX_AGE:
         return B.unavailable(
             SPEC_NOW,
             "no_station",
@@ -267,6 +360,31 @@ def now_block(index: MetarIndex, ctx: Context) -> B.Block:
             km=int(STATION_KM),
             hours=3,
         )
+    if start is not None and now - start >= METAR_MIN_COVER:
+        minute = start.replace(second=0, microsecond=0)
+        if minute < start:
+            minute += timedelta(minutes=1)
+        since = minute.strftime("%H:%M")
+        return B.unavailable(
+            SPEC_NOW,
+            "no_station",
+            f"no METAR within {STATION_KM:g} km reported since {since} UTC",
+            km=int(STATION_KM),
+            since=since,
+        )
+    held = "none" if start is None else f"{max(0, int((now - start).total_seconds() // 60))} min"
+    return B.unavailable(
+        SPEC_NOW,
+        "no_station",
+        f"no METAR within {STATION_KM:g} km in the reads held (unbroken cover: {held})",
+        km=int(STATION_KM),
+    )
+
+
+def now_block(index: MetarIndex, ctx: Context) -> B.Block:
+    found = nearest_station(index, ctx.lat, ctx.lon, ctx.now)
+    if found is None:
+        return no_station(index, ctx.now)
     station, km = found
     groups = metar.parse(station.raw)
     derived = []
@@ -314,7 +432,7 @@ async def build_now(ctx: Context) -> B.Block:
         on_first_wait=ctx.waiting(SPEC_NOW.id, "warming"),
         on_stale=ctx.serving_stale(SPEC_NOW.id),
     )
-    return serve(SPEC_NOW, entry, lambda index: now_block(index, ctx), ttl_s=300.0)
+    return serve(SPEC_NOW, entry, lambda index: now_block(index, ctx), ttl_s=METAR_TTL_S)
 
 
 def serve(

@@ -1692,3 +1692,68 @@ conflicts in core/privacy.py imports, tasks/todo.md and frontend/src/i18n.ts
 - [ ] Known limits: coast_km comes from the 1:50m coastline (Jarvis is 342 km
       "from the coast"); the Chrome-overlap test of the responsive tool failed
       once under load (passes alone and in two full runs).
+
+## Place report -- weather_now fixes from the review (2026-10-27, branch place-fix-weather)
+
+Two confirmed findings in `backend/app/place/weather.py`. Plan, written before
+touching `app/main.py` (critical file):
+
+- [x] A correction wins: `merge_metar` kept the held original over the
+      issuer's same-time COR (strict `>`). The report from the NEWER file
+      wins a same-time tie (an older CDN copy read later does not bring the
+      original back). Test on the real pair: ETAR at 17:40Z serves the COR
+      (10 km, VFR), SAZG has only SCT025.
+- [x] An honest `since`: it was the oldest row of the first file, but the
+      file is not a window by observation time (KOYE's 17:10Z report was
+      listed at 17:24Z and gone at 17:39Z while 16:30Z rows stayed). The
+      cover now starts at the first read's own time (the file's
+      Last-Modified, never later than the read), and stays unbroken only
+      while consecutive reads are closer than a report can stay listed
+      (`METAR_MAX_GAP` 5.5 min, from one-minute captures); a wider gap starts
+      over from the fresh file alone. Under an hour of cover no window is
+      named ("No station within 50 km is in the latest reports.", new
+      variant `no_station:km` in five languages; a variant is now the one
+      naming the most parameters, whatever the table order); from an hour,
+      "since HH:MM UTC" rounded UP to the minute; from 3 h, "in the last 3
+      hours".
+- [x] A background read of the cache file, so the cover does not depend on
+      visitors: `place.start(enabled)` spawns (fetch.spawn) one loop that
+      reads the file through the same cache entry (single flight shared
+      with reports, no client token) each time its copy expires, 60 s after
+      a failure. `main.py` lifespan extends its task list with it, cancelled
+      at shutdown like the others; nothing starts when `enable_place` is
+      off. Measured, the 5 minutes first planned were too slow: every 3 min
+      (TTL 180 s, 480 GETs of about 260 KB a day).
+
+**Measured** (58 one-minute reads of the file, 18:21-19:20Z, SOSForge UA):
+79 reports were seen arrive and then leave with no newer one of their
+station. The shortest stayed 6.9 to 10 min: KOYE's 18:30Z (listed
+18:31-18:38Z) and its 18:50Z and 19:10Z, KW63's 18:35Z and 18:55Z (both
+report every 20 min). Simulated cadences over the series: read every 10 min
+(the gap first proposed in the review) misses KOYE twice in the hour; every
+3 min (files 2.8 to 4.1 min apart) misses none of those. What no cadence
+under one minute catches: two late copies listed one or two files and
+superseded within 6 min (SVMI's 18:00Z, listed only at 18:54Z, 54 min
+late; MSSS's 18:50Z at 18:57-18:58Z), and a report missing from ONE file and
+back in the next (KHTH's 18:35Z at 18:40Z, PAAD's 19:15Z at 19:18Z): the
+next read or report catches up. Every gap seen between files was 0.8 to
+2.1 min; one capture failed (RemoteDisconnected at 18:30:55Z).
+
+Live: the real refresher outside the app read at 18:41, 18:46, 18:51Z
+(5 min TTL, before the change to 3) and kept the cover from 18:40:10 with
+5123, 5129, 5133 stations; at KOYE it said "No station within 50 km is in
+the latest reports." for 10 minutes, then served KOYE 18:50Z. The API
+itself (port 8359, scratch data dir, ash source off so its 180 s SIGMET poll
+could not be mistaken for it) read aviationweather.gov at boot and then
+every 3:03 and 3:06 with no request at all, and stopped cleanly.
+
+Fixtures: two of those reads 3 min apart (18:37:06Z and 18:40:10Z by
+Last-Modified) are now `awc_metars_cache_global_chain_a/_b` with sidecars
+and manifest entries: KOYE's 18:30Z in the first, gone from the second, no
+other station within 50 km (KPBM 61 km).
+
+Left: a report listed for less than a read period (the late copies, the
+one-file gaps above) can still be missed for one period; the window message
+stays a measured claim, not a guarantee. The frontend fixtures captured
+before this change still show the old sentence (verbatim captures, left as
+they are).
