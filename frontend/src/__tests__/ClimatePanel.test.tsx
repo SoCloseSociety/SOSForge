@@ -22,7 +22,7 @@ import {
   type ClimateIndicator,
   type ClimateResponse,
 } from '../components/ClimatePanel'
-import { translate } from '../i18n'
+import { LANGS, translate } from '../i18n'
 import { useStore } from '../store'
 import { resetStore } from './helpers'
 
@@ -372,5 +372,31 @@ describe('the PR #5 review findings', () => {
     )!
     expect(co2).toHaveTextContent(translate('fr', 'climate.baseline.day_year_earlier'))
     expect(co2).not.toHaveTextContent('same day a year earlier')
+  })
+})
+
+describe('the recheck of 0cc11f6', () => {
+  // "untuk hari ini" said TODAY next to an Antarctic reading of Oct 17; the
+  // baseline is the reading's own calendar day, in every language
+  it('never calls the baseline day "today"', () => {
+    const today = /today|aujourd|hoy|hari ini|今日|本日|ce jour/i
+    for (const { code } of LANGS) {
+      expect(translate(code, 'climate.baseline.day_1991_2020')).not.toMatch(today)
+    }
+  })
+
+  it('shows the stale Antarctic reading against its own day, in Indonesian', async () => {
+    useStore.getState().setLang('id')
+    const { container } = render(<ClimatePanel fetchClimate={answering(LIVE)} />)
+    await flush()
+
+    const items = [...container.querySelectorAll<HTMLElement>('.climate-list > li')]
+    const antarctic = items.find((item) =>
+      within(item).queryByRole('heading', {
+        name: translate('id', 'climate.ind.antarctic_sea_ice_extent'),
+      }),
+    )!
+    expect(antarctic).toHaveTextContent('rata-rata 1991-2020 untuk tanggal ini')
+    expect(antarctic).not.toHaveTextContent('hari ini')
   })
 })

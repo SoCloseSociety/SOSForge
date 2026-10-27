@@ -1339,3 +1339,41 @@ parts and safe names holding a value of the wrong shape.
       gone. Before: a restart between them withdrew 0; after: the 7, as
       `stale`. Live :8333: `memory-usdm.json` holds the 30 ids of the
       2026-10-22 release.
+
+## Lane C2 -- recheck of 0cc11f6 (critical files `sources/base.py`, `sources/alerts_world.py`, `sources/tsunami.py`, `sources/regional.py`, `sources/phivolcs.py`, `sources/igp.py`, `sources/space.py`)
+
+- [x] Freshness baseline PER FEED. One flag for the whole source hid the
+      genuinely new events of the source's other feeds in the cycle a feed
+      came back. `feed_ok(feed, ids)` declares what each event-bearing feed
+      lists this cycle; a new id is baseline only when every feed listing it
+      is one back for the first time after failing since startup. Event
+      feeds declare (Meteoalarm countries, tsunami centres, BMKG feeds,
+      PHIVOLCS pages, IGP years, SWPC alerts); catalogue / alias feeds carry
+      no events of their own and declare nothing. Test: the returning
+      feed's listing absorbed, the other feeds' new events stamped, in the
+      same cycle, through `run()` on real payloads.
+      Reproduced through `TsunamiSource.run()` on the real PAAQ and PHEB
+      Atom feeds: PAAQ back after a 503, PHEB's bulletin new in the same
+      cycle -> `last_event_at` null before (hidden), stamped after; PAAQ back
+      alone -> null over 3 cycles. Live :8333: tsunami, bmkg, phivolcs, igp,
+      wmo up, `last_event_at` null after startup; meteoalarm degraded by
+      real body-read timeouts from Meteoalarm (es, de, gr, pl, nl, 14:09 to
+      14:22 UTC), null too.
+- [x] Marine "wave": a substring, so every heatwave was marine and lost the
+      issuer's country. Rule: the word "wave(s)" not qualified by "heat" or
+      "cold" (whole word alone still reads "Heat Wave" as marine; the
+      length floor keeps 4-letter "wave" a substring). Measure what moves
+      on the real aggregates.
+      Four real aggregates (2026-10-26 17:39, 10-27 11:47, 13:35, 13:47;
+      978-1373 items, 128 event names): in each, exactly 2 flags move, the
+      BOM "Severe heatwave warning" for Queensland and Northern Territory,
+      None -> AU. "Wave height warning" (UA) and "Wind Wave Advisory" (KMA)
+      stay marine; cold waves stop being marine but are not a land kind, so
+      no flag moves. Both BOM items are s=3 and BOM is out of tier 2: not
+      published today.
+- [x] i18n `climate.baseline.day_1991_2020`: "untuk hari ini" (id) says
+      TODAY, and French "pour ce jour" reads as today in formal French; the
+      baseline is the reading's own calendar day (a stale Antarctic reading
+      is not today's).
+      id "untuk tanggal ini", fr "pour cette date"; en "for this day", es
+      "para este día", ja "この日の" kept (they say "this day", not today).

@@ -432,9 +432,12 @@ class PhivolcsSource(Source):
                             self.health.feed_ok(url)
                             continue
                         resp.raise_for_status()
-                        events.extend(self.parse_payload(resp.text))
+                        batch = self.parse_payload(resp.text)
+                        events.extend(batch)
                         successes += 1
-                        self.health.feed_ok(url)
+                        # a page back after failing since startup lists its
+                        # baseline, not new bulletins
+                        self.health.feed_ok(url, (e.id for e in batch))
                     except Exception as exc:
                         last_error = exc
                         self.health.feed_failed(url, exc)

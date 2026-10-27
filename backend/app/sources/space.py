@@ -444,8 +444,10 @@ class SpaceWeatherSource(JsonPollSource):
         try:
             alerts_resp = await client.get(self.alerts_url)
             alerts_resp.raise_for_status()
-            events.extend(self.parse_alerts(alerts_resp.json(), now=now))
-            self.health.feed_ok("alerts")
+            alerts = self.parse_alerts(alerts_resp.json(), now=now)
+            events.extend(alerts)
+            # the bulletins back after failing since startup are a baseline
+            self.health.feed_ok("alerts", (e.id for e in alerts))
         except Exception as exc:
             self.health.feed_failed("alerts", exc)
             log.warning("%s: alerts failed: %s", self.name, exc)

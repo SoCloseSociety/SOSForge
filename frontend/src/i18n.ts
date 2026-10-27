@@ -356,7 +356,7 @@ const fr: Dict = {
   "climate.ind.enso_status": "Statut d’alerte ENSO",
   "climate.lowerbound": "Borne inférieure : {amount} de la surface sans données",
   "climate.lowerbound.short": "Borne inférieure : une partie de la surface sans données",
-  "climate.baseline.day_1991_2020": "moyenne 1991-2020 pour ce jour",
+  "climate.baseline.day_1991_2020": "moyenne 1991-2020 pour cette date",
   "climate.baseline.day_year_earlier": "même jour un an plus tôt",
   "climate.baseline.week_1991_2020": "moyenne hebdomadaire 1991-2020",
 };
@@ -1700,7 +1700,7 @@ const id: Dict = {
   "climate.ind.enso_status": "Status peringatan ENSO",
   "climate.lowerbound": "Batas bawah: {amount} dari wilayah tanpa data",
   "climate.lowerbound.short": "Batas bawah: sebagian wilayah tanpa data",
-  "climate.baseline.day_1991_2020": "rata-rata 1991-2020 untuk hari ini",
+  "climate.baseline.day_1991_2020": "rata-rata 1991-2020 untuk tanggal ini",
   "climate.baseline.day_year_earlier": "hari yang sama setahun sebelumnya",
   "climate.baseline.week_1991_2020": "rata-rata mingguan 1991-2020",
 };
