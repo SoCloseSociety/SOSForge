@@ -891,3 +891,6 @@ posted since. Four channels exist (extreme 4, severe 3, digest 2, status 2).
 | optimise / perfect / complete everything | P (efficiency), Q (live data audit) |
 | nothing fake, only real live data | rule sent to every lane; drills guarded (N) |
 | onboarding with images, overview, preview (kie.ai) | K (art), A (funnel) |
+| "quand je fais une recherche rien ne s'affiche" (koh samui) | H: the picked place left `filters.query` set, so the feed text-matched "koh samui" against titles and emptied; fix = picking a place clears the text filter and scopes the feed to that place, nearest events shown when nothing is near |
+| "notre système devrait tout donner! météo, mers, vent, air, risque, tout l'historique" | place report workflow: sources measured live at 8 places with licences checked -> contract + critique -> backend `app/place/` + `/api/place` and `PlaceReport.tsx` in worktrees -> live truth check against each upstream, reviews, fixes |
+| adversarial review before PR #5 goes live (ultracode) | review workflow: 5 lenses, 3 skeptics per serious finding |
