@@ -15,9 +15,11 @@ export const RETRY_MAX_MS = 60_000
  * Asked once at mount, so the answer is usually in before the reader picks
  * a place: the button then appears in the same frame as the place, and the
  * map's flight to it already knows what the button covers (MapView
- * `coveredTop`). While `needed`, a check that got no answer (network down,
- * a 5xx) is asked again after a growing wait: one dropped request must not
- * hide the feature for the whole session. /api/version carries no position. */
+ * `coveredTop`). A late answer brings the button in after that flight
+ * started, and the map pads it again then. While `needed`, a check that got
+ * no answer (network down, a 5xx) is asked again after a growing wait: one
+ * dropped request must not hide the feature for the whole session.
+ * /api/version carries no position. */
 export function useApiFeature(feature: string, needed: boolean): boolean {
   const [served, setServed] = useState(false)
   useEffect(() => {

@@ -307,7 +307,8 @@ const PLACE_WORDS: PanelWords = {
  * and it is fetched only when opened. Where its label would wrap it shows
  * the icon alone (its name still says the whole description), and the map
  * pads its flight to the place by what the button covers (MapView
- * `coveredTop`): the place is never under it. */
+ * `coveredTop`), and pads it again when the button arrives or changes size
+ * after that flight started: the place is never under it. */
 export function PlaceReportButton({
   lat,
   lon,
