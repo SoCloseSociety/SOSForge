@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse
 
 from app import geocode
 from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
+from app.core import privacy
 from app.core.config import settings
 from app.dedupe import Deduper
 from app.geocode import search as geocode_search
@@ -80,6 +81,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
 )
 log = logging.getLogger("sosforge")
+# people's places (zones, lat/lon, searched names) never reach the log
+privacy.install()
 
 store = EventStore(
     maxlen=settings.ring_size, data_dir=settings.data_dir, persist=settings.persist_jsonl
@@ -328,6 +331,7 @@ async def felt_reports() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global sources
+    privacy.install()  # again, in case the server reconfigured logging after import
     sources = build_sources()
 
     # 1. fill the map before opening the floodgates: first the local journal
