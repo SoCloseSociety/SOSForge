@@ -949,27 +949,61 @@ change (rule 5).
    late twin joins usgs:us7000ttfe. Real journals (10-26 + 10-27, 1228
    quakes, re-listed every 50 entries): visible twins 4 -> 0, multi-source
    clusters 92 -> 96, window 486 -> 800 distinct ids of 800.**
-2. [ ] **Two quakes in one cluster** (dedupe.py). A second USGS quake 90 s
+2. [ ] **Two quakes in one cluster** (dedupe.py). NOT SHIPPED, measured. A second USGS quake 90 s
    after the first joins its cluster through EMSC's solution of the first.
    Rule: a cluster never takes two events from the same source (an agency
    does not publish one quake twice). Measure first, on the real journals:
    same-source clusters (with their time and magnitude gaps, to tell two
    quakes from an agency duplicate) and cross-source merges lost.
+   **Measured, the rule is wrong as stated.** Built and replayed: same-source
+   clusters 28 -> 0 and 14 -> 0 on Q's two production reads, but visible
+   twins 1 -> 21 and 2 -> 15 (after item 1). PHIVOLCS publishes ONE quake
+   under several bulletin ids (`2026_1026_1509_B2F` and `B3F`, same M3.5,
+   2 km), INGV shows the same, and refusing them a shared cluster then splits
+   identical EMSC/INGV solutions (0 s, 0 km) through the chain. Reverted
+   before commit. A per-source rule (USGS / EMSC / GEOFON ids are one per
+   quake, PHIVOLCS bulletins are not) needs each source's id semantics
+   checked against its payload first: lane C2 knows them.
 3. [ ] **Cyclones served 2-3 times** (dedupe only clusters quakes). Plan
    only here: grouping storms by name + basin + distance, with the
    agency face chosen by authority, needs item 4's re-election, or the
    first poller after a restart becomes the face. Measure the duplicates.
+   **Measured (Q's run3): 4 of 6 named storms served by two sources --
+   Arnab gdacs extreme + eonet severe, Champi gdacs extreme + eonet
+   moderate, Olana nhc minor + eonet moderate, Vance nhc + eonet.**
 4. [ ] **The first estimate stays the face.** Re-electing the cluster's
    representative (reviewed > automatic > early warning) changes which id
    is `primary` under every client's feet: the web, the app and the agent
    hide non-primaries. A protocol-visible change (lanes N, H, A); plan and
-   numbers, not shipped by this lane alone.
+   numbers, not shipped by this lane alone. **Measured (run3): 17 of 214
+   multi-member clusters show an early warning or a preliminary solution
+   while a reviewed one exists (e.g. jma_eew:20261027092519 M5.0 over USGS
+   and EMSC M4.8, geofon:gfz2026vacc M5.1 over USGS and EMSC M4.7).**
+   Mechanism when it is decided: the store re-points the cluster to the
+   better member (rank: reviewed > automatic > early warning, then source
+   authority), broadcasts the new face as `update primary: true` and the old
+   one as `purge reason=superseded`, which every client already handles.
 5. [ ] **Journal-replay residue.** The replay already goes through the
    current pipeline (expiry, horizon, min magnitude, removals). What it
    cannot re-apply is a NORMALIZER rule changed since the line was written
    (depth cap, preliminary flag): the line holds the normalized event, and
-   `raw` is not a parser input. Options and their cost, measured.
+   `raw` is not a parser input. Not built: the proof (36 of 37 defects on
+   restored events) is on production journals this lane cannot read. Two
+   options for the owner, with their cost: (a) journal lines carry a hash
+   of the source module that normalized them and the replay drops lines
+   from an older normalizer (correct at once, loses the history of
+   sources whose feed no longer lists the event); (b) the replay
+   re-derives what is derivable from the normalized fields (quake
+   severity from magnitude + depth through the current `severity_for_quake`,
+   EEW `preliminary`) and keeps the rest.
 6. [ ] **Major events kept 14 days** (owner call by default). Needs the
    horizon to exempt them, the replay to read 14 days of journal for them,
    `journal_keep_days` >= 14, and the ring not to evict them. Measure how
-   many events that keeps before building it.
+   many events that keeps before building it. **Measured on Q's reference
+   read: 3 quakes in 7 days meet M6.5+ or PAGER orange/red (Nagqu M7.0
+   orange 10-22, Vanuatu M6.9 10-24, Bonin M6.5 10-25), so 3-6 over 14
+   days.** Smallest build: a separate `major.jsonl` journal (a few lines a
+   week) replayed whatever its age up to 14 days, a horizon exemption for
+   those events only, and the ring re-appending a major event it evicts.
+   Not built in this lane: it changes what the feed calls current, and
+   the UI must show them as past (lane H).
