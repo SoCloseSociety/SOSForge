@@ -136,6 +136,10 @@ class Agent:
         # during the drop -- a nearby M6.6 inside a 30 s outage was never said.
         self._history_loaded = False
         self.connected = False
+        # Whether the current connection delivered at least one frame: what
+        # tells a working session that dropped from a server that never
+        # answered, and so whether the backoff starts over.
+        self.delivered = False
         self.notified = 0
         self.considered = 0
 
@@ -231,6 +235,7 @@ class Agent:
             try:
                 while True:
                     raw = await asyncio.wait_for(socket.recv(), timeout=SILENCE_TIMEOUT_S)
+                    self.delivered = True
                     try:
                         self.handle(json.loads(raw))
                     except (ValueError, TypeError) as exc:
@@ -243,9 +248,10 @@ class Agent:
     async def run_forever(self) -> None:
         delay = 1.0
         while True:
+            self.delivered = False
+            reason: object = "closed"
             try:
                 await self.run_once()
-                delay = 1.0
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001 -- ANY failure means retry
@@ -253,7 +259,15 @@ class Agent:
                 # There is no failure mode where giving up is better than
                 # reconnecting, and an agent that exits is one that protects
                 # nobody until someone notices.
-                log.warning("disconnected (%s), retrying in %.0f s", exc, delay)
+                reason = exc
+            # `run_once` only ever leaves by an exception, so a reset placed
+            # after it never ran: a backoff grown to 60 s during one bad night
+            # stayed at 60 s for the life of the process. A session that
+            # delivered frames was a working connection, and its drop starts
+            # the backoff over.
+            if self.delivered:
+                delay = 1.0
+            log.warning("disconnected (%s), retrying in %.0f s", reason, delay)
             await asyncio.sleep(delay)
             # Capped backoff: a laptop waking with no network must not spin,
             # and one whose network just came back must not wait ten minutes
