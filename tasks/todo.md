@@ -839,6 +839,14 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 |---|---|---|
 | N | Meteoalarm lifts never reach anyone: an Update carries a NEW identifier and `references` the old one (FR 143/161, IT 120/120, old id never still listed 0/419); `references` ignored, and Meteo-France's AllClear (level 1 green) dropped by select(). Lifted orange warnings stay until `expires` or the 6 h sweep | C2 |
 | N | ws quota refusal is a 403 handshake rejection, never close 1013: `close(1013)` runs before `accept()` in websocket_endpoint | P |
+| N | web alarm never rings for an escalation: `alarmed` keyed by id only (M6.4 -> M7.3 = one notification) | H |
+| N | web never closes the system notification of a cancelled / relocated-out event (a cancelled EEW stays in the tray) | H |
+| N | macOS agent silent on an EEW cancel and on a quake relocated out of reach | P |
+| N | macOS agent judges area warnings by their centre, ignores `bbox` (UK amber 232 km from Paris: silent) | P |
+
+Lane N result (commit 4970235, `tools/drill.py` + `tools/drills/`): `check` 67
+pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
+15 pass / 3 fail. Every failure is one of the rows above.
 - [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
 - [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
       pull + build, host vhost headers, publish the APK, verify live)
