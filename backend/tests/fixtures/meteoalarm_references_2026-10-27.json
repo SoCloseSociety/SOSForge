@@ -1,0 +1,185 @@
+{
+ "_captured": "2026-10-27 09:53 UTC, feeds.meteoalarm.org/api/v1/warnings/feeds-{country}; each warning copied unmodified",
+ "allclear": {
+  "country": "france",
+  "warning": {
+   "alert": {
+    "identifier": "2.49.0.0.250.0.FR.20261027060013.605021",
+    "incidents": "Update",
+    "info": [
+     {
+      "category": [
+       "Met"
+      ],
+      "certainty": "Likely",
+      "contact": "METEO-FRANCE",
+      "description": "Des phénomènes habituels dans la région mais occasionnellement et localement dangereux sont prévus (exemple : mistral, orage d'été, montée des eaux, fortes vagues submergeant le littoral).",
+      "effective": "2026-10-27T06:00:00+01:00",
+      "event": "Vigilance jaune vent-violent",
+      "expires": "2026-10-27T06:00:00+01:00",
+      "headline": "Vigilance jaune vent-violent",
+      "instruction": "Soyez attentifs si vous pratiquez des activités sensibles au risque météorologique ou à proximité d'un rivage ou d'un cours d'eau. Tenez-vous au courant de l'évolution de la situation.",
+      "language": "fr-FR",
+      "onset": "2026-10-27T06:00:08+01:00",
+      "parameter": [
+       {
+        "value": "1; green; Minor",
+        "valueName": "awareness_level"
+       },
+       {
+        "value": "1; Wind",
+        "valueName": "awareness_type"
+       }
+      ],
+      "responseType": [
+       "AllClear"
+      ],
+      "senderName": "METEO-FRANCE",
+      "severity": "Minor",
+      "urgency": "Future",
+      "web": "https://vigilance.meteofrance.fr/"
+     },
+     {
+      "category": [
+       "Met"
+      ],
+      "certainty": "Likely",
+      "contact": "METEO-FRANCE",
+      "description": "Moderate damages may occur, especially in vulnerable or in exposed areas and to people who carry out weather-related activities.",
+      "effective": "2026-10-27T06:00:00+01:00",
+      "event": "Moderate wind warning",
+      "expires": "2026-10-27T06:00:00+01:00",
+      "headline": "Moderate wind warning",
+      "instruction": "Be careful, keep informed of the latest weather forecast.",
+      "language": "en-GB",
+      "onset": "2026-10-27T06:00:08+01:00",
+      "parameter": [
+       {
+        "value": "1; green; Minor",
+        "valueName": "awareness_level"
+       },
+       {
+        "value": "1; Wind",
+        "valueName": "awareness_type"
+       }
+      ],
+      "responseType": [
+       "AllClear"
+      ],
+      "senderName": "METEO-FRANCE",
+      "severity": "Minor",
+      "urgency": "Future",
+      "web": "https://vigilance.meteofrance.fr/"
+     }
+    ],
+    "msgType": "Update",
+    "references": "vigilance@meteo.fr,2.49.0.0.250.0.FR.20261026160027.256021,2026-10-26T16:00:27+01:00",
+    "scope": "Public",
+    "sender": "vigilance@meteo.fr",
+    "sent": "2026-10-27T06:00:13+01:00",
+    "status": "Actual"
+   },
+   "uuid": "d7c2c929-f707-4822-ad66-fb9b3a828790"
+  }
+ },
+ "update": {
+  "country": "greece",
+  "warning": {
+   "alert": {
+    "identifier": "2.49.0.0.300.0.GR.261026144100.020000011",
+    "incidents": "Update",
+    "info": [
+     {
+      "area": [
+       {
+        "areaDesc": "Attiki",
+        "geocode": [
+         {
+          "value": "GR011",
+          "valueName": "EMMA_ID"
+         }
+        ]
+       }
+      ],
+      "category": [
+       "Met"
+      ],
+      "certainty": "Likely",
+      "description": "Severe thunderstorms in place probably accompanied by strong winds  and hail at times. BE PREPARED for severe thunderstorms causing significant impact and protect yourself from lightning. Damage to property and trees may occur. Flash flooding, wind gusts and hail are possible. Transport and outdoor activities disruption can be expected.",
+      "effective": "2026-10-26T14:41:00+00:00",
+      "event": "Severe Thunderstorm warning",
+      "expires": "2026-10-27T09:00:00+00:00",
+      "headline": "Orange Thunderstorm for Attiki",
+      "language": "en-GB",
+      "onset": "2026-10-26T22:00:00+00:00",
+      "parameter": [
+       {
+        "value": "3; Thunderstorm",
+        "valueName": "awareness_type"
+       },
+       {
+        "value": "3; Orange; Severe",
+        "valueName": "awareness_level"
+       }
+      ],
+      "responseType": [
+       "None"
+      ],
+      "senderName": "Hnms Forecaster",
+      "severity": "Severe",
+      "urgency": "Expected",
+      "web": "https://www.emy.gr"
+     },
+     {
+      "area": [
+       {
+        "areaDesc": "Αττική",
+        "geocode": [
+         {
+          "value": "GR011",
+          "valueName": "EMMA_ID"
+         }
+        ]
+       }
+      ],
+      "category": [
+       "Met"
+      ],
+      "certainty": "Likely",
+      "description": "Καταιγίδες κατά τόπους ισχυρές που πιθανώς να συνοδεύονται πρόσκαιρα από χαλαζοπτώσεις και ισχυρούς ριπαίους ανέμους. ΠΡΟΕΤΟΙΜΑΣΤΕΙΤΕ για ισχυρές καταιγίδες που έχουν σημαντικές επιπτώσεις και προστατεύστε τον εαυτό σας από τους κεραυνούς. Είναι δυνατό να προκληθούν ζημιές σε περιουσίες και δέντρα από τις πλημμύρες, τις ριπές του ανέμου και το χαλάζι. Αναμένονται προβλήματα στις υπαίθριες δραστηριότητες και τις μεταφορές.",
+      "effective": "2026-10-26T14:41:00+00:00",
+      "event": "Προειδοποίηση για καταγίδιες",
+      "expires": "2026-10-27T09:00:00+00:00",
+      "headline": "Πορτοκαλί προειδοποίηση για Αττική",
+      "language": "el-GR",
+      "onset": "2026-10-26T22:00:00+00:00",
+      "parameter": [
+       {
+        "value": "3; Thunderstorm",
+        "valueName": "awareness_type"
+       },
+       {
+        "value": "3; Orange; Severe",
+        "valueName": "awareness_level"
+       }
+      ],
+      "responseType": [
+       "None"
+      ],
+      "senderName": "Hnms Forecaster",
+      "severity": "Severe",
+      "urgency": "Expected",
+      "web": "https://www.emy.gr"
+     }
+    ],
+    "msgType": "Update",
+    "references": "emk@hnms.gr,2.49.0.0.300.0.GR.261026121400.010000011,2026-10-26T12:14:00+00:00",
+    "scope": "Public",
+    "sender": "emk@hnms.gr",
+    "sent": "2026-10-26T14:41:00+00:00",
+    "status": "Actual"
+   },
+   "uuid": "de0845ee-a278-4aa9-9c91-90e0740c5865"
+  }
+ }
+}

@@ -21,7 +21,51 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     dp = p2 - p1
     dl = math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(a))
+    return 2 * EARTH_RADIUS_KM * math.asin(math.sqrt(min(1.0, a)))
+
+
+def _lon_within(lon: float, west: float, east: float) -> bool:
+    if west <= east:
+        return west <= lon <= east
+    return lon >= west or lon <= east  # the box crosses the antimeridian
+
+
+def _lon_gap(a: float, b: float) -> float:
+    return abs((a - b + 180.0) % 360.0 - 180.0)
+
+
+def distance_to_box_km(lat: float, lon: float, bbox: tuple[float, ...] | list[float]) -> float:
+    """Great-circle distance from a point to the nearest point of an area's box
+    (west, south, east, north; `west > east` crosses the antimeridian), 0
+    inside it.
+
+    The SAME rule as the server's `Zone.touches` (backend/app/scope.py), so
+    the agent and a zoned app agree on what an area warning reaches: latitude
+    and longitude clamped separately, which is exact across the north and
+    south edges and overstates the gap to an east or west edge far from the
+    equator by a few tens of km at most -- never for a box that contains you.
+    """
+    west, south, east, north = (float(v) for v in bbox)
+    near_lat = min(max(lat, south), north)
+    if _lon_within(lon, west, east):
+        near_lon = lon
+    else:
+        near_lon = west if _lon_gap(lon, west) <= _lon_gap(lon, east) else east
+    return haversine_km(lat, lon, near_lat, near_lon)
+
+
+def _box(value: object) -> tuple[float, float, float, float] | None:
+    """The event's `bbox` when it is four numbers, None otherwise: a box we
+    cannot read must not stop the point from being judged."""
+    if not isinstance(value, (list, tuple)) or len(value) != 4:
+        return None
+    try:
+        west, south, east, north = (float(v) for v in value)
+    except (TypeError, ValueError):
+        return None
+    if not (-90 <= south <= north <= 90 and -180 <= west <= 180 and -180 <= east <= 180):
+        return None
+    return west, south, east, north
 
 
 def felt_radius_km(magnitude: float | None, depth_km: float | None = None) -> float:
@@ -51,6 +95,8 @@ class Decision:
     notify: bool
     distance_km: float | None
     reason: str
+    # the distance is to the edge of the alert's drawn AREA, not to a point
+    area: bool = False
 
 
 # Hazards that are dangerous where they ARE, and where they are heading.
@@ -78,11 +124,16 @@ def should_notify(
     severity = str(event.get("severity") or "info")
     kind = str(event.get("kind") or "other")
     lat, lon = event.get("lat"), event.get("lon")
+    # The drawn extent, when the source published one (NWS polygons, CAP
+    # areas, the UK Met Office, ash clouds). Judging such a warning by its
+    # centre kept a Paris agent silent on a UK amber area reaching 232 km
+    # from it, while the zoned app (same 300 km) got it (lane N's drill).
+    box = _box(event.get("bbox"))
 
     if SEVERITY_RANK.get(severity, 0) < SEVERITY_RANK.get(min_severity, 2):
         return Decision(False, None, f"below the {min_severity} threshold")
 
-    if lat is None or lon is None:
+    if (lat is None or lon is None) and box is None:
         # A warning with no coordinates -- a US county zone, a national
         # bulletin, most of the WMO aggregate. It cannot be placed, so
         # distance cannot decide.
@@ -100,7 +151,10 @@ def should_notify(
             return Decision(True, None, f"severe alert in {home_country}, no position given")
         return Decision(False, None, "no position, not severe enough")
 
-    distance = haversine_km(home_lat, home_lon, float(lat), float(lon))
+    if box is not None:
+        distance = distance_to_box_km(home_lat, home_lon, box)
+    else:
+        distance = haversine_km(home_lat, home_lon, float(lat), float(lon))
 
     if kind == "earthquake":
         limit = felt_radius_km(event.get("magnitude"), event.get("depth_km"))
@@ -111,6 +165,11 @@ def should_notify(
     else:
         limit = max_distance_km
 
+    what = "its area is " if box is not None else ""
     if distance <= limit:
-        return Decision(True, distance, f"{distance:.0f} km away, within {limit:.0f} km")
-    return Decision(False, distance, f"{distance:.0f} km away, beyond {limit:.0f} km")
+        return Decision(
+            True, distance, f"{what}{distance:.0f} km away, within {limit:.0f} km", box is not None
+        )
+    return Decision(
+        False, distance, f"{what}{distance:.0f} km away, beyond {limit:.0f} km", box is not None
+    )

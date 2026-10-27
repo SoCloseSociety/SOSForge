@@ -151,6 +151,7 @@ function Guidance({
  * the impression the area has nothing to show, hence the explicit message.
  */
 export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
+  const serverLabel = useStore((s) => s.sources.find((x) => x.name === event.source)?.label);
   const t = useStore((s) => s.t);
   const lang = useStore((s) => s.lang);
   const select = useStore((s) => s.select);
@@ -325,7 +326,7 @@ export function LivePanel({ event, now }: { event: SosEvent; now: number }) {
           </>
         ) : null}
         <dt>{t("detail.source")}</dt>
-        <dd>{SOURCE_LABEL[event.source] ?? event.source}</dd>
+        <dd>{SOURCE_LABEL[event.source] ?? serverLabel ?? event.source}</dd>
       </dl>
 
       {/* Below the instruction, and collapsed: it is context, not an

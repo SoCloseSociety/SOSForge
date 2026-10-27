@@ -258,7 +258,8 @@ def test_connected_is_not_delivering():
     health.ok()  # the websocket opened
     assert health.snapshot()["connected"] is True
     assert health.snapshot()["last_event_at"] is None
-    health.ok(1)  # the first quake arrived
+    health.observe("emsc:1", datetime(2026, 10, 26, 12, 0, tzinfo=UTC))  # the first quake
+    health.ok(1)
     assert health.snapshot()["last_event_at"] is not None
 
 

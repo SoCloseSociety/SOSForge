@@ -101,6 +101,13 @@ export interface Stats {
   server_time: string;
 }
 
+/** One feed of a multi-feed source failing right now, as /api/sources
+ * sends it: `{"feed": "PAAQ", "error": "TimeoutError: "}`. */
+export interface FailedFeed {
+  feed: string;
+  error?: string | null;
+}
+
 export interface SourceHealth {
   name: string;
   connected: boolean;
@@ -114,9 +121,21 @@ export interface SourceHealth {
    * predates it omits the field). Read through `degradedFeeds()`, which
    * accepts the shapes a server may send: a flag, a list, an object. */
   degraded?: boolean | string[] | { failed?: string[]; feeds?: string[] } | null;
-  failed_feeds?: string[] | null;
-  /** when this source last delivered an EVENT (not a successful poll) */
+  /** The server sends `{feed, error}` objects (sources/base.py); a bare
+   * name is still read, for an older server. */
+  failed_feeds?: (string | FailedFeed)[] | null;
+  /** The source's own display name ("NCS (India)", "US Drought Monitor"):
+   * the client's SOURCE_LABEL wins, this covers a source it does not know. */
+  label?: string;
+  /** when this source first handed over an event NEVER seen before: the
+   * last NEW event. Null until one arrives after the server started. A
+   * re-listed old event is not news (lane Q, defect 7). */
   last_event_at?: string | null;
+  /** the newest event's OWN time, whatever it was first seen */
+  newest_event_time?: string | null;
+  /** a poll returned anything (the old meaning of "last event"): never shown
+   * as an event time */
+  last_delivery_at?: string | null;
 }
 
 export type ServerMessage =

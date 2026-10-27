@@ -15,6 +15,8 @@ from app.sources.base import Source
 from app.sources.iceland import ImoQuakeSource, ImoVolcanoSource
 from app.sources.jma_volcano import JmaVolcanoSource
 from app.sources.ncs import NcsSource
+from app.sources.ukea import UkEaFloodSource
+from app.sources.usdm import UsdmSource
 
 
 class ExtraSourceSettings(BaseSettings):
@@ -38,6 +40,21 @@ class ExtraSourceSettings(BaseSettings):
     enable_ncs: bool = True
     ncs_poll_seconds: float = 180.0
 
+    # England flood warnings (Environment Agency). OFF by default, measured:
+    # Meteoalarm's UK feed already relays the EA's Flood Warnings word for
+    # word ("Flooding is expected: Irish Sea at New Brighton"): 5 of 5 on
+    # 2026-10-27, same places, same positions, so enabling it at level 2 puts
+    # every warning on the map twice. What it alone has is the yellow tier:
+    # SOS_ENABLE_UKEA=true with SOS_UKEA_MAX_LEVEL=3 adds the Flood Alerts
+    # (35 that morning). Level 1 = most severe.
+    enable_ukea: bool = False
+    ukea_poll_seconds: float = 300.0
+    ukea_max_level: int = 2
+
+    # US Drought Monitor: a weekly map, 17 MB, fetched conditionally.
+    enable_usdm: bool = True
+    usdm_poll_seconds: float = 6 * 3600.0
+
 
 def extra_sources(settings: ExtraSourceSettings | None = None) -> list[Source]:
     settings = settings or ExtraSourceSettings()
@@ -52,4 +69,8 @@ def extra_sources(settings: ExtraSourceSettings | None = None) -> list[Source]:
         built.append(JmaVolcanoSource(settings.jma_volcano_poll_seconds))
     if settings.enable_ncs:
         built.append(NcsSource(settings.ncs_poll_seconds))
+    if settings.enable_ukea:
+        built.append(UkEaFloodSource(settings.ukea_poll_seconds, max_level=settings.ukea_max_level))
+    if settings.enable_usdm:
+        built.append(UsdmSource(settings.usdm_poll_seconds))
     return built

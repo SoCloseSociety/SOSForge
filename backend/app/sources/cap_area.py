@@ -54,6 +54,9 @@ CAP_CACHE_MAX = 20_000
 # feed can still need theirs. Two thousand covers today's whole Severe-and-
 # above set several times over.
 CAP_TEXT_CACHE_MAX = 2_000
+# Bumped when a stored centre can no longer be trusted. 2: centres through
+# `geometry.center` (antimeridian), lane Q 2026-10-27.
+CAP_CACHE_VERSION = 2
 
 
 def _tag(element: ET.Element) -> str:
@@ -92,9 +95,7 @@ def polygon_points(text: str | None) -> list[tuple[float, float]] | None:
 def parse_polygon(text: str | None) -> tuple[float, float] | None:
     """The centre of one CAP ring (see `polygon_points`)."""
     points = polygon_points(text)
-    if not points:
-        return None
-    return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
+    return geometry.center(points) if points else None
 
 
 def parse_cap_position(document: str | bytes) -> tuple[float, float] | None:
@@ -122,8 +123,7 @@ def parse_cap_area(
     except ET.ParseError:
         return None, None
 
-    lats: list[float] = []
-    lons: list[float] = []
+    centres: list[tuple[float, float]] = []
     vertices: list[tuple[float, float]] = []
     for element in root.iter():
         if _tag(element) != "area":
@@ -132,16 +132,17 @@ def parse_cap_area(
             if _tag(child) != "polygon":
                 continue
             ring = polygon_points(child.text)
-            if ring:
-                lats.append(sum(p[0] for p in ring) / len(ring))
-                lons.append(sum(p[1] for p in ring) / len(ring))
+            middle = geometry.center(ring) if ring else None
+            if ring and middle:
+                centres.append(middle)
                 vertices += ring
-    if not lats:
+    if not centres:
         return None, None
-    # The point stays the average of the rings' centres, as before; the
-    # extent covers every vertex of every ring -- the EXCLUDE_POLYGON never
-    # enters either, since only `area/polygon` is read.
-    return (sum(lats) / len(lats), sum(lons) / len(lons)), geometry.extent(vertices)
+    # The point is the centre of the rings' centres, the extent covers every
+    # vertex of every ring -- the EXCLUDE_POLYGON never enters either, since
+    # only `area/polygon` is read. Both through `geometry`, which knows the
+    # antimeridian (Alaska, Fiji, Tonga, the Kermadecs).
+    return geometry.center(centres), geometry.extent(vertices)
 
 
 class CapAreaCache:
@@ -187,7 +188,13 @@ class CapAreaCache:
         if not self._cache_path or not self._cache_path.exists():
             return
         try:
-            data = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            stored = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            if not isinstance(stored, dict) or stored.get("version") != CAP_CACHE_VERSION:
+                # Written before the antimeridian fix: a stored centre may be
+                # on the wrong side of the planet. Read the documents again.
+                log.warning("wmo cap cache predates version %d, discarded", CAP_CACHE_VERSION)
+                return
+            data = stored.get("documents") or {}
             for key, value in data.items():
                 self._positions[key] = (float(value[0]), float(value[1])) if value else None
                 if value and len(value) == 6:
@@ -208,7 +215,9 @@ class CapAreaCache:
             for key, value in self._positions.items():
                 extent = self._extents.get(key)
                 data[key] = (list(value) + (list(extent) if extent else [])) if value else None
-            self._cache_path.write_text(json.dumps(data), encoding="utf-8")
+            self._cache_path.write_text(
+                json.dumps({"version": CAP_CACHE_VERSION, "documents": data}), encoding="utf-8"
+            )
         except OSError as exc:  # a cache is an optimisation, never a dependency
             log.warning("could not write the wmo cap cache: %s", exc)
 

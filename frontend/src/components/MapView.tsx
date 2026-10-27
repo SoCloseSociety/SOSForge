@@ -7,6 +7,7 @@ import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
 import { forecastTracks } from '../tracks'
 import { useMediaQuery } from '../useMediaQuery'
+import { WORLD_VIEW, worldZoom } from '../scope'
 
 /** Someone who asked their system for less motion asked the whole product,
  * not just the stylesheet. The map is where the motion actually is: camera
@@ -82,12 +83,15 @@ function scaledRadius(scale: number): maplibregl.ExpressionSpecification {
   ] as unknown as maplibregl.ExpressionSpecification
 }
 
+const RANK = { info: 0, minor: 1, moderate: 2, severe: 3, extreme: 4 } as const
+
 function toFeatureCollection(events: SosEvent[], fresh: Set<string>): GeoJSON.FeatureCollection {
+  const total = events.length
   return {
     type: 'FeatureCollection',
     features: events
       .filter((e) => e.lat !== null && e.lon !== null)
-      .map((event) => ({
+      .map((event, index) => ({
         type: 'Feature',
         id: event.id,
         geometry: { type: 'Point', coordinates: [event.lon as number, event.lat as number] },
@@ -98,6 +102,10 @@ function toFeatureCollection(events: SosEvent[], fresh: Set<string>): GeoJSON.Fe
           // alerts without a magnitude still need a readable size
           weight: event.magnitude ?? (event.severity === 'extreme' ? 6 : 4),
           fresh: fresh.has(event.id) ? 1 : 0,
+          // Drawn on top where markers overlap: the most severe first, then
+          // what is happening NOW (the list arrives in relevance order). In
+          // source order the oldest was drawn last, over everything.
+          order: RANK[event.severity] * 100_000 + (total - index),
         },
       })),
   }
@@ -181,8 +189,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       instance = new maplibregl.Map({
         container: container.current,
         style: BASEMAP_STYLE_URL,
-        center: [10, 20],
-        zoom: 1.4,
+        center: [WORLD_VIEW.lon, WORLD_VIEW.lat],
+        zoom: worldZoom(container.current.clientWidth),
         attributionControl: { compact: true },
       })
     } catch (error) {
@@ -215,6 +223,25 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       }
     })
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+    // MapLibre opens its compact attribution EXPANDED the first time it fills
+    // it -- which can be well after `load`, once the tiles' attribution has
+    // arrived -- and on a phone it then covered a third of the map (seen at
+    // 280 px). Closed the FIRST time it opens by itself on a small map; a
+    // reader's own tap opens it as usual. The page footer carries the same
+    // credit permanently ("Basemap OpenStreetMap / OpenFreeMap").
+    const attribution = container.current.querySelector<HTMLElement>('.maplibregl-ctrl-attrib')
+    if (attribution && typeof MutationObserver !== 'undefined') {
+      const watcher = new MutationObserver(() => {
+        if (!attribution.classList.contains('maplibregl-compact-show')) return
+        watcher.disconnect()
+        if ((container.current?.clientWidth ?? 0) < 640) {
+          attribution.classList.remove('maplibregl-compact-show')
+          attribution.removeAttribute('open')
+        }
+      })
+      watcher.observe(attribution, { attributes: true, attributeFilter: ['class'] })
+    }
 
     instance.on('load', () => {
       styleArrived = true
@@ -319,6 +346,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
         id: 'events-dot',
         type: 'circle',
         source: 'events',
+        layout: { 'circle-sort-key': ['get', 'order'] },
         paint: {
           'circle-radius': RADIUS,
           'circle-color': SEVERITY_COLOR,
@@ -329,6 +357,7 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       })
 
       setReady(true)
+
       instance.getSource('events') &&
         (instance.getSource('events') as maplibregl.GeoJSONSource).setData(
           toFeatureCollection(latest.current.events, useStore.getState().fresh),

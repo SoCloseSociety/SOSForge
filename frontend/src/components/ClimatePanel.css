@@ -1,0 +1,324 @@
+/* ClimatePanel -- every selector is scoped under .climate-panel, so nothing
+   here can leak into the rest of the app, and nothing in it depends on the
+   order this sheet lands in.
+
+   Colours are the tokens of styles.css only (Lunar on :root, Soft on
+   :root[data-theme="soft"]), so both themes follow without a rule here.
+
+   Nothing overflows its card: measured at a 280 px card and a 32 px root
+   (200 % text). Flex rows wrap with a real basis and min-width: 0; long
+   tokens (URLs, ids, error strings) break anywhere. */
+
+.climate-panel {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--pad-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  color: var(--t1);
+  overflow-wrap: anywhere;
+}
+
+.climate-panel .climate-title {
+  margin: 0;
+  font-size: var(--ts-card);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
+}
+
+.climate-panel .climate-intro {
+  margin: 4px 0 var(--gap);
+  font-size: var(--ts-label);
+  line-height: var(--lh-body);
+  color: var(--t2);
+}
+
+.climate-panel .climate-loading,
+.climate-panel .climate-empty {
+  margin: 0;
+  font-size: var(--ts-sub);
+  color: var(--t2);
+}
+
+/* The indicator cards: as many columns as fit, never one narrower than its
+   content can bear. `min(100%, ...)` is what keeps a 280 px panel at one
+   column instead of overflowing it; rem makes the floor grow with the
+   reader's text size, so 200 % text drops to one column as well. */
+.climate-panel .climate-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
+  gap: var(--gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.climate-panel .climate-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-mini);
+}
+
+.climate-panel .climate-item > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.climate-panel .climate-name {
+  margin: 0;
+  font-size: var(--ts-sub);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  color: var(--t1);
+}
+
+.climate-panel .climate-reading,
+.climate-panel .climate-anomaly {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+}
+
+.climate-panel .climate-reading > *,
+.climate-panel .climate-anomaly > * {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.climate-panel .climate-value {
+  font-family: var(--mono);
+  font-size: var(--ts-title-2);
+  font-weight: 500;
+  line-height: var(--lh-title);
+  font-variant-numeric: tabular-nums;
+  color: var(--t1);
+}
+
+/* A status in words (ENSO: "El Nino Advisory") is a name, not a figure. */
+.climate-panel .climate-value.is-text {
+  font-family: var(--sans);
+  font-size: var(--ts-row);
+  font-weight: 600;
+}
+
+.climate-panel .climate-unit {
+  font-size: var(--ts-sub);
+  color: var(--t2);
+}
+
+.climate-panel .climate-anomaly {
+  font-family: var(--mono);
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+/* A value the server still carries while its source fails: greyed, and the
+   words below say why (never the grey alone). */
+.climate-panel .climate-reading.is-kept .climate-value,
+.climate-panel .climate-reading.is-kept .climate-unit,
+.climate-panel .climate-anomaly.is-kept {
+  color: var(--t3);
+}
+
+.climate-panel .climate-trend {
+  font-family: var(--mono);
+  font-size: var(--ts-sub);
+  color: var(--t2);
+}
+
+.climate-panel .climate-asof {
+  margin: 0;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.climate-panel .climate-asof time {
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+}
+
+.climate-panel .climate-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A flag is a sentence, so it may take the whole width and wrap. */
+.climate-panel .climate-flag {
+  display: flex;
+  flex: 1 1 12ch;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--ts-meta);
+  line-height: var(--lh-body);
+  color: var(--t1);
+}
+
+.climate-panel .climate-flag > span:not(.climate-flag-glyph) {
+  flex: 1 1 10ch;
+  min-width: 0;
+}
+
+.climate-panel .climate-flag-glyph {
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  color: var(--amber);
+}
+
+.climate-panel .climate-problem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  font-size: var(--ts-label);
+  line-height: var(--lh-body);
+  color: var(--t1);
+}
+
+.climate-panel .climate-fetch-error {
+  margin-bottom: var(--gap);
+}
+
+.climate-panel .climate-problem-glyph {
+  flex: 0 0 1.1em;
+  font-family: var(--mono);
+  text-align: center;
+  color: var(--red);
+}
+
+.climate-panel .climate-problem-text {
+  flex: 1 1 14ch;
+  min-width: 0;
+}
+
+/* The server's or the browser's own error words, verbatim. */
+.climate-panel .climate-error-text {
+  flex: 1 1 100%;
+  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--ts-meta);
+  color: var(--t2);
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.climate-panel .climate-source {
+  margin: 0;
+  font-size: var(--ts-meta);
+  color: var(--t3);
+}
+
+.climate-panel a {
+  color: var(--cyan);
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+/* "Show more": a real button, sized as a touch target, worded and underlined
+   (the same look as .btn-more in styles.css, restated here so the panel
+   stands on its own). */
+.climate-panel .climate-more {
+  align-self: flex-start;
+  min-height: var(--target);
+  max-width: 100%;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--ts-label);
+  font-weight: 500;
+  color: var(--t2);
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.climate-panel .climate-more:hover {
+  color: var(--t1);
+}
+
+.climate-panel .climate-more:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.climate-panel .climate-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: var(--ts-meta);
+  line-height: var(--lh-body);
+}
+
+.climate-panel .climate-detail[hidden] {
+  display: none;
+}
+
+/* Label and value side by side when there is room, stacked when not. */
+.climate-panel .climate-detail-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  min-width: 0;
+}
+
+.climate-panel .climate-detail-row dt {
+  flex: 1 1 12ch;
+  min-width: 0;
+  color: var(--t3);
+}
+
+.climate-panel .climate-detail-row dd {
+  flex: 999 1 16ch;
+  min-width: 0;
+  margin: 0;
+  color: var(--t1);
+}
+
+.climate-panel .climate-synopsis {
+  display: block;
+  white-space: pre-line;
+  color: var(--t2);
+}
+
+.climate-panel .climate-token {
+  font-family: var(--mono);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Words for a screen reader where the eye gets a glyph (the trend arrow). */
+.climate-panel .climate-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

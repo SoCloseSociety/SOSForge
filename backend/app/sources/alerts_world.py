@@ -40,11 +40,13 @@ from typing import Any
 
 import httpx
 
+from app.countries import resolve as resolve_country
 from app.models.event import Event, Kind, Severity, severity_for_cap, to_utc
 from app.sources import geometry
 from app.sources.base import Emit, Source
 from app.sources.cap_area import WMO_CAP_BASE, CapAreaCache, polygon_points
 from app.sources.cap_text import CapText
+from app.sources.iso3166 import NUMERIC_TO_ALPHA2
 from app.sources.nws import _matches
 from app.sources.regional import USER_AGENT, JsonPollSource
 
@@ -140,8 +142,7 @@ def _meteoalarm_area(
     Returns the centre (the average of the ring centres) and the extent
     (every vertex of every ring).
     """
-    lats: list[float] = []
-    lons: list[float] = []
+    centres: list[tuple[float, float]] = []
     vertices: list[tuple[float, float]] = []
     for area in areas:
         rings = area.get("polygon")
@@ -149,13 +150,13 @@ def _meteoalarm_area(
             rings = [rings]
         for ring in rings or []:
             points = polygon_points(ring)
-            if points:
-                lats.append(sum(p[0] for p in points) / len(points))
-                lons.append(sum(p[1] for p in points) / len(points))
+            middle = geometry.center(points) if points else None
+            if points and middle:
+                centres.append(middle)
                 vertices += points
-    if not lats:
+    if not centres:
         return None, None
-    return (sum(lats) / len(lats), sum(lons) / len(lons)), geometry.extent(vertices)
+    return geometry.center(centres), geometry.extent(vertices)
 
 
 def _pick_info(blocks: list[dict]) -> dict | None:
@@ -182,6 +183,39 @@ def _label(value: str | None) -> str | None:
     free-text emergency message is a risk this product does not take.
     """
     return html.unescape(value) if isinstance(value, str) else value
+
+
+# Meteoalarm awareness level (the colour) -> the lowest rung it may show.
+METEOALARM_COLOUR_FLOOR: dict[str, Severity] = {"3": Severity.MODERATE, "4": Severity.SEVERE}
+
+
+def meteoalarm_references(warning: dict) -> list[str]:
+    """Identifiers a Meteoalarm message replaces. CAP `references` is a
+    space-separated list of `sender,identifier,sent` triples, e.g.
+    `https://meteo.hr,2.49.0.0.191.0.HR.261021110840_0_002_yellow_HR018,2026-10-21T11:08:40+02:00`."""
+    found: list[str] = []
+    for token in str((warning.get("alert") or {}).get("references") or "").split():
+        parts = token.split(",")
+        if len(parts) >= 2 and parts[1].strip():
+            found.append(parts[1].strip())
+    return found
+
+
+# "Orange warning for Thessalia": a headline that names the colour and not the
+# hazard. Greece (HNMS) issues a thunderstorm AND a rain warning for the same
+# region, and the rain one is titled that way -- so the pair read as one
+# warning listed twice (5 of the 8 Greek warnings published on 2026-10-27).
+# The hazard is in the record (`awareness_type`, "10; Rain"): it goes in.
+RE_COLOUR_ONLY = re.compile(r"^(yellow|orange|red)\s+warning\b(.*)$", re.IGNORECASE)
+
+
+def _meteoalarm_title(info: dict, params: dict, place: str) -> str:
+    title = _label(info.get("headline")) or _label(info.get("event")) or place
+    match = RE_COLOUR_ONLY.match(title or "")
+    hazard = (params.get("awareness_type") or "").split(";")[-1].strip().lower()
+    if match and hazard:
+        return f"{match.group(1)} {hazard} warning{match.group(2)}"
+    return title
 
 
 def parse_meteoalarm(warning: dict, country: str) -> Event | None:
@@ -216,6 +250,17 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         # Extending an unmeasured rule to a second population is exactly the
         # mistake lesson 24 is about.
     )
+    # An official colour is never contradicted on screen. The CAP rule above
+    # puts a forecast one rung below the agency's rank and drops a `Possible`
+    # one more -- right for the NWS's "Severe, Possible" fire-weather watches,
+    # wrong for a European colour: Croatia's ORANGE wind warning for the
+    # Velebit channel (certainty Possible) went out as MINOR on 2026-10-27,
+    # the rung of a yellow. Meteoalarm only, so the floor is the colour's own
+    # rung: orange never below MODERATE, red never below SEVERE. Yellow keeps
+    # the CAP reading; a lift is handled below.
+    floor = METEOALARM_COLOUR_FLOOR.get(level or "")
+    if floor is not None:
+        severity = max(severity, floor, key=list(Severity).index)
     kind = AWARENESS_TYPE_KIND.get(awareness_type or "", Kind.OTHER)
 
     # `AllClear` means the warning is LIFTED. Like the "no danger" tsunami
@@ -264,7 +309,7 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         expires=to_utc(info.get("expires")),
         alert=("lifted" if lifted else (params.get("awareness_level") or "").split(";")[-1].strip())
         or None,
-        title=_label(info.get("headline")) or _label(info.get("event")) or place,
+        title=_meteoalarm_title(info, params, place),
         instruction=info.get("instruction"),
         description=info.get("description"),
         response_type=responses[0] if responses else None,
@@ -312,24 +357,28 @@ class MeteoalarmSource(Source):
             timeout=25.0, headers=headers, follow_redirects=True
         ) as client:
             while True:
-                seen, alive = 0, 0
+                seen, alive, answered = 0, 0, 0
                 last_error: Exception | None = None
                 for country in self.countries:
                     try:
                         resp = await client.get(METEOALARM_API.format(country=country))
                         resp.raise_for_status()
                         alive += 1
-                        kept = 0
-                        for event in self.select(resp.json(), country):
-                            kept += 1
+                        events = self.select(resp.json(), country)
+                        # before the emits: a country back after failing
+                        # since startup lists its baseline, not new data
+                        self.health.feed_ok(country, (e.id for e in events))
+                        kept = len(events)
+                        for event in events:
                             await emit(event)
                         await self.flush_retractions()
                         seen += kept
-                        self.health.feed_ok(country)
                         # mark health at EACH country: ten sequential GETs
                         # take over a minute, and the source looked dead for
-                        # its entire first cycle
-                        self.health.ok(kept)
+                        # its entire first cycle. `partial`: one country is
+                        # not the cycle, and only the cycle primes freshness
+                        self.health.ok(kept, partial=True)
+                        answered += 1
                     except Exception as exc:
                         last_error = exc
                         # Per country, and never cleared by the next one: a
@@ -338,7 +387,10 @@ class MeteoalarmSource(Source):
                         self.health.feed_failed(country, exc)
                         log.warning("meteoalarm %s: %s", country, exc)
                 # health is already marked country by country above; marking it
-                # here again added the same total a second time
+                # here again added the same total a second time (n=0 adds
+                # nothing: this call only closes the cycle)
+                if answered:
+                    self.health.ok()
                 if not alive:
                     log.warning("meteoalarm: no country reachable this cycle")
                     if last_error is not None:
@@ -351,12 +403,35 @@ class MeteoalarmSource(Source):
         Below the threshold: not published. Already expired: not published
         either, and WITHDRAWN, so a warning stored before it ended leaves the
         map now rather than whenever something else notices.
+
+        **A warning is replaced under a NEW identifier.** Meteoalarm does not
+        update a warning in place: it publishes a message with its own
+        identifier whose `references` names the one it replaces, and the
+        replaced one is never listed again (1009 references on 2026-10-27,
+        0 still listed; France 143 of 161 entries are such Updates, Italy
+        120 of 120). Ignoring `references` meant a replaced warning lived on
+        until its own `expires` or six hours of silence -- and a LIFT, which
+        Meteo-France publishes as an AllClear at level 1 green, was dropped
+        by the threshold before anyone read it, so the orange it lifted stayed
+        on every client. Every reference is therefore honoured BEFORE the
+        level filter: an AllClear withdraws what it references as `lifted`,
+        any other replacement as `stale` (its successor is published below
+        under its own identifier, at whatever level it now has).
+
+        No stable-key remapping across the chain: the store key of a replaced
+        warning is its own identifier, which is what survives a restart.
         """
         now = now or datetime.now(UTC)
         kept: list[Event] = []
         for warning in (data or {}).get("warnings") or []:
             event = parse_meteoalarm(warning, country)
-            if event is None or _level_of(event) < self.min_level:
+            if event is None:
+                continue
+            lifts = event.alert == "lifted"
+            for replaced in meteoalarm_references(warning):
+                if replaced != event.source_id:
+                    (self.lifts if lifts else self.expirations).append(f"meteoalarm:{replaced}")
+            if _level_of(event) < self.min_level:
                 continue
             if event.expires is not None and event.expires <= now:
                 self.expirations.append(event.id)
@@ -415,7 +490,8 @@ WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     # (see nws.py), relayed here as "Hurricane Force Wind Warning"
     (("hurricane force",), Kind.STORM),
     (("cyclone", "hurricane", "typhoon", "tropical"), Kind.CYCLONE),
-    (("flood", "flooding", "inundation", "crue", "inundaci"), Kind.FLOOD),
+    # "فيضان" (Arabic, flood: Syria's "فيضان مفاجئ", flash flood)
+    (("flood", "flooding", "inundation", "crue", "inundaci", "فيضان"), Kind.FLOOD),
     # "Landslide warning" (Colombia, 15 live, 5 of them in the top tier) and
     # China's "Meteorological risk of geological disaster" -- the rain-driven
     # landslide and debris-flow warning. Both sat in OTHER.
@@ -423,7 +499,8 @@ WMO_KIND_PATTERNS: list[tuple[tuple[str, ...], Kind]] = [
     (("avalanche",), Kind.AVALANCHE),
     (("fire", "wildfire", "bushfire"), Kind.WILDFIRE),
     (("earthquake", "seismic"), Kind.EARTHQUAKE),
-    (("heat", "hot", "altas temperaturas"), Kind.HEAT),
+    # French "Chaleur" (Chad's heat warning), "Canicule" (heatwave)
+    (("heat", "hot", "altas temperaturas", "chaleur", "canicule"), Kind.HEAT),
     (("drought",), Kind.DROUGHT),
     (
         (
@@ -527,6 +604,8 @@ def parse_wmo(
     # a flag
     prefix = str(item_id).split("-", 1)[0]
     country_code = prefix.upper() if len(prefix) == 2 and prefix.isalpha() else None
+    kind = classify_wmo(item.get("event") or "alert")
+    country_code = country_code or issuer_country(item, kind)
     event_name = item.get("event") or "alert"
     place = item.get("areaDesc") or ""
     cap_path = wmo_cap_path(item)
@@ -574,6 +653,436 @@ def parse_wmo(
     )
 
 
+# ------------------------------------------------------- targeted tier 2
+#
+# The top tier alone leaves whole kinds empty: on 2026-10-27 the live feed
+# had 0 heat, 0 drought, 0 avalanche, 7 landslide. Keeping the whole second
+# tier was measured and rejected (rank 1: 59 published, rank 2: 223 -- the
+# extra 164 being 55 "Forestfire", NWS relays, "Low water", Meteoalarm/EA
+# copies). So the second tier is kept only where nothing else speaks:
+#
+#   * not from an issuer this product reads DIRECTLY -- the NWS (both its
+#     land and marine feeds) and every Meteoalarm member -- whose alerts
+#     would arrive twice;
+#   * only for the kinds the feed has little or nothing of;
+#   * never when this product's own rank for it comes out minor or info.
+#
+# The issuer is the CAP source directory the aggregate links to
+# (`co-ideam-es/2026/...`): its first token is the country, written `uk` for
+# the United Kingdom.
+DIRECT_ISSUER_PREFIXES = ("us-noaa-nws",)
+# Kept out of the second tier: the Bureau of Meteorology. Its own API was
+# rejected because its payload forbids reuse (round 1), and its CAP documents
+# here carry no polygon -- 0 of 5 tier-2 BOM warnings could be placed on
+# 2026-10-27, so none could reach anyone by area.
+TIER2_EXCLUDED_ISSUER_PREFIXES = ("au-bom",)
+METEOALARM_MEMBERS = frozenset(
+    {
+        "at", "ba", "be", "bg", "ch", "cy", "cz", "de", "dk", "ee", "es", "fi", "fr",
+        "gb", "uk", "gr", "hr", "hu", "ie", "il", "is", "it", "lt", "lu", "lv", "md",
+        "me", "mk", "mt", "nl", "no", "pl", "pt", "ro", "rs", "se", "si", "sk", "ua",
+    }
+)  # fmt: skip
+TIER2_KINDS = frozenset({Kind.HEAT, Kind.LANDSLIDE, Kind.DROUGHT, Kind.AVALANCHE, Kind.FLOOD})
+
+
+# ------------------------------------------------- country from the issuer
+#
+# The aggregate's ids are CAP OIDs (`2.49.0.0.170...`) with no country in
+# them: the id-prefix rule above flagged 0 of 1319 items on 2026-10-27, and
+# the pipeline cannot read a country out of "Antioquia (Dabeiba, ...)". The
+# CAP source directory names the ISSUING national service (`co-ideam-es`),
+# and for a land hazard a national weather service warns about its own
+# territory. Lesson 16 still applies -- the publisher is not always the
+# place -- so the flag is given only where that holds:
+#
+#   * the prefix is a real ISO 3166-1 alpha-2 code (`uk` is the United
+#     Kingdom's own spelling, GB in ISO); anything else is a regional or
+#     multinational issuer and gets nothing;
+#   * the issuer is not a marine feed (`us-noaa-nws-en-marine`) and the
+#     product is not a marine one (sea areas, gale/high-seas/wave/swell);
+#   * the kind is a land hazard;
+#   * the area does not name another country.
+ISO_3166_ALPHA2 = frozenset(
+    [
+        "AD",
+        "AE",
+        "AF",
+        "AG",
+        "AI",
+        "AL",
+        "AM",
+        "AO",
+        "AQ",
+        "AR",
+        "AS",
+        "AT",
+        "AU",
+        "AW",
+        "AX",
+        "AZ",
+        "BA",
+        "BB",
+        "BD",
+        "BE",
+        "BF",
+        "BG",
+        "BH",
+        "BI",
+        "BJ",
+        "BL",
+        "BM",
+        "BN",
+        "BO",
+        "BQ",
+        "BR",
+        "BS",
+        "BT",
+        "BV",
+        "BW",
+        "BY",
+        "BZ",
+        "CA",
+        "CC",
+        "CD",
+        "CF",
+        "CG",
+        "CH",
+        "CI",
+        "CK",
+        "CL",
+        "CM",
+        "CN",
+        "CO",
+        "CR",
+        "CU",
+        "CV",
+        "CW",
+        "CX",
+        "CY",
+        "CZ",
+        "DE",
+        "DJ",
+        "DK",
+        "DM",
+        "DO",
+        "DZ",
+        "EC",
+        "EE",
+        "EG",
+        "EH",
+        "ER",
+        "ES",
+        "ET",
+        "FI",
+        "FJ",
+        "FK",
+        "FM",
+        "FO",
+        "FR",
+        "GA",
+        "GB",
+        "GD",
+        "GE",
+        "GF",
+        "GG",
+        "GH",
+        "GI",
+        "GL",
+        "GM",
+        "GN",
+        "GP",
+        "GQ",
+        "GR",
+        "GS",
+        "GT",
+        "GU",
+        "GW",
+        "GY",
+        "HK",
+        "HM",
+        "HN",
+        "HR",
+        "HT",
+        "HU",
+        "ID",
+        "IE",
+        "IL",
+        "IM",
+        "IN",
+        "IO",
+        "IQ",
+        "IR",
+        "IS",
+        "IT",
+        "JE",
+        "JM",
+        "JO",
+        "JP",
+        "KE",
+        "KG",
+        "KH",
+        "KI",
+        "KM",
+        "KN",
+        "KP",
+        "KR",
+        "KW",
+        "KY",
+        "KZ",
+        "LA",
+        "LB",
+        "LC",
+        "LI",
+        "LK",
+        "LR",
+        "LS",
+        "LT",
+        "LU",
+        "LV",
+        "LY",
+        "MA",
+        "MC",
+        "MD",
+        "ME",
+        "MF",
+        "MG",
+        "MH",
+        "MK",
+        "ML",
+        "MM",
+        "MN",
+        "MO",
+        "MP",
+        "MQ",
+        "MR",
+        "MS",
+        "MT",
+        "MU",
+        "MV",
+        "MW",
+        "MX",
+        "MY",
+        "MZ",
+        "NA",
+        "NC",
+        "NE",
+        "NF",
+        "NG",
+        "NI",
+        "NL",
+        "NO",
+        "NP",
+        "NR",
+        "NU",
+        "NZ",
+        "OM",
+        "PA",
+        "PE",
+        "PF",
+        "PG",
+        "PH",
+        "PK",
+        "PL",
+        "PM",
+        "PN",
+        "PR",
+        "PS",
+        "PT",
+        "PW",
+        "PY",
+        "QA",
+        "RE",
+        "RO",
+        "RS",
+        "RU",
+        "RW",
+        "SA",
+        "SB",
+        "SC",
+        "SD",
+        "SE",
+        "SG",
+        "SH",
+        "SI",
+        "SJ",
+        "SK",
+        "SL",
+        "SM",
+        "SN",
+        "SO",
+        "SR",
+        "SS",
+        "ST",
+        "SV",
+        "SX",
+        "SY",
+        "SZ",
+        "TC",
+        "TD",
+        "TF",
+        "TG",
+        "TH",
+        "TJ",
+        "TK",
+        "TL",
+        "TM",
+        "TN",
+        "TO",
+        "TR",
+        "TT",
+        "TV",
+        "TW",
+        "TZ",
+        "UA",
+        "UG",
+        "UM",
+        "US",
+        "UY",
+        "UZ",
+        "VA",
+        "VC",
+        "VE",
+        "VG",
+        "VI",
+        "VN",
+        "VU",
+        "WF",
+        "WS",
+        "YE",
+        "YT",
+        "ZA",
+        "ZM",
+        "ZW",
+    ]
+)
+ISSUER_PREFIX_ISO = {"uk": "GB"}
+LAND_KINDS = frozenset(
+    {
+        Kind.HEAT,
+        Kind.LANDSLIDE,
+        Kind.FLOOD,
+        Kind.DROUGHT,
+        Kind.AVALANCHE,
+        Kind.WILDFIRE,
+        Kind.STORM,
+    }
+)
+# What makes a product a MARINE one, read on the real aggregate of
+# 2026-10-27. The area and the headline say it better than the event name:
+# "Gale" is a sea-area warning for MET Norway and SMHI (Roest Bank,
+# Skagerrak) but CMA's word for a LAND strong-wind warning (大风, issued per
+# county), and DWD's "gale-force gusts" are over towns. So:
+#   * unambiguous phrases (substrings);
+#   * "sea"/"seas" as words -- except for a flood: "Irish Sea at New
+#     Brighton" is a coastal flood on land;
+#   * "gale" as a word, unless it is "gale-force" or the issuer is one that
+#     uses it for land wind;
+#   * "wave(s)" as a word, unless a heat or cold wave. A substring, it made
+#     every heatwave marine ("Severe heatwave warning for Queensland", BOM),
+#     so no heatwave got its country; a whole word alone still reads "Heat
+#     Wave" as the sea. Measured on four real aggregates (978 to 1373
+#     items): the 2 BOM heatwaves gain AU, nothing else moves, and "Wave
+#     height warning" (UA), "Wind Wave Advisory" (KMA) stay marine.
+MARINE_PHRASES = (
+    "marine",
+    "maritime",
+    "small craft",
+    "high seas",
+    "offshore",
+    "coastal waters",
+    "sea area",
+    "near gale",
+    "swell",
+)
+WAVE_QUALIFIERS = frozenset({"heat", "cold"})
+LAND_GALE_ISSUERS = ("cn-cma",)
+# The NWS warns for territories that have their own ISO code, and writes them
+# as postal suffixes ("Saipan, MP; Tinian, MP"): flagged "US" by the first
+# version of this rule, which is wrong.
+US_TERRITORIES = {"PR": "PR", "GU": "GU", "MP": "MP", "AS": "AS", "VI": "VI"}
+
+
+def _is_marine(item: dict, issuer: str, kind: Kind) -> bool:
+    text = " ".join(str(item.get(k) or "") for k in ("event", "headline", "areaDesc")).lower()
+    if any(phrase in text for phrase in MARINE_PHRASES):
+        return True
+    tokens = re.findall(r"[^\W\d_]+", text)
+    if any(
+        token in ("wave", "waves") and (i == 0 or tokens[i - 1] not in WAVE_QUALIFIERS)
+        for i, token in enumerate(tokens)
+    ):
+        return True
+    words = set(tokens)
+    if kind is not Kind.FLOOD and words & {"sea", "seas"}:
+        return True
+    return "gale" in words and "gale-force" not in text and not issuer.startswith(LAND_GALE_ISSUERS)
+
+
+# The CAP identifier is a WMO OID that names the issuing country too:
+# `2.49.0.0.170...` is Colombia (ISO 3166 numeric 170), `2.49.0.1.840...` the
+# NWS (840, the US). 882 of the 1319 items of 2026-10-27 carry one.
+RE_OID_COUNTRY = re.compile(r"(?:^|:)2\.49\.0\.[01]\.(\d{1,3})\.")
+
+
+def oid_country(item: dict) -> str | None:
+    match = RE_OID_COUNTRY.search(str(item.get("id") or ""))
+    return NUMERIC_TO_ALPHA2.get(int(match.group(1))) if match else None
+
+
+def issuer_country(item: dict, kind: Kind) -> str | None:
+    if kind not in LAND_KINDS:
+        return None
+    issuer = wmo_issuer(item)
+    if "marine" in issuer:
+        return None
+    oid = oid_country(item)
+    prefix = issuer.split("-", 1)[0] if issuer else ""
+    code = ISSUER_PREFIX_ISO.get(prefix, prefix.upper()) if prefix else oid
+    if not code or code not in ISO_3166_ALPHA2 or _is_marine(item, issuer, kind):
+        return None
+    # Cross-check: the directory and the identifier must name the same
+    # country. (A US territory is resolved below, after this check: the NWS
+    # warns for it under 840.)
+    if oid and oid != code:
+        return None
+    # The area names another country: say nothing. Only the top-level names
+    # are read -- a municipality list in parentheses is not a country list:
+    # Colombia has towns called Armenia, Montenegro, Albania, Florida and
+    # California, and the first version of this check refused 18 Colombian
+    # warnings for it.
+    if code == "US":
+        postal = set(re.findall(r"\b([A-Z]{2})\b", str(item.get("areaDesc") or "")))
+        territories = {US_TERRITORIES[p] for p in postal if p in US_TERRITORIES}
+        if territories:
+            # one territory and nothing else: its own flag; mixed: none
+            return (
+                territories.pop()
+                if len(territories) == 1 and postal <= set(US_TERRITORIES)
+                else None
+            )
+    top_level = re.sub(r"\([^)]*\)", " ", str(item.get("areaDesc") or ""))
+    for chunk in re.split(r"[,;/]", top_level):
+        other = resolve_country(None, chunk.strip()) if chunk.strip() else None
+        if other and other != code:
+            return None
+    return code
+
+
+def wmo_issuer(item: dict) -> str:
+    """`co-ideam-es` for an item whose CAP document is `co-ideam-es/2026/...`."""
+    return (wmo_cap_path(item) or "").split("/", 1)[0].strip().lower()
+
+
+def tier2_candidate(item: dict) -> bool:
+    issuer = wmo_issuer(item)
+    if not issuer or issuer.startswith(DIRECT_ISSUER_PREFIXES + TIER2_EXCLUDED_ISSUER_PREFIXES):
+        return False
+    if issuer.split("-", 1)[0] in METEOALARM_MEMBERS:
+        return False
+    return classify_wmo(item.get("event") or "") in TIER2_KINDS
+
+
 class WmoCapSource(JsonPollSource):
     """Worldwide CAP aggregate of the World Meteorological Organization.
 
@@ -595,6 +1104,7 @@ class WmoCapSource(JsonPollSource):
         poll_seconds: float = 300.0,
         max_severity_rank: int = 1,
         cap_cache: Path | None = None,
+        targeted_tier2: bool = True,
     ):
         super().__init__(poll_seconds)
         self._last_modified: str | None = None
@@ -612,6 +1122,8 @@ class WmoCapSource(JsonPollSource):
         # "the top tier only" -- instead of the bottom one.
         self.max_severity_rank = max_severity_rank
         self.min_rank = max(1, WMO_TIERS + 1 - max(1, max_severity_rank))
+        # Only meaningful in top-tier mode: one tier below it, targeted.
+        self.targeted_tier2 = targeted_tier2 and self.min_rank == WMO_TIERS
         self.areas = CapAreaCache(cap_cache)
 
     def select(self, data: Any) -> list[dict]:
@@ -622,9 +1134,52 @@ class WmoCapSource(JsonPollSource):
                 rank = int(item.get("s"))
             except (TypeError, ValueError):
                 continue
-            if rank >= self.min_rank:
+            if rank >= self.min_rank or (
+                self.targeted_tier2 and rank == self.min_rank - 1 and tier2_candidate(item)
+            ):
                 kept.append(item)
-        return kept
+        return self.collapse_reissues(kept)
+
+    def collapse_reissues(self, items: list[dict]) -> list[dict]:
+        """One alert, however many times its issuer re-sent it.
+
+        Colombia's IDEAM re-sends an unchanged warning under a NEW identifier
+        every few hours, without `references` (16:05, 19:50 and 20:30 on
+        2026-10-26: same event, same 278 municipalities, same expiry). The
+        aggregate lists every copy, and so did this product: 6 extra
+        Colombian copies among 56 top-tier alerts on 2026-10-27, 10 among 71
+        with the targeted second tier. Identical content from one issuer --
+        event, tier, area and expiry -- keeps the newest copy; the older ones
+        are withdrawn, since they may already be on screen.
+        """
+        newest: dict[tuple, dict] = {}
+        passthrough: list[dict] = []
+        for item in items:
+            area = (item.get("areaDesc") or "").strip()
+            if not area:
+                passthrough.append(item)  # nothing to compare: never merged
+                continue
+            key = (
+                wmo_issuer(item),
+                item.get("event"),
+                str(item.get("s")),
+                area,
+                item.get("expires"),
+            )
+            best = newest.get(key)
+            if best is None:
+                newest[key] = item
+                continue
+            older, newer = sorted((best, item), key=lambda i: str(i.get("sent") or ""))
+            self.expirations.append(f"wmo:{older.get('id')}")
+            newest[key] = newer
+        return passthrough + list(newest.values())
+
+    def _below_top(self, item: dict) -> bool:
+        try:
+            return int(item.get("s") or 0) < self.min_rank
+        except (TypeError, ValueError):
+            return False
 
     def build_events(self, items: list[dict], now: datetime | None = None) -> list[Event]:
         now = now or datetime.now(UTC)
@@ -643,6 +1198,12 @@ class WmoCapSource(JsonPollSource):
                 # The aggregate drops an alert at its expiry, but between two
                 # downloads (a 304 re-emits the last list) it must not be put
                 # back on the map past its end.
+                self.expirations.append(event.id)
+                continue
+            if self._below_top(item) and event.severity in (Severity.MINOR, Severity.INFO):
+                # A tier-2 alert is only worth a place when it ranks above
+                # minor here -- and it can drop below once its CAP document
+                # is read and turns out to carry no instruction.
                 self.expirations.append(event.id)
                 continue
             events.append(event)

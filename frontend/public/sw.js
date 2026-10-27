@@ -14,23 +14,56 @@
  *     and its own watchdog (see src/live.ts) shows "RECONNECTING" -- the
  *     honest state -- instead of stale numbers pretending to be current.
  *
+ * The BASEMAP (tiles.openfreemap.org) is cached as well, in caches of its
+ * own: a map that still draws when the network drops in a disaster is part
+ * of "opens with no network". A basemap tile says where the coast is, not
+ * what happened there; every event on the map still comes from the live
+ * feed, or does not show at all.
+ *
  * Bump CACHE_VERSION on every release that changes what gets precached.
  * `activate` deletes every cache from a previous version, so nothing pinned
- * to an old build lingers forever.
+ * to an old build lingers forever. The basemap caches have their own
+ * TILES_VERSION: a shell release must not throw away a world map the reader
+ * chose to save (up to 35.5 MB stored), nor the tiles they browsed (at most
+ * 40 MB stored, BROWSED_BUDGET_BYTES).
+ *
+ * What it downloads ON ITS OWN is small on purpose (about 1.5 MB, see
+ * AUTO_MAX_ZOOM): the rest of the world map is fetched only when the reader
+ * asks for it, or on a connection that says it is unmetered.
  */
 
 // v2 (2026-10): the precached manifest changed colour with the Sentinel
 // House restyle; without the bump a returning visitor kept the old one.
-const CACHE_VERSION = 'v2'
+// v3 (2026-10-27): the basemap caches, the build's hashed bundles precached
+// at install, /plate-boundaries.json precached, /download/ files left alone.
+const CACHE_VERSION = 'v3'
 const SHELL_CACHE = `sosforge-shell-${CACHE_VERSION}`
 const RUNTIME_CACHE = `sosforge-runtime-${CACHE_VERSION}`
-const CURRENT_CACHES = new Set([SHELL_CACHE, RUNTIME_CACHE])
+
+const TILES_VERSION = 't1'
+// The world at zooms 0..1 (automatic) and 2..3 (when saved), the style, its
+// TileJSON, sprites and glyphs: the planet, offline. Never trimmed; only the
+// reader's 'sosforge:basemap-forget' takes the saved zooms back out.
+const TILES_BASE_CACHE = `sosforge-tiles-base-${TILES_VERSION}`
+// Tiles the reader browsed deeper than that: kept, but capped.
+const TILES_CACHE = `sosforge-tiles-${TILES_VERSION}`
+
+const CURRENT_CACHES = new Set([SHELL_CACHE, RUNTIME_CACHE, TILES_BASE_CACHE, TILES_CACHE])
 
 // Fixed URLs that exist before the app is even fetched once: the app shell
 // itself, the manifest, and its icons. The hashed /assets/*.js and *.css
 // bundles are NOT listed here -- their filenames change every build, so
-// they are cached at runtime instead (see ASSET_PREFIX below).
-const PRECACHE_URLS = ['/', '/index.html', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png']
+// they are read out of the shell at install (see precacheBuild) and cached
+// at runtime (see ASSET_PREFIX below). The plate boundaries are a static
+// dataset the map draws: without them offline, the map loses its faults.
+const PRECACHE_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/plate-boundaries.json',
+]
 
 // The subset of the above whose CONTENT changes at every build while its URL
 // stays the same. These can never be served cache-first: see the fetch
@@ -42,11 +75,84 @@ const SHELL_PATHS = ['/', '/index.html']
 // the same bytes, and a changed file is simply a different URL.
 const ASSET_PREFIX = '/assets/'
 
+// ------------------------------------------------------------------ basemap
+
+const TILE_HOST = 'https://tiles.openfreemap.org'
+// Must stay equal to BASEMAP_STYLE_URL in src/components/MapView.tsx
+// (sw.tiles.test.ts reads both files and fails if they part).
+const STYLE_URL = `${TILE_HOST}/styles/dark`
+
+// `/planet/<build>/<z>/<x>/<y>.pbf`. The build is a dated, immutable path
+// (`20261025_080012_pt`, cache-control max-age=315360000, measured
+// 2026-10-27): the browser's HTTP cache already never re-downloads a tile it
+// holds. What it cannot do is draw one with the network down.
+const TILE_PATH = /^\/planet\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf$/
+
+// Two sets, and only the small one is ever taken without asking.
+//
+// AUTOMATIC, on any connection that is not Save-Data or 2G: the world at
+// zooms 0 and 1 (the map a first visit opens on), the glyph ranges the labels
+// of those 5 tiles use, the sprites. Measured 2026-10-27 on build
+// 20261025_080012_pt: 30 files, 1.47 MB transferred, 2.63 MB stored.
+//
+// THE WHOLE WORLD, zooms 0 to 3, only when the reader asks for it
+// ('sosforge:basemap-save', the contract at the end of this file) or when the
+// connection says it is unmetered (see unmetered()): 114 files, 17.31 MB
+// transferred, 35.54 MB stored -- so about 15.8 MB more than the automatic
+// set. Tiles travel gzip-compressed: what a phone pays is the transfer.
+// Zooms 0..2 alone would be 17.23 MB stored (about 8.3 MB transferred): still
+// far too much to take silently, hence zoom 1.
+const AUTO_MAX_ZOOM = 1
+const WORLD_MAX_ZOOM = 3
+
+// Browsed tiles beyond the world zooms, capped by the BYTES they take once
+// stored, oldest out first (the Cache API keeps insertion order). It was a
+// count, 400: at the zooms this map is read at, a tile is 0.18 to 0.41 MB
+// compressed and about twice that stored (HEAD, 2026-10-27: z4 407 KB, z5
+// 276, z6 270, z8 179), so 400 could reach hundreds of MB -- enough storage
+// pressure for the browser to evict the whole origin, shell and saved world
+// included (PR #5 review). Tiles at WORLD_MAX_ZOOM and below are kept with
+// the world, never trimmed. Worst case on a phone: 35.5 MB of saved world
+// plus this.
+const BROWSED_BUDGET_BYTES = 40e6
+
+// The glyph ranges each set's labels need: every character of every name in
+// its tiles (name:latin, name:nonlatin, name_en, name, ref), minus the
+// ideographs, kana and hangul that MapLibre draws with a local font.
+// Measured 2026-10-27 in "Noto Sans Regular": 19 ranges (1.47 MB stored) for
+// zooms 0..1, 23 (1.77 MB) for 0..3.
+const AUTO_GLYPH_RANGES = [
+  '0-255', '256-511', '768-1023', '1024-1279', '1280-1535', '1536-1791', '2304-2559', '2816-3071',
+  '3328-3583', '3584-3839', '4096-4351', '4608-4863', '4864-5119', '5120-5375', '5376-5631',
+  '5888-6143', '7680-7935', '8192-8447', '11520-11775',
+]
+const WORLD_GLYPH_RANGES = [...AUTO_GLYPH_RANGES, '512-767', '1792-2047', '3840-4095', '6144-6399']
+
+// The style and the TileJSON are served from the cache at once and refreshed
+// behind (stale-while-revalidate), but only while the cached copy is younger
+// than this. Older, the network is asked first: a TileJSON weeks old names a
+// tile build the host may have deleted since.
+const META_FRESH_MS = 7 * 24 * 3600 * 1000
+const META_TIMEOUT_MS = 6000
+
+// The automatic precache waits this long after the map starts, then fetches
+// one file at a time: it must never compete with the opening snapshot of the
+// live feed, which is what the reader came for.
+const PRECACHE_DELAY_MS = 20000
+
+// A HEAD per missing file tells the real size before anything is downloaded
+// (Content-Length is a CORS-safelisted header, and it is the compressed size:
+// what the reader pays). Kept this long, then measured again.
+const SIZE_TTL_MS = 3600 * 1000
+
+const TILE_FETCH = { mode: 'cors', credentials: 'omit' }
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(SHELL_CACHE)
       .then((cache) => cache.addAll(PRECACHE_URLS.map((url) => new Request(url, { cache: 'reload' }))))
+      .then(() => precacheBuild())
       .then(() => self.skipWaiting()),
   )
 })
@@ -56,33 +162,105 @@ self.addEventListener('activate', (event) => {
     caches
       .keys()
       .then((names) => Promise.all(names.filter((name) => !CURRENT_CACHES.has(name)).map((name) => caches.delete(name))))
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
+      .then(() => {
+        // Not awaited, on purpose: activation must not wait for downloads. A
+        // first visit loaded its map before this worker took control, so
+        // without this kick it would precache nothing until the next visit.
+        precacheBasemap('auto')
+      }),
   )
 })
+
+
+// Lazy chunks and fonts named inside a bundle: `"assets/MapView-x.js"` (Vite's
+// preload map), `url(/assets/font.woff2)`, and `import("./MapView-x.js")` or
+// `from "./index-x.js"` between chunks. Only woff2: every browser that runs
+// this worker reads it, so the .woff twins would be dead weight.
+const ASSET_REF = /["'(]\/?assets\/([\w.-]+\.(?:js|css|woff2))|(?:from|import\()\s*["']\.\/([\w.-]+\.(?:js|css))["']/g
+
+/** The hashed bundles of the build being installed, cached before it
+ * activates. Without this, a FIRST visit was useless offline: that visit ran
+ * before the worker controlled the page, so nothing it loaded went through
+ * the cache, and an offline reload found the shell but not one line of its
+ * JavaScript -- a blank page. Measured 2026-10-27 (Playwright: one visit,
+ * network cut, reload: #root empty, /assets/index-*.js and .css failed).
+ *
+ * Read from the shell just precached: its tags name the entry files, and the
+ * entries name the lazy ones (the map). Best effort: a failure here must not
+ * fail the install -- the worker still serves the shell. */
+async function precacheBuild() {
+  try {
+    // THIS version's shell cache, not caches.match(): that searches every
+    // cache oldest first, so on a CACHE_VERSION bump it returned the previous
+    // version's index.html and precached the bundles of a build long gone
+    // (PR #5 review). addAll has just put the current shell here.
+    const shell = await (await caches.open(SHELL_CACHE)).match('/index.html', { ignoreVary: true })
+    if (!shell) return
+    const html = await shell.clone().text()
+    const queue = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1])
+    const seen = new Set(queue)
+    const runtime = await caches.open(RUNTIME_CACHE)
+    while (queue.length) {
+      const path = queue.shift()
+      let response = await runtime.match(path, { ignoreVary: true })
+      if (!response) {
+        response = await fetch(path)
+        if (!response.ok) continue
+        await runtime.put(path, response.clone())
+      }
+      if (!/\.(js|css)$/.test(path)) continue
+      for (const m of (await response.text()).matchAll(ASSET_REF)) {
+        const ref = ASSET_PREFIX + (m[1] || m[2])
+        if (!seen.has(ref)) {
+          seen.add(ref)
+          queue.push(ref)
+        }
+      }
+    }
+  } catch {
+    // Offline support is a bonus; the install goes on without it.
+  }
+}
 
 /** Network-first: an online user always gets the current shell, whose
  * hashed asset references must match what is actually in the cache. Offline,
  * fall back to whatever shell was last cached -- that's the "opens with no
- * network" promise. */
+ * network" promise. Only an HTML answer is kept: this also answers every
+ * other navigation, and a navigation is not always a page. */
 async function networkFirstShell(request) {
   try {
-    const response = await fetch(request)
-    if (response && response.ok) {
+    // cache: 'no-cache' -- "network first" must mean the SERVER, not the
+    // browser's HTTP cache. A shell served without Cache-Control is cached
+    // heuristically (the four language shells were, until 2026-10-27), and a
+    // plain fetch() then answered from that copy: an old shell, naming
+    // bundles a later deploy removed. Revalidating costs a 304.
+    const response = await fetch(request, { cache: 'no-cache' })
+    if (response && response.ok && (response.headers.get('content-type') || '').includes('text/html')) {
       const cache = await caches.open(SHELL_CACHE)
       cache.put(request, response.clone())
     }
     return response
   } catch (err) {
-    const cached = (await caches.match(request)) || (await caches.match('/index.html'))
+    const cached =
+      (await caches.match(request, { ignoreVary: true })) || (await caches.match('/index.html', { ignoreVary: true }))
     if (cached) return cached
     throw err
   }
 }
 
 /** Cache-first: safe only for content-hashed or explicitly precached URLs,
- * where a cache hit is by construction never stale. */
+ * where a cache hit is by construction never stale.
+ *
+ * ignoreVary: these URLs name their bytes, so no request header can change
+ * them. Without it the offline reload after a first visit was STILL a blank
+ * page with the bundles in the cache: the server answered `Vary: Origin`
+ * (vite preview does; a CDN or another proxy may), the page's module script
+ * and stylesheet requests carry an Origin header, the copies stored at
+ * install were fetched without one -- and a Vary-respecting match missed
+ * every one of them. Measured 2026-10-27, Playwright offline reload. */
 async function cacheFirst(request) {
-  const cached = await caches.match(request)
+  const cached = await caches.match(request, { ignoreVary: true })
   if (cached) return cached
   const response = await fetch(request)
   if (response && response.ok) {
@@ -92,16 +270,520 @@ async function cacheFirst(request) {
   return response
 }
 
+// ---------------------------------------------------------- basemap caching
+
+/** A copy to store, stamped with when and from where it was fetched (the
+ * response's own headers are CORS-filtered and say neither). The URL is
+ * passed in rather than read from the response: a tile retried under a newer
+ * build must record the build it really came from. The body is read once
+ * here, so the copy also says how many bytes it takes (x-sos-bytes), which
+ * is what the browsed-tile budget counts. */
+async function stamp(response, url) {
+  const body = await response.arrayBuffer()
+  const headers = new Headers(response.headers)
+  headers.set('x-sos-fetched', String(Date.now()))
+  headers.set('x-sos-url', response.url || url)
+  headers.set('x-sos-bytes', String(body.byteLength))
+  return new Response(body, { status: response.status, statusText: response.statusText, headers })
+}
+
+async function storedBytes(response) {
+  return Number(response.headers.get('x-sos-bytes')) || (await response.clone().arrayBuffer()).byteLength
+}
+
+function fetchedAt(response) {
+  return Number(response.headers.get('x-sos-fetched')) || 0
+}
+
+/** The tile build a stored tile came from ('' if unknown). */
+function buildOf(response) {
+  const m = TILE_PATH.exec(new URL(response.headers.get('x-sos-url') || TILE_HOST).pathname)
+  return m ? m[1] : ''
+}
+
+/** One cache key per tile, whatever the build: OpenFreeMap publishes a new
+ * dated build every few days, and keying on it would orphan the whole
+ * offline world (and re-download 33.5 MB) at each one. A tile from last
+ * week's build draws the same coastline. */
+function tileKey(z, x, y) {
+  return `${TILE_HOST}/planet/${z}/${x}/${y}.pbf`
+}
+
+function fetchWithTimeout(url, ms) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  return fetch(url, { ...TILE_FETCH, signal: controller.signal }).finally(() => clearTimeout(timer))
+}
+
+async function refreshMeta(url, cache, timeout = META_TIMEOUT_MS) {
+  const response = await fetchWithTimeout(url, timeout)
+  if (response.ok) await cache.put(url, await stamp(response.clone(), url))
+  return response
+}
+
+/** Style and TileJSON: stale-while-revalidate within META_FRESH_MS, then
+ * network first with the cached copy as the offline answer. */
+async function getMeta(url, waitUntil) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const cached = await cache.match(url)
+  if (cached && Date.now() - fetchedAt(cached) < META_FRESH_MS) {
+    waitUntil(refreshMeta(url, cache).catch(() => {}))
+    return cached
+  }
+  try {
+    return await refreshMeta(url, cache)
+  } catch (err) {
+    if (cached) return cached
+    throw err
+  }
+}
+
+/** Glyphs and sprites: versioned or append-only paths, cache-first. */
+async function cacheFirstBasemap(url) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const cached = await cache.match(url)
+  if (cached) return cached
+  const response = await fetch(url, TILE_FETCH)
+  if (response.ok) await cache.put(url, await stamp(response.clone(), url))
+  return response
+}
+
+// The browsed cache's entries and their stored bytes, oldest first. Built
+// from the cache once per worker life, then kept in step with every put.
+let browsed = null
+
+async function browsedIndex(cache) {
+  if (!browsed) {
+    const index = new Map()
+    for (const request of await cache.keys()) {
+      const response = await cache.match(request)
+      if (response) index.set(request.url, await storedBytes(response))
+    }
+    browsed = index
+  }
+  return browsed
+}
+
+let trimming = Promise.resolve()
+function trimBrowsed(cache, key, bytes) {
+  trimming = trimming
+    .then(async () => {
+      const index = await browsedIndex(cache)
+      index.delete(key) // a refreshed tile moves to the end, as in the cache
+      index.set(key, bytes)
+      let total = 0
+      for (const size of index.values()) total += size
+      for (const [url, size] of index) {
+        if (total <= BROWSED_BUDGET_BYTES) break
+        await cache.delete(url)
+        index.delete(url)
+        total -= size
+      }
+    })
+    .catch(() => {})
+  return trimming
+}
+
+/** The build the freshest cached TileJSON names, to retry a tile the host
+ * no longer serves under an older build. */
+async function newestBuild() {
+  const tilejson = await caches.match(`${TILE_HOST}/planet`)
+  if (!tilejson) return ''
+  const template = ((await tilejson.json()).tiles || [])[0] || ''
+  const m = /\/planet\/([^/]+)\//.exec(template)
+  return m ? m[1] : ''
+}
+
+async function storeTile(url, build, z, x, y, cache, waitUntil) {
+  let fetched = url
+  let response = await fetch(url, TILE_FETCH)
+  if (response.status === 404) {
+    const newest = await newestBuild()
+    if (newest && newest !== build) {
+      fetched = url.replace(`/planet/${build}/`, `/planet/${newest}/`)
+      response = await fetch(fetched, TILE_FETCH)
+    }
+  }
+  if (response.ok) {
+    const stored = await stamp(response.clone(), fetched)
+    const bytes = Number(stored.headers.get('x-sos-bytes'))
+    await cache.put(tileKey(z, x, y), stored)
+    if (Number(z) > WORLD_MAX_ZOOM) waitUntil(trimBrowsed(cache, tileKey(z, x, y), bytes))
+  }
+  return response
+}
+
+/** Tiles: cache-first. A hit from an OLDER build is still served at once
+ * (offline it is the only map there is) and refreshed behind, which costs
+ * what the page would have fetched without this worker anyway. */
+async function serveTile(request, match, waitUntil) {
+  const [, build, z, x, y] = match
+  const cache = await caches.open(Number(z) <= WORLD_MAX_ZOOM ? TILES_BASE_CACHE : TILES_CACHE)
+  const cached = await cache.match(tileKey(z, x, y))
+  if (cached) {
+    if (buildOf(cached) < build) waitUntil(storeTile(request.url, build, z, x, y, cache, waitUntil).catch(() => {}))
+    return cached
+  }
+  return storeTile(request.url, build, z, x, y, cache, waitUntil)
+}
+
+/** Answers a request to the tile host, or returns false to leave it alone. */
+function routeBasemap(event, url) {
+  const waitUntil = (p) => {
+    try {
+      event.waitUntil(p)
+    } catch {
+      // The event already settled (a late background refresh): the work
+      // still runs, the worker just is not kept alive for it.
+    }
+  }
+  let answer = null
+  if (url.pathname.startsWith('/styles/') || url.pathname === '/planet') {
+    answer = getMeta(url.href, waitUntil)
+  } else if (url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/sprites/')) {
+    answer = cacheFirstBasemap(url.href)
+  } else {
+    const match = TILE_PATH.exec(url.pathname)
+    if (match) answer = serveTile(event.request, match, waitUntil)
+  }
+  if (!answer) return false
+  event.respondWith(answer)
+  // The map is in use: a good moment to make sure the automatic set is there.
+  waitUntil(precacheBasemap('auto'))
+  return true
+}
+
+// --------------------------------------------------------- basemap precache
+
+let running = null
+let worldWanted = false
+let savingWorld = false
+let autoComplete = false
+let worldComplete = false
+let wake = null
+let sizes = null // { at, key, bytes }: the last measured size of what the world lacks
+
+/** Save-Data is the reader asking for less; 2G cannot carry even the small
+ * set without starving the live feed (a fresh tab needs its snapshot first).
+ * Applies to what this worker does ON ITS OWN only: a reader who asks for the
+ * world map gets it, whatever the connection. */
+function constrained() {
+  const connection = self.navigator && self.navigator.connection
+  return !!connection && (connection.saveData === true || /(^|-)2g$/.test(connection.effectiveType || ''))
+}
+
+/** true / false when the connection says what it is, null when it does not
+ * (desktop Chrome, Safari and Firefox expose no `type`): never assumed. Wi-Fi
+ * is taken at its word; a phone's hotspot also reports "wifi", a limit of the
+ * API that this worker cannot see past. */
+function unmetered() {
+  const connection = self.navigator && self.navigator.connection
+  if (!connection || !connection.type) return null
+  return (connection.type === 'wifi' || connection.type === 'ethernet') && connection.saveData !== true
+}
+
+/** A sleep the reader's own request cuts short. */
+function sleep(ms) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    wake = () => {
+      clearTimeout(timer)
+      resolve()
+    }
+  })
+}
+
+/** [url to fetch, cache key] pairs for the world up to `maxZoom`. */
+async function basemapManifest(maxZoom, glyphRanges, waitUntil) {
+  const style = await (await getMeta(STYLE_URL, waitUntil)).json()
+  const wanted = []
+  for (const source of Object.values(style.sources || {})) {
+    if (source.type !== 'vector' || !source.url) continue
+    const tilejson = await (await getMeta(source.url, waitUntil)).json()
+    const template = (tilejson.tiles || [])[0] || ''
+    if (!TILE_PATH.test(template.replace('{z}/{x}/{y}', '0/0/0').replace(TILE_HOST, ''))) continue
+    for (let z = 0; z <= maxZoom; z++) {
+      for (let x = 0; x < 2 ** z; x++) {
+        for (let y = 0; y < 2 ** z; y++) {
+          wanted.push([template.replace('{z}', z).replace('{x}', x).replace('{y}', y), tileKey(z, x, y)])
+        }
+      }
+    }
+  }
+  const sprites = typeof style.sprite === 'string' ? [style.sprite] : (style.sprite || []).map((s) => s.url)
+  for (const sprite of sprites) {
+    for (const suffix of ['.json', '.png', '@2x.json', '@2x.png']) wanted.push([sprite + suffix, sprite + suffix])
+  }
+  const stacks = new Set()
+  for (const layer of style.layers || []) {
+    const font = layer.layout && layer.layout['text-font']
+    if (Array.isArray(font) && font.every((f) => typeof f === 'string')) stacks.add(font.join(','))
+  }
+  if (style.glyphs) {
+    for (const stack of stacks) {
+      for (const range of glyphRanges) {
+        // new URL() encodes the space exactly as the page's own request does,
+        // so the key matches what MapLibre asks for.
+        const url = new URL(style.glyphs.replace('{fontstack}', stack).replace('{range}', range)).href
+        wanted.push([url, url])
+      }
+    }
+  }
+  return wanted
+}
+
+const worldManifest = (waitUntil) => basemapManifest(WORLD_MAX_ZOOM, WORLD_GLYPH_RANGES, waitUntil)
+const autoManifest = (waitUntil) => basemapManifest(AUTO_MAX_ZOOM, AUTO_GLYPH_RANGES, waitUntil)
+
+async function missingFrom(cache, wanted) {
+  const missing = []
+  for (const entry of wanted) if (!(await cache.match(entry[1]))) missing.push(entry)
+  return missing
+}
+
+async function broadcast(message) {
+  for (const client of await self.clients.matchAll({ type: 'window', includeUncontrolled: true })) {
+    client.postMessage(message)
+  }
+}
+
+/** Fetches what `level` needs and is not cached yet.
+ *  - 'auto' waits, yields to Save-Data and 2G, and grows into 'world' only
+ *    on a connection that says it is unmetered;
+ *  - 'world' is the reader's request: no wait, no connection check, and every
+ *    tab is told its progress. */
+async function runPrecache(level) {
+  const requested = level === 'world'
+  if (level === 'auto') {
+    if (constrained() || (autoComplete && (worldComplete || unmetered() !== true))) return 'skipped'
+    await sleep(PRECACHE_DELAY_MS)
+    if (worldWanted) return 'deferred' // the reader asked meanwhile: the world run follows
+    if (constrained()) return 'skipped'
+    if (unmetered() === true) level = 'world'
+  }
+  const world = level === 'world'
+  savingWorld = world
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const pending = []
+  const keep = (p) => pending.push(p)
+  // The small set first, always: a world run cut short (the phone left the
+  // Wi-Fi) must still leave the automatic set complete.
+  const small = await autoManifest(keep)
+  const smallKeys = new Set(small.map((m) => m[1]))
+  const extra = world ? (await worldManifest(keep)).filter((m) => !smallKeys.has(m[1])) : []
+  const missingSmall = await missingFrom(cache, small)
+  const missing = [...missingSmall, ...(await missingFrom(cache, extra))]
+  let done = 0
+  let failed = 0
+  let failedSmall = 0
+  let bytes = 0
+  let stopped = false
+  for (let i = 0; i < missing.length; i++) {
+    const inSmall = i < missingSmall.length
+    // What the worker does ON ITS OWN re-reads the connection before every
+    // file. A world run that began on Wi-Fi used to be treated as asked once
+    // upgraded, and carried on over mobile data: ~15 MB nobody asked for
+    // (PR #5 review). Now it stops the moment the link is no longer known
+    // unmetered, or Save-Data comes on; the reader's own request does not.
+    if (!requested && (constrained() || (!inSmall && unmetered() !== true))) {
+      stopped = true
+      break
+    }
+    const [url, key] = missing[i]
+    try {
+      const response = await fetch(url, TILE_FETCH)
+      if (!response.ok) throw new Error(String(response.status))
+      bytes += Number(response.headers.get('content-length')) || 0
+      await cache.put(key, await stamp(response, url))
+      done++
+    } catch {
+      failed++
+      if (inSmall) failedSmall++
+    }
+    if (requested) await broadcast({ type: 'sosforge:basemap-progress', done, failed, total: missing.length, bytes })
+  }
+  await Promise.all(pending)
+  sizes = null
+  const smallReached = !stopped || done + failed >= missingSmall.length
+  if (failedSmall === 0 && smallReached) autoComplete = true
+  if (world && !stopped && failed === 0) worldComplete = true
+  if (requested) {
+    await broadcast(
+      failed === 0
+        ? { type: 'sosforge:basemap-saved', files: done, bytes }
+        : { type: 'sosforge:basemap-failed', files: done, failed, bytes },
+    )
+  } else if (world && worldComplete) {
+    // Saved on its own over Wi-Fi: a tab offering the button can drop it.
+    await broadcast({ type: 'sosforge:basemap-saved', files: done, bytes })
+  }
+  if (stopped) return `${level} stopped after ${done}`
+  return `${level} fetched ${done}${failed ? `, failed ${failed}` : ''}`
+}
+
+/** One run at a time, resumable: each run fetches only what is missing, so
+ * a worker stopped half-way simply carries on at the next visit. A request
+ * for the world joins (or follows) whatever run is in progress. */
+function precacheBasemap(level = 'auto') {
+  if (level === 'world') {
+    worldWanted = true
+    if (wake) wake()
+  }
+  if (!running) {
+    running = (async () => {
+      let result
+      do {
+        const next = worldWanted ? 'world' : 'auto'
+        if (next === 'world') worldWanted = false
+        result = await runPrecache(next)
+      } while (worldWanted)
+      return result
+    })()
+      .catch(() => 'failed')
+      .finally(() => {
+        running = null
+        wake = null
+        savingWorld = false
+      })
+  }
+  return running
+}
+
+/** The real size of what the world map lacks, measured now by HEAD requests
+ * (Content-Length: the compressed size, what the reader pays). What the host
+ * does not size is COUNTED, never guessed: measured 2026-10-27, the 80 tiles
+ * answer with a Content-Length (15.66 MB) and the 4 extra glyph files do not
+ * (about 0.2 MB by curl), so `bytes` is a floor whenever `unmeasured` > 0. */
+async function missingSize(missing) {
+  const key = missing.map((m) => m[1]).join('|')
+  if (sizes && sizes.key === key && Date.now() - sizes.at < SIZE_TTL_MS) return sizes
+  let bytes = 0
+  let unmeasured = 0
+  const queue = [...missing]
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      while (queue.length) {
+        const [url] = queue.shift()
+        try {
+          const head = await fetch(url, { ...TILE_FETCH, method: 'HEAD' })
+          const length = head.ok ? head.headers.get('content-length') : null
+          if (length === null) unmeasured++
+          else bytes += Number(length)
+        } catch {
+          unmeasured++
+        }
+      }
+    }),
+  )
+  sizes = { at: Date.now(), key, bytes, unmeasured }
+  return sizes
+}
+
+async function basemapStatus(waitUntil) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const wanted = await worldManifest(waitUntil)
+  const missing = await missingFrom(cache, wanted)
+  const size = missing.length ? await missingSize(missing) : { bytes: 0, unmeasured: 0 }
+  return {
+    type: 'sosforge:basemap-status',
+    saved: missing.length === 0,
+    saving: savingWorld || worldWanted,
+    files: wanted.length,
+    missingFiles: missing.length,
+    missingBytes: size.bytes,
+    unmeasuredFiles: size.unmeasured,
+    unmetered: unmetered(),
+  }
+}
+
+/** Back to the automatic set: the world tiles above it and the glyph ranges
+ * only they need leave the cache. */
+async function forgetWorld(waitUntil) {
+  const cache = await caches.open(TILES_BASE_CACHE)
+  const keep = new Set((await autoManifest(waitUntil)).map((m) => m[1]))
+  for (const request of await cache.keys()) {
+    const path = new URL(request.url).pathname
+    const tile = /^\/planet\/(\d+)\/\d+\/\d+\.pbf$/.exec(path)
+    const extra = (tile && Number(tile[1]) > AUTO_MAX_ZOOM) || path.startsWith('/fonts/')
+    if (extra && !keep.has(request.url)) await cache.delete(request)
+  }
+  // and every browsed tile: "give the space back" means all of it, and
+  // nothing else in the UI could clear that cache
+  await caches.delete(TILES_CACHE)
+  browsed = null
+  sizes = null
+  worldComplete = false
+}
+
+/* The page's side of the world map: postMessage to this worker.
+ *
+ *   { type: 'sosforge:basemap-status' }
+ *     -> { type: 'sosforge:basemap-status', saved, saving, files,
+ *          missingFiles, missingBytes, unmeasuredFiles, unmetered }
+ *        missingBytes: the transfer size of what is missing, measured now
+ *        (HEAD Content-Length), summed over the files the host sized;
+ *        unmeasuredFiles: how many it did not (a floor, then: today 4 small
+ *        glyph files, about 0.2 MB). Offline, every file is unmeasured: state
+ *        no size. 0 and 0 when saved.
+ *        unmetered: from navigator.connection.type; null when the browser
+ *        does not tell (desktop, Safari, Firefox).
+ *   { type: 'sosforge:basemap-save' }
+ *     -> starts (or joins) the download of the whole world map. Every tab
+ *        then gets { type: 'sosforge:basemap-progress', done, failed, total,
+ *        bytes } after each file, and finally { type: 'sosforge:basemap-saved',
+ *        files, bytes } or { type: 'sosforge:basemap-failed', files, failed,
+ *        bytes }. `bytes` counts the transfer of the files the host sized
+ *        (same floor as above). Sending 'save' again resumes: only what is
+ *        missing is fetched.
+ *   { type: 'sosforge:basemap-forget' }
+ *     -> drops the world zooms above the automatic set and every browsed tile
+ *        (capped at BROWSED_BUDGET_BYTES); replies with a fresh status.
+ *
+ * Replies go to event.ports[0] when the page passes a MessageChannel port,
+ * otherwise to event.source. */
+self.addEventListener('message', (event) => {
+  const type = event.data && event.data.type
+  const target = event.ports && event.ports[0] ? event.ports[0] : event.source
+  const reply = (message) => target && target.postMessage(message)
+  const failed = () => reply({ type: 'sosforge:basemap-status', error: true })
+  const waitUntil = (p) => event.waitUntil(p)
+  if (type === 'sosforge:basemap-status') {
+    event.waitUntil(basemapStatus(waitUntil).then(reply, failed))
+  } else if (type === 'sosforge:basemap-save') {
+    event.waitUntil(precacheBasemap('world'))
+  } else if (type === 'sosforge:basemap-forget') {
+    event.waitUntil(
+      (running || Promise.resolve())
+        .then(() => forgetWorld(waitUntil))
+        .then(() => basemapStatus(waitUntil))
+        .then(reply, failed),
+    )
+  }
+})
+
 self.addEventListener('fetch', (event) => {
   const { request } = event
   if (request.method !== 'GET') return
 
   const url = new URL(request.url)
-  if (url.origin !== self.location.origin) return // map tiles, fonts, etc.: browser handles it directly
+  if (url.origin === TILE_HOST) {
+    routeBasemap(event, url)
+    return
+  }
+  if (url.origin !== self.location.origin) return // fonts, other hosts: browser handles it directly
 
   // The live feed, verbatim: network-only, always. No respondWith at all --
   // this falls straight through to the browser's normal fetch, untouched.
   if (url.pathname.startsWith('/api/') || url.pathname === '/ws' || url.pathname.startsWith('/healthz')) {
+    return
+  }
+
+  // The download page is a page; the files next to it are not. An APK is a
+  // navigation too (a tapped link): answered from here it would be stored
+  // whole in the shell cache, and the Range requests that let a phone resume
+  // a 39 MB download would go through a worker that does not honour them.
+  // latest.json must always be the server's word, never a cached copy.
+  if (url.pathname.startsWith('/download/') && url.pathname !== '/download/' && url.pathname !== '/download/index.html') {
     return
   }
 

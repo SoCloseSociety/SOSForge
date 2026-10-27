@@ -141,13 +141,22 @@ def test_a_cap_document_gives_its_extent():
 
 def test_the_cap_cache_keeps_the_extent_and_rereads_legacy_entries(tmp_path):
     path = tmp_path / "wmo-cap.json"
-    path.write_text(json.dumps({"a.xml": [62.2, 5.2], "b.xml": None}), encoding="utf-8")
+    stored = {"a.xml": [62.2, 5.2], "b.xml": None, "c.xml": [62.2, 5.2, 5.0, 62.1, 5.4, 62.3]}
+    path.write_text(json.dumps({"version": 2, "documents": stored}), encoding="utf-8")
     cache = CapAreaCache(path)
-    # a position from before extents were kept is still used ...
+    # a position without an extent is still used ...
     assert cache.known("a.xml") == (62.2, 5.2)
     # ... but is read again; an unplaceable document is not
     assert cache.has("a.xml") is False
     assert cache.has("b.xml") is True
+    assert cache.extent("c.xml") == (5.0, 62.1, 5.4, 62.3)
+
+
+def test_a_cap_cache_from_before_the_antimeridian_fix_is_discarded(tmp_path):
+    path = tmp_path / "wmo-cap.json"
+    path.write_text(json.dumps({"a.xml": [59.99, -26.48]}), encoding="utf-8")
+    cache = CapAreaCache(path)
+    assert cache.known("a.xml") is None and cache.has("a.xml") is False
 
 
 # ------------------------------------------------------------- area extents

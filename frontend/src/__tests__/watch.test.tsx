@@ -103,7 +103,7 @@ describe('confirmation: the honest states', () => {
 
   it('says a closed tab cannot alert, and points to the Android app', () => {
     stubNotification('granted')
-    useStore.setState({ watch: watched })
+    useStore.setState({ watch: watched, received: true, connected: true })
     render(<WatchPanel alarms={[]} />)
     expect(screen.getByText(/A closed tab cannot alert you/)).toBeInTheDocument()
     expect(screen.getByText(/Android app/)).toBeInTheDocument()
@@ -153,7 +153,7 @@ describe('confirmation: the honest states', () => {
 describe('the alarm memory', () => {
   it('a new place starts clean, a change of kinds at the same place does not', () => {
     useStore.getState().setWatch(TOKYO)
-    useStore.getState().markAlarmed(['emsc:1'])
+    useStore.getState().markAlarmed([{ id: 'emsc:1', rank: 3 }])
     useStore.getState().setWatch({ ...TOKYO, kinds: ['earthquake', 'tsunami'] })
     expect(useStore.getState().alarmed.has('emsc:1')).toBe(true)
     useStore.getState().setWatch({ lat: 38.27, lon: 140.87, name: 'Sendai' })
@@ -171,6 +171,18 @@ describe('while the snapshot is still arriving', () => {
       watch: { ...TOKYO, kinds: ['earthquake', 'tsunami'] },
       snapshotRemaining: 566,
     })
+    render(<WatchPanel alarms={[]} />)
+    expect(screen.queryByText('Nothing concerns this area')).toBeNull()
+    expect(screen.getByText(/not checked yet/)).toBeInTheDocument()
+  })
+})
+
+describe('before the feed has spoken', () => {
+  /* Owner, 2026-10-27: nothing may be fake. Before the first snapshot the
+   * page knows nothing about this place: no green check. */
+  it('does not say "nothing concerns this area" with no data at all', () => {
+    stubNotification('granted')
+    useStore.setState({ watch: { ...TOKYO, kinds: ['earthquake', 'tsunami'] }, received: false })
     render(<WatchPanel alarms={[]} />)
     expect(screen.queryByText('Nothing concerns this area')).toBeNull()
     expect(screen.getByText(/not checked yet/)).toBeInTheDocument()

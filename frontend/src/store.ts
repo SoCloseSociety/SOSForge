@@ -8,6 +8,7 @@ import type {
   Severity,
 } from "./types";
 import { detectLang, persistLang, translate, type Lang } from "./i18n";
+import { closeNotification } from "./notify";
 
 const MAX_EVENTS = 1000;
 
@@ -65,6 +66,8 @@ function capEvents(events: SosEvent[]): SosEvent[] {
 export interface Filters {
   kinds: Set<Kind>;
   minMagnitude: number;
+  /** lowest severity shown; `info` = everything */
+  minSeverity: Severity;
   sources: Set<string>;
   /** time window in minutes; 0 = all available history */
   windowMinutes: number;
@@ -95,13 +98,54 @@ export interface Watch {
   kinds?: Kind[];
 }
 
+/** What the feed and the map show: around the reader, or the whole world. */
+export type Scope = "near" | "world" | "place";
+
+/** A place the reader CHOSE (a search result): not their position. Its
+ * coordinates come from the geocoder, so keeping them is no privacy matter,
+ * and it survives a reload like the watch does. */
+export interface Place {
+  lat: number;
+  lon: number;
+  name: string;
+  /** the geocoder's own ISO alpha-2 code, when it gave one: a place whose
+   * point is at sea keeps its country's alerts (final review of PR #5) */
+  country?: string | null;
+}
+
+/** Where the location request stands, said in place by the scope bar.
+ * `idle`: never asked this visit; `asking`: the browser prompt is up;
+ * `locating`: permission given, waiting for a fix; `ok`: we have one; the
+ * rest are the honest reasons the world view is showing instead. */
+export type LocateState =
+  | "idle"
+  | "asking"
+  | "locating"
+  | "ok"
+  | "denied"
+  | "unavailable"
+  | "timeout"
+  | "insecure";
+
+/** The reader's position, COARSE: two decimals (about 1 km). Enough to say
+ * what is near, not enough to say which house. */
+export interface Here {
+  lat: number;
+  lon: number;
+}
+
 interface State {
   events: SosEvent[];
   connected: boolean;
   reconnectIn: number;
   stats: Stats | null;
   sources: SourceHealth[];
-  clients: number;
+  /** connected clients, from the 1 Hz tick; null until the first tick says */
+  clients: number | null;
+  /** has a snapshot arrived on this page yet? Until it has, every count is
+   * UNKNOWN, not zero: "0 tsunami alerts" before the feed has spoken would be
+   * a statement about data we do not have (owner: nothing may be fake). */
+  received: boolean;
   /** browser clock -> server clock offset, in ms */
   clockSkew: number;
   /** [arrival, server_time - arrival] of the last minute; `clockSkew` is
@@ -122,11 +166,21 @@ interface State {
    * In the store, and persisted, because the component that used to keep it
    * (the watch panel) mounts and unmounts with the phone filter sheet: every
    * opening forgot it and the whole last hour alarmed again. */
-  alarmed: Set<string>;
+  alarmed: Map<string, number | null>;
   /** snapshot events still on their way (`snapshot.more`, then each chunk's
    * `remaining`). While above zero, nothing on screen may claim the picture
    * is complete: no "no event", no final count. */
   snapshotRemaining: number;
+  /** what the reader wants to see; `near` falls back to the world view by
+   * itself when there is no position (see `effectiveScope`) */
+  scope: Scope;
+  here: Here | null;
+  /** the chosen place the "place" scope centres on */
+  place: Place | null;
+  locate: LocateState;
+  /** bumped when the reader ASKS for Near me: an explicit ask may show the
+   * browser prompt again, where an automatic one never shows it twice */
+  locateRequest: number;
 
   ingest: (message: ServerMessage) => void;
   setConnected: (value: boolean) => void;
@@ -137,8 +191,23 @@ interface State {
   setWindow: (minutes: number) => void;
   setQuery: (query: string) => void;
   setFocus: (focus: State["focus"]) => void;
+  setMinSeverity: (severity: Severity) => void;
+  /** every kind back on */
+  resetKinds: () => void;
+  setScope: (scope: Scope) => void;
+  /** a place picked from the search: the feed scopes to it, like Near me;
+   * null goes back to Near me */
+  setPlace: (place: Place | null) => void;
+  setHere: (here: Here | null) => void;
+  setLocate: (state: LocateState) => void;
+  /** the reader pressed "Near me": switch, and ask for the position now */
+  requestNearMe: () => void;
   setWatch: (watch: State["watch"]) => void;
-  markAlarmed: (ids: string[]) => void;
+  /** remember what rang, at which rank (the highest wins) */
+  markAlarmed: (rung: { id: string; rank: number }[]) => void;
+  /** No longer concerns the watched place: forgotten, so it rings again if
+   * it comes back in reach. */
+  forgetAlarmed: (ids: string[]) => void;
   setLang: (lang: Lang) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
@@ -246,23 +315,42 @@ const ALARMED_KEY = "sosforge.alarmed";
 /** Enough for weeks of alarms at one place; the oldest ids go first. */
 const ALARMED_MAX = 500;
 
-/** Already-alarmed ids survive a reload too. An ongoing alert stays
- * alarm-worthy for as long as it runs (days, for a heat wave): without this,
- * every reload of the tab rang it again. */
-function loadAlarmed(): Set<string> {
+/** What already rang, and at which RANK, survives a reload too.
+ *
+ * Keyed on the id AND the highest rank already rung (the macOS agent's
+ * rule): an escalation -- M6.4 revised to M7.3, an EEW from 5- to 6- --
+ * rings once more, a revision at the same rank stays silent. Keyed on the id
+ * alone, lane N's browser drill showed the escalation never rang.
+ *
+ * An ongoing alert stays alarm-worthy for as long as it runs (days, for a
+ * heat wave): without the persistence, every reload of the tab rang it again.
+ * The old format (ids only) loads with an UNKNOWN rank (null): the first
+ * look at the event records its rank without ringing. */
+function loadAlarmed(): Map<string, number | null> {
   try {
     const saved = JSON.parse(localStorage.getItem(ALARMED_KEY) ?? "[]");
-    return new Set(
-      Array.isArray(saved) ? saved.filter((id) => typeof id === "string") : [],
-    );
+    const out = new Map<string, number | null>();
+    if (!Array.isArray(saved)) return out;
+    for (const entry of saved) {
+      if (typeof entry === "string") out.set(entry, null);
+      // [id, null] is an old-format id saved again before its rank was seen:
+      // still remembered, or it rang again at the next reload (review of PR #5)
+      else if (
+        Array.isArray(entry) &&
+        typeof entry[0] === "string" &&
+        (typeof entry[1] === "number" || entry[1] === null)
+      )
+        out.set(entry[0], entry[1]);
+    }
+    return out;
   } catch {
-    return new Set();
+    return new Map();
   }
 }
 
-function saveAlarmed(ids: Set<string>): void {
+function saveAlarmed(rung: Map<string, number | null>): void {
   try {
-    localStorage.setItem(ALARMED_KEY, JSON.stringify([...ids].slice(-ALARMED_MAX)));
+    localStorage.setItem(ALARMED_KEY, JSON.stringify([...rung].slice(-ALARMED_MAX)));
   } catch {
     /* private mode: alarms may repeat after a reload, nothing worse */
   }
@@ -274,7 +362,7 @@ function saveAlarmed(ids: Set<string>): void {
  * filter that hides the whole feed would be confusing. */
 function loadFilters(): Pick<
   Filters,
-  "kinds" | "minMagnitude" | "windowMinutes"
+  "kinds" | "minMagnitude" | "windowMinutes" | "minSeverity"
 > | null {
   try {
     const raw = localStorage.getItem(FILTERS_KEY);
@@ -287,6 +375,8 @@ function loadFilters(): Pick<
       windowMinutes: WINDOWS.includes(Number(saved.windowMinutes))
         ? Number(saved.windowMinutes)
         : 1440,
+      minSeverity:
+        saved.minSeverity in SEVERITY_RANK ? (saved.minSeverity as Severity) : "info",
     };
   } catch {
     return null;
@@ -301,6 +391,7 @@ function saveFilters(filters: Filters): void {
         kinds: [...filters.kinds],
         minMagnitude: filters.minMagnitude,
         windowMinutes: filters.windowMinutes,
+        minSeverity: filters.minSeverity,
       }),
     );
   } catch {
@@ -308,13 +399,71 @@ function saveFilters(filters: Filters): void {
   }
 }
 
+const SCOPE_KEY = "sosforge.scope";
+
+/** Two decimals: about a kilometre, the only precision the page keeps. The
+ * position itself is never stored: only the mode and whether the prompt was
+ * already shown are. */
+export function coarse(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function loadScope(): { scope: Scope; asked: boolean; place: Place | null } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SCOPE_KEY) ?? "null");
+    const p = saved?.place;
+    const place: Place | null =
+      p && typeof p.lat === "number" && typeof p.lon === "number" &&
+      Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180
+        ? {
+            lat: p.lat,
+            lon: p.lon,
+            name: String(p.name ?? ""),
+            country: typeof p.country === "string" && /^[A-Z]{2}$/.test(p.country) ? p.country : null,
+          }
+        : null;
+    const scope: Scope =
+      saved?.scope === "world" ? "world" : saved?.scope === "place" && place ? "place" : "near";
+    return { scope, asked: saved?.asked === true, place };
+  } catch {
+    return { scope: "near", asked: false, place: null };
+  }
+}
+
+/** Saves the mode, the chosen place and whether the browser prompt has
+ * already been shown once (so a dismissed prompt is not shown on every
+ * visit: no nagging). Never the reader's own position. */
+export function saveScope(patch: { scope?: Scope; asked?: boolean; place?: Place | null }): void {
+  try {
+    const next = { ...loadScope(), ...patch };
+    localStorage.setItem(
+      SCOPE_KEY,
+      JSON.stringify({ scope: next.scope, asked: next.asked, place: next.place }),
+    );
+  } catch {
+    /* private mode: the mode is not remembered, the default applies */
+  }
+}
+
+/** Was the browser's location prompt already shown on an earlier visit? */
+export function promptAlreadyShown(): boolean {
+  return loadScope().asked;
+}
+
+const SAVED_SCOPE = loadScope();
+// The position is NEVER restored from a previous visit: the reader may have
+// moved, and a view centred on where they were would be a guess presented
+// as their location (owner: nothing may be fake). Near me waits for a real
+// fix from the browser, and shows the world until then.
+
 export const useStore = create<State>((set, get) => ({
   events: [],
   connected: false,
   reconnectIn: 0,
   stats: null,
   sources: [],
-  clients: 0,
+  clients: null,
+  received: false,
   clockSkew: 0,
   skewSamples: [],
   lastMessageAt: 0,
@@ -329,6 +478,7 @@ export const useStore = create<State>((set, get) => ({
     // current events rather than a catalog
     windowMinutes: 1440,
     query: "",
+    minSeverity: "info",
     ...(loadFilters() ?? {}),
   },
   fresh: new Set(),
@@ -336,6 +486,11 @@ export const useStore = create<State>((set, get) => ({
   watch: loadWatch(),
   alarmed: loadAlarmed(),
   snapshotRemaining: 0,
+  scope: SAVED_SCOPE.scope,
+  here: null,
+  place: SAVED_SCOPE.place,
+  locate: "idle",
+  locateRequest: 0,
 
   setConnected: (value) => set({ connected: value }),
   select: (id) => set({ selected: id }),
@@ -368,6 +523,44 @@ export const useStore = create<State>((set, get) => ({
   setQuery: (query) =>
     set((state) => ({ filters: { ...state.filters, query } })),
   setFocus: (focus) => set({ focus }),
+  setMinSeverity: (severity) =>
+    set((state) => {
+      const next = { ...state.filters, minSeverity: severity };
+      saveFilters(next);
+      return { filters: next };
+    }),
+  resetKinds: () =>
+    set((state) => {
+      const next = { ...state.filters, kinds: new Set(ALL_KINDS) };
+      saveFilters(next);
+      return { filters: next };
+    }),
+  setPlace: (place) => {
+    const scope: Scope = place ? "place" : "near";
+    saveScope({ scope, place });
+    // a place is not the reader: the fix stops being followed (see setScope)
+    set(place ? { place, scope, here: null, locate: "idle" } : { place, scope });
+  },
+  setScope: (scope) => {
+    saveScope({ scope });
+    // Leaving Near me stops following the reader (useNearMe): the last fix
+    // no longer says where they are. Kept, "Use my location" armed the watch
+    // on Paris for a reader since gone to Lyon, and Near me came back on the
+    // old fix (review of PR #5, #11).
+    set(scope === "near" ? { scope } : { scope, here: null, locate: "idle" });
+  },
+  setHere: (here) => {
+    const next = here ? { lat: coarse(here.lat), lon: coarse(here.lon) } : null;
+    const current = get().here;
+    // the same kilometre again: no new object, no re-render of the feed
+    if (current && next && current.lat === next.lat && current.lon === next.lon) return;
+    set({ here: next });
+  },
+  setLocate: (locate) => set({ locate }),
+  requestNearMe: () => {
+    saveScope({ scope: "near" });
+    set((state) => ({ scope: "near", locateRequest: state.locateRequest + 1 }));
+  },
   setWatch: (watch) => {
     saveWatch(watch);
     // A NEW place starts with a clean memory: an event already alarmed for
@@ -380,21 +573,32 @@ export const useStore = create<State>((set, get) => ({
       previous.lat !== watch.lat ||
       previous.lon !== watch.lon;
     if (moved) {
-      const alarmed = new Set<string>();
+      // what rang for the old place is about the old place: off the tray
+      for (const id of get().alarmed.keys()) void closeNotification(id);
+      const alarmed = new Map<string, number | null>();
       saveAlarmed(alarmed);
       set({ watch, alarmed });
     } else {
       set({ watch });
     }
   },
-  markAlarmed: (ids) => {
-    if (ids.length === 0) return;
-    const alarmed = new Set(get().alarmed);
-    for (const id of ids) {
+  markAlarmed: (rung) => {
+    if (rung.length === 0) return;
+    const alarmed = new Map(get().alarmed);
+    for (const { id, rank } of rung) {
+      const before = alarmed.get(id) ?? -1;
       // re-inserted at the end, so the cap drops the oldest
       alarmed.delete(id);
-      alarmed.add(id);
+      alarmed.set(id, Math.max(before, rank));
     }
+    saveAlarmed(alarmed);
+    set({ alarmed });
+  },
+  forgetAlarmed: (ids) => {
+    const current = get().alarmed;
+    if (!ids.some((id) => current.has(id))) return;
+    const alarmed = new Map(current);
+    for (const id of ids) alarmed.delete(id);
     saveAlarmed(alarmed);
     set({ alarmed });
   },
@@ -419,6 +623,7 @@ export const useStore = create<State>((set, get) => ({
         // happened" halos would survive an outage of several minutes
         fresh: new Set(),
         snapshotRemaining: Math.max(0, Number(message.more) || 0),
+        received: true,
       });
       return;
     }
@@ -530,8 +735,18 @@ export function filterEvents(
   events: SosEvent[],
   filters: Filters,
   now: number,
+  /** What passes the window whatever its onset. The scoped views (Near me,
+   * a place) keep an alert still IN FORCE and what the banner names: a
+   * severe WMO storm for Guayas, issued two days ago and in force, was
+   * missing 45 km from the reader under the 24 h window, and Padang under
+   * the Live window read "Nothing in this window" below "TSUNAMI ALERT"
+   * (reviews of PR #5). The world view keeps the window strict: there, it
+   * would flood "Live" with every warning running on the planet. */
+  options: { keep?: (event: SosEvent) => boolean } = {},
 ): SosEvent[] {
   const { kinds, minMagnitude, windowMinutes, query } = filters;
+  const keep = options.keep;
+  const minRank = SEVERITY_RANK[filters.minSeverity ?? "info"];
   const cutoff = windowMinutes > 0 ? now - windowMinutes * 60_000 : null;
   const needle = query.trim().toLowerCase();
   return events.filter((event) => {
@@ -542,8 +757,11 @@ export function filterEvents(
       if (!haystack.toLowerCase().includes(needle)) return false;
     }
     // window first: it's what separates live from historical
-    if (cutoff !== null && Date.parse(event.time) < cutoff) return false;
+    if (cutoff !== null && Date.parse(event.time) < cutoff && !keep?.(event)) return false;
     if (!kinds.has(event.kind)) return false;
+    // a tsunami flag is never filtered away by rank: it is the one alert
+    // whose label can lag behind the danger
+    if (minRank > 0 && !event.tsunami && SEVERITY_RANK[event.severity] < minRank) return false;
     // an event without a magnitude (alert, volcano) is not filtered by the
     // magnitude slider: it simply doesn't have that dimension
     // `magnitude: null` is NOT zero: it means "not yet published" (early

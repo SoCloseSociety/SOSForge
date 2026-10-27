@@ -1,0 +1,143 @@
+{
+  "name": "unplaced-national",
+  "title": "A red flood warning for a French department: no position anywhere in it, only the country",
+  "_shape": "Meteoalarm feeds-france warning (28896 of 28898 area blocks carry an EMMA_ID and no shape).",
+  "steps": [
+    {
+      "at": 0,
+      "note": "red flood warning, FR, no geometry",
+      "source": "meteoalarm",
+      "country": "france",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.250.0.FR.drill{run}w4",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "vigilance@meteo.fr",
+          "sent": "@iso-5m",
+          "status": "Actual",
+          "info": [
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Seine-Maritime",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Observed",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercice, ceci n'est pas une vraie alerte.",
+              "effective": "@iso-5m",
+              "event": "Vigilance rouge inondation",
+              "expires": "@iso+24h",
+              "headline": "[DRILL] Vigilance rouge inondation",
+              "instruction": "[DRILL] Exercice.",
+              "language": "fr-FR",
+              "onset": "@iso-5m",
+              "parameter": [
+                {
+                  "value": "4; red; Extreme",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "12; Flooding",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Evacuate"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Extreme",
+              "urgency": "Immediate",
+              "web": "https://vigilance.meteofrance.fr/"
+            },
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Seine-Maritime",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Observed",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercise, not a real warning.",
+              "effective": "@iso-5m",
+              "event": "Very severe flooding warning",
+              "expires": "@iso+24h",
+              "headline": "[DRILL] Very severe flooding warning",
+              "instruction": "[DRILL] Exercise.",
+              "language": "en-GB",
+              "onset": "@iso-5m",
+              "parameter": [
+                {
+                  "value": "4; red; Extreme",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "12; Flooding",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Evacuate"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Extreme",
+              "urgency": "Immediate",
+              "web": "https://vigilance.meteofrance.fr/"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w4",
+        {
+          "severity": "extreme"
+        }
+      ]
+    ],
+    "web": "world",
+    "app_fg": "world",
+    "app_bg": "world",
+    "zoned_drop": [],
+    "poll": {
+      "events": [
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w4"
+      ],
+      "removed": []
+    },
+    "agent_tokyo": [],
+    "agent_paris": [
+      "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w4"
+    ]
+  },
+  "fresh": [
+    {
+      "client": "zoned_drop",
+      "unplaced_dropped_min": 1
+    }
+  ]
+}

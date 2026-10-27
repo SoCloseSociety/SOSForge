@@ -1,0 +1,48 @@
+# --------------------------------------------------------------------
+# USE OF NOAA GML DATA
+#
+# These data are made freely available to the public and the scientific
+# community in the belief that their wide dissemination will lead to
+# greater understanding and new scientific insights. To ensure that GML
+# receives fair credit for their work please include relevant citation
+# text in publications. We encourage users to contact the data providers,
+# who can provide detailed information about the measurements and
+# scientific insight.  In cases where the data are central to a
+# publication, coauthorship for data providers may be appropriate.
+#
+#
+#
+# Contact:  Xin Lan (xin.lan@noaa.gov)
+#
+# File Creation: Mon Oct 26 05:01:06 2026
+#
+#
+# --------------------------------------------------------------------
+#
+#
+# See gml.noaa.gov/ccgg/trends/ for additional details.
+#
+# NOTE: DATA FOR THE LAST SEVERAL MONTHS ARE PRELIMINARY, ARE STILL SUBJECT
+# TO QUALITY CONTROL PROCEDURES.
+#
+# NOTE: Due to the eruption of the Mauna Loa Volcano, measurements from Mauna Loa Observatory
+# were suspended as of Nov. 29, 2022 and resumed in July 2023.
+# Observations starting from December 2022 to July 4, 2023 are from a site at the
+# Maunakea Observatories, approximately 21 miles north of the Mauna Loa Observatory.
+#
+2025,10,20,2025.8000,424.96
+2025,10,21,2025.8027,424.92
+2025,10,22,2025.8055,424.99
+2025,10,23,2025.8082,425.42
+2025,10,24,2025.8110,426.06
+2025,10,25,2025.8137,425.22
+2025,10,26,2025.8164,424.92
+2025,10,27,2025.8192,424.81
+2025,10,28,2025.8219,425.29
+2026,10,2,2026.7507,425.30
+2026,10,20,2026.8000,426.65
+2026,10,21,2026.8027,426.85
+2026,10,22,2026.8055,426.46
+2026,10,23,2026.8082,426.77
+2026,10,24,2026.8110,426.96
+2026,10,25,2026.8137,427.13

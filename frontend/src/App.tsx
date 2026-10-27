@@ -1,14 +1,13 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
-import { ALL_KINDS, WINDOWS, filterEvents, useStore } from "./store";
+import { filterEvents, useStore } from "./store";
 import { emptyReason } from "./emptyReason";
-import { criticalEvents } from "./critical";
-import { degradedFeeds, hasIssue } from "./sourceHealth";
+import { criticalEvents, inForce, isCritical } from "./critical";
+import { byRelevance } from "./relevance";
 import { connectLive } from "./live";
 import { syncDeepLink } from "./deeplink";
 import { Feed } from "./components/Feed";
 import { useIsPhone } from "./useMediaQuery";
 import { useWatchAlarms } from "./useWatchAlarms";
-import type { Alarm } from "./alarm";
 
 /** MapLibre is over a megabyte, and the feed is readable without it. Loading it
  * lazily takes the entry bundle from 1277 kB to a fraction of that, which is
@@ -20,17 +19,27 @@ const MapView = lazy(() =>
 import { LivePanel } from "./components/LivePanel";
 import { SearchBar } from "./components/SearchBar";
 import { ArrivalAlert } from "./components/ArrivalAlert";
-import { WatchPanel } from "./components/WatchPanel";
+import { WatchCompact } from "./components/WatchPanel";
+import { ActiveFilters, FilterSheet, WindowSwitch } from "./components/FilterSheet";
+import { ScopeBar } from "./components/ScopeBar";
+import { SourcesBar } from "./components/SourcesBar";
+import { GetAppBanner, GetAppLink } from "./components/GetApp";
+import { ClimateButton, OfflineMapButton } from "./components/FooterTools";
+import {
+  NEAR_RADIUS_KM,
+  NEAR_ZOOM,
+  WORLD_VIEW,
+  effectiveScope,
+  nearestEvents,
+  splitByScope,
+  worldZoom,
+} from "./scope";
+import { distanceKm } from "./arrival";
+import { useNearMe } from "./useNearMe";
+import { useCountries } from "./useCountries";
 import { LANGS } from "./i18n";
 import { applyTheme, currentTheme, type Theme } from "./theme";
-import {
-  KIND_GLYPH,
-  SEVERITY_META,
-  SOURCE_LABEL,
-  formatAge,
-  formatClock,
-  kindLabel,
-} from "./format";
+import { SEVERITY_META, formatAge, formatClock, kindLabel } from "./format";
 import type { SosEvent } from "./types";
 
 /** Server clock, refreshed every second. Everything displayed as "N s ago"
@@ -52,6 +61,9 @@ function Kpis({ now }: { now: number }) {
   const events = useStore((s) => s.events);
   const t = useStore((s) => s.t);
   const loading = useStore((s) => s.snapshotRemaining > 0);
+
+  const received = useStore((s) => s.received);
+  const connected = useStore((s) => s.connected);
 
   const lastQuake = useMemo(
     () => events.find((e) => e.kind === "earthquake"),
@@ -98,19 +110,24 @@ function Kpis({ now }: { now: number }) {
         </div>
         <div className="sub">{t("kpi.tsunami.sub")}</div>
       </div>
-      <div className="kpi">
+      {/* The two secondary counters stand down on a phone: the sources are
+          in the footer, permanently, and the buffer size answers no question
+          a reader has in an emergency. Five cards in a row were cut at the
+          screen edge (owner: nothing is cut). Unknown stays "--", never 0. */}
+      <div className="kpi kpi-secondary">
         <div className="label">{t("kpi.tracked")}</div>
         <div className="value">{stats?.total_buffered ?? "--"}</div>
         <div className="sub">
-          {t("kpi.tracked.sub", { n: stats?.last_hour ?? 0 })}
+          {received && stats ? t("kpi.tracked.sub", { n: stats.last_hour }) : "--"}
         </div>
       </div>
-      <div className="kpi">
+      <div className="kpi kpi-secondary">
         <div className="label">{t("kpi.sources")}</div>
         <div className="value">
-          {online}/{sources.length || "--"}
+          {received ? `${online}/${sources.length}` : "--"}
         </div>
-        <div className="sub">{t("kpi.sources.sub")}</div>
+        {/* link down: the count is the last one known, and says so */}
+        <div className="sub">{received && !connected ? t("kpi.sources.offline") : t("kpi.sources.sub")}</div>
       </div>
     </div>
   );
@@ -118,7 +135,14 @@ function Kpis({ now }: { now: number }) {
 
 function Banner({ events, now }: { events: SosEvent[]; now: number }) {
   const t = useStore((s) => s.t);
-  const critical = useMemo(() => criticalEvents(events, now), [events, now]);
+  // the banner names what is happening now, not the next warning's onset
+  // A tsunami is named first, whatever is newer: on a phone held sideways
+  // the tsunami KPI is hidden, and an advisory under a newer storm was
+  // named nowhere above the feed (review of PR #5, #19).
+  const critical = useMemo(() => {
+    const ranked = byRelevance(criticalEvents(events, now), now);
+    return [...ranked.filter((e) => e.tsunami), ...ranked.filter((e) => !e.tsunami)];
+  }, [events, now]);
 
   if (critical.length === 0) return null;
   const top = critical[0];
@@ -138,157 +162,22 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
         {top.place || top.title}
         <br />
         <small>
-          {formatAge(t, (now - Date.parse(top.time)) / 1000)}
-          {critical.length > 1
-            ? ` · ${t("banner.others", { n: critical.length - 1 })}`
-            : ""}
+          <span className="banner-age">
+            {formatAge(t, (now - Date.parse(top.time)) / 1000)}
+          </span>
+          {critical.length > 1 ? (
+            <>
+              <span className="banner-others">
+                {` · ${t("banner.others", { n: critical.length - 1 })}`}
+              </span>
+              {/* the same count, short, where the long line does not fit */}
+              <span className="banner-others-short">
+                {` · ${t("banner.others.short", { n: critical.length - 1 })}`}
+              </span>
+            </>
+          ) : null}
         </small>
       </span>
-    </div>
-  );
-}
-
-function Filters({ events, alarms }: { events: SosEvent[]; alarms: Alarm[] }) {
-  const filters = useStore((s) => s.filters);
-  const loading = useStore((s) => s.snapshotRemaining > 0);
-  const toggleKind = useStore((s) => s.toggleKind);
-  const setMinMagnitude = useStore((s) => s.setMinMagnitude);
-  const setWindow = useStore((s) => s.setWindow);
-  const t = useStore((s) => s.t);
-
-  const counts = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const event of events)
-      map.set(event.kind, (map.get(event.kind) ?? 0) + 1);
-    return map;
-  }, [events]);
-
-  // On a phone the filter stack measured 266 px on a 844 px screen that also
-  // has to hold a header, five counters, a banner, a map and the feed. It won
-  // that fight and the FEED came out 0 px tall: the product showed no events at
-  // all. Here it collapses to one line, and that line says what it is hiding.
-  const isPhone = useIsPhone();
-  const [open, setOpen] = useState(false);
-  // Opening or closing this sheet REPLACES the focused button with a different
-  // one. Without carrying focus across, a keyboard or switch user is silently
-  // dropped on <body> and has to tab through the whole header again -- every
-  // single time they open the filters.
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(open);
-  useEffect(() => {
-    if (open === wasOpen.current) return;
-    wasOpen.current = open;
-    (open ? closeRef : toggleRef).current?.focus();
-  }, [open]);
-
-  // "active" means narrowed from the default, not merely set: every kind
-  // selected over 24 h is the resting state, and badging that would cry wolf.
-  const active =
-    (filters.query.trim() ? 1 : 0) +
-    (filters.minMagnitude > 0 ? 1 : 0) +
-    (filters.kinds.size < ALL_KINDS.length ? 1 : 0) +
-    (filters.windowMinutes !== 1440 ? 1 : 0);
-
-  if (isPhone && !open) {
-    return (
-      <div className="filters-collapsed">
-        <button
-          type="button"
-          className="filters-toggle"
-          ref={toggleRef}
-          onClick={() => setOpen(true)}
-        >
-          <span aria-hidden="true">☰</span>
-          {t("filters.open")}
-          {active > 0 ? <span className="badge">{active}</span> : null}
-        </button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="filters">
-      {isPhone ? (
-        <button
-          type="button"
-          className="filters-toggle open"
-          ref={closeRef}
-          onClick={() => setOpen(false)}
-        >
-          <span aria-hidden="true">✕</span>
-          {t("filters.close")}
-        </button>
-      ) : null}
-      {/* Search comes first: it's the shortcut to "what's happening OVER
-          THERE", the question people ask when they open a tracker after
-          hearing about something. */}
-      <SearchBar />
-
-      {/* Location watch sits right under the search: both answer the same
-          question, "what is happening where I care about". */}
-      <WatchPanel alarms={alarms} />
-
-      {/* Then the window: it's what separates live from historical, and
-          therefore the question the user is asking when they arrive. */}
-      <div className="segmented" role="group" aria-label={t("filters.window")}>
-        {WINDOWS.map((minutes) => (
-          <button
-            type="button"
-            key={minutes}
-            aria-pressed={filters.windowMinutes === minutes}
-            onClick={() => setWindow(minutes)}
-          >
-            {t(`window.${minutes}`)}
-          </button>
-        ))}
-      </div>
-
-      {/* ALL covered types are shown, even at zero. Showing only the types
-          currently active would suggest the product doesn't cover tsunamis
-          on days when there aren't any -- on an emergency tracker,
-          "0 tsunami alerts" is information, not an absence of information. */}
-      <div className="chips">
-        {ALL_KINDS.map((kind) => {
-          const n = counts.get(kind) ?? 0;
-          return (
-            <button
-              type="button"
-              key={kind}
-              className={`chip${n === 0 ? " empty" : ""}`}
-              aria-pressed={filters.kinds.has(kind)}
-              onClick={() => toggleKind(kind)}
-              title={
-                n === 0
-                  ? t("filters.none", { kind: kindLabel(t, kind) })
-                  : undefined
-              }
-            >
-              <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
-              {kindLabel(t, kind)}
-              {/* "+" while the snapshot is still arriving: a count of what
-                  has landed so far is a floor, not a total */}
-              <span className="count">
-                {n}
-                {loading ? "+" : ""}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <label className="slider">
-        {t("filters.minmag")}
-        <input
-          type="range"
-          min={0}
-          max={7}
-          step={0.5}
-          value={filters.minMagnitude}
-          onChange={(e) => setMinMagnitude(Number(e.target.value))}
-        />
-        <output>{filters.minMagnitude.toFixed(1)}</output>
-      </label>
     </div>
   );
 }
@@ -341,59 +230,6 @@ function ThemeToggle() {
   );
 }
 
-/** What is wrong with the sources, behind "Show more". The state of every
- * source stays on screen permanently (dot, triangle or cross, and a word for
- * screen readers); the DETAIL -- an error string with a URL in it, the feeds
- * that failed, when the last event came -- is long secondary text that would
- * push the footer past its card on a phone. */
-function SourceErrors({ now }: { now: number }) {
-  const sources = useStore((s) => s.sources);
-  const t = useStore((s) => s.t);
-  const [open, setOpen] = useState(false);
-  const troubled = useMemo(() => sources.filter(hasIssue), [sources]);
-  if (troubled.length === 0) return null;
-  return (
-    <div className="source-errors">
-      <button
-        type="button"
-        className="btn btn-quiet btn-inline"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        {open ? t("more.hide") : t("footer.errors", { n: troubled.length })}
-      </button>
-      {open ? (
-        <ul>
-          {troubled.map((source) => {
-            const failed = degradedFeeds(source);
-            return (
-              <li key={source.name}>
-                <strong>{SOURCE_LABEL[source.name] ?? source.name}</strong>
-                {!source.connected && source.last_error ? (
-                  <code>{source.last_error}</code>
-                ) : null}
-                {failed && failed.length > 0 ? (
-                  <span>{t("footer.failed", { feeds: failed.join(", ") })}</span>
-                ) : null}
-                {source.last_event_at ? (
-                  <span>
-                    {t("footer.lastevent", {
-                      age: formatAge(
-                        t,
-                        (now - Date.parse(source.last_event_at)) / 1000,
-                      ),
-                    })}
-                  </span>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
 function Credit() {
   return (
     <span className="credit">
@@ -406,88 +242,20 @@ function Credit() {
   );
 }
 
+/** The footer: every source's state in one row (`SourcesBar`), then one
+ * quiet line of credits. */
 function Footer({ now }: { now: number }) {
-  const sources = useStore((s) => s.sources);
-  const clients = useStore((s) => s.clients);
   const t = useStore((s) => s.t);
-  const isPhone = useIsPhone();
-  const [open, setOpen] = useState(false);
-  const openRef = useRef<HTMLButtonElement>(null);
-  const shutRef = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(open);
-  useEffect(() => {
-    if (open === wasOpen.current) return;
-    wasOpen.current = open;
-    (open ? shutRef : openRef).current?.focus();
-  }, [open]);
-  const up = sources.filter((s) => s.connected).length;
-
-  // The source list is this product's honesty made visible, and it is also
-  // 139 px of a 844 px phone screen. On a phone it collapses to the one line
-  // that carries the meaning -- how many sources are actually feeding us --
-  // and opens on demand.
-  if (isPhone && !open) {
-    return (
-      <footer className="footer footer-compact">
-        <button
-          type="button"
-          className="sources-toggle"
-          ref={openRef}
-          onClick={() => setOpen(true)}
-        >
-          <span className={`dot ${up === sources.length ? "up" : "down"}`} />
-          {t("footer.sources", { up, total: sources.length })}
-        </button>
-        <span className="spacer" />
-        <span>{t("footer.clients", { n: clients })}</span>
-        <SourceErrors now={now} />
-        <Credit />
-      </footer>
-    );
-  }
-
   return (
     <footer className="footer">
-      {isPhone ? (
-        <button
-          type="button"
-          className="sources-toggle"
-          ref={shutRef}
-          aria-label={t("detail.close")}
-          onClick={() => setOpen(false)}
-        >
-          <span aria-hidden="true">✕</span>
-        </button>
-      ) : null}
-      {sources.map((source) => {
-        const degraded = source.connected && degradedFeeds(source) !== null;
-        const state = !source.connected ? "down" : degraded ? "degraded" : "up";
-        return (
-          <span
-            className={`source source-${state}`}
-            key={source.name}
-            title={source.last_error ?? "OK"}
-          >
-            {/* A green dot and a red dot, 7 px wide, measure 1.43:1 against
-                each other: for a deuteranopic reader the footer said nothing
-                at all -- and telling you WHICH source is dead is the only
-                reason this footer exists. The SHAPE carries it now (dot,
-                triangle, cross); the colour only reinforces it. */}
-            <span className={`dot ${state}`} aria-hidden="true" />
-            <span className="sr-only">{t(`footer.source.${state}`)}</span>
-            <span aria-hidden="true" className="source-mark">
-              {state === "down" ? "\u00d7" : state === "degraded" ? "\u25b2" : ""}
-            </span>
-            {SOURCE_LABEL[source.name] ?? source.name}
-            <span className="count">{source.ingested ?? source.events_seen}</span>
-          </span>
-        );
-      })}
-      <span className="spacer" />
-      <span>{t("footer.clients", { n: clients })}</span>
-      <span>{t("footer.basemap")}</span>
-      <SourceErrors now={now} />
-      <Credit />
+      <SourcesBar now={now} />
+      <p className="footer-credit">
+        <ClimateButton />
+        <OfflineMapButton />
+        <span>{t("footer.basemap")}</span>
+        <GetAppLink />
+        <Credit />
+      </p>
     </footer>
   );
 }
@@ -503,15 +271,167 @@ export default function App() {
   const lang = useStore((s) => s.lang);
   const t = useStore((s) => s.t);
   const remaining = useStore((s) => s.snapshotRemaining);
+  const received = useStore((s) => s.received);
+  const scope = useStore((s) => s.scope);
+  const here = useStore((s) => s.here);
+  const place = useStore((s) => s.place);
+  const isPhone = useIsPhone();
+
+  // Near me by default; the world when there is no position (see the hook).
+  useNearMe();
+  const showing = effectiveScope(scope, here, place);
+  // The point the feed is around: the reader (Near me), a chosen place, or
+  // none (World).
+  const center = showing === "near" ? here : showing === "place" ? place : null;
+  const centerName = showing === "place" && place ? place.name : t("scope.near");
+  // Its countries, found in the page (the position never leaves it): the
+  // alerts that carry no position but name one of them belong in this feed.
+  const countries = useCountries(center, showing === "place" ? (place?.country ?? null) : null);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
   // a 15-minute cutoff and avoids re-pushing the map's GeoJSON source every
   // second.
   const bucket = Math.floor(now / 10_000);
-  const visible = useMemo(
-    () => filterEvents(events, filters, bucket * 10_000),
-    [events, filters, bucket],
+  // What is happening now first: an upcoming warning is not "the latest"
+  // just because its onset is in the future (see relevance.ts).
+  const scoped = center !== null;
+  const filtered = useMemo(
+    () =>
+      byRelevance(
+        filterEvents(
+          events,
+          filters,
+          bucket * 10_000,
+          scoped ? { keep: (e) => inForce(e, bucket * 10_000) || isCritical(e, bucket * 10_000) } : {},
+        ),
+        bucket * 10_000,
+      ),
+    [events, filters, bucket, scoped],
+  );
+  // Near me keeps what is within reach of the reader, and what names the
+  // reader's country without a position; what is severe beyond it is
+  // COUNTED, permanently, so it never silently disappears -- and what is
+  // severe with no position at all is counted apart, never "elsewhere".
+  const { visible, unmatched } = useMemo(() => {
+    if (!center) return { visible: filtered, unmatched: 0 };
+    const split = splitByScope(filtered, center, countries);
+    return { visible: split.near, unmatched: split.unmatched };
+  }, [filtered, center, countries]);
+  // The counts beside the scope are a claim about the WORLD: never narrowed
+  // by the reader's kinds, search or severity floor, and an alert still in
+  // force counts whatever its age -- the banner above names it. Taken from
+  // the filtered list, the bar read "Nothing severe elsewhere" under a
+  // "TSUNAMI ALERT" banner (review of PR #5, #3 to #5).
+  const windowMinutes = filters.windowMinutes;
+  const { severeElsewhere, unlocated } = useMemo(() => {
+    if (!center) return { severeElsewhere: 0, unlocated: 0 };
+    const at = bucket * 10_000;
+    const cutoff = windowMinutes > 0 ? at - windowMinutes * 60_000 : null;
+    // within the window, or in force, or named by the banner
+    const counted =
+      cutoff === null
+        ? events
+        : events.filter((e) => Date.parse(e.time) >= cutoff || inForce(e, at) || isCritical(e, at));
+    return splitByScope(counted, center, countries);
+  }, [events, windowMinutes, bucket, center, countries]);
+
+  // Nothing within reach of the place: said honestly, AND the nearest recent
+  // events with their distance instead of an empty list.
+  // The fallback keeps to the window it names ("nothing ... in this
+  // window"): what the scoped list keeps beyond it (alerts in force, what
+  // the banner names) is about THIS place, not a ranking of every alert
+  // running on the planet by distance (recheck of PR #5).
+  const nearest = useMemo(() => {
+    if (!center || visible.length > 0 || filtered.length === 0 || remaining > 0) return [];
+    const cutoff = windowMinutes > 0 ? bucket * 10_000 - windowMinutes * 60_000 : null;
+    const inWindow = cutoff === null ? filtered : filtered.filter((e) => Date.parse(e.time) >= cutoff);
+    return nearestEvents(inWindow, center);
+  }, [center, visible.length, filtered, remaining, windowMinutes, bucket]);
+
+  // The camera follows the scope: a regional view on the reader, the world
+  // otherwise. Moved again only when the reader moved far (50 km): a reader
+  // who panned the map must not have it yanked back every kilometre.
+  const framed = useRef<{ scope: "near" | "world" | "place"; lat: number; lon: number } | null>(
+    null,
+  );
+  // Near me pressed again, already near: the reader asks to re-centre
+  const locateRequest = useStore((s) => s.locateRequest);
+  const recentred = useRef(locateRequest);
+  useEffect(() => {
+    const { setFocus } = useStore.getState();
+    const previous = framed.current;
+    const recentre = recentred.current !== locateRequest;
+    recentred.current = locateRequest;
+    if (showing === "near" && here) {
+      if (
+        recentre ||
+        !previous ||
+        previous.scope !== "near" ||
+        distanceKm(previous.lat, previous.lon, here.lat, here.lon) > 50
+      ) {
+        framed.current = { scope: "near", lat: here.lat, lon: here.lon };
+        // A position that ARRIVES (the first fix, or a move) does not pull
+        // the camera off an open event: a shared #e/<id> link to a quake in
+        // Chile stays on Chile (review of PR #5, #6). Pressing Near me does.
+        const automatic = !recentre && (!previous || previous.scope === "near");
+        if (!(automatic && useStore.getState().selected)) {
+          setFocus({ lat: here.lat, lon: here.lon, zoom: NEAR_ZOOM, name: "near" });
+        }
+      }
+    } else if (showing === "place" && place) {
+      if (
+        !previous ||
+        previous.scope !== "place" ||
+        previous.lat !== place.lat ||
+        previous.lon !== place.lon
+      ) {
+        framed.current = { scope: "place", lat: place.lat, lon: place.lon };
+        // The search flew there itself, at the zoom of the place it found (a
+        // country is wider than an island): not overridden. A place restored
+        // on reload, or picked again in the scope bar, has no flight yet.
+        const focus = useStore.getState().focus;
+        if (!focus || focus.lat !== place.lat || focus.lon !== place.lon) {
+          setFocus({ lat: place.lat, lon: place.lon, zoom: NEAR_ZOOM, name: place.name });
+        }
+      }
+    } else if (showing === "world" && previous && previous.scope !== "world") {
+      framed.current = { scope: "world", lat: WORLD_VIEW.lat, lon: WORLD_VIEW.lon };
+      const width = document.querySelector(".map-wrap")?.clientWidth ?? window.innerWidth;
+      setFocus({ ...WORLD_VIEW, zoom: worldZoom(width), name: "world" });
+    }
+  }, [showing, here, place, locateRequest]);
+
+  // "Nothing near" is never said bare while alerts without a position could
+  // not be matched to the reader's country: the table still loading, or no
+  // country found here (open sea, an island the table does not draw).
+  const noCountry = countries !== null && countries.length === 0;
+  const unmatchedNote =
+    unmatched > 0 ? ` ${t(noCountry ? "scope.unmatched.none" : "scope.unmatched", { n: unmatched })}` : "";
+  // ... nor while the link is down: nothing can reach the place right now
+  // (final review of PR #5, like the watch line and the scope bar)
+  const offline = received && !connected;
+  const emptyKey =
+    center && remaining === 0 && visible.length === 0 && filtered.length > 0
+      ? offline
+        ? "scope.empty.offline"
+        : unmatched > 0
+          ? noCountry
+            ? "scope.empty.nocountry"
+            : "scope.empty.unmatched"
+          : "scope.empty"
+      : emptyReason({ events, visible, filters, remaining, received });
+  const nearestIntro =
+    nearest.length === 0
+      ? undefined
+      : offline
+        ? t("scope.nearest.offline")
+        : (showing === "place"
+            ? t("scope.nearest", { place: centerName, km: NEAR_RADIUS_KM.toLocaleString() })
+            : t("scope.nearest.you", { km: NEAR_RADIUS_KM.toLocaleString() })) + unmatchedNote;
+  const nearestDistances = useMemo(
+    () => new Map(nearest.map((n) => [n.event.id, n.km])),
+    [nearest],
   );
 
   // The watch alarm rings from HERE, whatever panel is mounted: on a phone
@@ -521,6 +441,20 @@ export default function App() {
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selected) ?? null,
     [events, selected],
+  );
+  // The map draws what the feed lists, PLUS the open event wherever it is:
+  // an alarm or an arrival alert opens events beyond the scope, and the
+  // map flew to an empty spot with no marker and no popup (review, #7).
+  const feedEvents = useMemo(
+    () => (nearest.length > 0 ? nearest.map((n) => n.event) : visible),
+    [nearest, visible],
+  );
+  const mapEvents = useMemo(
+    () =>
+      selectedEvent && !feedEvents.some((e) => e.id === selectedEvent.id)
+        ? [...feedEvents, selectedEvent]
+        : feedEvents,
+    [feedEvents, selectedEvent],
   );
 
   useEffect(() => connectLive(), []);
@@ -535,7 +469,9 @@ export default function App() {
   }, [lang, t]);
 
   return (
-    <div className="app">
+    // `data-layout` is what tools/responsive.py reads to check that the
+    // components and the stylesheet agree on what a phone is.
+    <div className="app" data-layout={isPhone ? "phone" : "wide"}>
       <header className="header">
         <div className="brand">
           {/* The only heading present at all times. Without it a screen-reader
@@ -588,17 +524,47 @@ export default function App() {
 
       <div className="body">
         <section className="panel">
-          <Filters events={events} alarms={alarms} />
+          <GetAppBanner />
+          <div className="filters">
+            {/* Search first: it is the shortcut to "what is happening OVER
+                THERE", the question people ask after hearing about
+                something. The kind filters fold into one button beside it. */}
+            <div className="tools-row">
+              <SearchBar />
+              {/* what the feed will show: the nearest events, when that is
+                  the fallback ("Show 0 events" over five rows otherwise) */}
+              <FilterSheet events={events} resultCount={feedEvents.length} phone={isPhone} />
+            </div>
+            <ActiveFilters phone={isPhone} />
+            {/* The watch answers the same question for one place: one line
+                that says where it stands and opens the whole card. A full
+                card here left a 841x673 foldable and a 1024x768 tablet with
+                no event above the fold (tools/responsive.py). */}
+            <WatchCompact alarms={alarms} />
+            {/* The window separates live from history; on a phone it lives
+                in the filter sheet. */}
+            {isPhone ? null : <WindowSwitch />}
+          </div>
+          <ScopeBar severeElsewhere={severeElsewhere} unlocated={unlocated} />
+          {/* PLACE REPORT SLOT. Another lane builds <PlaceReport lat lon name />
+              (weather, sea, wind, air, risk and history for a place). It
+              mounts HERE, under the scope bar, when the feed is around a
+              point: {center && <PlaceReport lat={center.lat}
+              lon={center.lon} name={centerName} />}. Nothing is rendered
+              until it exists. */}
           <Feed
-            events={visible}
+            events={feedEvents}
             now={now}
             remaining={remaining}
-            emptyKey={emptyReason({ events, visible, filters, remaining })}
+            emptyKey={emptyKey}
+            emptyParams={{ unmatched }}
+            distances={nearest.length > 0 ? nearestDistances : undefined}
+            intro={nearestIntro}
           />
         </section>
         <div className="map-column">
           <Suspense fallback={<div className="map-wrap map-fallback" />}>
-            <MapView events={visible} now={now} />
+            <MapView events={mapEvents} now={now} />
           </Suspense>
           {selectedEvent ? <LivePanel event={selectedEvent} now={now} /> : null}
         </div>

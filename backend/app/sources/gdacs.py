@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import xml.etree.ElementTree as ET
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 import httpx
 
-from app.models.event import Event, Kind, Severity
+from app.models.event import Event, Kind, Severity, severity_for_quake
 from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
@@ -136,7 +137,7 @@ def parse_item(item: ET.Element) -> Event | None:
         mag_type=severity_unit if kind is Kind.EARTHQUAKE else None,
         place=country or title,
         country=country,
-        severity=ALERT_TO_SEVERITY.get(alert, Severity.INFO),
+        severity=_severity(kind, alert, severity_value, severity_text),
         # GDACS itself says whether the event is still current
         ongoing=(_text(item, "gdacs:iscurrent") or "").lower() == "true",
         alert=alert or None,
@@ -154,6 +155,27 @@ def parse_item(item: ET.Element) -> Event | None:
             "published": published.isoformat(),
         },
     )
+
+
+RE_GDACS_DEPTH = re.compile(r"Depth:\s*([\d.]+)\s*km", re.IGNORECASE)
+
+
+def _severity(kind: Kind, alert: str, magnitude: float | None, text: str | None) -> Severity:
+    """GDACS's colour, and for a quake the product's own depth rule too.
+
+    GDACS green means "no significant humanitarian impact expected", not "a
+    small quake": a green M5.8 was graded MINOR, below what every seismic
+    source here gives the same event (lane Q, 2026-10-27). The colour still
+    promotes (an orange M5 stays SEVERE); it no longer demotes. The depth is
+    only in the human text ("Magnitude 5.8M, Depth:54.7km").
+    """
+    severity = ALERT_TO_SEVERITY.get(alert, Severity.INFO)
+    if kind is not Kind.EARTHQUAKE:
+        return severity
+    match = RE_GDACS_DEPTH.search(text or "")
+    by_quake = severity_for_quake(magnitude, float(match.group(1)) if match else None)
+    ladder = list(Severity)
+    return max(severity, by_quake, key=ladder.index)
 
 
 def is_relevant(event: Event, max_age_days: float) -> bool:

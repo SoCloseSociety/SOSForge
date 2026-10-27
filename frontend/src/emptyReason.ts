@@ -1,4 +1,4 @@
-import type { Filters } from './store'
+import { SEVERITY_RANK, type Filters } from './store'
 import type { SosEvent } from './types'
 
 /** Which filter emptied the feed -- so the message can name a fix that works.
@@ -16,11 +16,17 @@ import type { SosEvent } from './types'
 export function emptyReason(state: {
   events: SosEvent[]
   visible: SosEvent[]
-  filters: Pick<Filters, 'query' | 'kinds' | 'minMagnitude' | 'windowMinutes'>
+  filters: Pick<Filters, 'query' | 'kinds' | 'minMagnitude' | 'windowMinutes'> &
+    Partial<Pick<Filters, 'minSeverity'>>
   /** snapshot events still on their way (chunked snapshot) */
   remaining?: number
+  /** has the first snapshot arrived? Absent = yes (older callers) */
+  received?: boolean
 }): string {
   const { events, filters } = state
+  // Before the feed has spoken at all, there is no "no event": only "not
+  // connected yet".
+  if (state.received === false) return 'feed.waiting'
   // First, before any blame: while the snapshot is still arriving, "no
   // event" would be a statement about events we have not received yet.
   if ((state.remaining ?? 0) > 0) return 'feed.loading'
@@ -34,6 +40,14 @@ export function emptyReason(state: {
   if (filters.minMagnitude > 0) {
     const strongEnough = ofKind.filter((e) => (e.magnitude ?? 0) >= filters.minMagnitude)
     if (strongEnough.length === 0) return 'filters.empty.magnitude'
+  }
+
+  // The severity floor (a tsunami flag passes it, as in filterEvents). It
+  // used to be blamed on the window: "Widen the period", which cannot help
+  // when nothing that grave exists at all (review of PR #5, #14, #15).
+  const floor = SEVERITY_RANK[filters.minSeverity ?? 'info']
+  if (floor > 0 && !ofKind.some((e) => e.tsunami || SEVERITY_RANK[e.severity] >= floor)) {
+    return 'filters.empty.severity'
   }
 
   if (filters.windowMinutes > 0) return 'filters.empty.window'

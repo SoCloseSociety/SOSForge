@@ -1,0 +1,152 @@
+{
+ "_captured": "severeweather.wmo.int/json/wmo_all.json, lastUpdated 2026-10-27 10:47:10; every item copied unmodified",
+ "ideam_landslide_tier2_copies": [
+  {
+   "id": "2.49.0.0.170.1.CO.261026203002.jUSYMaBfBAyScA7EqvY7",
+   "event": "Landslide warning",
+   "headline": "CAP Alert",
+   "sent": "2026-10-26 20:30:02",
+   "expires": "2026-10-29 16:00:00",
+   "areaDesc": "Antioquia (Abejorral, Abriaquí, Amalfi, Andes, Anorí, Apartadó, Arboletes, Argelia, Betania, Briceño, Caicedo, Caramanta, Carepa, Chigorodó, Ciudad Bolívar, Cocorná, Cáceres, Ebéjico, El Bagre, El Carmen De Viboral, Fredonia, Frontino, Granada, Ituango, Jardín, Jericó, La Ceja, La Unión, Montebello, Mutatá, Nariño, Nechí, Necoclí, Peque, Pueblorrico, Retiro, San Andrés De Cuerquía, San Carlos, San Francisco, San Luis, San Pedro De Los Milagros, San Pedro De Urabá, Santa Bárbara, Santa Fé De Antioquia, Sonsón, Tarazá, Toledo, Támesis, Urrao, Valdivia, Valparaíso, Vigía Del Fuerte, Yarumal, Yondó, Zaragoza), Arauca (Fortul), Atlántico (Juan De Acosta, Luruaco, Piojó, Repelón), Bolívar (Altos Del Rosario, Barranco De Loba, Calamar, Clemencia, El Carmen De Bolívar, El Guamo, Mahates, María La Baja, Montecristo, Norosí, San Jacinto, San Jacinto Del Cauca, San Juan Nepomuceno, San Martín De Loba, Santa Catalina, Simití, Tiquisio), Boyacá (Chiscas, Chitaraque, Güicán De La Sierra, La Victoria, Labranzagrande, Macanal, Mongua, Moniquirá, Otanche, Paya, Pisba, Puerto Boyacá, Quípama, San José De Pare, San Luis De Gaceno, Santana, Socotá, Togüí), Caldas (Aguadas, Anserma, Aranzazu, Chinchiná, Filadelfia, Manizales, Marmato, Marulanda, Neira, Norcasia, Palestina, Pensilvania, Riosucio, Salamina, Supía, Villamaría), Casanare (Nunchía, Támara, Yopal), Cauca (Balboa, Bolívar, Buenos Aires, Cajibío, Caldono, Caloto, Corinto, Jambaló, La Sierra, La Vega, Miranda, Morales, Piendamó - Tunía, Santander De Quilichao, Sucre, Suárez, Toribío), Cesar (Aguachica, Agustín Codazzi, Becerril, Chimichagua, Chiriguaná, Curumaní, González, La Gloria, La Jagua De Ibirico, Pailitas, Pelaya, Río De Oro, San Alberto, San Martín, Tamalameque), Chocó (Acandí, Condoto, Cértegui, El Litoral Del San Juan, Juradó, Medio Baudó, San José Del Palmar, Sipí, Unguía), Cundinamarca (Puerto Salgar, Yacopí), Córdoba (Ciénaga De Oro, Lorica, Puerto Libertador, Purísima De La Concepción, Sahagún, San Antero, San Carlos, Tierralta, Valencia), La Guajira (Dibulla), Magdalena (Aracataca, Zona Bananera), Meta (Cubarral), Nariño (Cumbal, Cumbitara, El Rosario, Policarpa, Santa Bárbara), Norte De Santander (Bucarasica, Chitagá, Convención, Cáchira, El Carmen, El Tarra, Hacarí, La Esperanza, La Playa, Ocaña, San Calixto, Sardinata, Tibú, Villa Caro, Ábrego), Putumayo (Mocoa), Quindío (Armenia, Buenavista, Calarcá, Circasia, Córdoba, Filandia, Génova, La Tebaida, Montenegro, Pijao, Salento), Risaralda (Dosquebradas, Pereira, Pueblo Rico, Santa Rosa De Cabal), Santander (Aguada, Albania, Barbosa, Betulia, Bolívar, Charalá, Chima, Chipatá, Cimitarra, Concepción, Confines, Contratación, Coromoro, El Guacamayo, El Peñón, Encino, Florián, Guadalupe, Guapotá, Guavatá, Gámbita, Güepsa, La Belleza, La Paz, Landázuri, Mogotes, Ocamonte, Onzaga, Palmar, Palmas Del Socorro, Pinchote, Puente Nacional, Páramo, San Benito, San Gil, Santa Helena Del Opón, Simacota, Socorro, Valle De San José, Vélez), Sucre (Ovejas, San Onofre), Tolima (Cajamarca, Líbano, Murillo, Planadas, Rioblanco, Santa Isabel, Villahermosa), Valle Del Cauca (Caicedonia, Cali, Calima, Dagua, El Cairo, El Cerrito, Florida, Ginebra, Guacarí, Guadalajara De Buga, Jamundí, La Cumbre, La Victoria, Palmira, Pradera, Riofrío, San Pedro, Sevilla, Versalles, Vijes, Yotoco, Yumbo, Zarzal)",
+   "mid": "057",
+   "ra": "3",
+   "s": 3,
+   "u": 2,
+   "c": 3,
+   "url": "co-ideam-es/2026/10/26/20/30/02-452e852dd5f255c163f50996636a7072.xml",
+   "effective": "2026-10-26 20:30:02"
+  },
+  {
+   "id": "2.49.0.0.170.1.CO.261026195002.Qb1HEObMmlTD6kAtfb2b",
+   "event": "Landslide warning",
+   "headline": "CAP Alert",
+   "sent": "2026-10-26 19:50:02",
+   "expires": "2026-10-29 16:00:00",
+   "areaDesc": "Antioquia (Abejorral, Abriaquí, Amalfi, Andes, Anorí, Apartadó, Arboletes, Argelia, Betania, Briceño, Caicedo, Caramanta, Carepa, Chigorodó, Ciudad Bolívar, Cocorná, Cáceres, Ebéjico, El Bagre, El Carmen De Viboral, Fredonia, Frontino, Granada, Ituango, Jardín, Jericó, La Ceja, La Unión, Montebello, Mutatá, Nariño, Nechí, Necoclí, Peque, Pueblorrico, Retiro, San Andrés De Cuerquía, San Carlos, San Francisco, San Luis, San Pedro De Los Milagros, San Pedro De Urabá, Santa Bárbara, Santa Fé De Antioquia, Sonsón, Tarazá, Toledo, Támesis, Urrao, Valdivia, Valparaíso, Vigía Del Fuerte, Yarumal, Yondó, Zaragoza), Arauca (Fortul), Atlántico (Juan De Acosta, Luruaco, Piojó, Repelón), Bolívar (Altos Del Rosario, Barranco De Loba, Calamar, Clemencia, El Carmen De Bolívar, El Guamo, Mahates, María La Baja, Montecristo, Norosí, San Jacinto, San Jacinto Del Cauca, San Juan Nepomuceno, San Martín De Loba, Santa Catalina, Simití, Tiquisio), Boyacá (Chiscas, Chitaraque, Güicán De La Sierra, La Victoria, Labranzagrande, Macanal, Mongua, Moniquirá, Otanche, Paya, Pisba, Puerto Boyacá, Quípama, San José De Pare, San Luis De Gaceno, Santana, Socotá, Togüí), Caldas (Aguadas, Anserma, Aranzazu, Chinchiná, Filadelfia, Manizales, Marmato, Marulanda, Neira, Norcasia, Palestina, Pensilvania, Riosucio, Salamina, Supía, Villamaría), Casanare (Nunchía, Támara, Yopal), Cauca (Balboa, Bolívar, Buenos Aires, Cajibío, Caldono, Caloto, Corinto, Jambaló, La Sierra, La Vega, Miranda, Morales, Piendamó - Tunía, Santander De Quilichao, Sucre, Suárez, Toribío), Cesar (Aguachica, Agustín Codazzi, Becerril, Chimichagua, Chiriguaná, Curumaní, González, La Gloria, La Jagua De Ibirico, Pailitas, Pelaya, Río De Oro, San Alberto, San Martín, Tamalameque), Chocó (Acandí, Condoto, Cértegui, El Litoral Del San Juan, Juradó, Medio Baudó, San José Del Palmar, Sipí, Unguía), Cundinamarca (Puerto Salgar, Yacopí), Córdoba (Ciénaga De Oro, Lorica, Puerto Libertador, Purísima De La Concepción, Sahagún, San Antero, San Carlos, Tierralta, Valencia), La Guajira (Dibulla), Magdalena (Aracataca, Zona Bananera), Meta (Cubarral), Nariño (Cumbal, Cumbitara, El Rosario, Policarpa, Santa Bárbara), Norte De Santander (Bucarasica, Chitagá, Convención, Cáchira, El Carmen, El Tarra, Hacarí, La Esperanza, La Playa, Ocaña, San Calixto, Sardinata, Tibú, Villa Caro, Ábrego), Putumayo (Mocoa), Quindío (Armenia, Buenavista, Calarcá, Circasia, Córdoba, Filandia, Génova, La Tebaida, Montenegro, Pijao, Salento), Risaralda (Dosquebradas, Pereira, Pueblo Rico, Santa Rosa De Cabal), Santander (Aguada, Albania, Barbosa, Betulia, Bolívar, Charalá, Chima, Chipatá, Cimitarra, Concepción, Confines, Contratación, Coromoro, El Guacamayo, El Peñón, Encino, Florián, Guadalupe, Guapotá, Guavatá, Gámbita, Güepsa, La Belleza, La Paz, Landázuri, Mogotes, Ocamonte, Onzaga, Palmar, Palmas Del Socorro, Pinchote, Puente Nacional, Páramo, San Benito, San Gil, Santa Helena Del Opón, Simacota, Socorro, Valle De San José, Vélez), Sucre (Ovejas, San Onofre), Tolima (Cajamarca, Líbano, Murillo, Planadas, Rioblanco, Santa Isabel, Villahermosa), Valle Del Cauca (Caicedonia, Cali, Calima, Dagua, El Cairo, El Cerrito, Florida, Ginebra, Guacarí, Guadalajara De Buga, Jamundí, La Cumbre, La Victoria, Palmira, Pradera, Riofrío, San Pedro, Sevilla, Versalles, Vijes, Yotoco, Yumbo, Zarzal)",
+   "mid": "057",
+   "ra": "3",
+   "s": 3,
+   "u": 2,
+   "c": 3,
+   "url": "co-ideam-es/2026/10/26/19/50/02-ccb0d704573903bfda0b6866c98fa856.xml",
+   "effective": "2026-10-26 19:50:02"
+  },
+  {
+   "id": "2.49.0.0.170.1.CO.261026160502.S4W8RijFiRuWElhU5nrN",
+   "event": "Landslide warning",
+   "headline": "CAP Alert",
+   "sent": "2026-10-26 16:05:02",
+   "expires": "2026-10-29 16:00:00",
+   "areaDesc": "Antioquia (Abejorral, Abriaquí, Amalfi, Andes, Anorí, Apartadó, Arboletes, Argelia, Betania, Briceño, Caicedo, Caramanta, Carepa, Chigorodó, Ciudad Bolívar, Cocorná, Cáceres, Ebéjico, El Bagre, El Carmen De Viboral, Fredonia, Frontino, Granada, Ituango, Jardín, Jericó, La Ceja, La Unión, Montebello, Mutatá, Nariño, Nechí, Necoclí, Peque, Pueblorrico, Retiro, San Andrés De Cuerquía, San Carlos, San Francisco, San Luis, San Pedro De Los Milagros, San Pedro De Urabá, Santa Bárbara, Santa Fé De Antioquia, Sonsón, Tarazá, Toledo, Támesis, Urrao, Valdivia, Valparaíso, Vigía Del Fuerte, Yarumal, Yondó, Zaragoza), Arauca (Fortul), Atlántico (Juan De Acosta, Luruaco, Piojó, Repelón), Bolívar (Altos Del Rosario, Barranco De Loba, Calamar, Clemencia, El Carmen De Bolívar, El Guamo, Mahates, María La Baja, Montecristo, Norosí, San Jacinto, San Jacinto Del Cauca, San Juan Nepomuceno, San Martín De Loba, Santa Catalina, Simití, Tiquisio), Boyacá (Chiscas, Chitaraque, Güicán De La Sierra, La Victoria, Labranzagrande, Macanal, Mongua, Moniquirá, Otanche, Paya, Pisba, Puerto Boyacá, Quípama, San José De Pare, San Luis De Gaceno, Santana, Socotá, Togüí), Caldas (Aguadas, Anserma, Aranzazu, Chinchiná, Filadelfia, Manizales, Marmato, Marulanda, Neira, Norcasia, Palestina, Pensilvania, Riosucio, Salamina, Supía, Villamaría), Casanare (Nunchía, Támara, Yopal), Cauca (Balboa, Bolívar, Buenos Aires, Cajibío, Caldono, Caloto, Corinto, Jambaló, La Sierra, La Vega, Miranda, Morales, Piendamó - Tunía, Santander De Quilichao, Sucre, Suárez, Toribío), Cesar (Aguachica, Agustín Codazzi, Becerril, Chimichagua, Chiriguaná, Curumaní, González, La Gloria, La Jagua De Ibirico, Pailitas, Pelaya, Río De Oro, San Alberto, San Martín, Tamalameque), Chocó (Acandí, Condoto, Cértegui, El Litoral Del San Juan, Juradó, Medio Baudó, San José Del Palmar, Sipí, Unguía), Cundinamarca (Puerto Salgar, Yacopí), Córdoba (Ciénaga De Oro, Lorica, Puerto Libertador, Purísima De La Concepción, Sahagún, San Antero, San Carlos, Tierralta, Valencia), La Guajira (Dibulla), Magdalena (Aracataca, Zona Bananera), Meta (Cubarral), Nariño (Cumbal, Cumbitara, El Rosario, Policarpa, Santa Bárbara), Norte De Santander (Bucarasica, Chitagá, Convención, Cáchira, El Carmen, El Tarra, Hacarí, La Esperanza, La Playa, Ocaña, San Calixto, Sardinata, Tibú, Villa Caro, Ábrego), Putumayo (Mocoa), Quindío (Armenia, Buenavista, Calarcá, Circasia, Córdoba, Filandia, Génova, La Tebaida, Montenegro, Pijao, Salento), Risaralda (Dosquebradas, Pereira, Pueblo Rico, Santa Rosa De Cabal), Santander (Aguada, Albania, Barbosa, Betulia, Bolívar, Charalá, Chima, Chipatá, Cimitarra, Concepción, Confines, Contratación, Coromoro, El Guacamayo, El Peñón, Encino, Florián, Guadalupe, Guapotá, Guavatá, Gámbita, Güepsa, La Belleza, La Paz, Landázuri, Mogotes, Ocamonte, Onzaga, Palmar, Palmas Del Socorro, Pinchote, Puente Nacional, Páramo, San Benito, San Gil, Santa Helena Del Opón, Simacota, Socorro, Valle De San José, Vélez), Sucre (Ovejas, San Onofre), Tolima (Cajamarca, Líbano, Murillo, Planadas, Rioblanco, Santa Isabel, Villahermosa), Valle Del Cauca (Caicedonia, Cali, Calima, Dagua, El Cairo, El Cerrito, Florida, Ginebra, Guacarí, Guadalajara De Buga, Jamundí, La Cumbre, La Victoria, Palmira, Pradera, Riofrío, San Pedro, Sevilla, Versalles, Vijes, Yotoco, Yumbo, Zarzal)",
+   "mid": "057",
+   "ra": "3",
+   "s": 3,
+   "u": 2,
+   "c": 3,
+   "url": "co-ideam-es/2026/10/26/16/05/02-62c3966b02ad65a3f2560cf68f51dba3.xml",
+   "effective": "2026-10-26 16:05:02"
+  }
+ ],
+ "chad_heat_tier2": [
+  {
+   "id": "urn:oid:2.49.0.1.148.0.2026.10.26.21.10.0",
+   "event": "Chaleur",
+   "headline": "Pic de chaleur dans les provinces du Batha, du Guera et du Chari-Baguirmi.",
+   "sent": "2026-10-26 21:10:00",
+   "expires": "2026-10-27 14:00:00",
+   "areaDesc": "Batha; Guéra; Chari-Baguirmi",
+   "mid": "088",
+   "ra": "1",
+   "s": 3,
+   "u": 3,
+   "c": 3,
+   "capURL": "td-anam-fr/2026/10/26/21/10/00-dec8b2c31ebfc9c2491fb93270c8fa89.xml",
+   "effective": "2026-10-26 21:10:00"
+  }
+ ],
+ "syria_flood_tier2": [
+  {
+   "id": "urn:oid:2.49.0.1.760.1.2026.10.25.13.36.0",
+   "event": "فيضان مفاجئ",
+   "headline": "تحذير جوي – أمطار غزيرة وعواصف رعدية وبَرَد ورياح هابطة قوية اعتباراً من مساء الثلاثاء 27 تشرين الأول 2026",
+   "sent": "2026-10-25 13:36:00",
+   "expires": "2026-10-31 02:00:00",
+   "areaDesc": "طرطوس; اللاذقية; القنيطرة; درعا; السويداء; دمشق; ريف دمشق; حماة; إدلب; حمص; دير الزور; الحسكة; الرقة; حلب",
+   "mid": "099",
+   "ra": "6",
+   "s": 3,
+   "u": 3,
+   "c": 3,
+   "capURL": "sy-med-ar/2026/10/25/13/36/00-348a02f5dd9819a13d2c878c8383236c.xml",
+   "effective": "2026-10-25 10:00:00"
+  }
+ ],
+ "bom_flood_tier2": [
+  {
+   "id": "AusBoM-IDQ20827-2026-10-27T06:40:03+00:00",
+   "event": "Riverine Flood",
+   "headline": "Major Flood Warning for Condamine River downstream of Warwick to Oakey Creek, Condamine River at Pratten, Condamine River at Tummaville and Condamine River at Cecil Plains",
+   "sent": "2026-10-27 06:40:03",
+   "expires": "2026-10-30 09:40:03",
+   "areaDesc": "Queensland: Condamine River downstream of Warwick to Oakey Creek, Condamine River at Pratten, Condamine River at Tummaville and Condamine River at Cecil Plains",
+   "mid": "185",
+   "ra": "5",
+   "s": 3,
+   "u": 0,
+   "c": 0,
+   "url": "au-bom-en/2026/10/27/06/40/03-a4cfb4ac705a9f8cf8ae96117d5117fb.xml",
+   "effective": "2026-10-27 06:40:03"
+  }
+ ],
+ "nws_flood_tier2": [
+  {
+   "id": "urn:oid:2.49.0.1.840.0.be00d0f1309b46de98f599978fe1c754c01c6bbb.001.1",
+   "event": "Flood Warning",
+   "headline": "Flood Warning issued October 27 at 3:55AM MDT until October 27 at 12:00PM MDT by NWS Salt Lake City UT",
+   "sent": "2026-10-27 09:55:00",
+   "expires": "2026-10-27 18:00:00",
+   "areaDesc": "Kane, UT; San Juan, UT",
+   "mid": "093",
+   "ra": "4",
+   "s": 3,
+   "u": 3,
+   "c": 3,
+   "capURL": "us-noaa-nws-en/2026/10/27/09/55/00-624d39f0c8a326cf43aab3ff3652ef2e.xml",
+   "effective": "2026-10-27 09:55:00"
+  }
+ ],
+ "metoffice_flood_tier2": [
+  {
+   "id": "2.49.0.1.826.1.20261027090719.131323",
+   "event": "Flood Warning: Irish Sea at New Brighton",
+   "headline": "Flooding is expected: Irish Sea at New Brighton",
+   "sent": "2026-10-27 09:07:19",
+   "expires": "2026-11-06 09:07:19",
+   "areaDesc": "Irish Sea at New Brighton",
+   "mid": "010",
+   "ra": "6",
+   "s": 3,
+   "u": 4,
+   "c": 3,
+   "capURL": "uk-metoffice-en/2026/10/27/09/07/19-390ffa4081b95c7d21753fa32cd60efa.xml",
+   "effective": ""
+  }
+ ],
+ "kazakh_wildfire_tier2": [
+  {
+   "id": "2.49.0.0.398.0-20261027-100701-0488351-00-EN",
+   "event": "Forestfire",
+   "headline": "Forestfire",
+   "sent": "2026-10-27 10:07:01",
+   "expires": "2026-10-28 14:00:00",
+   "areaDesc": "Zhambyl district (Almaty Region)",
+   "mid": "070",
+   "ra": "2",
+   "s": 3,
+   "u": 2,
+   "c": 3,
+   "capURL": "kz-kazhydromet-en/2026/10/27/10/07/01-6927ee31d4cf0288147ec2b7ca740cf9.xml",
+   "effective": ""
+  }
+ ]
+}

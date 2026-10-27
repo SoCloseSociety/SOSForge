@@ -1,7 +1,7 @@
 [project]
 name = "sosforge"
 version = "1.0.0"
-description = "Suivi temps reel des seismes, tsunamis et catastrophes naturelles"
+description = "Real-time tracking of earthquakes, tsunamis and natural disasters"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
@@ -37,8 +37,8 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 ignore = [
-    "B008",   # FastAPI Depends() en valeur par defaut: intentionnel
-    "UP042",  # str+Enum volontaire: serialisation JSON directe des valeurs
+    "B008",   # FastAPI Depends() as a default value: intentional
+    "UP042",  # str+Enum on purpose: the values serialize straight to JSON
 ]
 
 [tool.mypy]
