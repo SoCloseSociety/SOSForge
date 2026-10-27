@@ -24,7 +24,8 @@
  * `activate` deletes every cache from a previous version, so nothing pinned
  * to an old build lingers forever. The basemap caches have their own
  * TILES_VERSION: a shell release must not throw away a world map the reader
- * chose to save (up to 35.5 MB stored).
+ * chose to save (up to 35.5 MB stored), nor the tiles they browsed (at most
+ * 40 MB stored, BROWSED_BUDGET_BYTES).
  *
  * What it downloads ON ITS OWN is small on purpose (about 1.5 MB, see
  * AUTO_MAX_ZOOM): the rest of the world map is fetched only when the reader
@@ -104,10 +105,16 @@ const TILE_PATH = /^\/planet\/([^/]+)\/(\d+)\/(\d+)\/(\d+)\.pbf$/
 const AUTO_MAX_ZOOM = 1
 const WORLD_MAX_ZOOM = 3
 
-// Browsed tiles beyond the world zooms. Insertion order (the Cache API keeps
-// it), oldest out first. Tiles at WORLD_MAX_ZOOM and below are kept with the
-// world, never trimmed (at most 85 of them).
-const MAX_BROWSED_TILES = 400
+// Browsed tiles beyond the world zooms, capped by the BYTES they take once
+// stored, oldest out first (the Cache API keeps insertion order). It was a
+// count, 400: at the zooms this map is read at, a tile is 0.18 to 0.41 MB
+// compressed and about twice that stored (HEAD, 2026-10-27: z4 407 KB, z5
+// 276, z6 270, z8 179), so 400 could reach hundreds of MB -- enough storage
+// pressure for the browser to evict the whole origin, shell and saved world
+// included (PR #5 review). Tiles at WORLD_MAX_ZOOM and below are kept with
+// the world, never trimmed. Worst case on a phone: 35.5 MB of saved world
+// plus this.
+const BROWSED_BUDGET_BYTES = 40e6
 
 // The glyph ranges each set's labels need: every character of every name in
 // its tiles (name:latin, name:nonlatin, name_en, name, ref), minus the
@@ -268,12 +275,20 @@ async function cacheFirst(request) {
 /** A copy to store, stamped with when and from where it was fetched (the
  * response's own headers are CORS-filtered and say neither). The URL is
  * passed in rather than read from the response: a tile retried under a newer
- * build must record the build it really came from. */
-function stamp(response, url) {
+ * build must record the build it really came from. The body is read once
+ * here, so the copy also says how many bytes it takes (x-sos-bytes), which
+ * is what the browsed-tile budget counts. */
+async function stamp(response, url) {
+  const body = await response.arrayBuffer()
   const headers = new Headers(response.headers)
   headers.set('x-sos-fetched', String(Date.now()))
   headers.set('x-sos-url', response.url || url)
-  return new Response(response.body, { status: response.status, statusText: response.statusText, headers })
+  headers.set('x-sos-bytes', String(body.byteLength))
+  return new Response(body, { status: response.status, statusText: response.statusText, headers })
+}
+
+async function storedBytes(response) {
+  return Number(response.headers.get('x-sos-bytes')) || (await response.clone().arrayBuffer()).byteLength
 }
 
 function fetchedAt(response) {
@@ -302,7 +317,7 @@ function fetchWithTimeout(url, ms) {
 
 async function refreshMeta(url, cache, timeout = META_TIMEOUT_MS) {
   const response = await fetchWithTimeout(url, timeout)
-  if (response.ok) await cache.put(url, stamp(response.clone(), url))
+  if (response.ok) await cache.put(url, await stamp(response.clone(), url))
   return response
 }
 
@@ -329,16 +344,41 @@ async function cacheFirstBasemap(url) {
   const cached = await cache.match(url)
   if (cached) return cached
   const response = await fetch(url, TILE_FETCH)
-  if (response.ok) await cache.put(url, stamp(response.clone(), url))
+  if (response.ok) await cache.put(url, await stamp(response.clone(), url))
   return response
 }
 
+// The browsed cache's entries and their stored bytes, oldest first. Built
+// from the cache once per worker life, then kept in step with every put.
+let browsed = null
+
+async function browsedIndex(cache) {
+  if (!browsed) {
+    const index = new Map()
+    for (const request of await cache.keys()) {
+      const response = await cache.match(request)
+      if (response) index.set(request.url, await storedBytes(response))
+    }
+    browsed = index
+  }
+  return browsed
+}
+
 let trimming = Promise.resolve()
-function trimBrowsed(cache) {
+function trimBrowsed(cache, key, bytes) {
   trimming = trimming
     .then(async () => {
-      const keys = await cache.keys()
-      for (let i = 0; i < keys.length - MAX_BROWSED_TILES; i++) await cache.delete(keys[i])
+      const index = await browsedIndex(cache)
+      index.delete(key) // a refreshed tile moves to the end, as in the cache
+      index.set(key, bytes)
+      let total = 0
+      for (const size of index.values()) total += size
+      for (const [url, size] of index) {
+        if (total <= BROWSED_BUDGET_BYTES) break
+        await cache.delete(url)
+        index.delete(url)
+        total -= size
+      }
     })
     .catch(() => {})
   return trimming
@@ -365,8 +405,10 @@ async function storeTile(url, build, z, x, y, cache, waitUntil) {
     }
   }
   if (response.ok) {
-    await cache.put(tileKey(z, x, y), stamp(response.clone(), fetched))
-    if (Number(z) > WORLD_MAX_ZOOM) waitUntil(trimBrowsed(cache))
+    const stored = await stamp(response.clone(), fetched)
+    const bytes = Number(stored.headers.get('x-sos-bytes'))
+    await cache.put(tileKey(z, x, y), stored)
+    if (Number(z) > WORLD_MAX_ZOOM) waitUntil(trimBrowsed(cache, tileKey(z, x, y), bytes))
   }
   return response
 }
@@ -665,6 +707,10 @@ async function forgetWorld(waitUntil) {
     const extra = (tile && Number(tile[1]) > AUTO_MAX_ZOOM) || path.startsWith('/fonts/')
     if (extra && !keep.has(request.url)) await cache.delete(request)
   }
+  // and every browsed tile: "give the space back" means all of it, and
+  // nothing else in the UI could clear that cache
+  await caches.delete(TILES_CACHE)
+  browsed = null
   sizes = null
   worldComplete = false
 }
@@ -690,8 +736,8 @@ async function forgetWorld(waitUntil) {
  *        (same floor as above). Sending 'save' again resumes: only what is
  *        missing is fetched.
  *   { type: 'sosforge:basemap-forget' }
- *     -> drops the world zooms above the automatic set; replies with a fresh
- *        status.
+ *     -> drops the world zooms above the automatic set and every browsed tile
+ *        (capped at BROWSED_BUDGET_BYTES); replies with a fresh status.
  *
  * Replies go to event.ports[0] when the page passes a MessageChannel port,
  * otherwise to event.source. */
