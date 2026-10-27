@@ -1251,3 +1251,23 @@ Implementation: `Client.lite`; `Hub.broadcast(message, lite=None)` sends
 one `stats()`. Measured before/after: bytes and messages per hour on a real
 zoned socket, all real sources, with a client that offers no
 permessage-deflate (OkHttp's behaviour), and the negotiation checked.
+
+**Lighter tick, measured (da80ea2).** 15 min on :8335, all 32 real sources,
+the app's background URL (two zones, unplaced=JP,FR, min_severity=moderate,
+chunks=1), two sockets side by side from a client that offers NO
+permessage-deflate: the server answered with no Sec-WebSocket-Extensions,
+so every frame went raw, as OkHttp gets it.
+
+| socket | ticks | sources msgs | bytes / hour | with TLS+TCP (est.) |
+|---|---|---|---|---|
+| full tick | 900 x 11.8 KB | -- | 42.6 MB | 42.8 MB |
+| tick=lite | 900 x 270 B | 9 x ~11 KB (3 refreshes, 6 changes) | 1.37 MB | 1.64 MB |
+
+x31 less. The snapshot (12.9 KB, once per connection) is the same for both.
+The full tick is larger than lane A's 4.7 MB/h figure suggests (11.8 KB raw
+today): the source list grows with every `last_error` it carries.
+
+**Privacy, final review of PR #5 (49c4ada):** the httpx logger now goes
+through the same filter (Nominatim URLs redacted), the geocode warning logs
+no URL, a refused socket logs its code only, and redact_query blanks bare
+parts and safe names holding a value of the wrong shape.
