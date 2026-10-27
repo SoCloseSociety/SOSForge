@@ -1,0 +1,115 @@
+{
+  "name": "quake-in-zone",
+  "title": "A severe quake 85 km from Tokyo, its revision to extreme, then the same revision re-sent",
+  "_shape": "USGS GeoJSON feature, same keys as backend/tests/test_parsers.py USGS_FEATURE (summary feed).",
+  "steps": [
+    {
+      "at": 0,
+      "note": "M6.4 automatic solution, Sagami Bay",
+      "source": "usgs",
+      "payload": {
+        "type": "Feature",
+        "id": "drill{run}q1",
+        "properties": {
+          "mag": 6.4,
+          "place": "[DRILL] 25 km S of Odawara, Japan",
+          "time": "@ms-40s",
+          "updated": "@ms-30s",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/drill{run}q1",
+          "felt": null,
+          "cdi": null,
+          "mmi": null,
+          "alert": null,
+          "status": "automatic",
+          "tsunami": 0,
+          "sig": 630,
+          "magType": "mww",
+          "type": "earthquake",
+          "title": "M 6.4 - [DRILL] 25 km S of Odawara, Japan"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            139.15,
+            35.03,
+            35.0
+          ]
+        }
+      }
+    },
+    {
+      "at": 8,
+      "note": "reviewed: M7.3, PAGER orange -> extreme, an escalation",
+      "source": "usgs",
+      "payload": {
+        "type": "Feature",
+        "id": "drill{run}q1",
+        "properties": {
+          "mag": 7.3,
+          "place": "[DRILL] 25 km S of Odawara, Japan",
+          "time": "@ms-48s",
+          "updated": "@ms-0s",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/drill{run}q1",
+          "felt": 412,
+          "cdi": 6.1,
+          "mmi": 7.2,
+          "alert": "orange",
+          "status": "reviewed",
+          "tsunami": 1,
+          "sig": 1210,
+          "magType": "mww",
+          "type": "earthquake",
+          "title": "M 7.3 - [DRILL] 25 km S of Odawara, Japan"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            139.15,
+            35.03,
+            30.0
+          ]
+        }
+      }
+    },
+    {
+      "at": 14,
+      "note": "the same revision polled again: nothing new, nothing sent",
+      "repeat_step": 1
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "usgs:drill{run}q1",
+        {
+          "severity": "severe",
+          "breaking": true
+        }
+      ],
+      [
+        "update",
+        "usgs:drill{run}q1",
+        {
+          "severity": "extreme",
+          "escalated": true
+        }
+      ]
+    ],
+    "web": "world",
+    "app_fg": "world",
+    "app_bg": "world",
+    "zoned_drop": "world",
+    "poll": {
+      "events": [
+        "usgs:drill{run}q1"
+      ],
+      "removed": []
+    },
+    "agent_tokyo": [
+      "usgs:drill{run}q1",
+      "usgs:drill{run}q1"
+    ],
+    "agent_paris": []
+  }
+}

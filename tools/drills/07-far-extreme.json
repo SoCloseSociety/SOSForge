@@ -1,0 +1,63 @@
+{
+  "name": "far-extreme",
+  "title": "A M7.9 off central Chile: every world client hears it, no zoned client does",
+  "_shape": "USGS GeoJSON feature.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "M7.9 off Valparaiso",
+      "source": "usgs",
+      "payload": {
+        "type": "Feature",
+        "id": "drill{run}f1",
+        "properties": {
+          "mag": 7.9,
+          "place": "[DRILL] 60 km W of Valparaiso, Chile",
+          "time": "@ms-40s",
+          "updated": "@ms-0s",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/drill{run}f1",
+          "felt": null,
+          "cdi": null,
+          "mmi": null,
+          "alert": "red",
+          "status": "automatic",
+          "tsunami": 0,
+          "sig": 500,
+          "magType": "mww",
+          "type": "earthquake",
+          "title": "M 7.9 - [DRILL] 60 km W of Valparaiso, Chile"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            -72.3,
+            -33.0,
+            25.0
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "usgs:drill{run}f1",
+        {
+          "severity": "extreme",
+          "breaking": true
+        }
+      ]
+    ],
+    "web": "world",
+    "app_fg": [],
+    "app_bg": [],
+    "zoned_drop": [],
+    "poll": {
+      "events": [],
+      "removed": []
+    },
+    "agent_tokyo": [],
+    "agent_paris": []
+  }
+}

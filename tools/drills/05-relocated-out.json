@@ -1,0 +1,242 @@
+{
+  "name": "relocated-out",
+  "title": "A quake near Tokyo relocated 1000 km away, and an amber UK warning whose area shrinks out of the Paris zone",
+  "_shape": "USGS GeoJSON feature; Meteoalarm feeds-united-kingdom warning with area[].polygon, the one producer that draws (backend/tests/test_alerts_world.py UK_DRAWN). The revision keeps the identifier so the server's bbox logic is what is tested.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "M5.9 50 km NE of Tokyo",
+      "source": "usgs",
+      "payload": {
+        "type": "Feature",
+        "id": "drill{run}q2",
+        "properties": {
+          "mag": 5.9,
+          "place": "[DRILL] 30 km E of Tsuchiura, Japan",
+          "time": "@ms-40s",
+          "updated": "@ms-0s",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/drill{run}q2",
+          "felt": null,
+          "cdi": null,
+          "mmi": null,
+          "alert": null,
+          "status": "automatic",
+          "tsunami": 0,
+          "sig": 500,
+          "magType": "mww",
+          "type": "earthquake",
+          "title": "M 5.9 - [DRILL] 30 km E of Tsuchiura, Japan"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            140.5,
+            36.05,
+            40.0
+          ]
+        }
+      }
+    },
+    {
+      "at": 0.5,
+      "note": "amber wind warning, area reaching the Channel coast",
+      "source": "meteoalarm",
+      "country": "united-kingdom",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.826.0.GB_drill{run}u1",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "metoffice.gov.uk",
+          "sent": "@iso-1h",
+          "status": "Actual",
+          "info": [
+            {
+              "language": "en-GB",
+              "event": "Amber wind warning",
+              "headline": "[DRILL] Amber wind warning",
+              "severity": "Severe",
+              "certainty": "Likely",
+              "urgency": "Expected",
+              "responseType": [
+                "Prepare"
+              ],
+              "onset": "@iso-1h",
+              "expires": "@iso+10h",
+              "web": "https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings",
+              "description": "[DRILL] Exercise, not a real warning.",
+              "instruction": "[DRILL] Exercise.",
+              "area": [
+                {
+                  "areaDesc": "[DRILL] South East England",
+                  "polygon": [
+                    "50.9,-2.5 50.9,1.4 53.0,1.4 53.0,-2.5 50.9,-2.5"
+                  ]
+                }
+              ],
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": 6,
+      "note": "relocated: the solution moves off the Kuril Islands",
+      "source": "usgs",
+      "payload": {
+        "type": "Feature",
+        "id": "drill{run}q2",
+        "properties": {
+          "mag": 5.9,
+          "place": "[DRILL] 90 km SE of Kurilsk, Russia",
+          "time": "@ms-40s",
+          "updated": "@ms-0s",
+          "url": "https://earthquake.usgs.gov/earthquakes/eventpage/drill{run}q2",
+          "felt": null,
+          "cdi": null,
+          "mmi": null,
+          "alert": null,
+          "status": "reviewed",
+          "tsunami": 0,
+          "sig": 500,
+          "magType": "mww",
+          "type": "earthquake",
+          "title": "M 5.9 - [DRILL] 90 km SE of Kurilsk, Russia"
+        },
+        "geometry": {
+          "type": "Point",
+          "coordinates": [
+            148.6,
+            44.6,
+            40.0
+          ]
+        }
+      }
+    },
+    {
+      "at": 6.5,
+      "note": "the amber area shrinks to northern England",
+      "source": "meteoalarm",
+      "country": "united-kingdom",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.826.0.GB_drill{run}u1",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "metoffice.gov.uk",
+          "sent": "@iso-1h",
+          "status": "Actual",
+          "info": [
+            {
+              "language": "en-GB",
+              "event": "Amber wind warning",
+              "headline": "[DRILL] Amber wind warning",
+              "severity": "Severe",
+              "certainty": "Likely",
+              "urgency": "Expected",
+              "responseType": [
+                "Prepare"
+              ],
+              "onset": "@iso-1h",
+              "expires": "@iso+10h",
+              "web": "https://www.metoffice.gov.uk/weather/warnings-and-advice/uk-warnings",
+              "description": "[DRILL] Exercise, not a real warning.",
+              "instruction": "[DRILL] Exercise.",
+              "area": [
+                {
+                  "areaDesc": "[DRILL] South East England",
+                  "polygon": [
+                    "53.6,-2.5 53.6,-0.5 54.6,-0.5 54.6,-2.5 53.6,-2.5"
+                  ]
+                }
+              ],
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "usgs:drill{run}q2",
+        {}
+      ],
+      [
+        "event",
+        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        {}
+      ],
+      [
+        "update",
+        "usgs:drill{run}q2",
+        {}
+      ],
+      [
+        "update",
+        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        {}
+      ]
+    ],
+    "web": "world",
+    "app_fg": [
+      [
+        "event",
+        "usgs:drill{run}q2",
+        {}
+      ],
+      [
+        "event",
+        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        {}
+      ],
+      [
+        "purge",
+        "usgs:drill{run}q2",
+        {
+          "reason": "out_of_scope"
+        }
+      ],
+      [
+        "purge",
+        "meteoalarm:2.49.0.0.826.0.GB_drill{run}u1",
+        {
+          "reason": "out_of_scope"
+        }
+      ]
+    ],
+    "app_bg": "app_fg",
+    "zoned_drop": "app_fg",
+    "poll": {
+      "events": [],
+      "removed": []
+    },
+    "agent_tokyo": [
+      "usgs:drill{run}q2"
+    ],
+    "agent_paris": []
+  }
+}

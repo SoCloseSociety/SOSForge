@@ -1,0 +1,164 @@
+{
+  "name": "eew-cancelled",
+  "title": "A JMA early warning 210 km from Tokyo, re-issued stronger, then cancelled by JMA",
+  "_shape": "Wolfx jma_eew.json, keys copied from the live object in backend/tests/fixtures/audit6_2026-10-26.json (jma_eew_latest). 290 km from the quake-in-zone drill, so the deduper never pairs them.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "serial 1: warning, M6.1, shindo 5-",
+      "source": "jma_eew",
+      "payload": {
+        "Title": "緊急地震速報（警報）",
+        "CodeType": "Ｍ、最大予測震度及び主要動到達予測時刻の緊急地震速報",
+        "Issue": {
+          "Source": "東京",
+          "Status": "通常"
+        },
+        "EventID": "drill{run}e1",
+        "Serial": 1,
+        "AnnouncedTime": "@jst-2s",
+        "OriginTime": "@jst-12s",
+        "Hypocenter": "[DRILL] 福島県沖",
+        "Latitude": 37.0,
+        "Longitude": 141.3,
+        "Magunitude": 6.1,
+        "Magnitude": 6.1,
+        "Depth": 40,
+        "MaxIntensity": "5-",
+        "Accuracy": {
+          "Epicenter": "IPF 法（5 点以上）",
+          "Depth": "IPF 法（5 点以上）",
+          "Magnitude": "速度マグニチュード"
+        },
+        "MaxIntChange": {
+          "String": "",
+          "Reason": ""
+        },
+        "WarnArea": [],
+        "isSea": true,
+        "isTraining": false,
+        "isAssumption": false,
+        "isWarn": true,
+        "isFinal": false,
+        "isCancel": false,
+        "OriginalText": "drill",
+        "Pond": "1"
+      }
+    },
+    {
+      "at": 4,
+      "note": "serial 2: M6.6, shindo 6- -> extreme, an escalation",
+      "source": "jma_eew",
+      "payload": {
+        "Title": "緊急地震速報（警報）",
+        "CodeType": "Ｍ、最大予測震度及び主要動到達予測時刻の緊急地震速報",
+        "Issue": {
+          "Source": "東京",
+          "Status": "通常"
+        },
+        "EventID": "drill{run}e1",
+        "Serial": 2,
+        "AnnouncedTime": "@jst-1s",
+        "OriginTime": "@jst-16s",
+        "Hypocenter": "[DRILL] 福島県沖",
+        "Latitude": 37.0,
+        "Longitude": 141.3,
+        "Magunitude": 6.6,
+        "Magnitude": 6.6,
+        "Depth": 40,
+        "MaxIntensity": "6-",
+        "Accuracy": {
+          "Epicenter": "IPF 法（5 点以上）",
+          "Depth": "IPF 法（5 点以上）",
+          "Magnitude": "速度マグニチュード"
+        },
+        "MaxIntChange": {
+          "String": "最大予測震度が１．０以上大きくなった",
+          "Reason": "Ｍが変化したため"
+        },
+        "WarnArea": [],
+        "isSea": true,
+        "isTraining": false,
+        "isAssumption": false,
+        "isWarn": true,
+        "isFinal": false,
+        "isCancel": false,
+        "OriginalText": "drill",
+        "Pond": "1"
+      }
+    },
+    {
+      "at": 9,
+      "note": "serial 3: JMA cancels the warning",
+      "source": "jma_eew",
+      "payload": {
+        "Title": "緊急地震速報（警報）",
+        "CodeType": "Ｍ、最大予測震度及び主要動到達予測時刻の緊急地震速報",
+        "Issue": {
+          "Source": "東京",
+          "Status": "キャンセル"
+        },
+        "EventID": "drill{run}e1",
+        "Serial": 3,
+        "AnnouncedTime": "@jst-0s",
+        "OriginTime": "@jst-21s",
+        "Hypocenter": "[DRILL] 福島県沖",
+        "Latitude": 37.0,
+        "Longitude": 141.3,
+        "Magunitude": 6.6,
+        "Magnitude": 6.6,
+        "Depth": 40,
+        "MaxIntensity": "6-",
+        "WarnArea": [],
+        "isSea": true,
+        "isTraining": false,
+        "isAssumption": false,
+        "isWarn": true,
+        "isFinal": true,
+        "isCancel": true,
+        "OriginalText": "drill",
+        "Pond": "1"
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "jma_eew:drill{run}e1",
+        {
+          "severity": "severe",
+          "breaking": true
+        }
+      ],
+      [
+        "update",
+        "jma_eew:drill{run}e1",
+        {
+          "severity": "extreme",
+          "escalated": true
+        }
+      ],
+      [
+        "purge",
+        "jma_eew:drill{run}e1",
+        {
+          "reason": "cancelled"
+        }
+      ]
+    ],
+    "web": "world",
+    "app_fg": "world",
+    "app_bg": "world",
+    "zoned_drop": "world",
+    "poll": {
+      "events": [],
+      "removed": []
+    },
+    "agent_tokyo": [
+      "jma_eew:drill{run}e1",
+      "jma_eew:drill{run}e1"
+    ],
+    "agent_paris": []
+  }
+}
