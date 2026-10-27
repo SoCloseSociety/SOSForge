@@ -89,7 +89,9 @@ clean:
 # Every field of downloads/latest.json is read back from the APK (aapt2,
 # apksigner, its bytes); nothing about a release is typed here but its notes.
 # Needs the Android SDK build-tools, so it runs on the Mac; downloads/README.md
-# says how the result reaches the server.
+# says how the result reaches the server. It also refuses anything below, or
+# beside, what https://sosforge.soclose.co already serves: downloads/ is
+# gitignored, so this clone's copy is not the reference.
 publish-apk: ## put a signed APK up for download -- make publish-apk APK=path [NOTES_EN=".."] [NOTES_FR=".."]
 	@test -n "$(APK)" || { echo "usage: make publish-apk APK=path/to/sosforge.apk"; exit 2; }
 	python3 tools/publish_apk.py "$(APK)" --notes-en "$(NOTES_EN)" --notes-fr "$(NOTES_FR)"
