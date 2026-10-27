@@ -145,6 +145,50 @@ def test_near_mode_reads_a_position(responsive):
         responsive.parse_near("48.85")
 
 
+def test_place_mode_requires_the_button_not_to_cover_the_place(responsive):
+    """At 320x568 and 200 % text the place report's button covered the
+    place the map flew to (review of the place report): checked from where
+    the map says the place landed, not from the map's centre."""
+    m = {
+        "gotData": True,
+        "overflowX": 0,
+        "offenders": [],
+        "regions": {"feed": {"h": 400}, "map": {"h": 140, "w": 320}, "strip": {"w": 300}},
+        "itemsAboveFold": 0,
+        "items": 5,
+        "cardOverflow": [],
+        "mapOffset": None,
+        "canvas": [320, 140],
+        "reach": {"filters": {"ok": True}, "panel": {"ok": True}, "place": {"ok": True}},
+    }
+    button = {"left": 12, "top": 113, "right": 252, "bottom": 200}
+    m["focus"] = {
+        "x": 160,
+        "y": 171,
+        "inMap": True,
+        "button": button,
+        "iconOnly": False,
+        "covered": True,
+    }
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        f"the place report's button {button} covers the place the map flew to, at 160,171"
+    ]
+    m["focus"] = {**m["focus"], "y": 206, "iconOnly": True, "covered": False}
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == []
+    m["focus"] = {**m["focus"], "y": 900, "inMap": False}
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        "the place landed off the map, at 160,900"
+    ]
+    m["focus"] = None
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == [
+        "the map never said where the place landed (no data-focus-at)"
+    ]
+    # outside place mode, or with no WebGL map, there is nothing to judge
+    assert responsive.verdict("phone", 320, m, 2.0) == []
+    m["canvas"] = None
+    assert responsive.verdict("phone", 320, m, 2.0, place=True) == []
+
+
 def test_the_usage_line_names_every_flag(responsive):
     """--near reached argparse and the prose, not the Usage line."""
     usage = responsive.__doc__.split("Usage:", 1)[1].split("Exit code", 1)[0]

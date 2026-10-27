@@ -154,6 +154,24 @@ function coveredRight(mapEl: HTMLElement | null): number {
   return Math.max(0, Math.round(Math.min(covered, map.width / 2)))
 }
 
+/** How much of the map's top the place report's button covers (App.tsx
+ * `.map-report`, laid over the map's top-left), as camera padding for a
+ * flight to the place: the place then lands below the button instead of
+ * under it. The mirror of `coveredRight`, capped at half the map the same
+ * way. On a 320x568 phone at 200 % text the button ran from y 12 to 99
+ * of a 139 px map and the place sat at y 70, under it (measured). Zero
+ * without the button (Near me, the world) or when it is not over the map. */
+function coveredTop(mapEl: HTMLElement | null): number {
+  const button = mapEl?.closest('.body')?.querySelector<HTMLElement>('.map-report')
+  if (!mapEl || !button) return 0
+  const map = mapEl.getBoundingClientRect()
+  const over = button.getBoundingClientRect()
+  if (!over.height || over.bottom <= map.top || over.top >= map.bottom) return 0
+  if (over.right <= map.left || over.left >= map.right) return 0
+  const covered = over.bottom - map.top + 12
+  return Math.max(0, Math.round(Math.min(covered, map.height / 2)))
+}
+
 export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const t = useStore((s) => s.t)
   const container = useRef<HTMLDivElement>(null)
@@ -173,6 +191,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const [ready, setReady] = useState(false)
   const reduceMotion = useMediaQuery(REDUCED_MOTION)
   const [failed, setFailed] = useState(false)
+  /** A focus flight was asked for: `data-focus-at` is written from then on. */
+  const flown = useRef(false)
   const latest = useRef({ events, now })
   latest.current = { events, now }
 
@@ -223,6 +243,21 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       }
     })
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+    // Where the point the camera last flew to (a place, the reader, a
+    // search) sits on screen, in map pixels, once the camera has stopped:
+    // what tools/responsive.py reads to check that no overlay covers it.
+    // Absent while the camera moves and before the first flight.
+    const mapEl = container.current
+    instance.on('movestart', () => {
+      delete mapEl.dataset.focusAt
+    })
+    instance.on('moveend', () => {
+      const focus = useStore.getState().focus
+      if (!flown.current || !focus || instance.isMoving()) return
+      const at = instance.project([focus.lon, focus.lat])
+      mapEl.dataset.focusAt = `${Math.round(at.x)},${Math.round(at.y)}`
+    })
 
     // MapLibre opens its compact attribution EXPANDED the first time it fills
     // it -- which can be well after `load`, once the tiles' attribution has
@@ -478,10 +513,11 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     zoom: number,
     speed: number,
     right = 0,
+    top = 0,
   ) => {
     // Always an explicit padding: MapLibre KEEPS the last one, so a flight
     // made while the panel was open would offset every later one.
-    const padding = { top: 0, bottom: 0, left: 0, right }
+    const padding = { top, bottom: 0, left: 0, right }
     if (reduceMotion) instance.jumpTo({ center, zoom, padding })
     else instance.flyTo({ center, zoom, speed, curve: 1.5, essential: true, padding })
   }
@@ -491,7 +527,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   useEffect(() => {
     const instance = map.current
     if (!instance || !ready || !focus) return
-    moveCamera(instance, [focus.lon, focus.lat], focus.zoom, 1.6)
+    flown.current = true
+    moveCamera(instance, [focus.lon, focus.lat], focus.zoom, 1.6, 0, coveredTop(container.current))
     // eslint-disable-next-line react-hooks/exhaustive-deps -- moveCamera is
     // rebuilt on every render; `reduceMotion` is what actually changes it
   }, [focus, ready, reduceMotion])

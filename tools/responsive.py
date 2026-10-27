@@ -36,7 +36,10 @@ etre full op pour tout type de format et d'ecran"):
 
 With --place "LAT,LON,NAME" the page starts on that place (the saved scope
 the app reads at start), and the place report must open inside the
-viewport like the Filters dialog. With --near "LAT,LON" geolocation is
+viewport like the Filters dialog. Its button, laid over the map, must not
+cover the place the map flew to: where that place landed on screen is read
+from the map (MapView's `data-focus-at`, written once the camera stops),
+not assumed to be the map's centre. With --near "LAT,LON" geolocation is
 granted and the position set over DevTools, so the page shows Near me as a
 reader who said yes sees it. Without either, a headless page has no
 position and measures World: neither of the two views most readers get.
@@ -210,6 +213,27 @@ MEASURE = r"""
   const canvas = document.querySelector('.maplibregl-canvas');
   out.canvas = canvas ? [canvas.clientWidth, canvas.clientHeight] : null;
   out.rootFont = getComputedStyle(doc).fontSize;
+  // Where the point the map flew to landed (MapView `data-focus-at`, map
+  // pixels, written once the camera stops), and whether the place report's
+  // button covers it: over a 139 px map at 200 % text it did.
+  out.focus = null;
+  const mapEl = document.querySelector('.map-wrap > .map');
+  const at = mapEl && mapEl.dataset.focusAt;
+  if (at) {
+    const [x, y] = at.split(',').map(Number);
+    const mr = mapEl.getBoundingClientRect();
+    const px = mr.left + x, py = mr.top + y;
+    const btn = document.querySelector('.map-report-open');
+    const b = btn ? btn.getBoundingClientRect() : null;
+    out.focus = {
+      x: Math.round(px), y: Math.round(py),
+      inMap: px >= mr.left && px <= mr.right && py >= mr.top && py <= mr.bottom,
+      button: b ? { left: Math.round(b.left), top: Math.round(b.top),
+                    right: Math.round(b.right), bottom: Math.round(b.bottom) } : null,
+      iconOnly: !!btn && btn.classList.contains('icon-only'),
+      covered: !!b && px >= b.left && px <= b.right && py >= b.top && py <= b.bottom,
+    };
+  }
   return out;
 })
 """
@@ -453,6 +477,30 @@ async def measure(
                 else:
                     streak = 0
             await asyncio.sleep(1.0)
+            place_wait = None
+            if place is not None:
+                # The camera flies to the place once the map is ready, and the
+                # button appears once /api/version answered: measured before
+                # either, the check would judge a world view or no button.
+                # MapLibre's `load` waits for the basemap's first tiles: how
+                # long this took is reported, and what was still missing.
+                settled = (
+                    "({button: !!document.querySelector('.map-report-open'),"
+                    " focusAt: !!document.querySelector('.map-wrap > .map')?.dataset.focusAt})"
+                )
+                waited = 0.0
+                state: dict = {}
+                while waited < 90:
+                    probe = await call(
+                        "Runtime.evaluate", {"expression": settled, "returnByValue": True}
+                    )
+                    state = probe["result"]["result"]["value"]
+                    if state["button"] and state["focusAt"]:
+                        break
+                    await asyncio.sleep(0.5)
+                    waited += 0.5
+                place_wait = {"s": waited, **state}
+                await asyncio.sleep(0.5)
             # Measure, and if the feed came back empty after we HAD seen
             # events, the page hit one of those reconnection holes between the
             # check and the measurement: wait it out and measure again rather
@@ -468,6 +516,7 @@ async def measure(
                 await asyncio.sleep(2.5)
             measured["gotData"] = ready and measured["items"] > 0
             measured["touch"] = touch
+            measured["placeWait"] = place_wait
             if shots:
                 import base64
 
@@ -543,6 +592,21 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = F
     mapbox = m["regions"].get("map")
     if not mapbox or mapbox["h"] < 40 or mapbox["w"] < 40:
         failures.append(f"the map is {mapbox} : not usable")
+    if place and m.get("canvas"):
+        # Judged on a real map only: without WebGL there is no camera, and
+        # "the map is not usable" has already been said.
+        focus = m.get("focus")
+        if not focus:
+            waited = m.get("placeWait") or {}
+            after = f" after {waited['s']} s, {waited}" if waited else ""
+            failures.append(f"the map never said where the place landed (no data-focus-at){after}")
+        elif not focus["inMap"]:
+            failures.append(f"the place landed off the map, at {focus['x']},{focus['y']}")
+        elif focus["covered"]:
+            failures.append(
+                f"the place report's button {focus['button']} covers the place "
+                f"the map flew to, at {focus['x']},{focus['y']}"
+            )
     reach = m.get("reach") or {}
     panels = [("filters", "the Filters dialog"), ("panel", "an event's panel")]
     if place:
@@ -619,11 +683,19 @@ async def main() -> int:
                 failed += 1
             if not args.json:
                 mark = "??  " if not m.get("gotData") else ("FAIL" if bad else "ok  ")
+                focus = m.get("focus") if place else None
+                where = ""
+                if focus:
+                    button = focus["button"] or {}
+                    where = (
+                        f", place at y {focus['y']}, button bottom {button.get('bottom', '--')}"
+                        f"{' (icon only)' if focus['iconOnly'] else ''}"
+                    )
                 print(
                     f"  {mark}  {label:28s} {w:>4}x{h:<4}  "
                     f"{m['itemsAboveFold']} event(s) above the fold, map "
                     f"{(m['regions'].get('map') or {}).get('h', 0)} px"
-                    f"{', touch' if m.get('touch') else ''}",
+                    f"{', touch' if m.get('touch') else ''}{where}",
                     flush=True,
                 )
                 for line in bad:

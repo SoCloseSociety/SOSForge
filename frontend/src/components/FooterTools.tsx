@@ -1,4 +1,17 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type ComponentType, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  Component,
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../store'
 
@@ -62,6 +75,51 @@ interface PanelWords {
   failed: string
 }
 
+/** Would `label` take more than one line? Then the button shows its icon
+ * alone. Measured, never guessed: the label's width changes with the
+ * language, the web font and the reader's text size. On a 320x568 phone at
+ * 200 % text the place report's label took two lines in en, fr and ja, and
+ * its opaque button (y 12 to 99 of a 139 px map) covered the place the map
+ * had flown to, at y 70 (tools/responsive.py --place, 2026-10-27).
+ *
+ * Measured with the label SHOWN, before paint: new room (a phone turned, a
+ * window resized, the text size or the web font changing) or new words
+ * show it again for one layout pass, then it is judged again. */
+function useIconOnly(
+  enabled: boolean,
+  icon: RefObject<HTMLElement | null>,
+  label: RefObject<HTMLElement | null>,
+  text: string,
+): boolean {
+  const [iconOnly, setIconOnly] = useState(false)
+  const [room, setRoom] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    const remeasure = () => setRoom((n) => n + 1)
+    window.addEventListener('resize', remeasure)
+    const fonts = typeof document.fonts?.addEventListener === 'function' ? document.fonts : null
+    fonts?.addEventListener('loadingdone', remeasure)
+    // the icon is one glyph on one line whatever the label does: its size
+    // changes with the text size only, never with this hook's own decision
+    const watcher = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(remeasure)
+    if (icon.current) watcher?.observe(icon.current)
+    return () => {
+      window.removeEventListener('resize', remeasure)
+      fonts?.removeEventListener('loadingdone', remeasure)
+      watcher?.disconnect()
+    }
+  }, [enabled, icon])
+  useLayoutEffect(() => setIconOnly(false), [room, text])
+  useLayoutEffect(() => {
+    const el = label.current
+    if (!enabled || iconOnly || !el) return
+    // `normal` (NaN) is never judged: the label stays
+    const line = parseFloat(getComputedStyle(el).lineHeight)
+    if (line > 0 && el.getBoundingClientRect().height > line * 1.5) setIconOnly(true)
+  }, [enabled, label, iconOnly, room, text])
+  return iconOnly
+}
+
 /** A panel behind one button, loaded only when opened, in a dialog over
  * everything (a bottom sheet on a phone): the panel and its CSS stay out of
  * the first paint, and nothing is fetched for a reader who never looks. */
@@ -73,6 +131,7 @@ function PanelButton<P extends object>({
   label,
   name,
   className,
+  oneLine = false,
 }: {
   load: () => Promise<{ default: ComponentType<P> }>
   panel: P
@@ -82,8 +141,13 @@ function PanelButton<P extends object>({
   /** the accessible name, when the visible label is a short form of it */
   name?: string
   className: string
+  /** never wrap the label: the icon alone where it would (`useIconOnly`) */
+  oneLine?: boolean
 }) {
   const t = useStore((s) => s.t)
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const iconOnly = useIconOnly(oneLine, iconRef, labelRef, label)
   const [open, setOpen] = useState(false)
   // React.lazy keeps a rejection forever: a retry needs a new one
   const [attempt, setAttempt] = useState(0)
@@ -128,13 +192,21 @@ function PanelButton<P extends object>({
       <button
         type="button"
         ref={trigger}
-        className={className}
+        className={iconOnly ? `${className} icon-only` : className}
         aria-label={name}
+        // the words the icon stands for, for a pointer (the name says them
+        // to a screen reader already)
+        title={iconOnly ? (name ?? label) : undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <span aria-hidden="true">{icon}</span> {label}
+        <span aria-hidden="true" ref={iconRef}>
+          {icon}
+        </span>{' '}
+        <span ref={labelRef} hidden={iconOnly}>
+          {label}
+        </span>
       </button>
       {open
         ? createPortal(
@@ -232,7 +304,10 @@ const PLACE_WORDS: PanelWords = {
  * fifteen third parties, and "your location never leaves your device" is a
  * promise. Inline, the report took about two phone screens and pushed
  * every live event below the fold; over the map it takes no row at all,
- * and it is fetched only when opened. */
+ * and it is fetched only when opened. Where its label would wrap it shows
+ * the icon alone (its name still says the whole description), and the map
+ * pads its flight to the place by what the button covers (MapView
+ * `coveredTop`): the place is never under it. */
 export function PlaceReportButton({
   lat,
   lon,
@@ -255,6 +330,7 @@ export function PlaceReportButton({
       label={t('place.open.short')}
       name={t('place.open', { place: name })}
       className="map-report-open"
+      oneLine
     />
   )
 }

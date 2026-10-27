@@ -3,7 +3,7 @@
  * nothing fetched until it is opened. */
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PlaceReportButton } from '../components/FooterTools'
+import { ClimateButton, PlaceReportButton } from '../components/FooterTools'
 import { useStore } from '../store'
 import { resetStore } from './helpers'
 
@@ -29,6 +29,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock)
 })
 afterEach(() => {
+  vi.restoreAllMocks()
   vi.unstubAllGlobals()
 })
 
@@ -94,6 +95,47 @@ describe('PlaceReportButton', () => {
     expect(screen.getByRole('button', { name: 'Close the place report' })).toBeTruthy()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('shows the icon alone where its label would wrap, and the label again where it fits', () => {
+    // jsdom has no layout: the label's line height from a sheet, its height
+    // from the number of lines it would take
+    const sheet = document.createElement('style')
+    sheet.textContent = 'button > span { line-height: 18px }'
+    document.head.append(sheet)
+    let lines = 2
+    const real = HTMLElement.prototype.getBoundingClientRect
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const label = this.tagName === 'SPAN' && !this.getAttribute('aria-hidden')
+      const height = lines * 18
+      return label ? ({ x: 0, y: 0, top: 0, left: 0, right: 100, bottom: height, width: 100, height } as DOMRect) : real.call(this)
+    })
+    try {
+      render(<PlaceReportButton lat={9.51} lon={100.01} name="Ko Samui" />)
+      const name = 'Weather, sea, air, risks and history: Ko Samui'
+      const button = screen.getByRole('button', { name })
+      expect(button.classList.contains('icon-only')).toBe(true)
+      const label = [...button.querySelectorAll('span')].find((el) => el.textContent === 'Weather, sea, air, risks')
+      expect(label?.hidden).toBe(true)
+      // the whole description stays its name, and is its tooltip
+      expect(button.getAttribute('title')).toBe(name)
+
+      // turned to landscape: room for one line
+      lines = 1
+      act(() => {
+        window.dispatchEvent(new Event('resize'))
+      })
+      expect(button.classList.contains('icon-only')).toBe(false)
+      expect(label?.hidden).toBe(false)
+      expect(button.getAttribute('title')).toBeNull()
+
+      // the footer's tools wrap on purpose (.footer-tool): never icon-only
+      lines = 2
+      render(<ClimateButton />)
+      expect(screen.getByRole('button', { name: /Climate indicators/ }).classList.contains('icon-only')).toBe(false)
+    } finally {
+      sheet.remove()
+    }
   })
 
   it('a chunk that fails says so in a sentence, with reload and retry', async () => {
