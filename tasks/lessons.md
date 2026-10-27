@@ -415,3 +415,22 @@ the checkout's: two Reacts, every hook null.
   copy of React (`find node_modules -path '*/node_modules/react/package.json'`)
   and for anything under `node_modules` newer than the last install.
 - `ln -s src dst` onto an existing directory does not replace it: it nests.
+
+## 30. A cleanup loop over a port LIST kills the neighbours' servers
+
+**What happened.** At the end of round 2, lane H stopped "its" servers with a
+loop over six ports (8331, 5331, 8334, 5334, 5332, 5333). It had started only
+two of them. The loop also killed lane N's drill port (8334), which lane A
+was using against the emulator, and lane G's preview (5332), each in the
+middle of a measurement. Stopping by port is the rule (lesson 28), but a port
+is only "yours" while YOU hold it: by the end of a long run, another lane can
+legitimately be on a port you were told about.
+
+**The rules.**
+- Record the PID of every server you start, at start time, and stop exactly
+  those PIDs at the end (`kill <pid>`), checking first that the PID still
+  listens on the port you expect.
+- Never kill by port without checking the listener's cwd and start time
+  (`lsof -p <pid> | grep cwd`, `ps -o lstart= -p <pid>`): a listener started
+  from another worktree, or before you started yours, is not yours.
+- When a lane hands another lane a port to use, it stops using it.

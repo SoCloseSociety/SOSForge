@@ -847,6 +847,47 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 Lane N result (commit 4970235, `tools/drill.py` + `tools/drills/`): `check` 67
 pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 15 pass / 3 fail. Every failure is one of the rows above.
-- [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
-- [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
-      pull + build, host vhost headers, publish the APK, verify live)
+- [x] PR #3 merged (772ad82, 2026-10-27) and DEPLOYED: b18a272 -> 772ad82,
+      rollback images sosforge-{api,web}:rollback-b18a272 + data copy
+      /root/backups/sosforge-20261027T100237Z. Verified from outside: /readyz
+      32/32 sources up, /api/version api 2 with every v2 feature, zone +
+      cursor + ETag 304, ticks 1.01 s; chunked snapshot complete in 0.06 s
+      measured inside the server (the 12 s seen from the Mac was its
+      saturated link). Host vhost /ws now forwards X-Real-IP /
+      X-Forwarded-For / X-Forwarded-Proto (backup, nginx -t, reload).
+      Pings to agentcockpit before and after.
+- [x] lane N merged (351f161): drills + guards, pytest 759
+- [x] lane H merged: vitest 299, tsc, build; responsive 27/27 viewports
+- [ ] PR #5 = round 2 so far (N + H), deploy it: the web location fixes are
+      what the owner is hitting now
+- [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
+
+## Fold evidence (2026-10-27, read-only, under the adb lock)
+
+The owner ran the funnel at 17:05 (device time). Notifications granted,
+coarse location granted APPROXIMATE + while using. Then
+LocationManagerService: the app's fused request (BALANCED, duration 30 s) was
+added at 17:05:30.428 and REMOVED by the app at 17:05:33.115 with
+`locations = 0`. The app cancelled its own request: that is the "location
+does not work" the owner sees. No foreground watch running, no notification
+posted since. Four channels exist (extreme 4, severe 3, digest 2, status 2).
+-> lane A, priority 1 for 0.1.2.
+
+## Every owner ask of 2026-10-27, and where it stands
+
+| Ask | Where |
+|---|---|
+| deploy live | round 1 live (772ad82); round 2 in progress |
+| APK on his phone | 0.1.1 installed; 0.1.2 next (lane A) |
+| notifications fully working | drills (N): 67/73 server, web fixed (H); app drills (A); agent fixes (P) |
+| "use my location" / geolocation, web and app | web fixed (H, 4 Chrome scenarios); app bug proven on the Fold (A) |
+| live view on the person's location by default, world otherwise | web done (H); app (A) |
+| OpenFreeMap pre-downloaded | measured: already cached 10 years; offline added (G web, A app) |
+| site fully indexed | G |
+| APK downloadable from the site | G (page + latest.json), H (entry) |
+| responsive on every format | web 27/27 (H); app (A) |
+| sources in a slider, filters in a button | done (H) |
+| ScanGithub: more sources, climate, live change | C2 |
+| optimise / perfect / complete everything | P (efficiency), Q (live data audit) |
+| nothing fake, only real live data | rule sent to every lane; drills guarded (N) |
+| onboarding with images, overview, preview (kie.ai) | K (art), A (funnel) |
