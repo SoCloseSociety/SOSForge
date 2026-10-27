@@ -175,6 +175,6 @@ def test_ncs_refuses_a_time_without_its_zone():
 
 def test_the_registry_builds_every_new_source_and_honours_its_switches():
     names = [s.name for s in extra_sources(ExtraSourceSettings())]
-    assert names == ["imo", "imo-volcano", "jma-volcano", "ncs"]
+    assert names == ["imo", "imo-volcano", "jma-volcano", "ncs", "ukea", "usdm"]
     off = ExtraSourceSettings(enable_imo=False, enable_ncs=False)
-    assert [s.name for s in extra_sources(off)] == ["imo-volcano", "jma-volcano"]
+    assert [s.name for s in extra_sources(off)] == ["imo-volcano", "jma-volcano", "ukea", "usdm"]

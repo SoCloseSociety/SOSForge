@@ -15,6 +15,8 @@ from app.sources.base import Source
 from app.sources.iceland import ImoQuakeSource, ImoVolcanoSource
 from app.sources.jma_volcano import JmaVolcanoSource
 from app.sources.ncs import NcsSource
+from app.sources.ukea import UkEaFloodSource
+from app.sources.usdm import UsdmSource
 
 
 class ExtraSourceSettings(BaseSettings):
@@ -38,6 +40,16 @@ class ExtraSourceSettings(BaseSettings):
     enable_ncs: bool = True
     ncs_poll_seconds: float = 180.0
 
+    # England flood warnings (Environment Agency). Level 1 = most severe;
+    # 2 keeps Flood Warnings and above, 3 adds the yellow-tier Flood Alerts.
+    enable_ukea: bool = True
+    ukea_poll_seconds: float = 300.0
+    ukea_max_level: int = 2
+
+    # US Drought Monitor: a weekly map, 17 MB, fetched conditionally.
+    enable_usdm: bool = True
+    usdm_poll_seconds: float = 6 * 3600.0
+
 
 def extra_sources(settings: ExtraSourceSettings | None = None) -> list[Source]:
     settings = settings or ExtraSourceSettings()
@@ -52,4 +64,8 @@ def extra_sources(settings: ExtraSourceSettings | None = None) -> list[Source]:
         built.append(JmaVolcanoSource(settings.jma_volcano_poll_seconds))
     if settings.enable_ncs:
         built.append(NcsSource(settings.ncs_poll_seconds))
+    if settings.enable_ukea:
+        built.append(UkEaFloodSource(settings.ukea_poll_seconds, max_level=settings.ukea_max_level))
+    if settings.enable_usdm:
+        built.append(UsdmSource(settings.usdm_poll_seconds))
     return built

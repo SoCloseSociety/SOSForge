@@ -19,6 +19,49 @@ Emit = Callable[[Event], Awaitable[None]]
 Retract = Callable[[str, str], Awaitable[Any]]
 
 
+# Display name of every source, served in `/api/sources` as `label`. The
+# frontend kept its own table (`SOURCE_LABEL` in format.ts) and every source
+# added after it -- ncs, imo, jma-volcano -- showed in the footer as its raw
+# id. The backend that adds a source now names it in the same change. The
+# names of the older sources are copied from that table, unchanged.
+LABELS: dict[str, str] = {
+    "emsc": "EMSC (push)",
+    "usgs": "USGS",
+    "tsunami": "NOAA tsunami",
+    "gdacs": "GDACS",
+    "nws": "NWS",
+    "volcano": "USGS volcanoes",
+    "jma": "JMA",
+    "bmkg": "BMKG",
+    "geonet": "GeoNet",
+    "ingv": "INGV",
+    "geofon": "GEOFON",
+    "eonet": "NASA EONET",
+    "meteoalarm": "Meteoalarm",
+    "wmo": "WMO",
+    "nhc": "NHC",
+    "ash": "Ash SIGMET",
+    "afad": "AFAD",
+    "jma_eew": "JMA EEW",
+    "cenc": "CENC",
+    "aftershock": "USGS aftershock",
+    "space": "NOAA SWPC",
+    "jma-tsunami": "JMA tsunami",
+    "ssn": "SSN (Mexico)",
+    "nrcan": "NRCan",
+    "noa": "NOA (Greece)",
+    "phivolcs": "PHIVOLCS",
+    "igp": "IGP (Peru)",
+    "geonet-volcano": "GeoNet volcanoes",
+    "imo": "IMO (Iceland)",
+    "imo-volcano": "IMO volcanoes (Iceland)",
+    "jma-volcano": "JMA volcanoes",
+    "ncs": "NCS (India)",
+    "ukea": "Environment Agency (England)",
+    "usdm": "US Drought Monitor",
+}
+
+
 class SourceHealth:
     """What a source can honestly say about itself.
 
@@ -32,28 +75,64 @@ class SourceHealth:
       same feed answers again, and the source reports itself `degraded`.
     - **connected but silent.** The EMSC websocket calls `ok()` on connect
       and its pings keep it open: green for hours while delivering nothing.
-      `last_event_at` is the last time the source actually handed over at
-      least one event, so the reader can see the silence for themselves.
-      For a polled source it is the last cycle that returned anything.
+
+    Freshness, three fields that must never be confused (lane Q's audit of
+    2026-10-27 found the footer saying "Last event 40 s" for BMKG, whose
+    newest quake was 29 h old -- a polled source re-lists the same events
+    every cycle, and that was being counted as news):
+
+    - `last_event_at`: when this source handed over an event it had NEVER
+      handed over before -- new data, first seen. Null until the first such
+      event after startup: everything in the first cycle is the baseline.
+    - `newest_event_time`: the event time (origin, issue) of the newest event
+      the source has delivered -- how recent the source's own data is.
+    - `last_delivery_at`: the last poll that returned anything at all, new or
+      re-listed. Diagnostics only; it says nothing about freshness.
     """
 
-    def __init__(self, name: str):
+    # ids remembered per source to tell new from re-listed (oldest dropped)
+    MAX_SEEN = 50_000
+
+    def __init__(self, name: str, label: str | None = None):
         self.name = name
+        self.label = label or LABELS.get(name) or name
         self.connected = False
         self.last_ok: datetime | None = None
         self.last_error: str | None = None
         self.events_seen = 0
         self.errors = 0
         self.last_event_at: datetime | None = None
+        self.newest_event_time: datetime | None = None
+        self.last_delivery_at: datetime | None = None
+        self._seen: dict[str, None] = {}
+        self._primed = False
         # feed name -> its last error, for the feeds failing RIGHT NOW
         self.failed_feeds: dict[str, str] = {}
+
+    def observe(self, event_id: str, event_time: datetime) -> None:
+        """Every event the source emits passes here (see `Source.supervise`)."""
+        now = utcnow()
+        if event_id not in self._seen:
+            self._seen[event_id] = None
+            if len(self._seen) > self.MAX_SEEN:
+                del self._seen[next(iter(self._seen))]
+            if self._primed:
+                self.last_event_at = now
+        # a time in the future is a source error, not freshness
+        if (event_time - now).total_seconds() <= 120 and (
+            self.newest_event_time is None or event_time > self.newest_event_time
+        ):
+            self.newest_event_time = event_time
 
     def ok(self, n: int = 0) -> None:
         self.connected = True
         self.last_ok = utcnow()
         self.events_seen += n
         if n:
-            self.last_event_at = self.last_ok
+            self.last_delivery_at = self.last_ok
+        # the first successful cycle is the baseline: from now on, an id not
+        # seen before is new data
+        self._primed = True
         # A partial success does not erase a partial failure.
         self.last_error = self._failed_summary()
 
@@ -92,6 +171,8 @@ class SourceHealth:
     def snapshot(self) -> dict:
         return {
             "name": self.name,
+            # additive: the display name; `name` stays the stable id
+            "label": self.label,
             "connected": self.connected,
             "last_ok": self.last_ok.isoformat() if self.last_ok else None,
             "last_error": self.last_error,
@@ -103,6 +184,12 @@ class SourceHealth:
                 {"feed": feed, "error": error} for feed, error in sorted(self.failed_feeds.items())
             ],
             "last_event_at": self.last_event_at.isoformat() if self.last_event_at else None,
+            "newest_event_time": (
+                self.newest_event_time.isoformat() if self.newest_event_time else None
+            ),
+            "last_delivery_at": (
+                self.last_delivery_at.isoformat() if self.last_delivery_at else None
+            ),
         }
 
 
@@ -143,8 +230,18 @@ class Source(abc.ABC):
     async def run(self, emit: Emit) -> None:
         """Infinite loop: reads the source and calls `emit` for each event."""
 
+    def observed(self, emit: Emit) -> Emit:
+        """`emit`, plus the freshness bookkeeping of `SourceHealth.observe`."""
+
+        async def wrapped(event: Event) -> None:
+            self.health.observe(event.id, event.time)
+            await emit(event)
+
+        return wrapped
+
     async def supervise(self, emit: Emit) -> None:
         """Restarts the source forever, with capped exponential backoff."""
+        emit = self.observed(emit)
         delay = 1.0
         while True:
             try:
