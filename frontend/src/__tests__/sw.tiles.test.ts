@@ -1,0 +1,381 @@
+// @vitest-environment jsdom
+/** The basemap side of the REAL public/sw.js, and the two install-time
+ * defects fixed with it.
+ *
+ * Same approach as sw.test.ts: a service-worker-shaped global, the shipped
+ * file imported as is, its handlers driven by hand. The cache store here is
+ * richer (per-cache keys/delete, insertion order), because trimming and
+ * build-independent tile keys are exactly what is under test.
+ */
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const ORIGIN = 'https://sosforge.soclose.co'
+const HOST = 'https://tiles.openfreemap.org'
+const BUILD = '20261025_080012_pt'
+const NEWER = '20261101_080000_pt'
+
+// The project carries no Node typings, hence the untyped specifier (as in
+// contrast.test.ts). vitest runs from the frontend root.
+const fs = (await import(/* @vite-ignore */ ['node', 'fs'].join(':'))) as {
+  readFileSync(path: string, encoding: string): string
+}
+const root = (globalThis as unknown as { process: { cwd(): string } }).process.cwd()
+const swSource = fs.readFileSync(`${root}/public/sw.js`, 'utf8')
+
+type Handler = (event: FakeEvent) => void
+interface FakeEvent {
+  request?: Request
+  data?: unknown
+  respondWith: (p: Promise<Response> | Response) => void
+  waitUntil: (p: Promise<unknown>) => void
+}
+
+const handlers = new Map<string, Handler>()
+const stores = new Map<string, Map<string, Response>>()
+let connection: { saveData?: boolean; effectiveType?: string } = {}
+let network: ReturnType<typeof vi.fn>
+let calls: string[] = []
+
+const abs = (r: Request | string) => (typeof r === 'string' ? new URL(r, ORIGIN).href : r.url)
+
+function cacheApi() {
+  const open = async (name: string) => {
+    if (!stores.has(name)) stores.set(name, new Map())
+    const store = stores.get(name)!
+    return {
+      addAll: async (requests: Request[]) => {
+        for (const r of requests) store.set(abs(r), new Response(`precached ${new URL(abs(r)).pathname}`))
+      },
+      put: async (r: Request | string, res: Response) => {
+        store.delete(abs(r)) // a re-put moves to the end, like the real one
+        store.set(abs(r), res)
+      },
+      match: async (r: Request | string) => store.get(abs(r))?.clone(),
+      keys: async () => [...store.keys()].map((u) => new Request(u)),
+      delete: async (r: Request | string) => store.delete(abs(r)),
+    }
+  }
+  return {
+    open,
+    match: async (r: Request | string) => {
+      for (const store of stores.values()) {
+        const hit = store.get(abs(r))
+        if (hit) return hit.clone()
+      }
+      return undefined
+    },
+    keys: async () => [...stores.keys()],
+    delete: async (name: string) => stores.delete(name),
+  }
+}
+
+/** A network that answers like OpenFreeMap and like our origin. */
+function answer(url: string): Response {
+  const u = new URL(url)
+  let res: Response
+  if (url === `${HOST}/styles/dark`) {
+    res = Response.json({
+      sources: { openmaptiles: { type: 'vector', url: `${HOST}/planet` } },
+      sprite: `${HOST}/sprites/ofm_f384/ofm`,
+      glyphs: `${HOST}/fonts/{fontstack}/{range}.pbf`,
+      layers: [{ id: 'place', layout: { 'text-font': ['Noto Sans Regular'] } }, { id: 'water' }],
+    })
+  } else if (url === `${HOST}/planet`) {
+    res = Response.json({ tiles: [`${HOST}/planet/${BUILD}/{z}/{x}/{y}.pbf`] })
+  } else if (u.origin === HOST) {
+    res = new Response(`bytes of ${u.pathname}`)
+  } else if (u.pathname === '/index.html') {
+    res = new Response(
+      '<script type="module" src="/assets/index-AAA.js"></script><link rel="stylesheet" href="/assets/index-BBB.css">',
+      { headers: { 'content-type': 'text/html' } },
+    )
+  } else if (u.pathname === '/assets/index-AAA.js') {
+    res = new Response(
+      'const d=["assets/MapView-CCC.js","assets/MapView-DDD.css"];import("./MapView-CCC.js")',
+    )
+  } else if (u.pathname === '/assets/index-BBB.css') {
+    res = new Response(
+      '@font-face{src:url(/assets/plex-latin-400-EEE.woff2) format("woff2"),url(/assets/plex-latin-400-FFF.woff) format("woff")}',
+    )
+  } else if (u.pathname === '/assets/MapView-CCC.js') {
+    res = new Response('import{a}from"./index-AAA.js"')
+  } else {
+    res = new Response(`origin ${u.pathname}`)
+  }
+  Object.defineProperty(res, 'url', { value: url })
+  return res
+}
+
+async function load() {
+  handlers.clear()
+  stores.clear()
+  calls = []
+  connection = {}
+  vi.stubGlobal('self', {
+    addEventListener: (type: string, fn: Handler) => handlers.set(type, fn),
+    skipWaiting: vi.fn(),
+    clients: { claim: vi.fn(async () => {}) },
+    location: { origin: ORIGIN },
+    navigator: {
+      get connection() {
+        return connection
+      },
+    },
+  })
+  vi.stubGlobal('caches', cacheApi())
+  network = vi.fn(async (input: Request | string) => {
+    const url = abs(input)
+    calls.push(url)
+    return answer(url)
+  })
+  vi.stubGlobal('fetch', network)
+  const NativeRequest = globalThis.Request
+  class ScopedRequest extends NativeRequest {
+    constructor(input: RequestInfo | URL, init?: RequestInit) {
+      super(typeof input === 'string' && input.startsWith('/') ? `${ORIGIN}${input}` : input, init)
+    }
+  }
+  vi.stubGlobal('Request', ScopedRequest)
+  vi.resetModules()
+  // @ts-expect-error -- a plain worker script, not a typed module
+  await import('../../public/sw.js')
+}
+
+/** One fetch event. Returns the answer (or 'passthrough') and the promises
+ * the worker asked to be kept alive for. */
+async function fetchThrough(
+  url: string,
+  mode = 'cors',
+): Promise<{ response: Response | 'passthrough'; kept: Promise<unknown>[] }> {
+  const request = { method: 'GET', url, mode } as Request
+  let answered = null as Promise<Response> | Response | null
+  const kept: Promise<unknown>[] = []
+  handlers.get('fetch')!({
+    request,
+    respondWith: (p) => {
+      answered = p
+    },
+    waitUntil: (p) => kept.push(p),
+  })
+  if (answered === null) return { response: 'passthrough', kept }
+  return { response: await answered, kept }
+}
+
+function res(r: Response | 'passthrough'): Response {
+  if (r === 'passthrough') throw new Error('the worker did not answer')
+  return r
+}
+
+const tile = (z: number, x: number, y: number, build = BUILD) => `${HOST}/planet/${build}/${z}/${x}/${y}.pbf`
+const store = (prefix: string) => [...stores.entries()].find(([name]) => name.startsWith(prefix))?.[1]
+
+beforeEach(async () => {
+  await load()
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
+
+describe('the basemap stays in step with the map', () => {
+  it('requests the same style the map component loads', async () => {
+    const mapView = fs.readFileSync(`${root}/src/components/MapView.tsx`, 'utf8')
+    const inMap = /const BASEMAP_STYLE_URL = '([^']+)'/.exec(mapView)?.[1]
+    const inWorker = /const STYLE_URL = `\$\{TILE_HOST\}([^`]+)`/.exec(swSource)?.[1]
+    expect(inMap).toBe(`${HOST}${inWorker}`)
+  })
+})
+
+// The precache is exercised on its own below; here it must not start (it
+// would wait 20 s, then fetch the world). Save-Data makes it a no-op.
+const quietPrecache = () => {
+  connection = { saveData: true }
+}
+
+describe('tiles', () => {
+  beforeEach(quietPrecache)
+
+  it('stores a tile once, under a key that survives the next build, and serves it offline', async () => {
+    const first = await fetchThrough(tile(2, 1, 1))
+    expect(await res(first.response).text()).toBe(`bytes of /planet/${BUILD}/2/1/1.pbf`)
+    expect(store('sosforge-tiles-base')!.has(`${HOST}/planet/2/1/1.pbf`)).toBe(true)
+
+    network.mockImplementation(async () => {
+      throw new TypeError('offline')
+    })
+    const offline = await fetchThrough(tile(2, 1, 1))
+    expect(await res(offline.response).text()).toBe(`bytes of /planet/${BUILD}/2/1/1.pbf`)
+  })
+
+  it('serves an older build at once and refreshes it behind', async () => {
+    await fetchThrough(tile(5, 10, 12))
+    calls = []
+    const later = await fetchThrough(tile(5, 10, 12, NEWER))
+    expect(await res(later.response).text()).toBe(`bytes of /planet/${BUILD}/5/10/12.pbf`)
+    await Promise.all(later.kept)
+    expect(calls).toContain(tile(5, 10, 12, NEWER))
+    const refreshed = await store('sosforge-tiles-t')!.get(`${HOST}/planet/5/10/12.pbf`)!.clone().text()
+    expect(refreshed).toBe(`bytes of /planet/${NEWER}/5/10/12.pbf`)
+  })
+
+  it('never refetches a tile of the same build', async () => {
+    await fetchThrough(tile(6, 1, 2))
+    calls = []
+    const again = await fetchThrough(tile(6, 1, 2))
+    await Promise.all(again.kept)
+    expect(calls.filter((c) => c.includes('/planet/') && c.endsWith('.pbf'))).toEqual([])
+  })
+
+  it('caps the browsed tiles, oldest first, and never trims the world', async () => {
+    const browsed = 403
+    for (let i = 0; i < browsed; i++) {
+      const { kept } = await fetchThrough(tile(8, i, 0))
+      await Promise.all(kept)
+    }
+    await fetchThrough(tile(1, 0, 0))
+    const deep = store('sosforge-tiles-t1')!
+    expect(deep.size).toBe(400)
+    expect(deep.has(`${HOST}/planet/8/0/0.pbf`)).toBe(false)
+    expect(deep.has(`${HOST}/planet/8/402/0.pbf`)).toBe(true)
+    expect(store('sosforge-tiles-base')!.has(`${HOST}/planet/1/0/0.pbf`)).toBe(true)
+  })
+})
+
+describe('style and TileJSON', () => {
+  beforeEach(quietPrecache)
+
+  it('answer from the cache when the network is gone', async () => {
+    await fetchThrough(`${HOST}/styles/dark`)
+    network.mockImplementation(async () => {
+      throw new TypeError('offline')
+    })
+    const { response } = await fetchThrough(`${HOST}/styles/dark`)
+    expect((await res(response).json()).glyphs).toContain('{fontstack}')
+  })
+
+  it('answer from the cache at once while fresh, and refresh behind', async () => {
+    await fetchThrough(`${HOST}/planet`)
+    calls = []
+    const { response, kept } = await fetchThrough(`${HOST}/planet`)
+    expect((await res(response).json()).tiles[0]).toContain(BUILD)
+    await Promise.all(kept)
+    expect(calls).toEqual([`${HOST}/planet`])
+  })
+})
+
+describe('the offline world precache', () => {
+  async function runPrecache() {
+    vi.useFakeTimers()
+    let done: Promise<unknown> | undefined
+    handlers.get('message')!({
+      data: { type: 'sosforge:precache-basemap' },
+      respondWith: () => {},
+      waitUntil: (p) => {
+        done = p
+      },
+    })
+    await vi.advanceTimersByTimeAsync(20_000)
+    return await done
+  }
+
+  it('fetches world zooms 0..3, the sprites and the label glyphs, once', async () => {
+    expect(await runPrecache()).toBe('fetched 112') // 85 tiles + 4 sprite files + 23 glyph ranges
+    const base = store('sosforge-tiles-base')!
+    for (let z = 0; z <= 3; z++) {
+      expect(base.has(`${HOST}/planet/${z}/${2 ** z - 1}/${2 ** z - 1}.pbf`)).toBe(true)
+    }
+    expect(base.has(`${HOST}/planet/4/0/0.pbf`)).toBe(false)
+    expect(base.has(`${HOST}/sprites/ofm_f384/ofm@2x.png`)).toBe(true)
+    // encoded exactly as the page's own request is
+    expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/0-255.pbf`)).toBe(true)
+
+    calls = []
+    expect(await runPrecache()).toBe('fetched 0')
+    expect(calls.filter((c) => c.endsWith('.pbf') || c.endsWith('.png'))).toEqual([])
+  })
+
+  it('does nothing at all when the reader asked to save data, or on 2G', async () => {
+    connection = { saveData: true }
+    expect(await runPrecache()).toBe('skipped')
+    connection = { effectiveType: 'slow-2g' }
+    expect(await runPrecache()).toBe('skipped')
+    expect(calls).toEqual([])
+  })
+})
+
+describe('what the worker must leave alone', () => {
+  beforeEach(quietPrecache)
+
+  it('never answers the live feed, from any cache', async () => {
+    await runInstall()
+    for (const url of [`${ORIGIN}/api/events`, `${ORIGIN}/api/sources`, `${ORIGIN}/ws`]) {
+      expect((await fetchThrough(url)).response).toBe('passthrough')
+    }
+    const cached = [...stores.values()].flatMap((s) => [...s.keys()])
+    expect(cached.filter((u) => u.includes('/api/') || u.endsWith('/ws'))).toEqual([])
+  })
+
+  it('leaves the APK, its checksum and latest.json to the server', async () => {
+    for (const path of ['/download/sosforge-v0.1.1.apk', '/download/sosforge-latest.apk', '/download/latest.json', '/download/sosforge-v0.1.1.apk.sha256']) {
+      expect((await fetchThrough(`${ORIGIN}${path}`, 'navigate')).response).toBe('passthrough')
+    }
+    expect((await fetchThrough(`${ORIGIN}/download/`, 'navigate')).response).not.toBe('passthrough')
+  })
+
+  it('does not keep a navigation that is not a page', async () => {
+    network.mockImplementation(async (input: Request | string) =>
+      Object.defineProperty(new Response('%PDF', { headers: { 'content-type': 'application/pdf' } }), 'url', {
+        value: abs(input),
+      }),
+    )
+    await fetchThrough(`${ORIGIN}/fr/`, 'navigate')
+    expect(store('sosforge-shell')?.has(`${ORIGIN}/fr/`) ?? false).toBe(false)
+  })
+})
+
+async function runInstall() {
+  const waits: Promise<unknown>[] = []
+  handlers.get('install')!({ respondWith: () => {}, waitUntil: (p) => waits.push(p) })
+  await Promise.all(waits)
+}
+
+/** A cache store whose addAll stores what the network really serves, as the
+ * browser's does, so install can read the shell it just precached. */
+function realShellCaches() {
+  const api = cacheApi()
+  return {
+    ...api,
+    open: async (name: string) => {
+      const cache = await api.open(name)
+      return {
+        ...cache,
+        addAll: async (requests: Request[]) => {
+          for (const r of requests) await cache.put(r, answer(abs(r)))
+        },
+      }
+    },
+  }
+}
+
+describe('install', () => {
+  it('caches the build it installs, the lazy map chunk included, so a first visit works offline', async () => {
+    vi.stubGlobal('caches', realShellCaches())
+    await runInstall()
+    const runtime = store('sosforge-runtime')!
+    for (const path of ['index-AAA.js', 'index-BBB.css', 'MapView-CCC.js', 'MapView-DDD.css', 'plex-latin-400-EEE.woff2']) {
+      expect(runtime.has(`${ORIGIN}/assets/${path}`), path).toBe(true)
+    }
+    expect(runtime.has(`${ORIGIN}/assets/plex-latin-400-FFF.woff`)).toBe(false)
+    expect(store('sosforge-shell')!.has(`${ORIGIN}/plate-boundaries.json`)).toBe(true)
+  })
+
+  it('still installs, and takes over, when the bundles cannot be fetched', async () => {
+    vi.stubGlobal('caches', realShellCaches())
+    network.mockImplementation(async () => {
+      throw new TypeError('offline')
+    })
+    await runInstall()
+    expect((self as unknown as { skipWaiting: ReturnType<typeof vi.fn> }).skipWaiting).toHaveBeenCalled()
+  })
+})

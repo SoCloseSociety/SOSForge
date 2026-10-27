@@ -7,7 +7,7 @@
     <title>SOSForge -- live earthquake, tsunami and disaster tracker</title>
     <meta
       name="description"
-      content="Live worldwide earthquakes, tsunamis, volcanoes, cyclones and disaster alerts. Twenty-six official sources -- EMSC, USGS, NOAA, GDACS, JMA, BMKG and more -- in one real-time feed, updated every second. Free, no account, no API key."
+      content="Live worldwide earthquakes, tsunamis, volcanoes, cyclones and disaster alerts from official sources -- EMSC, USGS, NOAA, GDACS, JMA, BMKG and more -- in one real-time feed, updated every second. Free, no account, no API key."
     />
     <link rel="canonical" href="https://sosforge.soclose.co/" />
     <!-- Lunar by default; theme.ts rewrites both when the reader picks Soft. -->
@@ -41,77 +41,176 @@
     <meta property="og:title" content="SOSForge -- live earthquake, tsunami and disaster tracker" />
     <meta
       property="og:description"
-      content="Twenty-six official feeds in one live stream: earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, pushed to your browser every second."
+      content="Official public feeds in one live stream: earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, pushed to your browser every second."
     />
-    <meta property="og:image" content="https://sosforge.soclose.co/preview.png" />
+    <meta property="og:locale" content="en_US" />
+    <!-- A real screen capture, and labelled as one with its date: shared
+         links show it next to the word "live", so it must never pass for the
+         current state. The size is declared because a crawler that has to
+         download the image to learn it often renders no preview at all on
+         the first share. 1200 x 630 is the 1.91:1 frame the large cards use. -->
+    <meta property="og:image" content="https://sosforge.soclose.co/og-capture-2026-10-27.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Screen capture of SOSForge taken on 2026-10-27, showing the live map and feed as they were at that moment"
+    />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SOSForge -- live earthquake and tsunami tracker" />
     <meta
       name="twitter:description"
-      content="Twenty-six official feeds in one live stream, updated every second. Free, no account, no API key."
+      content="Official public feeds in one live stream, updated every second. Free, no account, no API key."
     />
-    <meta name="twitter:image" content="https://sosforge.soclose.co/preview.png" />
+    <meta name="twitter:image" content="https://sosforge.soclose.co/og-capture-2026-10-27.png" />
+    <meta
+      name="twitter:image:alt"
+      content="Screen capture of SOSForge taken on 2026-10-27, showing the live map and feed as they were at that moment"
+    />
 
-    <!-- Structured data: this is an application, and it is free. Both facts are
-         what a search engine can actually show in a result. -->
+    <!-- Structured data, as one graph: the site, the web application, the
+         Android app and who publishes them. The Android node carries no
+         version and no download link on purpose: those exist only once a
+         release is published, so /download/ builds them at runtime from
+         /download/latest.json (read back from the APK) and checks the file
+         is really there. Nothing here is a figure we do not have: no rating,
+         no review, no download count. -->
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
-        "name": "SOSForge",
-        "url": "https://sosforge.soclose.co/",
-        "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "Any",
-        "browserRequirements": "Requires JavaScript and WebGL for the map",
-        "description": "Live worldwide tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, aggregating twenty-six official sources into a single real-time feed.",
-        "inLanguage": ["en", "fr", "es", "ja", "id"],
-        "isAccessibleForFree": true,
-        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "author": { "@type": "Organization", "name": "SoClose", "url": "https://soclose.co" },
-        "license": "https://opensource.org/licenses/MIT",
-        "codeRepository": "https://github.com/SoCloseSociety/SOSForge"
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "@id": "https://sosforge.soclose.co/#website",
+            "name": "SOSForge",
+            "url": "https://sosforge.soclose.co/",
+            "inLanguage": ["en", "fr", "es", "ja", "id"],
+            "publisher": { "@id": "https://soclose.co/#organization" }
+          },
+          {
+            "@type": "WebApplication",
+            "@id": "https://sosforge.soclose.co/#app",
+            "name": "SOSForge",
+            "url": "https://sosforge.soclose.co/",
+            "applicationCategory": "UtilitiesApplication",
+            "operatingSystem": "Any",
+            "browserRequirements": "Requires JavaScript and WebGL for the map",
+            "description": "Live worldwide tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, merging official public sources into a single real-time feed.",
+            "inLanguage": ["en", "fr", "es", "ja", "id"],
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "publisher": { "@id": "https://soclose.co/#organization" },
+            "license": "https://opensource.org/licenses/MIT",
+            "isBasedOn": {
+              "@type": "SoftwareSourceCode",
+              "codeRepository": "https://github.com/SoCloseSociety/SOSForge",
+              "license": "https://opensource.org/licenses/MIT"
+            }
+          },
+          {
+            "@type": "MobileApplication",
+            "@id": "https://sosforge.soclose.co/download/#app",
+            "name": "SOSForge",
+            "url": "https://sosforge.soclose.co/download/",
+            "operatingSystem": "Android",
+            "applicationCategory": "UtilitiesApplication",
+            "isAccessibleForFree": true,
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+            "publisher": { "@id": "https://soclose.co/#organization" }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://soclose.co/#organization",
+            "name": "SoClose Pte. Ltd.",
+            "url": "https://soclose.co"
+          }
+        ]
       }
     </script>
+
+    <!-- The text below lives INSIDE #root, so every reader gets it -- a
+         crawler that does not run JavaScript, a text browser, a phone still
+         downloading the bundle -- and React replaces it on mount (createRoot
+         clears its container). It says what the app then shows: what it is,
+         where the data comes from, where the raw feed and the Android app
+         are. Same content for everyone, nothing hidden: no cloaking. -->
+    <style>
+      .prerender {
+        max-width: 46rem;
+        margin: 0 auto;
+        padding: 2rem 1rem 3rem;
+        font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+        line-height: 1.5;
+        color: #e9eef2;
+        background: #05070a;
+        overflow-wrap: break-word;
+      }
+      .prerender h1 {
+        font-size: 1.625rem;
+        line-height: 1.2;
+        margin: 0 0 1rem;
+      }
+      .prerender h2 {
+        font-size: 1.0625rem;
+        margin: 1.5rem 0 0.5rem;
+      }
+      .prerender a {
+        color: #45c9e6;
+      }
+      .prerender em {
+        color: #97a6b2;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
-
-    <!-- A crawler, a text browser and anyone with JavaScript off all land on an
-         empty div otherwise. This is the only description of the product they
-         will ever see, so it says what it is and where the data comes from. -->
-    <noscript>
-      <main style="max-width: 46rem; margin: 3rem auto; padding: 0 1.5rem; font-family: system-ui, sans-serif; color: #e9eef2; background: #05070a;">
+    <div id="root">
+      <main class="prerender">
         <h1>SOSForge -- live earthquake, tsunami and disaster tracker</h1>
-        <p>
-          SOSForge aggregates twenty-six official public feeds into a single live stream of
-          earthquakes, tsunamis, volcanic activity, tropical cyclones and disaster alerts,
-          pushed to the browser over a websocket with a one-second heartbeat.
-          <strong>This page needs JavaScript to display the live map and feed.</strong>
+        <p data-seo="intro">
+          SOSForge aggregates official public feeds into a single live stream of earthquakes,
+          tsunamis, volcanic activity, tropical cyclones and disaster alerts, pushed to the browser
+          over a websocket with a one-second heartbeat.
         </p>
+        <noscript>
+          <p><strong data-seo="needs-js">This page needs JavaScript to display the live map and feed.</strong></p>
+        </noscript>
         <h2>Where the data comes from</h2>
         <ul>
-          <li>Earthquakes: EMSC (websocket push), USGS, GEOFON, JMA, BMKG, GeoNet, INGV, AFAD, CENC</li>
+          <li>
+            Earthquakes: EMSC (websocket push), USGS, GEOFON, JMA, BMKG, GeoNet, INGV, AFAD, CENC,
+            NRCan, NOA, PHIVOLCS, SSN, IGP, IMO Iceland and NCS India
+          </li>
           <li>Earthquake early warning: JMA, issued while the seismic waves are still travelling</li>
-          <li>Tsunamis: NOAA NTWC and PTWC bulletins</li>
-          <li>Volcanoes: USGS HANS with the Smithsonian catalogue, and volcanic-ash SIGMETs</li>
+          <li>Aftershock forecasts: USGS</li>
+          <li>Tsunamis: NOAA NTWC and PTWC bulletins, JMA tsunami forecasts</li>
+          <li>
+            Volcanoes: USGS HANS with the Smithsonian catalogue, GeoNet, IMO, JMA volcanic warnings,
+            and volcanic-ash SIGMETs
+          </li>
           <li>Cyclones, floods, wildfires and other hazards: NOAA NHC, GDACS, NASA EONET, NWS, Meteoalarm, WMO</li>
+          <li>Space weather: NOAA SWPC</li>
         </ul>
         <p>
           The raw feed is available without JavaScript:
-          <a href="/api/events" style="color: #45c9e6">/api/events</a> returns the recent events as
-          JSON, and <a href="/api/sources" style="color: #45c9e6">/api/sources</a> reports the live
-          health of every source.
+          <a href="/api/events">/api/events</a> returns the recent events as JSON, and
+          <a href="/api/sources">/api/sources</a> reports the live health of every source.
+        </p>
+        <p data-seo="app">
+          <a href="/download/">SOSForge for Android</a>: the same live feed as an app that watches
+          your places in the background and notifies you.
         </p>
         <p>
           Free software under the MIT licence --
-          <a href="https://github.com/SoCloseSociety/SOSForge" style="color: #45c9e6">source code on GitHub</a>.
+          <a href="https://github.com/SoCloseSociety/SOSForge">source code on GitHub</a>.
+          Published by SoClose Pte. Ltd.
         </p>
         <p>
           <em>SOSForge is not an official warning service. In a real emergency, your local civil
           protection authority is the reference.</em>
         </p>
       </main>
-    </noscript>
+    </div>
 
     <script type="module" src="/src/main.tsx"></script>
   </body>

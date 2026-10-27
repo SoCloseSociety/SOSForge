@@ -6,4 +6,8 @@ Allow: /
 Disallow: /api/
 Disallow: /ws
 
+# The Android download page is meant to be found; the APK files themselves
+# are links on it, not pages.
+Allow: /download/
+
 Sitemap: https://sosforge.soclose.co/sitemap.xml

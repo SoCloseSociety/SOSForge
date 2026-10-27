@@ -1,13 +1,15 @@
 {
   "name": "SOSForge",
   "short_name": "SOSForge",
-  "description": "Live worldwide tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster alerts, nineteen official sources merged into one real-time feed.",
+  "description": "Live worldwide tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster alerts: official public sources merged into one real-time feed.",
+  "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "theme_color": "#05070a",
   "background_color": "#05070a",
   "lang": "en",
+  "categories": ["news", "weather", "utilities"],
   "icons": [
     {
       "src": "/icon-192.png",
