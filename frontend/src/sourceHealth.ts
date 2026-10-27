@@ -39,6 +39,11 @@ function asFeed(item: unknown): FailedFeed {
   return { feed: String(item), error: null }
 }
 
+/** What a source is called: the client's own label, else the server's. */
+export function sourceLabel(source: Pick<SourceHealth, 'name' | 'label'>, labels: Record<string, string>): string {
+  return labels[source.name] ?? source.label ?? source.name
+}
+
 /** Is there anything about this source worth the "Show more" detail? */
 export function hasIssue(source: SourceHealth): boolean {
   return (!source.connected && !!source.last_error) || degradedFeeds(source) !== null

@@ -34,6 +34,9 @@ function Row({ event, now, km }: { event: SosEvent; now: number; km?: number }) 
   const select = useStore((s) => s.select);
   const t = useStore((s) => s.t);
   const lang = useStore((s) => s.lang);
+  // the server names a source this client has no label for (a primitive:
+  // a stable selector, lesson 1)
+  const serverLabel = useStore((s) => s.sources.find((x) => x.name === event.source)?.label);
   const severity = SEVERITY_META[event.severity];
   const flag = flagEmoji(event.country_code);
   const chip = badge(event);
@@ -87,7 +90,7 @@ function Row({ event, now, km }: { event: SosEvent; now: number; km?: number }) 
                 : t("feed.noarea")}
             </span>
           ) : null}
-          <span>{SOURCE_LABEL[event.source] ?? event.source}</span>
+          <span>{SOURCE_LABEL[event.source] ?? serverLabel ?? event.source}</span>
           {/* What to DO, in one word. A closed CAP vocabulary carried by
               essentially every NWS and Meteoalarm alert -- the only one of the
               new fields dense enough to earn a place in the list, and the only

@@ -124,8 +124,18 @@ export interface SourceHealth {
   /** The server sends `{feed, error}` objects (sources/base.py); a bare
    * name is still read, for an older server. */
   failed_feeds?: (string | FailedFeed)[] | null;
-  /** when this source last delivered an EVENT (not a successful poll) */
+  /** The source's own display name ("NCS (India)", "US Drought Monitor"):
+   * the client's SOURCE_LABEL wins, this covers a source it does not know. */
+  label?: string;
+  /** when this source first handed over an event NEVER seen before: the
+   * last NEW event. Null until one arrives after the server started. A
+   * re-listed old event is not news (lane Q, defect 7). */
   last_event_at?: string | null;
+  /** the newest event's OWN time, whatever it was first seen */
+  newest_event_time?: string | null;
+  /** a poll returned anything (the old meaning of "last event"): never shown
+   * as an event time */
+  last_delivery_at?: string | null;
 }
 
 export type ServerMessage =

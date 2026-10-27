@@ -24,6 +24,7 @@ import { ActiveFilters, FilterSheet, WindowSwitch } from "./components/FilterShe
 import { ScopeBar } from "./components/ScopeBar";
 import { SourcesBar } from "./components/SourcesBar";
 import { GetAppBanner, GetAppLink } from "./components/GetApp";
+import { ClimateButton, OfflineMapButton } from "./components/FooterTools";
 import {
   NEAR_RADIUS_KM,
   NEAR_ZOOM,
@@ -247,6 +248,8 @@ function Footer({ now }: { now: number }) {
     <footer className="footer">
       <SourcesBar now={now} />
       <p className="footer-credit">
+        <ClimateButton />
+        <OfflineMapButton />
         <span>{t("footer.basemap")}</span>
         <GetAppLink />
         <Credit />

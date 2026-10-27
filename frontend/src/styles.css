@@ -2464,6 +2464,86 @@ a {
   color: var(--t2);
 }
 
+/* The footer's tools (FooterTools.tsx): the climate indicators and the
+   offline world map. Quiet pills that wrap, never cut. */
+.footer-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--t2);
+  font: inherit;
+  text-align: start;
+  overflow-wrap: break-word;
+  cursor: pointer;
+}
+
+.footer-tool:hover {
+  color: var(--t1);
+  border-color: var(--line-strong);
+}
+
+.footer-tool-note {
+  align-self: center;
+  color: var(--t2);
+}
+
+/* The climate indicators, in a dialog over everything. Opaque with a
+   backdrop filter, like the filter dialog: an opaque scroller over the
+   WebGL map without one paints a slab of page ground. */
+.climate-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--scrim);
+}
+
+.climate-dialog {
+  position: fixed;
+  z-index: 51;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(calc(100vw - 32px), 760px);
+  max-height: min(calc(100dvh - 32px), 900px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-panel);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-panel);
+  color: var(--t1);
+}
+
+.climate-dialog:focus {
+  outline: none;
+}
+
+.climate-dialog-head {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  margin: -12px -12px 0;
+  padding: 8px;
+  background: var(--surface-panel);
+}
+
+.climate-dialog-wait {
+  margin: 0;
+  padding: 16px;
+  color: var(--t2);
+}
+
 /* --------------------------------------------------------------- crash page */
 
 .crash {
@@ -2835,6 +2915,18 @@ a {
    bell, the theme half-disc and the flag say the same thing in a quarter of
    the width, and a sticky header is paid for on every screen. */
 @media (max-width: 599px) {
+  /* the climate indicators rise as a bottom sheet */
+  .climate-dialog {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+    max-height: 88dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
   .header-tools .label {
     display: none;
   }
@@ -2916,7 +3008,8 @@ a {
 
   .source,
   .filter-chip,
-  .scope-elsewhere {
+  .scope-elsewhere,
+  .footer-tool {
     min-height: 44px;
   }
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { useStore } from '../store'
 import { SOURCE_LABEL, formatAge } from '../format'
-import { degradedFeeds, failedFeeds } from '../sourceHealth'
+import { degradedFeeds, failedFeeds, sourceLabel } from '../sourceHealth'
 import { useMediaQuery } from '../useMediaQuery'
 import type { SourceHealth } from '../types'
 
@@ -34,13 +34,13 @@ function SourceButton({
       className={`source source-${state}`}
       data-source={source.name}
       aria-pressed={selected}
-      aria-label={`${SOURCE_LABEL[source.name] ?? source.name}, ${t(`footer.source.${state}`)}`}
+      aria-label={`${sourceLabel(source, SOURCE_LABEL)}, ${t(`footer.source.${state}`)}`}
       onClick={() => onSelect(source.name)}
     >
       <span className="source-mark" aria-hidden="true">
         {MARK[state]}
       </span>
-      <span className="source-name">{SOURCE_LABEL[source.name] ?? source.name}</span>
+      <span className="source-name">{sourceLabel(source, SOURCE_LABEL)}</span>
       <span className="count" aria-hidden="true">
         {source.ingested ?? source.events_seen}
       </span>
@@ -282,9 +282,9 @@ function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: num
   const age = (iso: string | null | undefined) =>
     iso ? formatAge(t, (now - Date.parse(iso)) / 1000) : t('footer.never')
   return (
-    <div className="source-detail" role="region" aria-label={SOURCE_LABEL[source.name] ?? source.name}>
+    <div className="source-detail" role="region" aria-label={sourceLabel(source, SOURCE_LABEL)}>
       <p className="source-detail-head">
-        <strong>{SOURCE_LABEL[source.name] ?? source.name}</strong>
+        <strong>{sourceLabel(source, SOURCE_LABEL)}</strong>
         <span className={`source-${state}`}>
           <span aria-hidden="true">{MARK[state]}</span> {t(`footer.source.${state}`)}
         </span>
@@ -295,10 +295,21 @@ function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: num
       <dl>
         <dt>{t('footer.lastpoll')}</dt>
         <dd>{age(source.last_ok)}</dd>
+        {/* Two different facts, never one: the last NEW event (first seen,
+            never handed over before) and the newest event's own time. A
+            "last event 40 s ago" under a source whose newest event is 29 h
+            old was a poll re-listing old news (lane Q, defect 7). When a
+            poll last returned anything is not an event time: not shown. */}
         {source.last_event_at !== undefined ? (
           <>
-            <dt>{t('footer.lastevent.label')}</dt>
-            <dd>{age(source.last_event_at)}</dd>
+            <dt>{t('footer.lastnew.label')}</dt>
+            <dd>{source.last_event_at ? age(source.last_event_at) : t('footer.lastnew.none')}</dd>
+          </>
+        ) : null}
+        {source.newest_event_time !== undefined ? (
+          <>
+            <dt>{t('footer.newest.label')}</dt>
+            <dd>{source.newest_event_time ? age(source.newest_event_time) : t('footer.newest.none')}</dd>
           </>
         ) : null}
         <dt>{t('footer.seen')}</dt>
