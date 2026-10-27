@@ -1407,7 +1407,10 @@ const id: Dict = {
   "kpi.tsunami.sub": "buletin aktif",
   "kpi.quakes.short": "Gempa 1\u00a0jam",
   "kpi.maxmag.short": "M maks 1\u00a0jam",
-  "kpi.tsunami.short": "Tsunami aktif",
+  // NOT "Tsunami aktif" ("a tsunami under way"): the counter counts
+  // bulletins, a "potential tsunami" statement or a watch among them, and
+  // on a phone the "buletin aktif" footnote is hidden
+  "kpi.tsunami.short": "Buletin tsunami",
   "kpi.tracked": "Kejadian terpantau",
   "kpi.tracked.sub": "{n} dalam satu jam terakhir",
   "kpi.sources": "Sumber aktif",

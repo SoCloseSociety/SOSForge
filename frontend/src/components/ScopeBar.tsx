@@ -15,7 +15,8 @@ import { effectiveScope } from '../scope'
  * Both counts are ONE control, because both open World. The far-danger part
  * is permanent, zero included. The unlocated part keeps its own "?" glyph
  * and its full label, and shows only when there is one. On a phone the
- * control takes at most one line per count: two pills beside the switch
+ * control takes one line per count when the label fits, and a longer label
+ * wraps inside it (344 px, French at 360): two pills beside the switch
  * made a three-row, 173 px bar, and no event was left above the fold of a
  * 320x568 phone in Near me (tools/responsive.py --near, 2026-10-27).
  */

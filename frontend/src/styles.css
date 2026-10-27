@@ -2835,7 +2835,8 @@ a {
 
   /* The border is drawn INSIDE: with the coarse `input { min-height: 44px }`
      the field stays 44 px tall instead of 48 (search 44 + two 1 px borders
-     + the input's own 12 px paddings). */
+     + the input's own 12 px paddings). Forced colours drop the shadow: the
+     frame is put back by the forced-colors block at the end. */
   .tools-row .search {
     border: 0;
     box-shadow: inset 0 0 0 1px var(--edge);
@@ -2845,7 +2846,11 @@ a {
     box-shadow: var(--ring), inset 0 0 0 1px var(--edge);
   }
 
+  /* `stretch`: the input fills the 44 px frame. With a mouse (no coarse
+     44 px floor) it was 22 px tall inside it, and a click in the frame's
+     top or bottom 11 px focused nothing: the frame is a div, not a label. */
   .tools-row .search input {
+    align-self: stretch;
     padding-top: 0;
     padding-bottom: 0;
   }
@@ -2855,7 +2860,8 @@ a {
     gap: 4px 6px;
   }
 
-  /* the switch's frame drawn inside too: 44 px, not 52 */
+  /* the switch's frame drawn inside too: 44 px, not 52 (and put back in
+     forced colours at the end) */
   .scope-switch {
     padding: 0;
     border-width: 0;
@@ -2866,7 +2872,10 @@ a {
     padding: 0 10px;
   }
 
-  /* beside the switch when 11rem fit, else under it; one line per count */
+  /* Beside the switch when 11rem fit, else under it. One line per count
+     when its label fits; a longer one wraps INSIDE the control, which grows
+     by a line ("9 severe without a location" beside the switch at 344 px,
+     French at 360: bar 53 -> 68 px), and never overflows it. */
   .scope-elsewhere {
     flex: 1 1 11rem;
     padding: 4px 10px;
@@ -3209,5 +3218,34 @@ a {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Forced colours (Windows High Contrast) remove every box-shadow and
+   replace the author's backgrounds. On the phone layout the search field
+   and the Near me / World switch are framed by an inset shadow, which
+   keeps them 44 px tall: there the field became floating placeholder text
+   and the switch two bare words (review of the fold fix, 2026-10-27). An
+   outline survives forced colours and takes no room. Same expression as
+   the phone block and PHONE in useMediaQuery.ts. */
+@media (forced-colors: active) and (max-width: 779px),
+  (forced-colors: active) and (max-height: 560px) {
+  .tools-row .search,
+  .scope-switch {
+    outline: 1px solid CanvasText;
+    outline-offset: -1px;
+  }
+}
+
+/* The pressed segment is a background and a shadow ring, both gone in
+   forced colours, at every width: the choice is drawn in the system's own
+   selection colours. `forced-color-adjust: none`, or Chrome paints its
+   Canvas backplate behind the HighlightText label: a black box where
+   "Near me" was (measured, 2026-10-27). */
+@media (forced-colors: active) {
+  .segmented button[aria-pressed="true"] {
+    forced-color-adjust: none;
+    background: Highlight;
+    color: HighlightText;
   }
 }
