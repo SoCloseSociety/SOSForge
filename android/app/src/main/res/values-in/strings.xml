@@ -173,7 +173,7 @@
     <string name="locate_allow">Izinkan lokasi</string>
     <string name="locate_working">Mencari posisi Anda…</string>
     <string name="locate_denied">Lokasi ditolak. Cari tempat sebagai gantinya.</string>
-    <string name="locate_failed">Posisi tidak ditemukan. Cari tempat sebagai gantinya.</string>
+    <string name="locate_failed">Tidak ada posisi dalam 15 detik. Coba lagi, atau cari.</string>
     <string name="search_label">Cari kota atau wilayah</string>
     <string name="search_working">Mencari…</string>
     <string name="search_none">Tidak ada tempat dengan nama ini.</string>
@@ -365,4 +365,42 @@
     </plurals>
     <string name="live_loading_rest">Masih memuat umpan…</string>
     <string name="detail_country_wide">Peringatan nasional untuk %1$s</string>
+    <string name="live_overline_near">Di dekat Anda</string>
+    <string name="live_view_near">Di dekat saya</string>
+    <string name="live_world_because">Tanpa posisi dan tempat: peristiwa terbaru di dunia.</string>
+    <string name="live_elsewhere_overline">Di tempat lain di dunia</string>
+    <string name="live_elsewhere_reading">Memeriksa bagian dunia lainnya…</string>
+    <string name="live_elsewhere_none">Tidak ada peristiwa kuat di tempat lain saat ini.</string>
+    <string name="live_elsewhere_show">Lihat dunia</string>
+    <string name="live_empty_near">Tidak ada apa pun di dekat Anda saat ini</string>
+    <string name="live_empty_near_body">Dalam radius dan rentang waktu ini. Dunia hanya satu ketukan.</string>
+    <string name="update_title">Pembaruan tersedia</string>
+    <string name="update_body">Versi %1$s siap. Terpasang di atas versi ini.</string>
+    <string name="update_download">Unduh</string>
+    <string name="update_later">Nanti</string>
+    <string name="update_not_checked">Belum diperiksa.</string>
+    <string name="update_up_to_date">Sudah terbaru (%1$s).</string>
+    <string name="update_none_published">Belum ada rilis di server ini.</string>
+    <string name="update_unreachable">Tidak bisa memeriksa: tidak terjangkau.</string>
+    <string name="update_refused">Ada rilis, tetapi tidak ditawarkan: tanda tangan atau ponsel berbeda.</string>
+    <string name="update_check_now">Periksa sekarang</string>
+    <string name="set_offline">Peta offline</string>
+    <string name="set_updates">Pembaruan</string>
+    <string name="offline_rule_now">Unduhan hanya lewat Wi-Fi. Sedang berjalan.</string>
+    <string name="offline_rule_waiting">Menunggu Wi-Fi: tidak pernah memakai data seluler.</string>
+    <string name="offline_world">Dunia (zoom 0 sampai 4)</string>
+    <string name="offline_not_started">belum dimulai</string>
+    <string name="diag_location">Lokasi</string>
+    <string name="diag_location_not_granted">tidak diizinkan</string>
+    <string name="diag_location_off">mati di ponsel ini</string>
+    <string name="diag_here">Di sini (di dekat saya)</string>
+    <string name="locate_denied_forever">Lokasi diblokir untuk SOSForge. Izinkan di pengaturan, atau cari.</string>
+    <string name="locate_open_app_settings">Buka pengaturan aplikasi</string>
+    <string name="locate_off">Lokasi mati di ponsel ini. Nyalakan, atau cari.</string>
+    <string name="locate_open_location_settings">Buka pengaturan lokasi</string>
+    <string name="locate_retry">Coba lagi</string>
+    <plurals name="live_elsewhere_count">
+        <item quantity="other">%1$d peristiwa kuat atau ekstrem di tempat lain</item>
+    </plurals>
+    <string name="value_unknown">tidak diketahui</string>
 </resources>

@@ -122,7 +122,10 @@ class ServerAddressTest {
     @Test fun owner_typing_becomes_one_origin() {
         assertEquals("https://sosforge.soclose.co", ServerAddress.normalize("sosforge.soclose.co"))
         assertEquals("https://sosforge.soclose.co", ServerAddress.normalize(" https://sosforge.soclose.co/api/ "))
-        assertEquals("http://10.0.2.2:8300", ServerAddress.normalize("http://10.0.2.2:8300"))
+        assertEquals(
+            if (co.soclose.sosforge.core.net.DevHosts.OVERRIDE) "http://10.0.2.2:8300" else null,
+            ServerAddress.normalize("http://10.0.2.2:8300"),
+        )
         assertNull("plain http to the internet is refused", ServerAddress.normalize("http://sosforge.soclose.co"))
         assertNull(ServerAddress.normalize("ftp://x"))
         assertNull(ServerAddress.normalize("https://x.co/somewhere"))

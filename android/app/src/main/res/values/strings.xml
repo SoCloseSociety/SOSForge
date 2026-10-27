@@ -174,7 +174,7 @@
     <string name="locate_allow">Allow location</string>
     <string name="locate_working">Finding your position…</string>
     <string name="locate_denied">Location refused. Search for a place instead.</string>
-    <string name="locate_failed">No position found. Search for a place instead.</string>
+    <string name="locate_failed">No position within 15 s. Retry, or search.</string>
     <string name="search_label">Search a city or region</string>
     <string name="search_working">Searching…</string>
     <string name="search_none">No place found with this name.</string>
@@ -373,4 +373,43 @@
     </plurals>
     <string name="live_loading_rest">Still loading the feed…</string>
     <string name="detail_country_wide">Country-wide warning for %1$s</string>
+    <string name="live_overline_near">Near you</string>
+    <string name="live_view_near">Near me</string>
+    <string name="live_world_because">No position and no place: the world\'s latest events.</string>
+    <string name="live_elsewhere_overline">Elsewhere in the world</string>
+    <string name="live_elsewhere_reading">Checking the rest of the world…</string>
+    <string name="live_elsewhere_none">No severe event elsewhere right now.</string>
+    <string name="live_elsewhere_show">Show the world</string>
+    <string name="live_empty_near">Nothing near you right now</string>
+    <string name="live_empty_near_body">Within your radius, in this window. The world is one tap away.</string>
+    <string name="update_title">Update available</string>
+    <string name="update_body">Version %1$s is ready. It installs over this one.</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+    <string name="update_not_checked">Not checked yet.</string>
+    <string name="update_up_to_date">Up to date (%1$s).</string>
+    <string name="update_none_published">No release published on this server yet.</string>
+    <string name="update_unreachable">Could not check: unreachable.</string>
+    <string name="update_refused">A release exists but is not offered: another signer or phone.</string>
+    <string name="update_check_now">Check now</string>
+    <string name="set_offline">Offline map</string>
+    <string name="set_updates">Updates</string>
+    <string name="offline_rule_now">Downloads on Wi-Fi only. In progress now.</string>
+    <string name="offline_rule_waiting">Waiting for Wi-Fi: downloads never use mobile data.</string>
+    <string name="offline_world">World (zooms 0 to 4)</string>
+    <string name="offline_not_started">not started</string>
+    <string name="diag_location">Location</string>
+    <string name="diag_location_not_granted">not granted</string>
+    <string name="diag_location_off">off on this phone</string>
+    <string name="diag_here">Here (near me)</string>
+    <string name="locate_denied_forever">Location is blocked for SOSForge. Allow it in settings, or search.</string>
+    <string name="locate_open_app_settings">Open app settings</string>
+    <string name="locate_off">Location is off on this phone. Turn it on, or search.</string>
+    <string name="locate_open_location_settings">Open location settings</string>
+    <string name="locate_retry">Retry</string>
+    <plurals name="live_elsewhere_count">
+        <item quantity="one">%1$d severe or extreme event elsewhere</item>
+        <item quantity="other">%1$d severe or extreme events elsewhere</item>
+    </plurals>
+    <string name="value_unknown">unknown</string>
 </resources>

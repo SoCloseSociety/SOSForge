@@ -12,11 +12,10 @@ object ServerAddress {
     const val DEFAULT = "https://sosforge.soclose.co"
 
     /**
-     * The ONLY hosts plain http may reach: this phone (an `adb reverse` to `make dev-api` :8300), the
-     * emulator's host alias, and the WireGuard hub. EXACTLY the `<domain>` list of
-     * res/xml/network_security_config.xml (RulesTest compares the two).
+     * The ONLY hosts plain http may reach: none in a release; in a debug build this phone (an `adb reverse`
+     * to a local server), the emulator's host alias and the WireGuard hub ([DevHosts], one per build type).
      */
-    val CLEARTEXT_HOSTS: Set<String> = setOf("localhost", "127.0.0.1", "10.0.2.2", "10.8.0.1")
+    val CLEARTEXT_HOSTS: Set<String> get() = DevHosts.CLEARTEXT
 
     fun normalize(raw: String): String? {
         var s = raw.trim()

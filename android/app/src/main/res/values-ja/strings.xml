@@ -172,7 +172,7 @@
     <string name="locate_allow">位置情報を許可</string>
     <string name="locate_working">位置を取得中…</string>
     <string name="locate_denied">位置情報が拒否されました。場所を検索してください。</string>
-    <string name="locate_failed">位置を取得できませんでした。場所を検索してください。</string>
+    <string name="locate_failed">15 秒以内に位置を取得できませんでした。再試行するか検索してください。</string>
     <string name="search_label">市区町村や地域を検索</string>
     <string name="search_working">検索中…</string>
     <string name="search_none">この名前の場所は見つかりません。</string>
@@ -364,4 +364,42 @@
     </plurals>
     <string name="live_loading_rest">フィードを読み込み中…</string>
     <string name="detail_country_wide">%1$s 全域の警報</string>
+    <string name="live_overline_near">あなたの周辺</string>
+    <string name="live_view_near">周辺</string>
+    <string name="live_world_because">位置情報も場所もないため、世界の最新の出来事を表示しています。</string>
+    <string name="live_elsewhere_overline">世界のほかの地域</string>
+    <string name="live_elsewhere_reading">世界のほかの地域を確認中…</string>
+    <string name="live_elsewhere_none">現在、ほかの地域に強い事象はありません。</string>
+    <string name="live_elsewhere_show">世界を表示</string>
+    <string name="live_empty_near">現在、周辺には何もありません</string>
+    <string name="live_empty_near_body">設定した範囲と期間内では何もありません。世界はワンタップで表示できます。</string>
+    <string name="update_title">アップデートがあります</string>
+    <string name="update_body">バージョン %1$s を利用できます。上書きでインストールされます。</string>
+    <string name="update_download">ダウンロード</string>
+    <string name="update_later">後で</string>
+    <string name="update_not_checked">まだ確認していません。</string>
+    <string name="update_up_to_date">最新です（%1$s）。</string>
+    <string name="update_none_published">このサーバーにはまだ公開版がありません。</string>
+    <string name="update_unreachable">確認できません：接続できません。</string>
+    <string name="update_refused">公開版がありますが、署名または端末が一致しないため案内しません。</string>
+    <string name="update_check_now">今すぐ確認</string>
+    <string name="set_offline">オフライン地図</string>
+    <string name="set_updates">アップデート</string>
+    <string name="offline_rule_now">Wi-Fi接続時のみダウンロードします。実行中です。</string>
+    <string name="offline_rule_waiting">Wi-Fi待ち：モバイルデータは使いません。</string>
+    <string name="offline_world">世界（ズーム0〜4）</string>
+    <string name="offline_not_started">未開始</string>
+    <string name="diag_location">位置情報</string>
+    <string name="diag_location_not_granted">未許可</string>
+    <string name="diag_location_off">この端末でオフ</string>
+    <string name="diag_here">現在地（周辺）</string>
+    <string name="locate_denied_forever">SOSForgeの位置情報はブロックされています。設定で許可するか、検索してください。</string>
+    <string name="locate_open_app_settings">アプリ設定を開く</string>
+    <string name="locate_off">この端末の位置情報がオフです。オンにするか、検索してください。</string>
+    <string name="locate_open_location_settings">位置情報の設定を開く</string>
+    <string name="locate_retry">再試行</string>
+    <plurals name="live_elsewhere_count">
+        <item quantity="other">ほかの地域の強い・極めて甚大な事象：%1$d 件</item>
+    </plurals>
+    <string name="value_unknown">不明</string>
 </resources>

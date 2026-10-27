@@ -174,7 +174,7 @@
     <string name="locate_allow">Autoriser la position</string>
     <string name="locate_working">Recherche de votre position…</string>
     <string name="locate_denied">Position refusée. Cherchez plutôt un lieu.</string>
-    <string name="locate_failed">Aucune position trouvée. Cherchez plutôt un lieu.</string>
+    <string name="locate_failed">Aucune position en 15 s. Réessayez, ou cherchez.</string>
     <string name="search_label">Chercher une ville ou une région</string>
     <string name="search_working">Recherche…</string>
     <string name="search_none">Aucun lieu trouvé avec ce nom.</string>
@@ -380,4 +380,44 @@
     </plurals>
     <string name="live_loading_rest">Chargement du flux en cours…</string>
     <string name="detail_country_wide">Alerte nationale pour %1$s</string>
+    <string name="live_overline_near">Près de vous</string>
+    <string name="live_view_near">Près de moi</string>
+    <string name="live_world_because">Ni position ni lieu : les derniers événements du monde.</string>
+    <string name="live_elsewhere_overline">Ailleurs dans le monde</string>
+    <string name="live_elsewhere_reading">Lecture du reste du monde…</string>
+    <string name="live_elsewhere_none">Aucun événement fort ailleurs en ce moment.</string>
+    <string name="live_elsewhere_show">Voir le monde</string>
+    <string name="live_empty_near">Rien près de vous en ce moment</string>
+    <string name="live_empty_near_body">Dans votre rayon, sur cette période. Le monde est à un geste.</string>
+    <string name="update_title">Mise à jour disponible</string>
+    <string name="update_body">La version %1$s est prête. Elle s’installe par-dessus.</string>
+    <string name="update_download">Télécharger</string>
+    <string name="update_later">Plus tard</string>
+    <string name="update_not_checked">Pas encore vérifié.</string>
+    <string name="update_up_to_date">À jour (%1$s).</string>
+    <string name="update_none_published">Aucune version publiée sur ce serveur pour l’instant.</string>
+    <string name="update_unreachable">Vérification impossible : injoignable.</string>
+    <string name="update_refused">Une version existe mais n’est pas proposée : autre signature ou téléphone.</string>
+    <string name="update_check_now">Vérifier</string>
+    <string name="set_offline">Carte hors ligne</string>
+    <string name="set_updates">Mises à jour</string>
+    <string name="offline_rule_now">Téléchargement en Wi-Fi seulement. En cours.</string>
+    <string name="offline_rule_waiting">En attente du Wi-Fi : jamais sur les données mobiles.</string>
+    <string name="offline_world">Monde (zooms 0 à 4)</string>
+    <string name="offline_not_started">pas commencé</string>
+    <string name="diag_location">Localisation</string>
+    <string name="diag_location_not_granted">non accordée</string>
+    <string name="diag_location_off">désactivée sur ce téléphone</string>
+    <string name="diag_here">Ici (près de moi)</string>
+    <string name="locate_denied_forever">Localisation bloquée pour SOSForge. Autorisez-la dans les paramètres, ou cherchez.</string>
+    <string name="locate_open_app_settings">Ouvrir les paramètres de l’app</string>
+    <string name="locate_off">La localisation est désactivée sur ce téléphone. Activez-la, ou cherchez.</string>
+    <string name="locate_open_location_settings">Ouvrir la localisation</string>
+    <string name="locate_retry">Réessayer</string>
+    <plurals name="live_elsewhere_count">
+        <item quantity="one">%1$d événement fort ou extrême ailleurs</item>
+        <item quantity="many">%1$d événements forts ou extrêmes ailleurs</item>
+        <item quantity="other">%1$d événements forts ou extrêmes ailleurs</item>
+    </plurals>
+    <string name="value_unknown">inconnu</string>
 </resources>

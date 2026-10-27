@@ -31,6 +31,13 @@ import co.soclose.sosforge.ui.nav.Shell
 import co.soclose.sosforge.ui.theme.Sos
 import co.soclose.sosforge.ui.theme.SosTheme
 import co.soclose.sosforge.ui.theme.ThemeMode
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsNode
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.text.TextLayoutResult
+import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Before
 import org.junit.Rule
@@ -89,6 +96,11 @@ abstract class ScreensBase(private val variant: String, private val scale: Float
         root.draw(Canvas(bmp))
         val dir = File(System.getProperty("sos.screens.out") ?: "build/screens", variant).apply { mkdirs() }
         File(dir, "$name.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val (hard, soft) = Overflow.check(rule.onRoot(useUnmergedTree = true).fetchSemanticsNode(), root.width)
+        File(dir, "overflow.txt").appendText(
+            "== $name: ${hard.size} overflow, ${soft.size} ellipsized\n" + (hard.map { "  OVERFLOW $it" } + soft.map { "  ellipsized $it" }).joinToString("\n") + "\n",
+        )
+        assertTrue("$variant/$name overflows:\n" + hard.joinToString("\n"), hard.isEmpty())
     }
 
     /** A real event with the most to show: a CAP instruction and a position, else the first placed one. */
@@ -161,3 +173,60 @@ class Screens360French : ScreensBase("360_fr_doux", 1f, ThemeMode.DOUX)
 // The two-column frontier from the other side (Fold inner in landscape).
 @Config(qualifiers = "w835dp-h752dp-xxhdpi")
 class Screens835Lunaire : ScreensBase("835_land_lunaire", 1f, ThemeMode.LUNAIRE)
+
+/**
+ * The owner's rule measured on the real layout (2026-10-10: nothing overflows its card, long detail
+ * behind "Show more"), not eyeballed: the semantics tree of the rendered screen, walked.
+ *  - OVERFLOW (fails the test): a node pushed past the window's left or right edge, or a text cut in
+ *    WIDTH (a single line wider than its box: a word cut mid-way). Nodes inside a horizontal scroller
+ *    (the chip rows) are exempt: going past the edge is what a scroller does.
+ *  - ellipsized (listed in overflow.txt for review): a text cut at its maxLines. That is the "Show
+ *    more" pattern, or a two-line title; each one is read, not assumed.
+ */
+object Overflow {
+    fun check(root: SemanticsNode, widthPx: Int): Pair<List<String>, List<String>> {
+        val hard = mutableListOf<String>()
+        val soft = mutableListOf<String>()
+        fun label(n: SemanticsNode): String =
+            (n.config.getOrNull(SemanticsProperties.Text)?.joinToString(" ") { it.text }
+                ?: n.config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString(" ") ?: "#${n.id}").take(60)
+        fun walk(n: SemanticsNode, inScroller: Boolean) {
+            val scroller = inScroller || n.config.getOrNull(SemanticsProperties.HorizontalScrollAxisRange) != null
+            val b = n.boundsInRoot
+            if (!scroller && b.width > 0 && (b.right > widthPx + 1 || b.left < -1)) hard += "${label(n)} [${b.left.toInt()}..${b.right.toInt()} of $widthPx px]"
+            n.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.let { get ->
+                val out = mutableListOf<TextLayoutResult>()
+                if (runCatching { get(out) }.getOrDefault(false)) out.firstOrNull()?.let { t ->
+                    if (!scroller && t.didOverflowWidth) hard += "${label(n)} (cut in width)"
+                    else if (t.didOverflowHeight) soft += label(n)
+                }
+            }
+            n.children.forEach { walk(it, scroller) }
+        }
+        walk(root, false)
+        return hard to soft
+    }
+}
+
+// Round 2 (2026-10-27): every format. The narrowest phone, a landscape phone (rail, no labels), the
+// fold34 AVD inner screen, a tablet, and the system font scale 2.0 on top of the owner's text size.
+@Config(qualifiers = "w320dp-h640dp-xxhdpi")
+class Screens320Lunaire : ScreensBase("320_lunaire", 1f, ThemeMode.LUNAIRE)
+
+@Config(qualifiers = "w320dp-h640dp-xxhdpi")
+class Screens320DouxFont2 : ScreensBase("320_doux_font2", 2f, ThemeMode.DOUX)
+
+@Config(qualifiers = "w360dp-h780dp-xxhdpi")
+class Screens360LunaireFont2 : ScreensBase("360_lunaire_font2", 2f, ThemeMode.LUNAIRE)
+
+@Config(qualifiers = "w800dp-h360dp-xxhdpi")
+class Screens800x360Lunaire : ScreensBase("800x360_land_phone_lunaire", 1f, ThemeMode.LUNAIRE)
+
+@Config(qualifiers = "w673dp-h841dp-xxhdpi")
+class Screens673Doux : ScreensBase("673_fold34_inner_doux", 1f, ThemeMode.DOUX)
+
+@Config(qualifiers = "w1280dp-h800dp-xhdpi")
+class Screens1280Lunaire : ScreensBase("1280_tablet_lunaire", 1f, ThemeMode.LUNAIRE)
+
+@Config(qualifiers = "w1280dp-h800dp-xhdpi")
+class Screens1280DouxFont2 : ScreensBase("1280_tablet_doux_font2", 2f, ThemeMode.DOUX)

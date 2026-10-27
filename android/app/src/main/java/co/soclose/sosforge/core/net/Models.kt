@@ -119,9 +119,10 @@ data class SourceHealth(
     val connected: Boolean = false,
     @SerialName("last_ok") val lastOk: String? = null,
     @SerialName("last_error") val lastError: String? = null,
-    @SerialName("events_seen") val eventsSeen: Long = 0,
+    // null when the server did not say: shown as "unknown", never as a guessed 0
+    @SerialName("events_seen") val eventsSeen: Long? = null,
     val ingested: Long? = null,
-    val errors: Long = 0,
+    val errors: Long? = null,
     val mode: String? = null,
 )
 

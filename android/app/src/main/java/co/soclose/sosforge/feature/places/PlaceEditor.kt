@@ -1,6 +1,13 @@
 package co.soclose.sosforge.feature.places
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import co.soclose.sosforge.core.sys.Fix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +71,29 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /** The steps of "use my location": the rationale BEFORE the system prompt, then honest outcomes. */
-enum class LocateStep { IDLE, RATIONALE, LOCATING, DENIED, FAILED }
+enum class LocateStep { IDLE, RATIONALE, LOCATING, DENIED, DENIED_FOREVER, LOCATION_OFF, FAILED }
+
+/** The state a permission refusal lands in, pure (LocateRulesTest): "for good" once Android stops asking. */
+object LocateFlow {
+    fun afterRefusal(askedBefore: Boolean, systemWillAskAgain: Boolean): LocateStep =
+        if (askedBefore && !systemWillAskAgain) LocateStep.DENIED_FOREVER else LocateStep.DENIED
+
+    fun afterFix(f: Fix): LocateStep = when (f) {
+        is Fix.Ok -> LocateStep.IDLE
+        Fix.Denied -> LocateStep.DENIED
+        Fix.LocationOff -> LocateStep.LOCATION_OFF
+        Fix.NoFix -> LocateStep.FAILED
+    }
+}
+
+private fun Context.findActivity(): Activity? {
+    var c: Context? = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
+}
 
 /**
  * Adds a place, two ways: the phone's position (a rationale screen first, then the system prompt;
@@ -90,19 +119,26 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
     fun locate() {
         step = LocateStep.LOCATING
         scope.launch {
-            val loc = Locate.once(ctx)
-            if (loc == null) step = LocateStep.FAILED
-            else {
-                step = LocateStep.IDLE
+            val f = Locate.fix(ctx)
+            step = LocateFlow.afterFix(f)
+            if (f is Fix.Ok) {
                 // the country, for country-wide warnings (null when this phone has no geocoder: then none)
-                val cc = Locate.countryOf(ctx, loc.latitude, loc.longitude)
-                onAdd(Place(UUID.randomUUID().toString(), here, loc.latitude, loc.longitude, Place.DEFAULT_RADIUS_KM, "here", countryCode = cc))
+                val cc = Locate.countryOf(ctx, f.lat, f.lon)
+                onAdd(Place(UUID.randomUUID().toString(), here, f.lat, f.lon, Place.DEFAULT_RADIUS_KM, "here", countryCode = cc))
+                // the Live "near me" view uses it at once
+                app.prefs.setHere(co.soclose.sosforge.core.Here(f.lat, f.lon, System.currentTimeMillis() - f.ageMs, cc))
             }
         }
     }
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) locate() else step = LocateStep.DENIED
+        val asked = app.prefs.getLong(co.soclose.sosforge.core.Prefs.K_LOC_ASKED) > 0
+        app.prefs.putLong(co.soclose.sosforge.core.Prefs.K_LOC_ASKED, 1L)
+        if (ok) locate()
+        else {
+            val again = ctx.findActivity()?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_COARSE_LOCATION) } ?: true
+            step = LocateFlow.afterRefusal(asked, again)
+        }
     }
 
     suspend fun search(q: String) {
@@ -146,7 +182,23 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
             }
             LocateStep.LOCATING -> Text(stringResource(R.string.locate_working), style = Sos.type.small, color = Sos.colors.t2)
             LocateStep.DENIED -> Note(stringResource(R.string.locate_denied)) { step = LocateStep.IDLE }
-            LocateStep.FAILED -> Note(stringResource(R.string.locate_failed)) { step = LocateStep.IDLE }
+            LocateStep.DENIED_FOREVER -> Note(
+                stringResource(R.string.locate_denied_forever),
+                action = stringResource(R.string.locate_open_app_settings),
+                onAction = { runCatching { ctx.startActivity(co.soclose.sosforge.core.sys.Diagnostics.appSettings(ctx)) } },
+            ) { step = LocateStep.IDLE }
+            LocateStep.LOCATION_OFF -> Note(
+                stringResource(R.string.locate_off),
+                action = stringResource(R.string.locate_open_location_settings),
+                onAction = {
+                    runCatching { ctx.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                },
+            ) { step = LocateStep.IDLE }
+            LocateStep.FAILED -> Note(
+                stringResource(R.string.locate_failed),
+                action = stringResource(R.string.locate_retry),
+                onAction = { locate() },
+            ) { step = LocateStep.IDLE }
             LocateStep.IDLE -> SecondaryButton(
                 stringResource(R.string.locate_use),
                 { if (Locate.granted(ctx)) locate() else step = LocateStep.RATIONALE },
@@ -194,10 +246,13 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Note(text: String, onOk: () -> Unit) {
+private fun Note(text: String, action: String? = null, onAction: () -> Unit = {}, onOk: () -> Unit) {
     Card {
         Text(text, style = Sos.type.small, color = Sos.colors.t2)
-        TextAction(stringResource(R.string.ok), onOk)
+        co.soclose.sosforge.ui.kit.MetaRow {
+            if (action != null) TextAction(action, onAction)
+            TextAction(stringResource(R.string.ok), onOk, color = Sos.colors.t2)
+        }
     }
 }
 

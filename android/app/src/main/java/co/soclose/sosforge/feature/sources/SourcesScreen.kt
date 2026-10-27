@@ -131,9 +131,10 @@ private fun SourceCard(s: SourceHealth, serverNow: Long) {
         Spacer(Modifier.height(Space.xs))
         val ok = Iso.ms(s.lastOk)
         KeyValue(stringResource(R.string.source_last_ok), ok?.let { Fmt.age(ctx, (serverNow - it) / 1000) } ?: stringResource(R.string.source_never))
-        KeyValue(stringResource(R.string.source_seen), s.eventsSeen.toString())
-        s.ingested?.let { KeyValue(stringResource(R.string.source_ingested), it.toString()) }
-        KeyValue(stringResource(R.string.source_errors), s.errors.toString())
+        val unknown = stringResource(R.string.value_unknown)
+        KeyValue(stringResource(R.string.source_seen), s.eventsSeen?.toString() ?: unknown)
+        KeyValue(stringResource(R.string.source_ingested), s.ingested?.toString() ?: unknown)
+        KeyValue(stringResource(R.string.source_errors), s.errors?.toString() ?: unknown)
         if (!s.lastError.isNullOrBlank()) {
             Text(stringResource(R.string.source_last_error), style = Sos.type.small, color = Sos.colors.t2)
             ShowMore(s.lastError, collapsedLines = 1, mono = true)

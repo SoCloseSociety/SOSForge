@@ -66,6 +66,7 @@ import co.soclose.sosforge.ui.kit.windowDp
 import co.soclose.sosforge.ui.theme.Sos
 import co.soclose.sosforge.ui.theme.Space
 import co.soclose.sosforge.ui.theme.ThemeMode
+import kotlinx.coroutines.launch
 
 /** The five languages of the web client (frontend/src/i18n.ts), by their own names. */
 val LANGS = listOf("en" to "English", "fr" to "Français", "es" to "Español", "ja" to "日本語", "id" to "Indonesia")
@@ -86,6 +87,11 @@ fun SettingsScreen(onSetup: () -> Unit) {
     val sock by app.live.state.collectAsStateWithLifecycle()
     val version by app.version.collectAsStateWithLifecycle()
     val status by app.alerts.status.collectAsStateWithLifecycle()
+    val packs by app.offline.packs.collectAsStateWithLifecycle()
+    val unmetered by app.unmetered.collectAsStateWithLifecycle()
+    val update by app.update.collectAsStateWithLifecycle()
+    val here by prefs.here.collectAsStateWithLifecycle()
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     val link = rememberLink()
     val now = rememberNow(5_000L)
     val (w, h) = windowDp()
@@ -144,6 +150,35 @@ fun SettingsScreen(onSetup: () -> Unit) {
     }
 
     val right: @Composable () -> Unit = {
+        Section(stringResource(R.string.set_offline)) {
+            Card {
+                OfflineSummary(packs, places, unmetered)
+            }
+        }
+
+        Section(stringResource(R.string.set_updates)) {
+            Card {
+                Text(
+                    when (val u = update) {
+                        co.soclose.sosforge.core.update.UpdateState.NotChecked -> stringResource(R.string.update_not_checked)
+                        co.soclose.sosforge.core.update.UpdateState.UpToDate -> stringResource(R.string.update_up_to_date, BuildConfig.VERSION_NAME)
+                        co.soclose.sosforge.core.update.UpdateState.NonePublished -> stringResource(R.string.update_none_published)
+                        co.soclose.sosforge.core.update.UpdateState.Unreachable -> stringResource(R.string.update_unreachable)
+                        is co.soclose.sosforge.core.update.UpdateState.Refused -> stringResource(R.string.update_refused)
+                        is co.soclose.sosforge.core.update.UpdateState.Available -> stringResource(R.string.update_body, u.release.version)
+                    },
+                    style = Sos.type.body, color = Sos.colors.t1,
+                )
+                MetaRowCompat {
+                    val u = update
+                    if (u is co.soclose.sosforge.core.update.UpdateState.Available) {
+                        TextAction(stringResource(R.string.update_download), { co.soclose.sosforge.feature.detail.openUrl(ctx, u.downloadUrl) })
+                    }
+                    TextAction(stringResource(R.string.update_check_now), { scope.launch { runCatching { app.checkUpdate(force = true) } } })
+                }
+            }
+        }
+
         Section(stringResource(R.string.set_display)) {
             Card {
                 Text(stringResource(R.string.set_language), style = Sos.type.small, color = Sos.colors.t2)
@@ -171,30 +206,8 @@ fun SettingsScreen(onSetup: () -> Unit) {
 
         Section(stringResource(R.string.set_server)) {
             Card {
-                var draft by rememberSaveable(origin) { mutableStateOf(origin) }
-                var bad by remember { mutableStateOf(false) }
-                OutlinedTextField(
-                    value = draft,
-                    onValueChange = { draft = it.take(200); bad = false },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    label = { Text(stringResource(R.string.set_server_label)) },
-                    isError = bad,
-                    supportingText = { Text(stringResource(if (bad) R.string.set_server_bad else R.string.set_server_hint)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Sos.colors.t1, unfocusedBorderColor = Sos.colors.lineStrong,
-                        focusedLabelColor = Sos.colors.t2, unfocusedLabelColor = Sos.colors.t3, cursorColor = Sos.colors.t1,
-                    ),
-                    textStyle = Sos.type.mono.copy(color = Sos.colors.t1),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(Space.s), verticalAlignment = Alignment.CenterVertically) {
-                    SecondaryButton(stringResource(R.string.save), {
-                        val n = ServerAddress.normalize(draft)
-                        if (n == null) bad = true else { prefs.setOrigin(n); draft = n }
-                    })
-                    if (origin != ServerAddress.DEFAULT) TextAction(stringResource(R.string.set_server_default), { prefs.setOrigin(ServerAddress.DEFAULT); draft = ServerAddress.DEFAULT })
-                }
+                if (co.soclose.sosforge.core.net.DevHosts.OVERRIDE) ServerEditor(origin)
+                else KeyValue(stringResource(R.string.set_server_label), ServerAddress.hostOf(origin))
             }
         }
 
@@ -215,6 +228,17 @@ fun SettingsScreen(onSetup: () -> Unit) {
                         " · " + stringResource(if (two) R.string.diag_two_columns else R.string.diag_one_column),
                 )
                 KeyValue(stringResource(R.string.diag_font_scale), "%.2f".format(LocalDensity.current.fontScale))
+                KeyValue(
+                    stringResource(R.string.diag_location),
+                    stringResource(
+                        when {
+                            !co.soclose.sosforge.core.sys.Locate.granted(ctx) -> R.string.diag_location_not_granted
+                            !co.soclose.sosforge.core.sys.Locate.locationEnabled(ctx) -> R.string.diag_location_off
+                            else -> R.string.diag_granted
+                        },
+                    ),
+                )
+                here?.let { h -> KeyValue(stringResource(R.string.diag_here), Fmt.latLon(h.lat, h.lon) + " \u00B7 " + Fmt.age(ctx, (now - h.at).coerceAtLeast(0) / 1000)) }
                 KeyValue(stringResource(R.string.diag_link), link.name.lowercase())
                 KeyValue(stringResource(R.string.diag_server_features), version?.features?.joinToString(", ")?.ifBlank { null } ?: stringResource(if (version == null) R.string.diag_unknown else R.string.diag_legacy))
                 KeyValue(stringResource(R.string.diag_watch_running), stringResource(if (running) R.string.diag_yes else R.string.diag_no))
@@ -282,3 +306,54 @@ fun SeverityFloorChips(selected: Severity, onPick: (Severity) -> Unit) {
     }
 }
 
+
+@Composable
+private fun MetaRowCompat(content: @Composable androidx.compose.foundation.layout.FlowRowScope.() -> Unit) = co.soclose.sosforge.ui.kit.MetaRow(content = content)
+
+/** The offline packs, one line per place (both styles summed), plus the world. */
+@Composable
+private fun OfflineSummary(packs: Map<String, co.soclose.sosforge.core.map.PackState>, places: List<co.soclose.sosforge.core.geo.Place>, unmetered: Boolean) {
+    val groups = packs.values.groupBy { it.placeId }
+    fun line(list: List<co.soclose.sosforge.core.map.PackState>): String? {
+        if (list.isEmpty()) return null
+        val done = list.all { it.complete }
+        val req = list.sumOf { it.required }.coerceAtLeast(1)
+        val got = list.sumOf { it.completed }
+        val mb = list.sumOf { it.bytes } / 1_000_000.0
+        return if (done) "%.0f\u00A0MB \u00B7 ok".format(mb) else "%d\u00A0%% \u00B7 %.0f\u00A0MB".format((got * 100 / req).coerceIn(0, 99), mb)
+    }
+    Text(stringResource(if (unmetered) R.string.offline_rule_now else R.string.offline_rule_waiting), style = Sos.type.small, color = if (unmetered) Sos.colors.t2 else Sos.colors.amber)
+    KeyValue(stringResource(R.string.offline_world), line(groups[null].orEmpty()) ?: stringResource(R.string.offline_not_started))
+    places.forEach { p -> KeyValue(p.name, line(groups[p.id].orEmpty()) ?: stringResource(R.string.offline_not_started)) }
+    packs.values.firstOrNull { it.error != null }?.let { Text(it.error!!, style = Sos.type.meta, color = Sos.colors.amber, maxLines = 2) }
+}
+
+/** The server address editor: DEBUG builds only (a release has a constant false here, so none of this ships). */
+@Composable
+private fun ServerEditor(origin: String) {
+    val prefs = LocalContext.current.app.prefs
+                var draft by rememberSaveable(origin) { mutableStateOf(origin) }
+                var bad by remember { mutableStateOf(false) }
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = { draft = it.take(200); bad = false },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.set_server_label)) },
+                    isError = bad,
+                    supportingText = { Text(stringResource(if (bad) R.string.set_server_bad else R.string.set_server_hint)) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Sos.colors.t1, unfocusedBorderColor = Sos.colors.lineStrong,
+                        focusedLabelColor = Sos.colors.t2, unfocusedLabelColor = Sos.colors.t3, cursorColor = Sos.colors.t1,
+                    ),
+                    textStyle = Sos.type.mono.copy(color = Sos.colors.t1),
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(Space.s), verticalAlignment = Alignment.CenterVertically) {
+                    SecondaryButton(stringResource(R.string.save), {
+                        val n = ServerAddress.normalize(draft)
+                        if (n == null) bad = true else { prefs.setOrigin(n); draft = n }
+                    })
+                    if (origin != ServerAddress.DEFAULT) TextAction(stringResource(R.string.set_server_default), { prefs.setOrigin(ServerAddress.DEFAULT); draft = ServerAddress.DEFAULT })
+                }
+}
