@@ -15,8 +15,11 @@ Measured on a live run of all 32 sources (tools/ws_load.py, 2026-10-27):
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import gc
 import json
 import time
+import tracemalloc
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -192,6 +195,28 @@ class TestTheSharedSnapshot:
         with client.websocket_connect("/ws") as ws:
             _, events = snapshot_of(ws)
         assert "test:f" in {e["id"] for e in events}
+
+    def test_an_open_socket_does_not_keep_its_snapshot(self, v2, client):
+        """The endpoint's frame lives as long as the socket. Built there, the
+        snapshot (public dicts, serialized chunks) stayed referenced for the
+        whole connection: about 0.45 MB per open tab, measured live."""
+        fill(v2, 300)
+        zoned = f"/ws?zones={TOKYO[0]},{TOKYO[1]},100"  # scoped: its own snapshot
+        with contextlib.ExitStack() as stack:
+            first = stack.enter_context(client.websocket_connect(zoned))
+            first.receive_json()  # warm everything up once
+            gc.collect()
+            tracemalloc.start()
+            before = tracemalloc.get_traced_memory()[0]
+            for _ in range(5):
+                ws = stack.enter_context(client.websocket_connect(zoned))
+                assert len(ws.receive_json()["events"]) == 300
+            gc.collect()
+            held = (tracemalloc.get_traced_memory()[0] - before) / 5
+            tracemalloc.stop()
+        # measured: 339 KB before (300 test events), 87 KB after -- the rest
+        # is the test client's own per-socket machinery
+        assert held < 150_000, f"{held:.0f} bytes held per open socket"
 
     def test_it_never_outlives_its_ttl(self, v2, client, compose_calls, monkeypatch):
         fill(v2)

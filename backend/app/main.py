@@ -886,6 +886,67 @@ async def refuse_busy(ws: WebSocket) -> None:
         pass
 
 
+async def send_snapshot(ws: WebSocket, client: Client, scope: Scope | None, chunked: bool) -> None:
+    """The opening snapshot, then its chunks, before the pump starts.
+
+    Its own coroutine on purpose: everything it builds (the events' public
+    dicts, the serialized chunks) dies when it returns. Built as locals of
+    the endpoint, it lived as long as the connection -- the endpoint's frame
+    stays alive until the socket closes -- and every open tab kept its 300
+    public dicts, about 0.45 MB measured per socket, for hours.
+    """
+    # Composed (or taken from the shared cache) with no await in between,
+    # and after the client is registered: every broadcast from here on
+    # reaches this client, and for a scoped one it is narrowed against a
+    # held set that already contains the snapshot, so a revision or a
+    # withdrawal of a snapshot event cannot slip past it.
+    tail: dict = {}
+    if scope is None:
+        chunks = shared_snapshot(chunked)
+    else:
+        snapshot, placed = compose(
+            store.recent(limit=settings.ring_size, primary_only=True),
+            settings.snapshot_size,
+            scope,
+            pin=chunked,
+        )
+        # every chunked id too: a chunk still in flight is already held
+        for event in snapshot:
+            client.hold(event.id)
+        chunks = serialize_chunks([e.public() for e in snapshot], chunked)
+    remaining = sum(count for _, count in chunks) - chunks[0][1]
+    tail["stats"] = store.stats()
+    tail["sources"] = [
+        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+    ]
+    if chunked:
+        tail["more"] = remaining
+    if scope is not None:
+        tail["scope"] = scope.public()
+        tail["unplaced"] = placed.public()
+    await ws.send_text(
+        splice(
+            {"type": "snapshot", "server_time": utcnow().isoformat()},
+            "events",
+            chunks[0][0],
+            tail,
+        )
+    )
+    # The rest of the snapshot, before the pump starts: no queued delta can
+    # overtake a chunk, so a revision always lands on top of the version it
+    # revises.
+    for chunk_json, count in chunks[1:]:
+        remaining -= count
+        await ws.send_text(
+            splice(
+                {"type": "snapshot_more"},
+                "events",
+                chunk_json,
+                {"remaining": remaining, "server_time": utcnow().isoformat()},
+            )
+        )
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     try:
@@ -912,56 +973,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await hub.register(client)
 
     try:
-        # Composed (or taken from the shared cache) with no await in between,
-        # and after the client is registered: every broadcast from here on
-        # reaches this client, and for a scoped one it is narrowed against a
-        # held set that already contains the snapshot, so a revision or a
-        # withdrawal of a snapshot event cannot slip past it.
-        tail: dict = {}
-        if scope is None:
-            chunks = shared_snapshot(chunked)
-        else:
-            snapshot, placed = compose(
-                store.recent(limit=settings.ring_size, primary_only=True),
-                settings.snapshot_size,
-                scope,
-                pin=chunked,
-            )
-            # every chunked id too: a chunk still in flight is already held
-            for event in snapshot:
-                client.hold(event.id)
-            chunks = serialize_chunks([e.public() for e in snapshot], chunked)
-        remaining = sum(count for _, count in chunks) - chunks[0][1]
-        tail["stats"] = store.stats()
-        tail["sources"] = [
-            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
-        ]
-        if chunked:
-            tail["more"] = remaining
-        if scope is not None:
-            tail["scope"] = scope.public()
-            tail["unplaced"] = placed.public()
-        await ws.send_text(
-            splice(
-                {"type": "snapshot", "server_time": utcnow().isoformat()},
-                "events",
-                chunks[0][0],
-                tail,
-            )
-        )
-        # The rest of the snapshot, before the pump below starts: no queued
-        # delta can overtake a chunk, so a revision always lands on top of
-        # the version it revises.
-        for chunk_json, count in chunks[1:]:
-            remaining -= count
-            await ws.send_text(
-                splice(
-                    {"type": "snapshot_more"},
-                    "events",
-                    chunk_json,
-                    {"remaining": remaining, "server_time": utcnow().isoformat()},
-                )
-            )
+        await send_snapshot(ws, client, scope, chunked)
 
         async def pump() -> None:
             getter = asyncio.ensure_future(client.queue.get())
