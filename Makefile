@@ -79,6 +79,10 @@ smoke: ## check the API is up and the sources respond
 	@curl -sf http://127.0.0.1:$(PORT)/healthz | python3 -m json.tool
 	@curl -sf http://127.0.0.1:$(PORT)/api/sources | python3 -c "import json,sys;[print(f\"{s['name']:9} up={s['connected']} vus={s['events_seen']}\") for s in json.load(sys.stdin)['sources']]"
 
+audit: ## live DATA audit, production vs the API on :$(PORT) (ARGS="--save DIR --json FILE")
+	@$(PY) tools/audit_live.py --target prod=https://sosforge.soclose.co \
+		--target local=http://127.0.0.1:$(PORT) --ui local=frontend $(ARGS)
+
 clean:
 	rm -rf backend/data backend/.venv frontend/node_modules frontend/dist
 
