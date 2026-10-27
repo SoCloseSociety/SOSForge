@@ -11,6 +11,7 @@ function makeFilters(overrides: Partial<Filters> = {}): Filters {
     sources: new Set<string>(),
     windowMinutes: 0,
     query: '',
+    minSeverity: 'info',
     ...overrides,
   }
 }
@@ -103,5 +104,20 @@ describe('text search', () => {
   it('an empty search filters nothing', () => {
     const events = [makeEvent({ id: 'a' }), makeEvent({ id: 'b' })]
     expect(filterEvents(events, makeFilters({ query: '   ' }), NOW)).toHaveLength(2)
+  })
+})
+
+describe('severity', () => {
+  it('"Severe and up" hides the minor and moderate ranks', () => {
+    const minor = makeEvent({ id: 'minor', severity: 'minor', time: minutesAgo(5) })
+    const severe = makeEvent({ id: 'severe', severity: 'severe', time: minutesAgo(5) })
+    const extreme = makeEvent({ id: 'extreme', severity: 'extreme', time: minutesAgo(5) })
+    const ids = filterEvents([minor, severe, extreme], makeFilters({ minSeverity: 'severe' }), NOW).map((e) => e.id)
+    expect(ids).toEqual(['severe', 'extreme'])
+  })
+
+  it('never hides a tsunami flag, whatever rank its label carries', () => {
+    const flagged = makeEvent({ id: 'flag', severity: 'moderate', tsunami: true, time: minutesAgo(5) })
+    expect(filterEvents([flagged], makeFilters({ minSeverity: 'extreme' }), NOW)).toHaveLength(1)
   })
 })

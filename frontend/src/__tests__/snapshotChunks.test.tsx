@@ -169,12 +169,18 @@ describe('nothing on screen claims a complete picture while chunks arrive', () =
     )
     const { default: App } = await import('../App')
     useStore.getState().ingest(snapshot(quakes(0, 2), 120))
+    // the world view: Near me would scope the feed to a position
+    useStore.setState({ scope: 'world' })
     render(<App />)
     expect(screen.getByText('Loading the feed: 120 more events to come.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Earthquakes/ }).textContent).toContain('2+')
+    // the kind counts live in the Filters dialog since round 2
+    act(() => screen.getByRole('button', { name: 'Filters' }).click())
+    const kinds = () => screen.getByRole('dialog').querySelector('[aria-pressed]')?.textContent ?? ''
+    expect(kinds()).toContain('Earthquakes')
+    expect(kinds()).toContain('2+')
     act(() => useStore.getState().ingest(chunk(quakes(2, 3), 0)))
     expect(screen.queryByText(/more events to come/)).toBeNull()
-    expect(screen.getByRole('button', { name: /Earthquakes/ }).textContent).toMatch(/5$/)
+    expect(kinds()).toMatch(/5$/)
   })
 })
 

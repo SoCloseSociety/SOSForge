@@ -19,6 +19,11 @@ export interface NotifyOptions {
   url?: string
 }
 
+/** The notifications shown through the page constructor, by tag: the only
+ * handle there is to close one (the service worker ones are found again with
+ * `getNotifications`). */
+const pageNotes = new Map<string, Notification>()
+
 export async function showNotification(title: string, options: NotifyOptions): Promise<boolean> {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
   const { url, ...rest } = options
@@ -32,9 +37,26 @@ export async function showNotification(title: string, options: NotifyOptions): P
     /* fall through to the page constructor */
   }
   try {
-    new Notification(title, rest)
+    pageNotes.set(rest.tag, new Notification(title, rest))
     return true
   } catch {
     return false
+  }
+}
+
+/** Take a notification off the tray: the event it announced was cancelled,
+ * lifted, expired, or moved out of the watched place's reach. A cancelled
+ * "take cover" early warning left in the tray is an alarm still ringing for
+ * nothing (lane N's browser drill). Both paths, since either may have shown
+ * it; closing a tag that is not there costs nothing. */
+export async function closeNotification(tag: string): Promise<void> {
+  pageNotes.get(tag)?.close()
+  pageNotes.delete(tag)
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration?.()
+    const shown = await registration?.getNotifications?.({ tag })
+    for (const note of shown ?? []) note.close()
+  } catch {
+    /* no worker, or a browser that cannot list them: nothing to close there */
   }
 }

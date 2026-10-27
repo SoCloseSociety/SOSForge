@@ -76,7 +76,11 @@ describe('#3 the location alarm must fire whatever panel is on screen', () => {
     })
     render(<App />)
     await flush()
-    expect(document.querySelector('.filters-collapsed')).not.toBeNull()
+    // On a phone the watch card is not mounted at all: only its one-line
+    // summary is (round 2 replaced the collapsed filter bar with it). The
+    // alarm must ring all the same.
+    expect(document.querySelector('.watch-compact')).not.toBeNull()
+    expect(document.querySelector('.watch.card')).toBeNull()
     expect(shown).toHaveLength(1)
   })
 
