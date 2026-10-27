@@ -878,6 +878,8 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       saturated link). Host vhost /ws now forwards X-Real-IP /
       X-Forwarded-For / X-Forwarded-Proto (backup, nginx -t, reload).
       Pings to agentcockpit before and after.
+- [x] PR #4 merged (6685dce, owner go 2026-10-27): the Android app source
+      (android/ only, CI green). Nothing deployed by it.
 - [x] lane N merged (351f161): drills + guards, pytest 759
 - [x] lane H merged: vitest 299, tsc, build; responsive 27/27 viewports
 - [ ] PR #5 = round 2 so far (N + H), deploy it: the web location fixes are
