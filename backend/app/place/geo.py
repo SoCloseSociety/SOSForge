@@ -1,14 +1,15 @@
 """Where a point is, computed locally: no reverse geocoding call.
 
 - The country rule is the page's own (`frontend/src/countries.ts`), ported:
-  a country counts when its polygon contains the point OR lies within
-  NEAR_BORDER_KM. The table is Natural Earth 1:50m simplified at 0.02 deg,
-  so many coastal cities fall inside NO polygon -- measured: Reykjavik
-  0.7 km outside Iceland, Stockholm 0.66 km, New York 3.4 km, Lisbon 2.2 km,
-  Venice 3.5 km. Without the margin Reykjavik's land blocks would all read
-  "at sea". `app/data/countries.json` is a byte copy of the frontend table.
-- `at_sea` is "no country within 25 km". Known limit, measured: an island
-  1:50m omits reads as at sea (Ko Tao 36.5 km from mapped land).
+  a country counts when its polygon contains the point (and none of its
+  holes: Maseru is LS, not ZA) OR lies within NEAR_BORDER_KM; with none,
+  the one nearest country within OFFSHORE_KM (basis
+  `nearest_within_100km`). The table is Natural Earth 1:10m simplified at
+  0.01 deg, with the overseas departments under their own codes (Reunion
+  is RE). `app/data/countries.json` is a byte copy of the frontend table.
+- `at_sea` is "no country within 25 km", whatever OFFSHORE_KM found. Known
+  limit, measured: an island the table omits reads as at sea (Ko Tao, 37 km
+  from mapped land) -- with TH as its country, as the feed's Near me says.
 - `coast_km` is the distance to the nearest 1:50m OCEAN coastline segment,
   searched only among segments in a box around the point (a segment
   straddling the ANTIPODE projects through the point on a local plane:
@@ -26,6 +27,7 @@ from importlib import resources
 import numpy as np
 
 NEAR_BORDER_KM = 25.0
+OFFSHORE_KM = 100.0
 SEA_GATE_KM = 50.0
 COAST_SEARCH_KM = 1000.0
 EARTH_KM = 6371.0088
@@ -102,7 +104,8 @@ def cell_key(lat: float, lon: float, size: float) -> tuple[float, float]:
 @dataclass(frozen=True)
 class Shape:
     code: str
-    ring: np.ndarray  # (n, 2): lon, lat
+    # (n, 2) arrays of lon, lat: the exterior ring, then its holes
+    rings: tuple[np.ndarray, ...]
     west: float
     south: float
     east: float
@@ -118,14 +121,17 @@ def _data(name: str) -> dict:
 def shapes() -> tuple[Shape, ...]:
     table = _data("countries.json")
     out: list[Shape] = []
-    for code, rings in table["c"].items():
-        for deltas in rings:
-            pts = np.cumsum(np.asarray(deltas, dtype=np.float64).reshape(-1, 2), axis=0) / 100.0
-            x, y = pts[:, 0], pts[:, 1]
+    for code, polygons in table["c"].items():
+        for polygon in polygons:
+            rings = tuple(
+                np.cumsum(np.asarray(deltas, dtype=np.float64).reshape(-1, 2), axis=0) / 100.0
+                for deltas in polygon
+            )
+            x, y = rings[0][:, 0], rings[0][:, 1]
             area = 0.5 * abs(float(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))))
             west, east = float(np.min(x)), float(np.max(x))
             south, north = float(np.min(y)), float(np.max(y))
-            out.append(Shape(code, pts, west, south, east, north, area))
+            out.append(Shape(code, rings, west, south, east, north, area))
     return tuple(out)
 
 
@@ -145,6 +151,14 @@ def _inside(ring: np.ndarray, lon: float, lat: float) -> bool:
     with np.errstate(divide="ignore", invalid="ignore"):
         at = (xj - x) * (lat - y) / (yj - y) + x
     return bool(np.count_nonzero(crosses & (lon < at)) % 2)
+
+
+def _inside_shape(shape: Shape, lon: float, lat: float) -> bool:
+    """Inside the exterior and in none of the holes (countries.ts): South
+    Africa's ring no longer covers Lesotho."""
+    if not _inside(shape.rings[0], lon, lat):
+        return False
+    return not any(_inside(hole, lon, lat) for hole in shape.rings[1:])
 
 
 def _edge_km(ring: np.ndarray, lon: float, lat: float) -> float:
@@ -169,7 +183,8 @@ class Place:
     country_codes: tuple[str, ...]
     at_sea: bool
     coast_km: float | None
-    # how `country_code` was found: "containing" or "nearest_within_25km"
+    # how `country_code` was found: "containing", "nearest_within_25km" or
+    # "nearest_within_100km" (then at_sea is true too)
     country_basis: str | None
 
     @property
@@ -186,13 +201,14 @@ class Place:
 
 
 def countries(lat: float, lon: float) -> tuple[list[str], str | None, str | None]:
-    """(every country at or within 25 km, sorted; the country of the point;
-    how it was found)."""
-    margin_lat = NEAR_BORDER_KM / 110.57
-    margin_lon = NEAR_BORDER_KM / (111.32 * max(0.05, math.cos(math.radians(lat))))
+    """(every country at or within 25 km, sorted, else the nearest one within
+    100 km; the country of the point; how it was found)."""
+    margin_lat = OFFSHORE_KM / 110.57
+    margin_lon = OFFSHORE_KM / (111.32 * max(0.05, math.cos(math.radians(lat))))
     found: set[str] = set()
     containing: list[Shape] = []
     nearest: tuple[float, str] | None = None
+    offshore: tuple[float, str] | None = None
     for shape in shapes():
         if (
             lat < shape.south - margin_lat
@@ -201,22 +217,26 @@ def countries(lat: float, lon: float) -> tuple[list[str], str | None, str | None
             or lon > shape.east + margin_lon
         ):
             continue
-        if _inside(shape.ring, lon, lat):
+        if _inside_shape(shape, lon, lat):
             containing.append(shape)
             found.add(shape.code)
             continue
-        km = _edge_km(shape.ring, lon, lat)
+        km = min(_edge_km(ring, lon, lat) for ring in shape.rings)
         if km <= NEAR_BORDER_KM:
             found.add(shape.code)
             if nearest is None or km < nearest[0]:
                 nearest = (km, shape.code)
+        elif km <= OFFSHORE_KM and (offshore is None or km < offshore[0]):
+            offshore = (km, shape.code)
     if containing:
-        # holes are not in the table: an enclave is its own country and
-        # the smallest containing polygon is the right one (countries.ts)
+        # a point in a hole is outside its polygon; the smallest containing
+        # polygon still settles an overlap the simplification leaves
         return sorted(found), min(containing, key=lambda s: s.area).code, "containing"
     if nearest is not None:
         return sorted(found), nearest[1], "nearest_within_25km"
-    return sorted(found), None, None
+    if offshore is not None:
+        return [offshore[1]], offshore[1], "nearest_within_100km"
+    return [], None, None
 
 
 # ----------------------------------------------------------------- coastline
@@ -273,7 +293,7 @@ def place_of(lat: float, lon: float) -> Place:
     return Place(
         country_code=code,
         country_codes=tuple(codes),
-        at_sea=not codes,
+        at_sea=basis not in ("containing", "nearest_within_25km"),
         coast_km=coast_km(lat, lon),
         country_basis=basis,
     )

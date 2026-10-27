@@ -422,7 +422,8 @@ def test_latest_global_group_comes_from_the_listing() -> None:
 
 async def test_no_country_at_sea() -> None:
     install()
-    block = await risk.build_country(ctx_for(0.0, -160.0, NOW))
+    # open sea: (0, -160) is 41 km from Jarvis Island (UM) at 1:10m
+    block = await risk.build_country(ctx_for(0.0, -140.0, NOW))
     assert block.status == "not_applicable" and block.error is not None
     assert block.error.code == "no_country"
 

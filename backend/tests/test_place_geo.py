@@ -24,9 +24,46 @@ def test_country_rule_on_the_shared_points(point: dict) -> None:
     assert geo.place_of(point["lat"], point["lon"]).at_sea is point["at_sea"]
 
 
-def test_reykjavik_is_iceland_although_no_polygon_contains_it() -> None:
-    codes, code, basis = geo.countries(64.15, -21.94)
-    assert (codes, code, basis) == (["IS"], "IS", "nearest_within_25km")
+def test_reykjavik_is_inside_iceland_at_1_10m() -> None:
+    # 0.7 km outside every polygon of the old 1:50m table
+    assert geo.countries(64.15, -21.94) == (["IS"], "IS", "containing")
+
+
+def test_a_point_in_a_hole_is_not_in_the_polygon() -> None:
+    # South Africa's exterior ring covers Lesotho; its hole takes it back
+    codes, code, basis = geo.countries(-29.31, 27.48)
+    assert (code, basis) == ("LS", "containing")
+    assert "ZA" in codes  # the border is within 25 km
+
+
+def test_an_island_the_table_omits_gets_the_nearest_country_and_stays_at_sea() -> None:
+    codes, code, basis = geo.countries(10.09, 99.84)  # Ko Tao, 37 km from mapped land
+    assert (codes, code, basis) == (["TH"], "TH", "nearest_within_100km")
+    place = geo.place_of(10.09, 99.84)
+    assert place.at_sea and place.sea_gate
+
+
+def test_open_sea_has_no_country() -> None:
+    assert geo.countries(0.0, -140.0) == ([], None, None)
+
+
+def test_mid_pacific_is_41_km_from_jarvis_island() -> None:
+    # 1:50m did not draw Jarvis (US Minor Outlying Islands); 1:10m does
+    assert geo.countries(0.0, -160.0) == (["UM"], "UM", "nearest_within_100km")
+    assert geo.place_of(0.0, -160.0).at_sea
+
+
+def test_overseas_departments_have_their_own_alpha_3() -> None:
+    # Natural Earth files them under FRA: INFORM would score Reunion as France
+    assert geo.countries(-20.88, 55.45)[1] == "RE"
+    assert [geo.iso3(c) for c in ("RE", "GP", "MQ", "GF", "YT", "BQ")] == [
+        "REU",
+        "GLP",
+        "MTQ",
+        "GUF",
+        "MYT",
+        "BES",
+    ]
 
 
 # measured with the full Natural Earth 1:50m coastline (sea_scripts/coast_dist.py)

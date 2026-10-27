@@ -2,9 +2,12 @@
 domain), next to the country table the page already ships:
 
 - `backend/app/data/iso3.json`: ISO 3166-1 alpha-2 -> alpha-3, read from the
-  `ISO_A2_EH` / `ISO_A3_EH` columns of the same 1:50m Admin 0 file that
-  `frontend/src/data/countries.json` is built from. No hand-made table: the
-  INFORM index is keyed by alpha-3, every SOSForge source by alpha-2.
+  `ISO_A2_EH` / `ISO_A3_EH` columns of the same 1:10m Admin 0 file that
+  `frontend/src/data/countries.json` is built from. The INFORM index is
+  keyed by alpha-3, every SOSForge source by alpha-2. The only hand-written
+  rows are OVERSEAS_A3: the territories `build_countries.py` splits out of
+  FR and NL, which Natural Earth files under FRA and NLD. Without them
+  Reunion would be scored as mainland France.
 - `backend/app/data/coastline_50m.json`: the 1:50m OCEAN coastline, for the
   sea gate ("is this place on a coast"). Vertices in hundredths of a degree
   (about 1 km), the first pair of a line absolute and every following pair a
@@ -13,7 +16,7 @@ domain), next to the country table the page already ships:
 A dev tool: never imported at run time.
 
 Usage:
-  python3 tools/build_place_geo.py ne_50m_admin_0_countries.geojson ne_50m_coastline.geojson
+  python3 tools/build_place_geo.py ne_10m_admin_0_countries.geojson ne_50m_coastline.geojson
 Sources: https://github.com/nvkelso/natural-earth-vector (geojson/).
 """
 
@@ -24,6 +27,9 @@ import json
 from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "backend" / "app" / "data"
+# ISO 3166-1 alpha-3 of the codes `frontend/src/data/build_countries.py`
+# (OVERSEAS) gives the overseas territories it splits out of FR and NL
+OVERSEAS_A3 = {"BQ": "BES", "GF": "GUF", "GP": "GLP", "MQ": "MTQ", "RE": "REU", "YT": "MYT"}
 
 
 def encode(line: list[list[float]]) -> list[int]:
@@ -48,6 +54,9 @@ def iso3(countries: dict) -> dict[str, str]:
         if table.get(a2, a3) != a3:
             raise SystemExit(f"{a2} maps to both {table[a2]} and {a3}")
         table[a2] = a3
+    for a2, a3 in OVERSEAS_A3.items():
+        if table.setdefault(a2, a3) != a3:
+            raise SystemExit(f"{a2} maps to both {table[a2]} and {a3}")
     return dict(sorted(table.items()))
 
 
@@ -73,8 +82,8 @@ def main() -> None:
 
     a3 = iso3(countries)
     out = {
-        "src": "Natural Earth 1:50m Admin 0 Countries (ISO_A2_EH -> ISO_A3_EH), public domain; "
-        "tools/build_place_geo.py",
+        "src": "Natural Earth 1:10m Admin 0 Countries (ISO_A2_EH -> ISO_A3_EH), public domain, "
+        "plus the overseas split of frontend/src/data/build_countries.py; tools/build_place_geo.py",
         "a3": a3,
     }
     path = DATA / "iso3.json"
