@@ -923,7 +923,18 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       downgrade check local only), C2 3 (ENSO synopsis, NSIDC caveat), P 3
       (httpx and ScopeError logs carry places). Sources findings: skeptics
       re-running after the rate limit.
-- [ ] fixes landed and re-verified
+- [x] lane P merged (128127f): opt-in `tick=lite` (42.6 -> 1.37 MB/h raw on
+      the app's background URL), privacy findings closed (httpx Nominatim
+      URLs, ScopeError reasons, stricter redact_query). pytest 920.
+- [x] lane G review fixes merged: all 11 fixed with tests that fail on the
+      old code (language shells no-cache, `sos_private` nginx log + log cap,
+      Wi-Fi recheck per file, publish_apk checks what the server serves,
+      byte-capped tile cache). vitest 435, pytest 935.
+- [ ] deploy step to add: the HOST vhost access log keeps full query
+      strings: a redacted log_format for sosforge.soclose.co (conf.d,
+      nginx -t, reload); deploy order web image -> make publish-apk -> the
+      two rsync steps (versioned files --ignore-existing, then latest.json)
+- [ ] fixes landed and re-verified (H 18, C2 3 sources)
 - [ ] then merge lane C2's WMO country flags (9603657: 58/58 WMO alerts
       flagged, 0 in production; Greek pairs titled by hazard) and the
       Meteoalarm colour floor (owner rule: an official orange is never shown
