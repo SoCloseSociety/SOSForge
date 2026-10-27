@@ -1174,3 +1174,13 @@ them as new at restart (lesson 4).
       2 -> 53 (+5: Colombia landslide 3, Syria flood 1, Chad heat 1, all
       placed with a box). BOM excluded (5 more, 0 placed, licence). Live at
       11:27: prod 63 WMO vs branch 58. Not shipped: numbers sent first.
+
+## Lane C2 -- WMO country from the issuer (critical file `sources/alerts_world.py`)
+
+- [x] The aggregate's OID ids carry no country (id-prefix rule: 0 of 1319
+      items). Flag from the CAP source directory (`co-ideam-es` -> CO) only
+      for land hazards (heat, landslide, flood, drought, avalanche, wildfire,
+      storm over land), only when the prefix is a national ISO 3166-1 code
+      (`uk` -> GB), never for a marine issuer or product, never when the CAP
+      area names another country. Measure on the real aggregate: flags gained,
+      and every one judged by eye.

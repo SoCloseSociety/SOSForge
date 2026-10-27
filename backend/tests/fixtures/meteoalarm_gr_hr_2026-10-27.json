@@ -1,0 +1,290 @@
+{
+ "_captured": "2026-10-27 ~11:40 UTC, feeds.meteoalarm.org feeds-greece and feeds-croatia; each warning copied unmodified",
+ "greece_thessalia_thunderstorm": {
+  "alert": {
+   "identifier": "2.49.0.0.300.0.GR.261026143900.020000001",
+   "incidents": "Update",
+   "info": [
+    {
+     "area": [
+      {
+       "areaDesc": "Thessalia",
+       "geocode": [
+        {
+         "value": "GR001",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Severe thunderstorms in place over Sporades region and at night over Magnisia and Larisa probably accompanied by strong winds  and hail at times. BE PREPARED for severe thunderstorms causing significant impact and protect yourself from lightning. Damage to property and trees may occur. Flash flooding, wind gusts and hail are possible. Transport and outdoor activities disruption can be expected.",
+     "effective": "2026-10-26T14:39:00+00:00",
+     "event": "Severe Thunderstorm warning",
+     "expires": "2026-10-27T21:59:00+00:00",
+     "headline": "Orange Thunderstorm for Thessalia",
+     "language": "en-GB",
+     "onset": "2026-10-26T22:00:00+00:00",
+     "parameter": [
+      {
+       "value": "3; Thunderstorm",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "3; Orange; Severe",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Severe",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    },
+    {
+     "area": [
+      {
+       "areaDesc": "Θεσσαλία",
+       "geocode": [
+        {
+         "value": "GR001",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Καταιγίδες κατά τόπους ισχυρές στις Σποράδες και από τις βραδινές ώρες στη Μαγνησία και την Λάρισα που πιθανώς να συνοδεύονται πρόσκαιρα από χαλαζοπτώσεις και ισχυρούς ριπαίους ανέμους. ΠΡΟΕΤΟΙΜΑΣΤΕΙΤΕ για ισχυρές καταιγίδες που έχουν σημαντικές επιπτώσεις και προστατεύστε τον εαυτό σας από τους κεραυνούς. Είναι δυνατό να προκληθούν ζημιές σε περιουσίες και δέντρα από τις πλημμύρες, τις ριπές του ανέμου και το χαλάζι. Αναμένονται προβλήματα στις υπαίθριες δραστηριότητες και τις μεταφορές.",
+     "effective": "2026-10-26T14:39:00+00:00",
+     "event": "Προειδοποίηση για καταγίδιες",
+     "expires": "2026-10-27T21:59:00+00:00",
+     "headline": "Πορτοκαλί προειδοποίηση για Θεσσαλία",
+     "language": "el-GR",
+     "onset": "2026-10-26T22:00:00+00:00",
+     "parameter": [
+      {
+       "value": "3; Thunderstorm",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "3; Orange; Severe",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Severe",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    }
+   ],
+   "msgType": "Update",
+   "references": "emk@hnms.gr,2.49.0.0.300.0.GR.261026120700.010000001,2026-10-26T12:07:00+00:00",
+   "scope": "Public",
+   "sender": "emk@hnms.gr",
+   "sent": "2026-10-26T14:39:00+00:00",
+   "status": "Actual"
+  },
+  "uuid": "8c34fbb8-e6c2-458a-bfee-6e1150024551"
+ },
+ "greece_thessalia_rain": {
+  "alert": {
+   "identifier": "2.49.0.0.300.0.GR.261026121900.001000001",
+   "incidents": "Alert",
+   "info": [
+    {
+     "area": [
+      {
+       "areaDesc": "Thessalia",
+       "geocode": [
+        {
+         "value": "GR001",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Locally heavy rain mainly over Sporades region until midday and again from the evening hours, as well as Larissa and Magnesia region. Precipitation amount forecasted from  30  to 60 mm  in 12 hours. BE PREPARED to protect yourself and your property. Some flooding of properties and transport networks are possible. Disruption to power, communications and water supplies are possible. Some evacuations may be required. Dangerous driving conditions due to reduced visibility and aquaplaning",
+     "effective": "2026-10-26T12:19:00+00:00",
+     "event": "Orange Warning",
+     "expires": "2026-10-27T21:59:00+00:00",
+     "headline": "Orange warning for Thessalia",
+     "language": "en-GB",
+     "onset": "2026-10-26T22:00:00+00:00",
+     "parameter": [
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "3; Orange; Severe",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Severe",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    },
+    {
+     "area": [
+      {
+       "areaDesc": "Θεσσαλία",
+       "geocode": [
+        {
+         "value": "GR001",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Likely",
+     "description": "Τοπικά ισχυρές βροχοπτώσεις κυρίως στην περιοχή των Σποράδων έως το μεσημέρι και εκ νέου από τις βραδινές ώρες, ενώ στους νομούς Λάρισας και Μαγνησίας από τις βραδινές ώρες. Πιθανό ύψος υετού σε διάστημα 12 ωρών από 30  έως 60 χιλιοστά. ΠΡΟΕΤΟΙΜΑΣΤΕΙΤΕ να προστατεύσετε τον εαυτό σας και την περιουσία σας.  Ενδέχεται να υπάρξουν κάποιες πλημμύρες σε ακίνητα και δίκτυα μεταφορών. Ενδέχεται διακοπή στην παροχή ρεύματος και νερού καθώς και διακοπή στις επικοινωνίες. Μπορεί να χρειαστεί εκκένωση κάποιων περιοχών. Επικίνδυνες συνθήκες οδήγησης λόγω περιορισμένης ορατότητας και ολισθηρότητας του οδικού δικτύου.",
+     "effective": "2026-10-26T12:19:00+00:00",
+     "event": "Πορτοκαλί Προειδοποίηση",
+     "expires": "2026-10-27T21:59:00+00:00",
+     "headline": "Πορτοκαλί προειδοποίηση για Θεσσαλία",
+     "language": "el-GR",
+     "onset": "2026-10-26T22:00:00+00:00",
+     "parameter": [
+      {
+       "value": "10; Rain",
+       "valueName": "awareness_type"
+      },
+      {
+       "value": "3; Orange; Severe",
+       "valueName": "awareness_level"
+      }
+     ],
+     "responseType": [
+      "None"
+     ],
+     "senderName": "Hnms Forecaster",
+     "severity": "Severe",
+     "urgency": "Expected",
+     "web": "https://www.emy.gr"
+    }
+   ],
+   "msgType": "Alert",
+   "scope": "Public",
+   "sender": "emk@hnms.gr",
+   "sent": "2026-10-26T12:19:00+00:00",
+   "status": "Actual"
+  },
+  "uuid": "44bc5e2e-08b1-4b3a-bb65-6bd53b76a92a"
+ },
+ "croatia_velebit_orange": {
+  "alert": {
+   "identifier": "2.49.0.0.191.0.HR.261026144650_0_orange_HR803",
+   "incidents": "Alert",
+   "info": [
+    {
+     "area": [
+      {
+       "areaDesc": "Velebit channel region",
+       "geocode": [
+        {
+         "value": "HR803",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Possible",
+     "description": "Jaka, ponegdje olujna bura. Najjači udari vjetra 35-70 čvorova  (65-130 km/h)",
+     "effective": "2026-10-26T14:46:50+01:00",
+     "event": "Narančasto upozorenje za vjetar",
+     "expires": "2026-10-29T23:59:59+01:00",
+     "instruction": "UTJECAJ: Očekujte i budite pripravni za olujne brzine vjetra u kombinaciji s lokalno visokim valovima koji su se već ili će se tek generirati. Upravljanje plovilom u tim uvjetima zahtijeva veliko iskustvo te adekvatno opremljena plovila.\nPreporučljivo je da pomorci bez odgovarajućeg iskustva potraže  sigurnu luku prije početka potencijalno opasnog vjetra i valova. Vjerojatno je da mnogi katamarani i trajekti neće ploviti pa ako putujete, pratite informacije o prometu.",
+     "language": "hr-HR",
+     "onset": "2026-10-29T00:01:01+01:00",
+     "parameter": [
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "1; Wind",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Monitor"
+     ],
+     "senderName": "DHMZ Državni hidrometeorološki zavod",
+     "severity": "Severe",
+     "urgency": "Future"
+    },
+    {
+     "area": [
+      {
+       "areaDesc": "Velebit channel region",
+       "geocode": [
+        {
+         "value": "HR803",
+         "valueName": "EMMA_ID"
+        }
+       ]
+      }
+     ],
+     "category": [
+      "Met"
+     ],
+     "certainty": "Possible",
+     "description": "Strong, locally gale NE wind. Maximum wind gusts 35-70 knots  (65-130 km/h)",
+     "effective": "2026-10-26T14:46:50+01:00",
+     "event": "Orange wind warning",
+     "expires": "2026-10-29T23:59:59+01:00",
+     "instruction": "IMPACT: Be prepared for gale and strong gale wind speeds combined with locally high waves that are imminent or occurring. Operating a vessel in these conditions requires experience and properly equipped vessels.\nIt is highly recommended that mariners without the proper experience seek safe harbor prior to onset of potentially dangerous wind and wave conditions. It is likely that many ferries will not operate so follow traffic information if travelling.",
+     "language": "en-GB",
+     "onset": "2026-10-29T00:01:01+01:00",
+     "parameter": [
+      {
+       "value": "3; orange; Severe",
+       "valueName": "awareness_level"
+      },
+      {
+       "value": "1; Wind",
+       "valueName": "awareness_type"
+      }
+     ],
+     "responseType": [
+      "Monitor"
+     ],
+     "senderName": "DHMZ Državni hidrometeorološki zavod",
+     "severity": "Severe",
+     "urgency": "Future"
+    }
+   ],
+   "msgType": "Alert",
+   "scope": "Public",
+   "sender": "https://meteo.hr",
+   "sent": "2026-10-26T14:46:50+01:00",
+   "status": "Actual"
+  },
+  "uuid": "66356a58-437d-4c82-b87f-0e8da305c13c"
+ }
+}

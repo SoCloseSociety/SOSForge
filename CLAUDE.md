@@ -132,6 +132,12 @@ off. Concretely:
   (`sender,identifier,sent` triples) and the old one is never listed again
   (0 of 1009 on 2026-10-27). Read `references` BEFORE the level filter and
   withdraw what they name, or a lifted orange stays on every client.
+  **Greece issues two warnings per region** (thunderstorm AND rain, different
+  ids, no reference between them): two hazards, two events -- never merge
+  them. Its rain headline names only the colour ("Orange warning for
+  Thessalia"): the awareness type is put in the title. An orange can publish
+  as MINOR: the level is right, the CAP rule demotes a forecast one rung and
+  `certainty: Possible` one more (Velebit, 2026-10-27; 1 of 15 published).
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
@@ -151,8 +157,23 @@ off. Concretely:
   published vs 59 -- NWS relays, Meteoalarm/EA copies, "Forestfire", "Low
   water"); only a TARGETED second tier is kept: issuers we do not read
   directly, kinds we lack (heat, landslide, drought, avalanche, flood), never
-  minor, never BOM (no polygon, reuse refused). The issuer is the CAP source
-  directory (`co-ideam-es/...`). **IDEAM re-sends an unchanged warning under a
+  minor, never BOM in that second tier (its CAP has no polygon: 0 of 5
+  placeable). BOM STAYS in the top tier: those are public-safety warnings WMO
+  relays for redistribution, which is not the reuse of BOM's own API that was
+  refused in round 1 -- the refusal was about that API's payload terms, not
+  about a warning the issuing service hands to WMO to spread. The issuer is
+  the CAP source directory (`co-ideam-es/...`). **The aggregate's OID ids
+  carry no country** (0 of 1319 by id prefix): the flag comes from the
+  issuer's ISO prefix (`uk` = GB), for land hazards only, never for a marine
+  product -- read from the area and headline, because "Gale" is a sea-area
+  warning for MET Norway and SMHI but CMA's land strong-wind warning, and
+  DWD's "gale-force gusts" are over towns -- and never when a TOP-LEVEL area
+  name is another country (Colombia has towns called Armenia, Montenegro,
+  Albania, Florida, California: municipality lists in parentheses are not
+  read). NWS territories are postal suffixes (`Saipan, MP`): their own code.
+  The CAP id is a WMO OID naming the issuer's country too (`2.49.0.0.170` =
+  ISO numeric 170, Colombia; table in `sources/iso3166.py`): it must agree
+  with the directory prefix (882 of 882 did on 2026-10-27). **IDEAM re-sends an unchanged warning under a
   new identifier every few hours, without `references`**: identical content
   from one issuer is collapsed to the newest copy.
 - **SWPC alerts**: `alerts.json` keeps a bulletin listed for weeks after its

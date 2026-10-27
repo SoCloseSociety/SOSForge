@@ -510,8 +510,13 @@ def test_wmo_country_comes_from_the_id_prefix():
     """It is the feed's only country indication, and it is enough for the flag."""
     assert parse_wmo(WMO_ITEM).country_code == "IN"
     assert parse_wmo({**WMO_ITEM, "id": "CN-42"}).country_code == "CN"
-    # an identifier without a country prefix must not invent a flag
-    assert parse_wmo({**WMO_ITEM, "id": "12345-x"}).country_code is None
+    # without a country prefix, the issuing service's directory (in-ndma-xx,
+    # a land hazard over Tripura) is the indication...
+    assert parse_wmo({**WMO_ITEM, "id": "12345-x"}).country_code == "IN"
+    # ...and with neither, no flag is invented
+    bare = {**WMO_ITEM, "id": "12345-x"}
+    bare.pop("url")
+    assert parse_wmo(bare).country_code is None
 
 
 def test_wmo_classification():
