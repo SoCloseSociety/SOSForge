@@ -185,6 +185,10 @@ def _label(value: str | None) -> str | None:
     return html.unescape(value) if isinstance(value, str) else value
 
 
+# Meteoalarm awareness level (the colour) -> the lowest rung it may show.
+METEOALARM_COLOUR_FLOOR: dict[str, Severity] = {"3": Severity.MODERATE, "4": Severity.SEVERE}
+
+
 def meteoalarm_references(warning: dict) -> list[str]:
     """Identifiers a Meteoalarm message replaces. CAP `references` is a
     space-separated list of `sender,identifier,sent` triples, e.g.
@@ -246,6 +250,17 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         # Extending an unmeasured rule to a second population is exactly the
         # mistake lesson 24 is about.
     )
+    # An official colour is never contradicted on screen. The CAP rule above
+    # puts a forecast one rung below the agency's rank and drops a `Possible`
+    # one more -- right for the NWS's "Severe, Possible" fire-weather watches,
+    # wrong for a European colour: Croatia's ORANGE wind warning for the
+    # Velebit channel (certainty Possible) went out as MINOR on 2026-10-27,
+    # the rung of a yellow. Meteoalarm only, so the floor is the colour's own
+    # rung: orange never below MODERATE, red never below SEVERE. Yellow keeps
+    # the CAP reading; a lift is handled below.
+    floor = METEOALARM_COLOUR_FLOOR.get(level or "")
+    if floor is not None:
+        severity = max(severity, floor, key=list(Severity).index)
     kind = AWARENESS_TYPE_KIND.get(awareness_type or "", Kind.OTHER)
 
     # `AllClear` means the warning is LIFTED. Like the "no danger" tsunami

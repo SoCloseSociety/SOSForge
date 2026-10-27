@@ -27,14 +27,23 @@ def test_two_greek_warnings_for_one_region_are_two_hazards_and_say_so():
     assert titles == ["Orange Thunderstorm for Thessalia", "Orange rain warning for Thessalia"]
 
 
-def test_the_velebit_orange_is_read_as_orange_and_demoted_by_its_own_certainty():
-    """The level is parsed right ("3; orange; Severe"); the MINOR is the CAP
-    rule: a forecast is one rung below, and `certainty: Possible` one more."""
+def test_an_official_orange_is_never_shown_below_its_colour():
+    """Velebit, 2026-10-27: "3; orange; Severe", certainty Possible. The CAP
+    rule (a forecast one rung down, `Possible` one more) published it MINOR --
+    a yellow's rung. For Meteoalarm the colour is the floor: orange never
+    below MODERATE."""
     warning = METEO["croatia_velebit_orange"]
     (event,) = MeteoalarmSource(min_level=3).select({"warnings": [warning]}, "croatia", now=DURING)
     assert event.raw["awareness_level"] == "3; orange; Severe"
     assert event.raw["certainty"] == "Possible"
-    assert event.severity is Severity.MINOR
+    assert event.severity is Severity.MODERATE
+
+
+def test_the_floor_is_meteoalarm_only():
+    """The NWS / WMO "Severe, Possible" demotion is untouched."""
+    from app.models.event import severity_for_cap
+
+    assert severity_for_cap("severe", "future", "possible") is Severity.MINOR
 
 
 def test_the_oid_names_the_issuing_country_and_must_agree():

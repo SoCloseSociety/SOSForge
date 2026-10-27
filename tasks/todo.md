@@ -1184,3 +1184,13 @@ them as new at restart (lesson 4).
       (`uk` -> GB), never for a marine issuer or product, never when the CAP
       area names another country. Measure on the real aggregate: flags gained,
       and every one judged by eye.
+
+## Lane C2 -- Meteoalarm colour floor (critical file `sources/alerts_world.py`)
+
+- [x] Owner/coordinator rule: an official colour is never contradicted on
+      screen. Meteoalarm ONLY: after the CAP demotions, orange never below
+      MODERATE, red never below SEVERE; yellow and lifts unchanged; NWS / WMO
+      Severe-Possible demotion unchanged. Test: the Velebit orange (certainty
+      Possible, published MINOR on 2026-10-27). Measure what moves.
+      Measured on today's captures (ten countries, 09:53 / 11:40 UTC): 1 of
+      the 15 published warnings moves -- the Velebit orange, MINOR -> MODERATE.

@@ -135,9 +135,12 @@ off. Concretely:
   **Greece issues two warnings per region** (thunderstorm AND rain, different
   ids, no reference between them): two hazards, two events -- never merge
   them. Its rain headline names only the colour ("Orange warning for
-  Thessalia"): the awareness type is put in the title. An orange can publish
-  as MINOR: the level is right, the CAP rule demotes a forecast one rung and
-  `certainty: Possible` one more (Velebit, 2026-10-27; 1 of 15 published).
+  Thessalia"): the awareness type is put in the title. **An official colour
+  is never contradicted on screen**: the CAP rule demotes a forecast one rung
+  and `certainty: Possible` one more, which published Croatia's ORANGE Velebit
+  warning as MINOR (2026-10-27). For Meteoalarm only, the colour is a floor:
+  orange >= MODERATE, red >= SEVERE (the NWS/WMO Severe-Possible demotion is
+  unchanged).
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
