@@ -42,7 +42,10 @@ class TestTheHeartbeatKeepsItsPeriod:
         assert main.next_tick(10.0, now=14.5, period=1.0) == 14.5
 
     async def test_the_period_holds_when_each_tick_costs_time(self, monkeypatch):
-        period, cost, window = 0.05, 0.02, 1.0
+        # A 250 ms grid, not 50 ms: at 50 ms the scheduler's own jitter on a
+        # loaded machine (load 57 during the round-2 integration) ate the
+        # margin and the test failed on correct code.
+        period, cost, window = 0.25, 0.1, 2.5
         stamps: list[float] = []
 
         class SlowHub:
@@ -59,8 +62,9 @@ class TestTheHeartbeatKeepsItsPeriod:
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
-        # sleeping a period after the work gives window / (period + cost) = 14
-        assert len(stamps) >= 18, f"{len(stamps)} ticks in {window} s at {period} s"
+        # on the grid: 10 ticks; sleeping a period after the work would give
+        # window / (period + cost) = 7
+        assert len(stamps) >= 9, f"{len(stamps)} ticks in {window} s at {period} s"
 
 
 # ------------------------------------------------------------ shared snapshot
