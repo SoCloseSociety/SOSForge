@@ -217,7 +217,13 @@ class TestItSpeaksWhenItMust:
         agent.handle({"type": "event", "event": quake(severity="severe")})
         agent.handle({"type": "purge", "ids": ["usgs:1"], "reason": "cancelled"})
         agent.handle({"type": "event", "event": quake(severity="severe")})
-        assert len(spy.calls) == 2
+        # the alert, its cancellation (said: tests/test_agent_followup.py),
+        # and the alert again
+        assert [title.split(" -- ")[0] for title, *_ in spy.calls] == [
+            "🌍 M5.0 earthquake",
+            "Cancelled",
+            "🌍 M5.0 earthquake",
+        ]
 
 
 class TestZoneAlertsAreOffUntilAsked:
