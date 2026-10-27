@@ -934,7 +934,17 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       strings: a redacted log_format for sosforge.soclose.co (conf.d,
       nginx -t, reload); deploy order web image -> make publish-apk -> the
       two rsync steps (versioned files --ignore-existing, then latest.json)
-- [ ] fixes landed and re-verified (H 18, C2 3 sources)
+- [x] fixes landed (H 18, G 11, C2 6, P 3) and lane C2's branch merged
+      (0cc11f6): pytest 963, vitest 458, agent 58, drills 73/73
+- [x] recheck workflow at 0cc11f6 (24 agents): 37/38 fixed (P's
+      redact_query keeps parameter NAMES verbatim), 8 regressions confirmed
+      (2 medium: overseas places matching the parent state through the
+      geocoder's country; a whole-source freshness baseline), 6 low. Last
+      round sent to H, C2, P.
+- [x] round-2 deploy scripts written (scratchpad): nginx -t of the NEW web
+      image inside the compose network before the swap, checkout and
+      :latest restored if a pre-swap step fails; host vhost access log
+      without query values (conf.d log_format + vhost access_log, nginx -t)
 - [ ] then merge lane C2's WMO country flags (9603657: 58/58 WMO alerts
       flagged, 0 in production; Greek pairs titled by hazard) and the
       Meteoalarm colour floor (owner rule: an official orange is never shown
