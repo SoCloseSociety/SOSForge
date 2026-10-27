@@ -839,7 +839,7 @@ Measured before (2026-10-27, M4 Pro, machine load ~13 from other lanes):
 - 1 / 100 / 1000 sockets: server CPU 1.3 / 1.4 / 14.8 %, tick period
   1.0019 / 1.0015 / 1.0256 s (the heartbeat sleeps 1 s AFTER its work),
   tick latency p99 6 / 9 / 518 ms, RSS ~0.45 MB per connected socket.
-- 1000 sockets opened at 100/s: snapshot p50 0.83 s, p95 4.68 s, while every
+- 1000 sockets opened at 400/s: snapshot p50 0.83 s, p95 4.68 s, while every
   tick to the sockets already open stalls (max gap 1.46 s).
 - Full ring (5000): `stats()` 2.1 ms per call (each tick and each snapshot),
   legacy snapshot 5.8 ms, chunked 17 ms, `/api/events` 12.9 ms p50.
@@ -886,4 +886,16 @@ Changes, smallest first:
       never refused.
 - [ ] `Dockerfile`: dependency layer before the code (a code change no
       longer reinstalls every dependency); prod footprint measured.
-- [ ] `pipeline.py`, `dedupe.py`: measured, no change unless a number says so.
+- [x] `dedupe.py`: the number said so. cProfile of the startup replay on the
+      real journals: `Deduper.assign` is 0.83 s of 1.23 s, of which 0.37 s
+      is 1.38 million `datetime.timestamp()` calls -- every located quake,
+      re-polls included, scans the 800-entry window converting each
+      entry's time twice. Live, a 400-726 event poll (GEOFON, PHIVOLCS)
+      blocks the loop for roughly 65-115 ms, which matches the 170 ms tick
+      stalls measured over 15 min. Change: each entry's time cached as
+      integer microseconds in a parallel deque (exact, no float rounding),
+      same scan, same order, same tests. Gate: the cluster of EVERY event
+      identical between the old and the new deduper on the real journals.
+      **After: 6678 assigns on 6707 real entries, 0 clusters different,
+      same window; 136.6 -> 21.5 us per assign (x6.3).**
+- [ ] `pipeline.py`: measured, no change unless a number says so.

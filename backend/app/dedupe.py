@@ -11,10 +11,19 @@ from __future__ import annotations
 
 import math
 from collections import deque
+from datetime import UTC, datetime, timedelta
 
 from app.models.event import Event
 
 EARTH_RADIUS_KM = 6371.0
+_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
+_MICROSECOND = timedelta(microseconds=1)
+
+
+def _micros(moment: datetime) -> int:
+    """Exact integer microseconds since the epoch: what `timedelta` arithmetic
+    gives, without a float in between."""
+    return (moment - _EPOCH) // _MICROSECOND
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -42,6 +51,14 @@ class Deduper:
         self.radius = radius_km
         self.mag_delta = mag_delta
         self._recent: deque[Event] = deque(maxlen=history)
+        # Each entry's time, in the same order, as integer microseconds. The
+        # scan below used to convert every entry's datetime twice per assign:
+        # 1.38 million `timestamp()` calls for one startup replay, 0.37 s of
+        # the deduper's 0.83 s, and live a 400-event poll held the event loop
+        # for about 65 ms. Appended and rebuilt in lockstep with `_recent`
+        # (same maxlen, so both drop their oldest together).
+        self._micros: deque[int] = deque(maxlen=history)
+        self._window_us = int(round(window_seconds * 1_000_000))
 
     def assign(self, event: Event) -> Event:
         """Sets `cluster_id` on the event. Idempotent."""
@@ -69,8 +86,10 @@ class Deduper:
             event.cluster_id = event.cluster_id or event.id
             return event
 
-        cutoff = event.time.timestamp() - self.window
-        for other in reversed(self._recent):
+        at = _micros(event.time)
+        # anything older than this cannot be within the window of `at`
+        floor = at - 2 * self._window_us
+        for other, other_at in zip(reversed(self._recent), reversed(self._micros), strict=True):
             if other.id == event.id:
                 event.cluster_id = other.cluster_id
                 return event
@@ -80,13 +99,13 @@ class Deduper:
             # Breaking on the first old entry stopped the scan right in front of
             # the match sitting behind it -- and finding that match is the
             # deduper's entire job.
-            if other.time.timestamp() < cutoff - self.window:
+            if other_at < floor:
                 continue
             if other.source == event.source:
                 continue
             if other.lat is None or other.lon is None:
                 continue
-            if abs((other.time - event.time).total_seconds()) > self.window:
+            if abs(other_at - at) > self._window_us:
                 continue
             if haversine_km(event.lat, event.lon, other.lat, other.lon) > self.radius:
                 continue
@@ -97,12 +116,16 @@ class Deduper:
             ):
                 continue
             event.cluster_id = other.cluster_id or other.id
-            self._recent.append(event)
+            self._append(event, at)
             return event
 
         event.cluster_id = event.id
-        self._recent.append(event)
+        self._append(event, at)
         return event
+
+    def _append(self, event: Event, at: int) -> None:
+        self._recent.append(event)
+        self._micros.append(at)
 
     def forget(self, event_ids: set[str]) -> int:
         """Drops events the store no longer has.
@@ -117,10 +140,13 @@ class Deduper:
         """
         if not event_ids:
             return 0
-        survivors = [e for e in self._recent if e.id not in event_ids]
+        pairs = zip(self._recent, self._micros, strict=True)
+        survivors = [(e, at) for e, at in pairs if e.id not in event_ids]
         dropped = len(self._recent) - len(survivors)
         self._recent.clear()
-        self._recent.extend(survivors)
+        self._micros.clear()
+        self._recent.extend(e for e, _ in survivors)
+        self._micros.extend(at for _, at in survivors)
         # Anything that had been adopted by a removed event is orphaned: it
         # becomes its own representative rather than pointing at a ghost.
         for event in self._recent:
