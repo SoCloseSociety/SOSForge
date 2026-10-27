@@ -844,6 +844,28 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 | N | macOS agent silent on an EEW cancel and on a quake relocated out of reach | P |
 | N | macOS agent judges area warnings by their centre, ignores `bbox` (UK amber 232 km from Paris: silent) | P |
 
+| Q | duplicates on screen: dedupe `assign()` matches another agency's newer entry before the event's own and re-appends it every poll (usgs:us7000ttfe + emsc:20261027_0000114 both shown) | P |
+| Q | two quakes folded into one cluster (us6000u4t9 hidden inside us6000u4t8; 13 on prod-09) | P |
+| Q | each cyclone served 2-3 times with different severities (Champi, Arnab, Vance, Olana: GDACS / NHC / EONET) | P |
+| Q | the first estimate stays the face (Bonin: JMA EEW M7.5 EXTREME vs M6.2-6.5 everywhere else; Bouvet GEOFON 6.07 vs 5.8) | P + C2 (`preliminary`) |
+| Q | journal replay restores events the current rules would reject (36 of 37 post-deploy defects) | P |
+| Q | major quakes vanish after 3 days (USGS M7.0 Nagqu 10-22, PAGER orange): keep M6.5+ / orange-red 14 days as past events, owner ask "tout l'historique" | P |
+| Q | PHIVOLCS revised bulletins kept as extra quakes (53 of 193) | C2 |
+| Q | USGS merged ids kept (aka2026vddzqy inside us6000u4t8) | C2 |
+| Q | INGV re-identified events kept twice (46940061 -> 47630362) | C2 |
+| Q | NWS PKZ767 (Bering Sea) marker placed off Greenland: centroid averaged across the antimeridian; clear `nws-zones.json` on deploy | C2 |
+| Q | INGV stamps "Italy" on foreign quakes (M6.1 Vanuatu) | C2 |
+| Q | footer "Last event 40s" for re-listed old events (BMKG newest is 29 h old): breaks the freshness rule | C2 (field) + H (label) |
+| Q | static text says "Twenty-six" / "nineteen" sources, /api/sources lists 32 | G |
+| Q | `/download/latest.json` answers 200 with the SPA HTML on production | G |
+
+Lane Q result (commit 1fa5ed2, merged): `tools/audit_live.py` + `make audit`.
+No important event inside the horizon is missing (every USGS significant /
+M5.5+, EMSC M5.5+, GDACS red cyclone, NHC storm is served). The round-1 deploy
+removed 180 expired German Meteoalarm warnings, 8 all-clear items, the
+expired JMA tsunami forecasts, 4 finished GDACS droughts, a stale SWPC G3 and
+a false Sicily swarm; BMKG serves again.
+
 Lane N result (commit 4970235, `tools/drill.py` + `tools/drills/`): `check` 67
 pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 15 pass / 3 fail. Every failure is one of the rows above.
