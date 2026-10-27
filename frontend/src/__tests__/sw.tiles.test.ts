@@ -554,6 +554,24 @@ describe('install', () => {
     expect(store('sosforge-shell')!.has(`${ORIGIN}/plate-boundaries.json`)).toBe(true)
   })
 
+  it('reads the shell it just installed, not an older version\'s', async () => {
+    // A returning visitor: the previous version's shell cache exists, and was
+    // created first -- caches.match() searches oldest first.
+    const old = await cacheApi().open('sosforge-shell-v2')
+    await old.put(
+      '/index.html',
+      new Response('<script type="module" src="/assets/index-OLD.js"></script>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    )
+    vi.stubGlobal('caches', realShellCaches())
+    await runInstall()
+    const runtime = store('sosforge-runtime')!
+    expect(runtime.has(`${ORIGIN}/assets/index-AAA.js`)).toBe(true)
+    expect(runtime.has(`${ORIGIN}/assets/MapView-CCC.js`)).toBe(true)
+    expect(calls).not.toContain(`${ORIGIN}/assets/index-OLD.js`)
+  })
+
   it('still installs, and takes over, when the bundles cannot be fetched', async () => {
     vi.stubGlobal('caches', realShellCaches())
     network.mockImplementation(async () => {

@@ -184,7 +184,11 @@ const ASSET_REF = /["'(]\/?assets\/([\w.-]+\.(?:js|css|woff2))|(?:from|import\()
  * fail the install -- the worker still serves the shell. */
 async function precacheBuild() {
   try {
-    const shell = await caches.match('/index.html')
+    // THIS version's shell cache, not caches.match(): that searches every
+    // cache oldest first, so on a CACHE_VERSION bump it returned the previous
+    // version's index.html and precached the bundles of a build long gone
+    // (PR #5 review). addAll has just put the current shell here.
+    const shell = await (await caches.open(SHELL_CACHE)).match('/index.html', { ignoreVary: true })
     if (!shell) return
     const html = await shell.clone().text()
     const queue = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+)"/g)].map((m) => m[1])
