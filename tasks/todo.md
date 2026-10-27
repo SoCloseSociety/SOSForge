@@ -900,6 +900,15 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       125 moderate + 30 minor, relays of NWS and Meteoalarm UK, 55 bare
       "Forestfire"). A targeted tier-2 rule for uncovered issuers and kinds
       goes to C2, numbers before shipping.
+- [x] lane N2 merged: the 4 tool findings fixed with tests (drill signals,
+      web_alarm teardown by PID, responsive.py Chrome ports and profiles),
+      agent expectations match lane P. On the merged tree:
+      `tools/drill.py check` 73 passed, 0 failed (every scenario x every
+      client, the Meteoalarm lift included, quota close 1013); web_alarm.py
+      18/18 on lane H's web (N2's run).
+- [ ] follow-up, not urgent: scope.split() serializes each event then main.py
+      serializes the chunk again: 4.14 -> 2.33 ms per chunked snapshot if
+      passed through (lane N2's measurement, byte-identical output)
 - [ ] PR #5 fixes landed and re-verified, then owner go, merge, deploy
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
 
