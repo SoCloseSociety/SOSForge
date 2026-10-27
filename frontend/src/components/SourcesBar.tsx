@@ -6,6 +6,10 @@ import { useMediaQuery } from '../useMediaQuery'
 import type { SourceHealth } from '../types'
 
 type SourceState = 'up' | 'degraded' | 'down'
+/** what is SHOWN: the last known state, or "not known" while our own link is
+ * down -- the last tick of a dead link said "online" on every source button
+ * (final review of PR #5) */
+type ShownState = SourceState | 'stale'
 
 function stateOf(source: SourceHealth): SourceState {
   if (!source.connected) return 'down'
@@ -13,9 +17,9 @@ function stateOf(source: SourceHealth): SourceState {
 }
 
 /** Each state has its own SHAPE: a dot online, a triangle degraded, a cross
- * offline. Two coloured dots measured 1.43:1 against each other, which said
- * nothing to a deuteranopic reader. */
-const MARK: Record<SourceState, string> = { up: '●', degraded: '▲', down: '✕' }
+ * offline, a ring not known. Two coloured dots measured 1.43:1 against each
+ * other, which said nothing to a deuteranopic reader. */
+const MARK: Record<ShownState, string> = { up: '●', degraded: '▲', down: '✕', stale: '○' }
 
 function SourceButton({
   source,
@@ -27,7 +31,8 @@ function SourceButton({
   onSelect: (name: string) => void
 }) {
   const t = useStore((s) => s.t)
-  const state = stateOf(source)
+  const linkUp = useStore((s) => s.connected)
+  const state: ShownState = linkUp ? stateOf(source) : 'stale'
   return (
     <button
       type="button"
@@ -277,7 +282,8 @@ export function SourcesBar({ now }: { now: number }) {
 /** One source, in full: what it last did and, when it fails, why. */
 function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: number; onClose: () => void }) {
   const t = useStore((s) => s.t)
-  const state = stateOf(source)
+  const linkUp = useStore((s) => s.connected)
+  const state: ShownState = linkUp ? stateOf(source) : 'stale'
   const failed = failedFeeds(source)
   const age = (iso: string | null | undefined) =>
     iso ? formatAge(t, (now - Date.parse(iso)) / 1000) : t('footer.never')

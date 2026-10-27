@@ -108,6 +108,9 @@ export interface Place {
   lat: number;
   lon: number;
   name: string;
+  /** the geocoder's own ISO alpha-2 code, when it gave one: a place whose
+   * point is at sea keeps its country's alerts (final review of PR #5) */
+  country?: string | null;
 }
 
 /** Where the location request stands, said in place by the scope bar.
@@ -412,7 +415,12 @@ function loadScope(): { scope: Scope; asked: boolean; place: Place | null } {
     const place: Place | null =
       p && typeof p.lat === "number" && typeof p.lon === "number" &&
       Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180
-        ? { lat: p.lat, lon: p.lon, name: String(p.name ?? "") }
+        ? {
+            lat: p.lat,
+            lon: p.lon,
+            name: String(p.name ?? ""),
+            country: typeof p.country === "string" && /^[A-Z]{2}$/.test(p.country) ? p.country : null,
+          }
         : null;
     const scope: Scope =
       saved?.scope === "world" ? "world" : saved?.scope === "place" && place ? "place" : "near";
@@ -727,8 +735,16 @@ export function filterEvents(
   events: SosEvent[],
   filters: Filters,
   now: number,
+  /** an alert still IN FORCE passes the window whatever its onset: the
+   * scoped views (Near me, a place) ask for it -- a severe WMO storm for
+   * Guayas, issued two days ago and in force, was missing 45 km from the
+   * reader under the 24 h window (final review of PR #5). The world view
+   * keeps the window strict: there, it would flood "Live" with every
+   * warning running on the planet. */
+  options: { keepOngoing?: boolean } = {},
 ): SosEvent[] {
   const { kinds, minMagnitude, windowMinutes, query } = filters;
+  const keepOngoing = options.keepOngoing === true;
   const minRank = SEVERITY_RANK[filters.minSeverity ?? "info"];
   const cutoff = windowMinutes > 0 ? now - windowMinutes * 60_000 : null;
   const needle = query.trim().toLowerCase();
@@ -740,7 +756,7 @@ export function filterEvents(
       if (!haystack.toLowerCase().includes(needle)) return false;
     }
     // window first: it's what separates live from historical
-    if (cutoff !== null && Date.parse(event.time) < cutoff) return false;
+    if (cutoff !== null && Date.parse(event.time) < cutoff && !(keepOngoing && event.ongoing)) return false;
     if (!kinds.has(event.kind)) return false;
     // a tsunami flag is never filtered away by rank: it is the one alert
     // whose label can lag behind the danger

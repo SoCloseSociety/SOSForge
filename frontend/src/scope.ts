@@ -71,8 +71,11 @@ export function isPlaced(event: SosEvent): boolean {
  * - `unlocated`: no position, not matched to the centre's country, severe or
  *   worse. Counted apart: "elsewhere" is a claim about WHERE, and for these
  *   we do not know where.
- * - `unmatched`: no position, any severity, while `countries` is unknown
- *   (null): the feed must not say "nothing near you" about them. */
+ * - `unmatched`: no position, any severity, not matched because the
+ *   centre's country is unknown (null, the table still loading) or there is
+ *   none (an empty list: open sea, or an island the table does not draw).
+ *   The feed must not say "nothing near you" about them, and says that
+ *   something could not be matched (final review of PR #5). */
 export function splitByScope(
   events: SosEvent[],
   here: Here,
@@ -98,7 +101,7 @@ export function splitByScope(
       continue
     }
     if (isSevere(event)) unlocated += 1
-    if (countries === null) unmatched += 1
+    if (countries === null || countries.length === 0) unmatched += 1
   }
   return { near, severeElsewhere, unlocated, unmatched }
 }

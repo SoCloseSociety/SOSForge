@@ -6,7 +6,7 @@
  * severity and country verbatim from /api/events; times made relative). */
 import { act, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { countriesIn, decode } from '../countries'
+import { countriesIn, decode, type CountryTable } from '../countries'
 import table from '../data/countries.json'
 import { splitByScope } from '../scope'
 import { useStore } from '../store'
@@ -58,7 +58,7 @@ const LIANZHOU = unplaced({
   ongoing: true,
 })
 
-const shapes = decode(table as { c: Record<string, number[][]> })
+const shapes = decode(table as CountryTable)
 
 describe('the countries table, offline', () => {
   it('names the country of a point, and both sides of a border', () => {

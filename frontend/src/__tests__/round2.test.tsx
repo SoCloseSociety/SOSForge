@@ -291,6 +291,7 @@ describe('sources in a slider (owner: "met-les dans un slider")', () => {
 
   it('the error and the last poll are behind a tap', () => {
     useStore.setState({
+      connected: true,
       sources: [source('noa', { connected: false, last_error: 'HTTP 503 from https://www.gein.noa.gr/' })],
     })
     render(<SourcesBar now={NOW} />)
