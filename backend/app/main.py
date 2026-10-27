@@ -26,6 +26,7 @@ from fastapi.responses import JSONResponse
 
 from app import geocode
 from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
+from app.climate import monitor as climate
 from app.core import privacy
 from app.core.config import settings
 from app.dedupe import Deduper
@@ -374,6 +375,8 @@ async def lifespan(app: FastAPI):
     tasks = [asyncio.create_task(s.supervise(pipeline.emit), name=f"src:{s.name}") for s in sources]
     tasks.append(asyncio.create_task(heartbeat(), name="heartbeat"))
     tasks.append(asyncio.create_task(sweep_stale(), name="sweep"))
+    # climate indicators: each polled at its dataset's own cadence (app/climate.py)
+    tasks.append(asyncio.create_task(climate.run(), name="climate"))
     if settings.enable_felt_reports:
         tasks.append(asyncio.create_task(felt_reports(), name="felt"))
     log.info("SOSForge online -- %d sources: %s", len(sources), ", ".join(s.name for s in sources))
@@ -463,6 +466,7 @@ FEATURES = [
     "guidance",  # /api/guidance?lang=en|fr|es|ja|id
     "escalated",  # `update` messages may carry escalated: true, forwarded untouched
     "snapshot_chunked",  # /ws?chunks=1: snapshot + `more`, then snapshot_more chunks
+    "climate",  # /api/climate: live indicators, each with its dataset's own as_of
 ]
 
 
@@ -676,6 +680,13 @@ async def api_events(
         "unplaced": placed.public() if placed is not None and scope and scope.zoned else None,
     }
     return JSONResponse(body, headers=headers)
+
+
+@app.get("/api/climate")
+async def api_climate() -> dict:
+    """Live climate indicators, each with the date its DATASET gives
+    (`as_of`), its own poll state and last error. See app/climate.py."""
+    return climate.snapshot()
 
 
 @app.get("/api/version")

@@ -127,6 +127,11 @@ off. Concretely:
   (verified on those DWD gusts), so it is mapped and an expired warning is
   withdrawn. Greece escapes `&amp;` inside the JSON (`"East Sterea &amp;
   Evvoia"`, `headline` + `areaDesc` only): decoded there and nowhere else.
+  **A warning is replaced under a NEW identifier**: the Update (or the lift,
+  an AllClear at level 1 green) names the old one in CAP `references`
+  (`sender,identifier,sent` triples) and the old one is never listed again
+  (0 of 1009 on 2026-10-27). Read `references` BEFORE the level filter and
+  withdraw what they name, or a lifted orange stays on every client.
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
@@ -176,6 +181,39 @@ off. Concretely:
   date anything from it. Magnitude and depth share one string (`"M: 4.0 , D:
   10km"`). Mostly FOREIGN events (Tajikistan, Tibet, Afghanistan): no country
   stamped at the source.
+- **Environment Agency (England floods)** (`/flood-monitoring/id/floods`, OGL v3):
+  `severityLevel` runs DOWN (1 danger to life ... 3 flood alert), and **4 =
+  "no longer in force" stays listed** (58 of 98): lift it. No position in the
+  list: the static `/id/floodAreas/{id}` has WGS84 `lat`/`long` and an
+  `envelope` in **British National Grid metres** (EPSG:27700, converted in
+  `ukea.py`). Times have NO offset and the reference names no zone: read as
+  Europe/London, exact in winter -- re-check on 2027-03-28 (BST).
+  **Meteoalarm UK already relays the EA's Flood Warnings word for word** (5 of
+  5, "Flooding is expected: <area>"): the source is off by default; enabled at
+  level 2 it doubles every warning. Measure a new source against the
+  aggregators BEFORE counting a gap as missing coverage.
+- **US Drought Monitor**: a weekly MAP (5 MultiPolygons, `DM` 0-4), no date
+  but `Last-Modified`, 17 MB uncompressed: `If-Modified-Since`, and never a
+  6 h wait to retry a failure.
+- **PHIVOLCS** revises a quake under a NEW bulletin name and drops the old
+  row (`2026_1026_204121_B1` -> `2026_1026_2041_B2`); same-minute rows are
+  mostly DIFFERENT quakes (500 km apart). Only the page says what is current:
+  a bulletin that leaves it inside the window is withdrawn (memory kept next
+  to the journal, so a restart does not forget).
+- **USGS** merges network ids: `properties.ids` lists the aliases of the
+  preferred `id`; an alias stored as its own quake is withdrawn (the day feed
+  is read for `ids`, a merge lands after the hour feed has dropped it).
+- **INGV** re-identifies events (`eventid=46940061` -> 302 -> `47630362`, same
+  origin): same origin + position withdraws the old id. Italian places end in
+  a province code `(PZ)`; seas and abroad use brackets (`[Mare]`, `[Sea:
+  Vanuatu]`): Italy only on a province code.
+- **Area centres** (NWS zones, CAP polygons, UK Meteoalarm, SIGMETs) go
+  through `sources/geometry.py`: averaged naively, PKZ767 (Bering Sea) landed
+  south-east of Greenland. The zone and CAP caches are versioned: bump the
+  version whenever a stored centre can no longer be trusted.
+- **Source health freshness**: `last_event_at` = first-seen time of an event
+  never handed over before (re-listing is not news), `newest_event_time` =
+  the newest event's own time, `last_delivery_at` = a poll returned anything.
 - **Rejected after checking** (2026-10-26): Chile CSN (HTML only, fully relayed
   by EMSC, licence limited to academic use), KOERI (non-commercial clause, AFAD
   already covers Turkey), IGEPN (page frozen since June, Cloudflare), Geoscience
@@ -184,6 +222,22 @@ off. Concretely:
   MAGMA Indonesia (API returns 500, no reuse grant), ReliefWeb (approved
   `appname` now mandatory), Taiwan CWA / Korea KMA (key mandatory), Colombia
   SGC (403 from every egress tried -- retest from the hub).
+- **Measured and left out** (2026-10-27): DWD warnings (at the product's
+  orange threshold a 1:1 duplicate of Meteoalarm Germany; below it, yellow
+  wind), ECCC Canada and INMET Brazil (alive, but every live warning is the
+  yellow tier: 0 events at the threshold today; INMET also keeps 61 of 67
+  ENDED warnings listed), Copernicus EMS (post-event mapping, days late),
+  LHASA (raster), GDO/EDO (raster, relayed by GDACS), NASA FIRMS API (key;
+  the keyless 24 h CSV is 48k raw hotspots), EAWS/avalanche.org (licence of
+  the ratings not found; out of season), SACHET India (no licence text,
+  polygons behind a WAF), NINA/BBK (no licence text).
+- **Climate datasets** (`app/climate.py`): Copernicus Climate Pulse marks
+  the last days `PRELIMINARY`; NOAA GML omits missing days (look up "a year
+  earlier" within +-3 days); NSIDC v4 has two header lines, every-other-day
+  early records and a `Missing` column (an extent with missing coverage is a
+  lower bound), and its daily files stopped at 2026-10-17; CPC's weekly Nino
+  file glues a negative anomaly to the SST (`20.6-0.1`); the ENSO status is
+  only in the discussion HTML, with entities.
 
 ## Pattern matching on natural language
 

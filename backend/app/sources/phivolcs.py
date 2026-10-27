@@ -340,6 +340,34 @@ class PhivolcsSource(Source):
         # store already knows, so the source carries its own relevance rule
         # (lesson 6), generously wider than the three-day ingestion horizon.
         self.window_days = window_days
+        # id -> time of what the last complete cycle listed inside the window
+        self._listed: dict[str, datetime] = {}
+
+    def superseded(self, events: list[Event], now: datetime) -> list[str]:
+        """Bulletins PHIVOLCS has taken off its page while they were still
+        inside our window -- replaced by a revised bulletin of the same quake,
+        or withdrawn.
+
+        PHIVOLCS revises a quake under a NEW bulletin name and drops the old
+        row: `2026_1026_204121_B1` (M4.7, 5.80/126.90) became
+        `2026_1026_2041_B2` (M4.6, 6.16/126.45). The store kept both, and lane
+        Q found 53 of 193 PHIVOLCS events on production were such replaced
+        bulletins (2026-10-27). The name alone cannot pair them -- the seconds
+        appear in one and not the other, and same-minute rows on the live page
+        are mostly DIFFERENT quakes (19:27 on 10-25: 500 km apart) -- so the
+        rule is the page itself: a bulletin we listed that has left the page
+        while still well inside the window is no longer PHIVOLCS's word.
+
+        Guarded against a short or broken page: nothing is withdrawn if the
+        new list is under half the previous one.
+        """
+        current = {e.id: e.time for e in events}
+        gone: list[str] = []
+        if self._listed and len(current) >= 0.5 * len(self._listed):
+            floor = now - timedelta(days=self.window_days) + timedelta(hours=1)
+            gone = [i for i, t in self._listed.items() if i not in current and t > floor]
+        self._listed = current
+        return gone
 
     def parse_payload(self, html: str, now: datetime | None = None) -> list[Event]:
         cutoff = (now or datetime.now(UTC)) - timedelta(days=self.window_days)
@@ -374,6 +402,14 @@ class PhivolcsSource(Source):
             # keeps the reason visible to whoever edits this next.
             "Accept-Encoding": "gzip, deflate",
         }
+        # what the previous process listed: a bulletin replaced while the
+        # server was down is still withdrawn on the first complete read
+        if not self._listed:
+            for key, value in (self.load_memory().get("listed") or {}).items():
+                try:
+                    self._listed[key] = datetime.fromisoformat(value)
+                except (TypeError, ValueError):
+                    continue
         async with httpx.AsyncClient(
             timeout=90.0, headers=headers, follow_redirects=True, verify=build_ssl_context()
         ) as client:
@@ -409,6 +445,13 @@ class PhivolcsSource(Source):
                     ordered = sorted(by_id.values(), key=lambda e: e.time, reverse=True)
                     for event in ordered:
                         await emit(event)
+                    if successes == len(pages):
+                        # only a complete read can say what is no longer listed
+                        self.expirations.extend(self.superseded(ordered, datetime.now(UTC)))
+                        await self.flush_retractions()
+                        self.save_memory(
+                            {"listed": {k: v.isoformat() for k, v in self._listed.items()}}
+                        )
                     self.health.ok(len(ordered))
                 elif last_error is not None:
                     self.health.fail(last_error)

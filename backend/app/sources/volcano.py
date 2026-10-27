@@ -81,6 +81,12 @@ class VolcanoSource(Source):
             self.health.feed_failed("gvp-catalogue", exc)
             log.warning("volcano catalog unavailable (%s), alerts without position", exc)
 
+    # An observatory whose volcanoes are not in the 50 states. The Smithsonian
+    # catalogue says "United States" for Ahyi Seamount, and the flag showed
+    # the US where the right one is the Northern Mariana Islands' (lane Q,
+    # 2026-10-27). HANS names the observatory in every row.
+    TERRITORY = {"nmi": ("Northern Mariana Islands", "MP")}
+
     def parse(self, row: dict) -> Event | None:
         vnum = str(row.get("vnum") or "")
         identifier = row.get("notice_identifier") or vnum
@@ -91,6 +97,10 @@ class VolcanoSource(Source):
         level = (row.get("alert_level") or "").upper()
         name = row.get("volcano_name") or "unknown volcano"
         lat, lon, country = self._catalog.get(vnum, (None, None, None))
+        country_code = None
+        territory = self.TERRITORY.get(str(row.get("obs_abbr") or "").strip().lower())
+        if territory:
+            country, country_code = territory
 
         return Event(
             # Key = the VOLCANO, not the bulletin. Each new bulletin for the
@@ -107,6 +117,7 @@ class VolcanoSource(Source):
             lon=lon,
             place=name,
             country=country,
+            country_code=country_code,
             severity=COLOR_SEVERITY.get(color, Severity.INFO),
             # getElevatedVolcanoes only returns volcanoes currently on alert
             ongoing=True,

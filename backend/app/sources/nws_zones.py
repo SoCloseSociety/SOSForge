@@ -35,6 +35,10 @@ log = logging.getLogger(__name__)
 # five hundred requests in one burst against an agency that asks for restraint.
 ZONES_PER_CYCLE = 25
 
+# Bumped when a stored centre can no longer be trusted. 2: centres computed
+# through `geometry.center` (antimeridian), lane Q 2026-10-27.
+CACHE_VERSION = 2
+
 
 class ZoneResolver:
     def __init__(self, cache_path: Path | None = None):
@@ -51,7 +55,13 @@ class ZoneResolver:
         if not self._cache_path or not self._cache_path.exists():
             return
         try:
-            data = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            stored = json.loads(self._cache_path.read_text(encoding="utf-8"))
+            if not isinstance(stored, dict) or stored.get("version") != CACHE_VERSION:
+                # Written before the antimeridian fix: its centres may be on
+                # the wrong side of the planet. Re-read every zone instead.
+                log.warning("nws zone cache predates version %d, discarded", CACHE_VERSION)
+                return
+            data = stored.get("zones") or {}
             for key, value in data.items():
                 self._centroids[key] = (float(value[0]), float(value[1])) if value else None
                 if value and len(value) == 6:
@@ -72,7 +82,9 @@ class ZoneResolver:
             for key, value in self._centroids.items():
                 extent = self._extents.get(key)
                 data[key] = (list(value) + (list(extent) if extent else [])) if value else None
-            self._cache_path.write_text(json.dumps(data), encoding="utf-8")
+            self._cache_path.write_text(
+                json.dumps({"version": CACHE_VERSION, "zones": data}), encoding="utf-8"
+            )
         except OSError as exc:  # a cache is an optimisation, never a dependency
             log.warning("could not write the nws zone cache: %s", exc)
 
@@ -127,26 +139,15 @@ def _outer_points(zone_geometry: dict | None) -> list[tuple[float, float]]:
 
 
 def _centroid_of(geometry: dict | None) -> tuple[float, float] | None:
-    """Average of the outer ring(s). A zone is a county or a stretch of coast:
+    """Centre of the outer ring(s). A zone is a county or a stretch of coast:
     its centre is a fair answer to "where is this", and the alternative --
-    keeping no position at all -- is what we are fixing."""
-    if not geometry:
-        return None
-    coordinates = geometry.get("coordinates") or []
-    kind = geometry.get("type")
-    rings: list[list] = []
-    if kind == "Polygon":
-        rings = coordinates[:1]
-    elif kind == "MultiPolygon":
-        rings = [polygon[0] for polygon in coordinates if polygon]
-    else:
-        return None
+    keeping no position at all -- is what we are fixing.
 
-    points = [point for ring in rings for point in ring if len(point) >= 2]
-    if not points:
-        return None
-    lat = sum(p[1] for p in points) / len(points)
-    lon = sum(p[0] for p in points) / len(points)
-    if not (-90 <= lat <= 90 and -180 <= lon <= 180):
-        return None
-    return lat, lon
+    Through `geometry.center`, which knows the antimeridian: averaged
+    naively, "Saint Matthew Island Waters" (PKZ767, Bering Sea, 177.4 E to
+    169 W) came out at 59.99 N 26.48 W -- south-east of Greenland -- and
+    that is where production drew it (lane Q, 2026-10-27).
+    """
+    from app.sources import geometry as geo
+
+    return geo.center(_outer_points(geometry))

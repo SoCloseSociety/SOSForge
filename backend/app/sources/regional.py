@@ -24,7 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -56,8 +56,15 @@ class JsonPollSource(Source):
         on the current moment (AFAD wants a sliding time window)."""
         return self.url
 
+    def restore(self) -> None:
+        """Hook: reload what this source must remember across a restart."""
+
+    def persist(self) -> None:
+        """Hook: save it after a successful cycle."""
+
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        self.restore()
         # follow_redirects: AFAD answers 302 before its JSON
         async with httpx.AsyncClient(
             timeout=30.0, headers=headers, follow_redirects=True
@@ -70,6 +77,7 @@ class JsonPollSource(Source):
                     for event in events:
                         await emit(event)
                     await self.flush_retractions()
+                    self.persist()
                     self.health.ok(len(events))
                 except Exception as exc:
                     self.health.fail(exc)
@@ -102,6 +110,17 @@ JMA_SKIPPED_TITLES = {"震度速報"}
 # country="Japan" on them made quakes on the other side of the world carry
 # the Japanese flag -- which was the case in production.
 JMA_DISTANT_TITLE = "遠地地震に関する情報"
+
+
+def _km(lat1: float | None, lon1: float | None, lat2: float | None, lon2: float | None) -> float:
+    import math
+
+    if None in (lat1, lon1, lat2, lon2):
+        return float("inf")
+    p1, p2 = math.radians(lat1), math.radians(lat2)  # type: ignore[arg-type]
+    dl = math.radians(lon2 - lon1)  # type: ignore[operator]
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 6371.0 * 2 * math.asin(math.sqrt(min(1.0, h)))
 
 
 def parse_iso6709(value: str | None) -> tuple[float | None, float | None, float | None]:
@@ -414,9 +433,194 @@ class GeonetSource(JsonPollSource):
 # -------------------------------------------------------------------------- INGV
 
 
+# Italian province codes (sigle). INGV names an Italian epicentre after its
+# municipality and province -- "7 km NE Lauria (PZ)" -- and everything else
+# differently: "Tirreno Meridionale [Mare]", "Vanuatu Islands [Sea: Vanuatu]",
+# "China [Land]". `country="Italy"` was stamped on every event, so an M6.1 in
+# Vanuatu wore an Italian flag (lane Q, 2026-10-27). A missing code fails safe
+# to no country.
+ITALIAN_PROVINCES = frozenset(
+    [
+        "AG",
+        "AL",
+        "AN",
+        "AO",
+        "AP",
+        "AQ",
+        "AR",
+        "AT",
+        "AV",
+        "BA",
+        "BG",
+        "BI",
+        "BL",
+        "BN",
+        "BO",
+        "BR",
+        "BS",
+        "BT",
+        "BZ",
+        "CA",
+        "CB",
+        "CE",
+        "CH",
+        "CI",
+        "CL",
+        "CN",
+        "CO",
+        "CR",
+        "CS",
+        "CT",
+        "CZ",
+        "EN",
+        "FC",
+        "FE",
+        "FG",
+        "FI",
+        "FM",
+        "FR",
+        "GE",
+        "GO",
+        "GR",
+        "IM",
+        "IS",
+        "KR",
+        "LC",
+        "LE",
+        "LI",
+        "LO",
+        "LT",
+        "LU",
+        "MB",
+        "MC",
+        "ME",
+        "MI",
+        "MN",
+        "MO",
+        "MS",
+        "MT",
+        "NA",
+        "NO",
+        "NU",
+        "OG",
+        "OR",
+        "OT",
+        "PA",
+        "PC",
+        "PD",
+        "PE",
+        "PG",
+        "PI",
+        "PN",
+        "PO",
+        "PR",
+        "PT",
+        "PU",
+        "PV",
+        "PZ",
+        "RA",
+        "RC",
+        "RE",
+        "RG",
+        "RI",
+        "RM",
+        "RN",
+        "RO",
+        "SA",
+        "SI",
+        "SO",
+        "SP",
+        "SR",
+        "SS",
+        "SU",
+        "SV",
+        "TA",
+        "TE",
+        "TN",
+        "TO",
+        "TP",
+        "TR",
+        "TS",
+        "TV",
+        "UD",
+        "VA",
+        "VB",
+        "VC",
+        "VE",
+        "VI",
+        "VR",
+        "VS",
+        "VT",
+        "VV",
+    ]
+)
+RE_INGV_PROVINCE = re.compile(r"\(([A-Z]{2})\)\s*$")
+
+
+def ingv_country(place: str) -> str | None:
+    match = RE_INGV_PROVINCE.search(place or "")
+    return "Italy" if match and match.group(1) in ITALIAN_PROVINCES else None
+
+
 class IngvSource(JsonPollSource):
+    """INGV (Italy), FDSN GeoJSON.
+
+    INGV RE-IDENTIFIES events: `eventid=46940061` now answers a 302 to
+    `47630362`, the same quake (same origin to the tenth of a second), and the
+    feed only lists the new id. The old one stayed in the store as a second
+    quake. An id that arrives with the origin time (within a second) and the
+    position (within 10 km) of one this source already emitted withdraws the
+    old one.
+    """
+
     name = "ingv"
     kind = "poll"
+
+    def __init__(self, poll_seconds: float = 60.0, url: str | None = None):
+        super().__init__(poll_seconds, url)
+        # event id -> (origin, lat, lon) of what this source has emitted
+        self._emitted: dict[str, tuple[datetime, float | None, float | None]] = {}
+
+    def supersede(self, events: list[Event]) -> None:
+        for event in events:
+            for old_id, (origin, lat, lon) in list(self._emitted.items()):
+                if old_id == event.id or abs((origin - event.time).total_seconds()) > 1.0:
+                    continue
+                if (
+                    None in (lat, lon, event.lat, event.lon)
+                    or _km(lat, lon, event.lat, event.lon) <= 10.0
+                ):
+                    self.expirations.append(old_id)
+                    del self._emitted[old_id]
+            self._emitted[event.id] = (event.time, event.lat, event.lon)
+        # forget what is long gone from the feed
+        if len(self._emitted) > 5000:
+            for old_id in list(self._emitted)[: len(self._emitted) - 5000]:
+                del self._emitted[old_id]
+
+    def restore(self) -> None:
+        # INGV re-identifies days later: a restarted process must still know
+        # the origins it published under the old ids
+        if self._emitted:
+            return
+        for key, (origin, lat, lon) in (self.load_memory().get("emitted") or {}).items():
+            try:
+                self._emitted[key] = (datetime.fromisoformat(origin), lat, lon)
+            except (TypeError, ValueError):
+                continue
+
+    def persist(self) -> None:
+        horizon = datetime.now(UTC) - timedelta(days=7)
+        self.save_memory(
+            {
+                "emitted": {
+                    key: [origin.isoformat(), lat, lon]
+                    for key, (origin, lat, lon) in self._emitted.items()
+                    if origin > horizon
+                }
+            }
+        )
+
     # Standard FDSN: exactly the same contract as USGS, down to the field
     # casing. The cheapest source to maintain of the lot.
     url = "https://webservices.ingv.it/fdsnws/event/1/query?format=geojson&limit=200&orderby=time"
@@ -454,13 +658,14 @@ class IngvSource(JsonPollSource):
                     magnitude=magnitude,
                     mag_type=props.get("magType"),
                     place=place,
-                    country="Italy",
+                    country=ingv_country(place),
                     severity=severity_for_quake(magnitude, depth),
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url=f"https://terremoti.ingv.it/event/{event_id}",
                     raw={"author": props.get("author"), "type": props.get("type")},
                 )
             )
+        self.supersede(events)
         return events
 
 

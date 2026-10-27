@@ -7,11 +7,11 @@
 **Live at <https://sosforge.soclose.co>**
 
 Real-time tracker for earthquakes, tsunamis, volcanoes, cyclones and disaster
-alerts. **Thirty-two official sources** merged into a single normalized feed and
+alerts. **Thirty-three official sources** (plus one optional) merged into a single normalized feed and
 pushed to the browser over a websocket with a one-second heartbeat. Interface in
 five languages.
 
-No API key is required: all thirty-two sources are public and open.
+No API key is required: all of them are public and open.
 
 ![screenshot](docs/screenshot.png)
 
@@ -45,7 +45,7 @@ located, without waiting for a cycle. The others are polled at a rate matched to
 how often they actually publish -- polling USGS faster than it regenerates would
 return nothing new.
 
-## The thirty-two sources (no API key required)
+## The thirty-three sources (no API key required)
 
 **Worldwide**
 
@@ -90,6 +90,8 @@ something EMSC does not have.
 | IMO volcanoes (Iceland) | `api.vedur.is/volcanoes/volcanoes` | poll 600 s | ground alert level and aviation colour of every Icelandic volcano (Reykjanes orange) |
 | JMA volcanoes (Japan) | `jma.go.jp/bosai/volcano/data/warning.json` | poll 300 s | the five-level alert that orders evacuations in Japan; until now a Japanese volcano appeared only once its ash reached an aviation advisory |
 | NCS (India) | `riseq.seismo.gov.in` (event list in the page) | poll 180 s | the Himalaya, Hindu Kush and Indo-Burman ranges: 35% of its events are in neither USGS nor EMSC |
+| Environment Agency (England), **optional** | `environment.data.gov.uk/flood-monitoring/id/floods` | poll 300 s | off by default: Meteoalarm UK already relays its Flood Warnings word for word (5 of 5 measured). `SOS_ENABLE_UKEA=true SOS_UKEA_MAX_LEVEL=3` adds the yellow-tier Flood Alerts only it publishes |
+| US Drought Monitor | `droughtmonitor.unl.edu/data/json/usdm_current.json` | weekly map, checked every 6 h | extreme and exceptional drought (D3/D4) regions: the product had no live drought at all |
 
 ### One source is of a different nature: early warning
 
@@ -103,6 +105,17 @@ is the only information in this product that can still be used to take cover.
 it is authoritative over nothing, and its failure breaks nothing. Its websockets
 reject non-browser clients (403 Cloudflare), hence the polling. Turn it off with
 `SOS_ENABLE_JMA_EEW=false`.
+
+## Live climate indicators
+
+`GET /api/climate` serves seven indicators, each read live from the agency that
+publishes it, each with **its dataset's own date** (`as_of`), its baseline
+computed from the same file, its previous value, and its own poll state and
+last error: global surface air temperature and sea surface temperature
+(Copernicus Climate Pulse, ERA5), daily CO2 at Mauna Loa (NOAA GML), Arctic and
+Antarctic sea ice extent (NSIDC Sea Ice Index), weekly Nino 3.4 and the ENSO
+alert status (NOAA CPC). A dataset late by its own standard is flagged
+`stale`; a failed poll says so with the real error. Nothing is hard-coded.
 
 ## Getting started
 
@@ -249,7 +262,7 @@ Websocket messages:
   rather than slowing down ingestion, and its socket is closed rather than left
   silently open.
 - **A failing source.** A source whose every feed fails cannot show as green. The
-  footer shows the real state of all thirty-two, and a source with one dead
+  footer shows the real state of every one of them, and a source with one dead
   feed out of several (one tsunami centre, one Meteoalarm country) is shown
   **degraded**, naming the feed, rather than green.
 - **No WebGL.** The map degrades cleanly and the alert feed keeps running.
@@ -260,7 +273,7 @@ Websocket messages:
 make test        # 95 backend tests + 77 frontend tests
 make lint
 make typecheck   # tsc + mypy
-make smoke       # live state of the thirty-two sources
+make smoke       # live state of every source
 ```
 
 Backend fixtures are **verbatim** excerpts of real responses. A unit test on an
@@ -297,7 +310,13 @@ Volcanism Program, JMA (Japan; 出典：気象庁ホームページ), BMKG (Indo
 (China), GNS Science / GeoNet (New Zealand), INGV (Italy), AFAD (Turkey), GFZ
 GEOFON, NASA EONET, Meteoalarm, WMO, SSN UNAM (Mexico), NRCan (Canada), NOA
 (Greece), PHIVOLCS (Philippines), IGP (Peru), the Icelandic Meteorological
-Office (CC BY 4.0), and the National Center for Seismology (India).
+Office (CC BY 4.0), the National Center for Seismology (India), the
+Environment Agency (this uses Environment Agency flood and river level data
+from the real-time data API (Beta), OGL v3), the U.S. Drought Monitor (jointly
+produced by the National Drought Mitigation Center at the University of
+Nebraska-Lincoln, the USDA, NOAA and NASA; map courtesy of NDMC). Climate:
+Copernicus Climate Change Service / ECMWF (generated using Copernicus Climate
+Change Service information), NOAA GML, NSIDC (Sea Ice Index v4), NOAA CPC.
 Basemap by OpenStreetMap, OpenMapTiles and OpenFreeMap. These feeds are public; they belong to their
 producers.
 

@@ -1126,3 +1126,34 @@ ingv:47788232 stamped IT at the Vanuatu position (C2). Read with care: the
 new side's sources show `ingested=0`, "newest 88 m" because restored events
 keep their real `received_at` and re-polls are no-ops; the base re-ingested
 them as new at restart (lesson 4).
+## Lane C2 (sources + climate) -- plan
+
+- [x] Meteoalarm lifts (critical file `sources/alerts_world.py`): an Update /
+      AllClear carries a NEW identifier and `references` the old one (France
+      143/161, Italy 120/120; referenced id still listed: 0 of 1009 today).
+      Fix in `MeteoalarmSource.select`: every warning's `references` withdraws
+      the referenced event, BEFORE the level filter -- AllClear as `lifted`, a
+      replacing Update as `stale` (its successor is published under its own
+      id). No stable-key remapping: the store key of a replaced warning is its
+      own identifier, which survives restarts; a chain map would not.
+      Measure: published warnings replaced/lifted between two real captures.
+- [ ] New sources measured live first: UK EA floods, DWD WFS warnings,
+      ECCC alerts, INMET Brazil (research report 2026-10-27)
+- [ ] `app/climate.py` + `GET /api/climate` + `climate` feature; real dataset
+      dates only, unavailable with the real error when a fetch fails
+- [ ] `frontend/src/components/ClimatePanel.tsx` (+ css, test, i18n strings)
+      Done: one cycle on the 2026-10-27 feeds withdraws 333 referenced
+      warnings as lifted (Croatia 172, France 143, Germany 18) and 902 as
+      stale (most never stored: no-ops). Of the 35 orange+ warnings published
+      at the 2026-10-26 19:10 capture, 3 (UK) were replaced by an Update by
+      the next morning and would have stayed until their own `expires` -- a
+      lower bound, since a chain of updates references only its predecessor.
+- [ ] Lane Q audit findings in `sources/` (critical files), each re-read on the
+      original record first, measured before/after with `tools/audit_live.py`:
+      PHIVOLCS newer bulletin withdraws the older one of the same quake; USGS
+      `ids` aliases withdrawn; INGV re-identified event withdraws the old id;
+      zone/CAP/UK centroids through `geometry.center` (antimeridian) and the
+      two persisted area caches versioned so bad centres are re-read; INGV
+      stamps no country it cannot read; footer freshness = first-seen time of
+      a NEW event + the newest event's own time (not "last poll returned
+      something"); EEW/CENC preliminary; HANS NMI -> MP.
