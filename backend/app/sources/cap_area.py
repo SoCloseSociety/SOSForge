@@ -30,6 +30,7 @@ from pathlib import Path
 
 import httpx
 
+from app.sources import geometry
 from app.sources.cap_text import CapText, parse_cap_text
 
 log = logging.getLogger(__name__)
@@ -62,7 +63,7 @@ def _tag(element: ET.Element) -> str:
     return element.tag.rsplit("}", 1)[-1]
 
 
-def parse_polygon(text: str | None) -> tuple[float, float] | None:
+def polygon_points(text: str | None) -> list[tuple[float, float]] | None:
     """CAP `<polygon>`: whitespace-separated `lat,lon` pairs, **latitude
     first** -- the opposite order from GeoJSON, which is the convention used
     everywhere else in this backend.
@@ -73,8 +74,7 @@ def parse_polygon(text: str | None) -> tuple[float, float] | None:
     """
     if not text:
         return None
-    lats: list[float] = []
-    lons: list[float] = []
+    points: list[tuple[float, float]] = []
     for pair in text.split():
         parts = pair.split(",")
         if len(parts) < 2:
@@ -85,14 +85,26 @@ def parse_polygon(text: str | None) -> tuple[float, float] | None:
             return None
         if not (-90 <= lat <= 90 and -180 <= lon <= 180):
             return None
-        lats.append(lat)
-        lons.append(lon)
-    if not lats:
+        points.append((lat, lon))
+    return points or None
+
+
+def parse_polygon(text: str | None) -> tuple[float, float] | None:
+    """The centre of one CAP ring (see `polygon_points`)."""
+    points = polygon_points(text)
+    if not points:
         return None
-    return sum(lats) / len(lats), sum(lons) / len(lons)
+    return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
 
 
 def parse_cap_position(document: str | bytes) -> tuple[float, float] | None:
+    """One point for one CAP alert, or nothing. See `parse_cap_area`."""
+    return parse_cap_area(document)[0]
+
+
+def parse_cap_area(
+    document: str | bytes,
+) -> tuple[tuple[float, float] | None, geometry.BBox | None]:
     """One point for one CAP alert, or nothing.
 
     Only `area/polygon` is read, and that restriction is not incidental: DWD
@@ -108,23 +120,28 @@ def parse_cap_position(document: str | bytes) -> tuple[float, float] | None:
     try:
         root = ET.fromstring(document)
     except ET.ParseError:
-        return None
+        return None, None
 
     lats: list[float] = []
     lons: list[float] = []
+    vertices: list[tuple[float, float]] = []
     for element in root.iter():
         if _tag(element) != "area":
             continue
         for child in element:
             if _tag(child) != "polygon":
                 continue
-            point = parse_polygon(child.text)
-            if point:
-                lats.append(point[0])
-                lons.append(point[1])
+            ring = polygon_points(child.text)
+            if ring:
+                lats.append(sum(p[0] for p in ring) / len(ring))
+                lons.append(sum(p[1] for p in ring) / len(ring))
+                vertices += ring
     if not lats:
-        return None
-    return sum(lats) / len(lats), sum(lons) / len(lons)
+        return None, None
+    # The point stays the average of the rings' centres, as before; the
+    # extent covers every vertex of every ring -- the EXCLUDE_POLYGON never
+    # enters either, since only `area/polygon` is read.
+    return (sum(lats) / len(lats), sum(lons) / len(lons)), geometry.extent(vertices)
 
 
 class CapAreaCache:
@@ -147,6 +164,11 @@ class CapAreaCache:
         max_texts: int = CAP_TEXT_CACHE_MAX,
     ):
         self._positions: dict[str, tuple[float, float] | None] = {}
+        # The extent of the same areas. Documents cached before extents were
+        # kept have a position and no extent: `_legacy` marks them so they
+        # are read again, within the same per-cycle budget as any unknown one.
+        self._extents: dict[str, geometry.BBox | None] = {}
+        self._legacy: set[str] = set()
         # The actionable text from the SAME bytes: what to do, and how the
         # agency describes it. Costs zero extra requests -- we already have the
         # document open for its polygon. Kept apart from the positions and NOT
@@ -168,6 +190,11 @@ class CapAreaCache:
             data = json.loads(self._cache_path.read_text(encoding="utf-8"))
             for key, value in data.items():
                 self._positions[key] = (float(value[0]), float(value[1])) if value else None
+                if value and len(value) == 6:
+                    west, south, east, north = (float(v) for v in value[2:])
+                    self._extents[key] = (west, south, east, north)
+                elif value:
+                    self._legacy.add(key)
             log.info("wmo cap: %d documents restored from cache", len(self._positions))
         except (OSError, TypeError, ValueError) as exc:
             log.warning("wmo cap cache unreadable (%s), starting empty", exc)
@@ -177,22 +204,26 @@ class CapAreaCache:
             return
         try:
             self._cache_path.parent.mkdir(parents=True, exist_ok=True)
-            self._cache_path.write_text(
-                json.dumps({k: list(v) if v else None for k, v in self._positions.items()}),
-                encoding="utf-8",
-            )
+            data = {}
+            for key, value in self._positions.items():
+                extent = self._extents.get(key)
+                data[key] = (list(value) + (list(extent) if extent else [])) if value else None
+            self._cache_path.write_text(json.dumps(data), encoding="utf-8")
         except OSError as exc:  # a cache is an optimisation, never a dependency
             log.warning("could not write the wmo cap cache: %s", exc)
 
     def known(self, path: str) -> tuple[float, float] | None:
         return self._positions.get(path)
 
+    def extent(self, path: str) -> geometry.BBox | None:
+        return self._extents.get(path)
+
     def text(self, path: str) -> CapText | None:
         """What that document told people to do, if we have read it."""
         return self._texts.get(path)
 
     def has(self, path: str) -> bool:
-        return path in self._positions
+        return path in self._positions and path not in self._legacy
 
     async def resolve(self, client: httpx.AsyncClient, paths: list[str]) -> int:
         """Fetches up to `per_cycle` unknown documents. Returns how many it read."""
@@ -202,14 +233,17 @@ class CapAreaCache:
             try:
                 response = await client.get(self.base + path)
                 response.raise_for_status()
-                position = parse_cap_position(response.text)
+                position, extent = parse_cap_area(response.text)
                 self._texts[path] = parse_cap_text(response.text)
             except Exception as exc:
                 # A document that will not come back is remembered as
-                # unplaceable, so we do not queue it again on every cycle.
+                # unplaceable, so we do not queue it again on every cycle --
+                # a legacy entry keeps the position it already had.
                 log.debug("wmo cap %s did not resolve (%s)", path, exc)
-                position = None
+                position, extent = self._positions.get(path), None
             self._positions[path] = position
+            self._extents[path] = extent
+            self._legacy.discard(path)
             learned += 1
         if learned:
             self._evict()
@@ -222,6 +256,8 @@ class CapAreaCache:
         excess = len(self._positions) - self.max_entries
         for path in list(self._positions)[:excess]:
             del self._positions[path]
+            self._extents.pop(path, None)
+            self._legacy.discard(path)
             self._texts.pop(path, None)
 
         # The texts have their own, much smaller ceiling: about a kilobyte

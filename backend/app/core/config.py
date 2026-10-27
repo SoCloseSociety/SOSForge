@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     port: int = 8300
     log_level: str = "INFO"
 
-    cors_origins: str = "http://localhost:5273,http://127.0.0.1:5273"
+    cors_origins: str = "http://localhost:5380,http://127.0.0.1:5380"
 
     # --- storage ---
     data_dir: Path = Path("./data")
@@ -89,11 +89,13 @@ class Settings(BaseSettings):
     # weather-bulletin material, and there are over 2000 per cycle across ten
     # countries.
     meteoalarm_min_level: int = 3
-    # WMO: CAP rank, 1 = Extreme, 2 = Severe. Caveat measured on the real
-    # feed: the scale is NOT homogeneous from one country to another (US
-    # "Small Craft Advisory" alerts arrive at rank 1, while India tags routine
-    # rain at rank 2). So we stick to the top tier as declared by each country
-    # -- 221 alerts out of 2258 -- rather than trusting the scale.
+    # WMO: how many CAP severity TIERS to keep, counting down from Extreme
+    # (1 = Extreme only, 2 = Severe and above). This is NOT the value of the
+    # feed's `s` field, which grows WITH the severity (0 Unknown .. 4 Extreme,
+    # lesson 27); the figures once quoted here were measured under the
+    # inverted reading and are gone with it. The scale is still not
+    # homogeneous between countries, so we keep the top tier as each country
+    # declares it rather than trusting the scale across borders.
     wmo_max_severity_rank: int = 1
 
     # backfill at startup: we do not want an empty map

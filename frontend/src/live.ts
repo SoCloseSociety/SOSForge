@@ -16,6 +16,13 @@ const SILENCE_LIMIT_MS = 15_000
 /** Watchdog step. At 2 s, detection lands between 15 and 17 s of silence;
  * at 5 s it could reach 20 s, a third more than the contract. */
 const WATCHDOG_STEP_MS = 2_000
+/** How long a handshake may take before it is abandoned. The watchdog only
+ * guards a link believed connected, and the reconnect starts from `onclose`:
+ * a socket stuck in CONNECTING (a captive portal, a proxy holding the upgrade)
+ * fired neither, and the tab announced "RECONNECTING" forever without ever
+ * trying again. Ten seconds is generous for a handshake even on a saturated
+ * mobile link, and short next to the 15 s silence rule. */
+const CONNECT_TIMEOUT_MS = 10_000
 
 export function connectLive(): () => void {
   let socket: WebSocket | null = null
@@ -23,11 +30,15 @@ export function connectLive(): () => void {
   let attempt = 0
   let openedAt = 0
   let reconnectTimer: number | undefined
+  let connectTimer: number | undefined
   let watchdog: number | undefined
 
   const url = () => {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    return `${protocol}//${location.host}/ws`
+    // `chunks=1`: ask for the snapshot in `snapshot_more` chunks. Opt-in, so a
+    // tab still running an older build gets the snapshot whole, as it always
+    // did, instead of a first chunk it cannot read the rest of.
+    return `${protocol}//${location.host}/ws?chunks=1`
   }
 
   const scheduleReconnect = () => {
@@ -42,9 +53,29 @@ export function connectLive(): () => void {
 
   const open = () => {
     if (closed) return
-    socket = new WebSocket(url())
+    const current = new WebSocket(url())
+    socket = current
+    let opened = false
+
+    // Abandon a handshake that does not complete. The handlers are detached
+    // FIRST, so a browser that does fire `onclose` for it later cannot
+    // schedule a second reconnect on top of this one.
+    window.clearTimeout(connectTimer)
+    connectTimer = window.setTimeout(() => {
+      if (opened || socket !== current) return
+      current.onopen = current.onmessage = current.onclose = current.onerror = null
+      try {
+        current.close()
+      } catch {
+        /* closing a dead handshake can only fail one way: it is already dead */
+      }
+      socket = null
+      scheduleReconnect()
+    }, CONNECT_TIMEOUT_MS)
 
     socket.onopen = () => {
+      opened = true
+      window.clearTimeout(connectTimer)
       // We do NOT reset the backoff counter here. An open socket proves
       // nothing: a proxy that accepts the TCP connection without forwarding
       // anything would open the connection, we'd restart at 1 s, the
@@ -98,6 +129,7 @@ export function connectLive(): () => void {
   return () => {
     closed = true
     window.clearTimeout(reconnectTimer)
+    window.clearTimeout(connectTimer)
     window.clearInterval(watchdog)
     useStore.getState().setConnected(false)
     socket?.close()

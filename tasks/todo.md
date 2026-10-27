@@ -472,3 +472,286 @@ from 233 events, none of them a measured disaster, to one: AEMET reporting
 - **The ash SIGMET threshold** (`SEVERE` above 25000 ft): all nine live SIGMETs
   are below it, so no measurement could say whether moving it helps.
 - **`cyclone_severity`**: already anchored on Saffir-Simpson, i.e. on harm.
+
+---
+
+# Upgrade 2026-10-26 -- native app, alerting, sources, design
+
+## What the owner asked (2026-10-26)
+
+Upgrade the whole project with Fable; use every tool and access we already
+have; use ScanGithub; liaise with the other agents; adopt the SentinelHouse
+design; take the whole system and structure back in hand; build the SOSForge
+APK -- native, NOT a WebView, with real mobile funnels; perfect the sources,
+the notification system, prevention and alerting; widen, perfect, complete
+on every point.
+
+## Decisions taken by default (the owner can overturn any of them)
+
+- **Native stack**: Kotlin + Jetpack Compose, same pins, scaffold and
+  `build.sh` shape as `SuiteForge/GSTATSFORGE/android` (the fleet's proven
+  native app), Sentinel House kit (Lunar / Soft, IBM Plex, the mint thread,
+  Fold 600 dp rule, 4 text sizes). No WebView anywhere. Package
+  `co.soclose.sosforge`, minSdk 26, targetSdk 36. Lives in `android/`.
+- **Map**: MapLibre Native Android, same OpenFreeMap style as the web. A map
+  that cannot start degrades, the feed keeps running (same rule as the web).
+- **Background alerts without Firebase in v1**: an opt-in "Watch" foreground
+  service holding a zone-filtered websocket, plus a WorkManager fallback.
+  FCM needs a Firebase project (an owner account action) and routes every
+  alert through Google; the product is key-free. The app must say plainly
+  when the watch is NOT running (battery optimisation, permission refused,
+  socket dead): the freshness rule applies to alerts exactly as to the feed.
+- **Release key outside the repo**: `~/.soclose/android/sosforge.properties`
+  + `sosforge-release.jks`, like GStats. The APK goes to
+  `VsCodeN30/_apk-drops/sosforge/` with a CHECKLIST.
+- **Not done without the owner's go**: production deploy to the helper VPS,
+  Play Store, installing on the owner's Fold.
+
+## Contract between the backend and the app (additive: the web is unchanged)
+
+- `/ws?zones=lat,lon,radius_km;...&min_severity=...&kinds=...` -- snapshot
+  and deltas filtered server-side, `tick` ALWAYS sent. No parameter = today's
+  behaviour, byte for byte.
+- `GET /api/events` gains `lat`, `lon`, `radius_km`.
+- `GET /api/guidance?lang=` -- prevention catalogue per hazard kind (before,
+  during, after), short imperative lines, every line carrying the official
+  source it comes from. One catalogue so the web and the app never disagree
+  on what to do in an emergency.
+- `GET /api/version` -- `{api, features[]}` so the app can detect a server
+  that predates the contract and fall back to client-side filtering.
+- The client ALWAYS re-filters what it receives (defence in depth: a server
+  that ignored the filter must not flood the phone with the world).
+
+## Lanes (Fable subagents, one git worktree each, disjoint files)
+
+| Lane | Scope | Files |
+|---|---|---|
+| A -- app | native Android app, funnels, watch service, notifications, signed APK | `android/` only |
+| B -- alerting API | the contract above, zone relevance, guidance catalogue | `backend/app/main.py`, `hub.py` (critical), new modules, tests |
+| C -- sources | audit every source live, ScanGithub research, add only what runs against the real API | `backend/app/sources/`, registry, tests |
+| D -- web | SentinelHouse charte on the web UI, notification and watch funnel | `frontend/` only |
+| E -- system audit | read-only review of the whole system and structure | none (report) |
+
+Critical files touched by lane B (`hub.py`, `main.py`) and lane C
+(`sources/*.py`): this section is their written plan. `pipeline.py`,
+`dedupe.py` and `store/ring.py` are NOT in any lane's scope; a finding there
+comes back to me first.
+
+## Port move 5273 -> 5380 (flagged by adsagent)
+
+5273 is AdsForge's declared Vite port (its CLAUDE.md, vite.config.ts,
+scripts/dev.sh): two dev servers would fight for it, or an agent would test
+the other product's UI for an hour. SOSForge moves to 5380 (free, undeclared,
+next to its 8300 / 8380). Me: Makefile, README, CLAUDE.md, .env.example,
+tools/responsive.py, and the CORS default in `backend/app/core/config.py`
+(one line). Lane D: frontend/vite.config.ts (with strictPort) and
+vitest.config.ts. The VPS is untouched: production does not use Vite.
+
+## Integration (me)
+
+- [x] baseline gates recorded before any merge: pytest 486 passed, vitest
+      166 passed (19 files), ruff clean, mypy clean (40 files)
+- [x] lane B merged, gates green (f93acd6), then lane F (3c25a60). One
+      interaction caught and pinned (4f3b22f): an alert re-listed past
+      `expires` is retracted by the pipeline (F) and must reach the phone's
+      cursor `removed` (B). 635 backend tests, agent 43, ruff + mypy clean.
+      The pinned snapshot grew 331 -> 879 KiB; JSON deflates ~8.5x and
+      uvicorn negotiates permessage-deflate by default, so ~100 KiB on the
+      wire. Accepted.
+- [x] lane C merged (5d6733d) and integrated (47092b4: registry built,
+      zones match `bbox`, change log judges the previous box). Live on the
+      integrated code, :8370, 2026-10-26 21:31 UTC: 32 sources, 32 up, 0
+      degraded; the four new ones all with events (imo 15, imo-volcano 3,
+      jma-volcano 12, ncs 300 seen / 48 ingested); 101 of 928 events carry a
+      bbox. `space` and `jma-tsunami` saw 0 CURRENT events: their only items
+      were expired and are now withdrawn at the source, as intended.
+- [ ] lane D merged, screenshots at 390 / 1440 px, both themes, measured
+- [x] lane A: native app (515eae7, `android/` only), 263 tests, the whole
+      funnel + watch service + map run on emulator 5590 under the adb_file
+      lock, 4 real notifications. Signed APK 0.1.0 (code 5), sha256 0307549...,
+      signer verified with apksigner; dropped in `_apk-drops/sosforge/` with
+      its CHECKLIST. Separate PR #4 (touches nothing deployed). Then 0.1.1
+      (code 6, d537570): the clock-skew fix lane D found in the web, same
+      rule; sha256 971ebc3..., same key, unit tests only (no emulator rerun).
+- [ ] lane E findings reproduced one by one before any fix (lesson 25)
+- [ ] commits by explicit paths only (lesson 26)
+- [ ] review section written here, lessons captured
+
+## Production update, stage 1 (2026-10-26)
+
+- [x] PR #3 open, now backend + sources + web, ready for review, CI green
+      on the final state (backend, frontend, agent). `main`'s own CI has
+      been red since 2026-08-26 (`No module named 'app'`); PR #3 fixes it, so
+      PR #4 (android only) goes green once #3 is merged.
+- [ ] merge: refused by the permission classifier ("merge without review").
+      Waiting for the owner to review / merge, or to allow it.
+- [x] lane D merged into the PR (14ca365): 246 frontend tests, panel fix
+      verified on the captures.
+- [ ] BLOCKER found by lane D before merge: the pinned snapshot is 118 KiB
+      on the wire (52 before) and the 15 s watchdog runs while it downloads,
+      so below ~64 kbit/s (was ~28) a fresh tab reconnects forever. Fix:
+      chunked snapshot (`snapshot.more` + `snapshot_more` messages), server
+      by lane B, client by lane D. PR #3 back to draft until it lands.
+- [ ] then on helper-vps: tag the running images for rollback, copy the
+      journal out of the volume, `git pull && docker compose up -d --build`,
+      verify /readyz, /api/version, a live socket, the UI.
+- [ ] then the host vhost `/ws` block: the three forwarded headers,
+      `nginx -t`, reload, verify the API sees the real client address.
+
+## Follow-ups (not in PR #3 / #4)
+
+- **The tick is now the bandwidth floor** (lane B): each 1 Hz tick is ~1 KiB
+  on the wire, 8.3 KB of JSON, mostly the health of 32 sources, so ~8 kbit/s
+  sustained. Send `sources` only when they change (protocol change for web,
+  app and the agent, opt-in like `chunks=1`).
+- APK is 39 MB because MapLibre ships three ABIs: split per ABI for the Fold.
+- es / ja / id strings of the app and the 28 guidance lines flagged
+  `needs_review` need a native reader.
+- `specialUse` needs a Play Console declaration before any store release.
+- ScanGithub scans 164, 165, 166 are queued behind fleet scan 163 (no cancel
+  endpoint): read their libraries when they complete.
+- `read_journal` skips events dated more than 24 h ago, so long-running
+  alerts vanish until the next poll after a restart (lane F).
+- Structure (lane E): sources registry as a table, `protocol.py`, routers;
+  behind a golden contract test, after these PRs merge.
+
+## Liaison
+
+The 12 peer sessions are told what SOSForge is doing. Asked specifically:
+`sentinelhouse-e3` (which design files are canonical), `gstatsforge-6a`
+(native scaffold and build pitfalls), `agentfarm` (device-farm test protocol).
+
+Answers received and relayed to the lanes:
+
+- **agentfarm**: emulators 5584 / 5590 for the full functional test, every
+  adb call through `adb_file.py` with the per-serial lock. The Fold only with
+  a slot and its GO. Farm production phones (192.168.8.x and the four USB
+  serials) never: live social accounts.
+- **sentinelhouse-e3**: `charte.css` is the token source (Lunaire `:root`,
+  Doux `[data-theme="doux"]`), align with `sentinel.css`, never fork it.
+  Frontiers 599/600 and 779/780 only. Severity hues fixed across themes,
+  a glyph of a different shape per severity, AA measured on both themes.
+- **gstatsforge-6a**: copy the kit from the CURRENT tree (0.2.4) and note
+  the source commit; TileRow, text heights, screenshot method, live-stream
+  single source. No shared kit library exists yet (owner decision).
+- **ebookforge-84**: JDK 21, release gate (permissions allowlist, 16 KB
+  aligned .so, signer sha256, no dev host).
+- **agentkr**: cursor + ETag/304 polling, quiet-hours rules (an extreme
+  alert near the user is never held).
+- **aiblog-c5, clip-generator-local-67**: auth handoff and Glance widgets,
+  not needed for a key-free app.
+
+## Lane E findings -> owners (audit 2026-10-26, top four re-measured by me)
+
+Re-measured on production before dispatch (lesson 25): a fresh tab's snapshot
+reaches back 8.3 h; 49 of 70 severe/extreme/tsunami events and 264 of 346
+ongoing alerts are missing from it. `/ws` sends no forwarded address and
+uvicorn runs without `--proxy-headers`, so the 24-socket cap is shared by the
+whole site. On a phone `WatchPanel` is not mounted while the sheet is
+closed. jma-tsunami has ingested 12 257 times against 181 for jma.
+
+| # | Finding | Owner | Files |
+|---|---|---|---|
+| 1 | snapshot misses ongoing / severe | B (composition), D (client 1000 cut), A (app) | main.py / scope.py, store.ts |
+| 2 | 24 tabs for the whole site | F (repo side); VPS host vhost = owner go | deploy/nginx.conf, backend/Dockerfile |
+| 3 | location alarm dead on phones | D | App.tsx, WatchPanel, store |
+| 4 | escalation never sounds | F (server `escalated` flag + agent), D and A (consume it) | pipeline.py, agent/ |
+| 5 | restart resurrects withdrawn events | F | store/ring.py |
+| 6 | expired alerts flap every 5 min | F (pipeline), C (jma_tsunami skips expired rows) | pipeline.py, sources/ |
+| 7 | depth rule bypassed (EMSC etc.) | C | sources/ |
+| 8 | tsunami counter 0 during a warning | F (counter), D (banner 6 h cutoff) | ring.py, App.tsx |
+| 9 | swarm counts itself, duplicates | F | swarm.py |
+| 10 | half-dead source shows green | C (degraded + last_event_at), D (footer) | sources/base.py |
+| 11 | silence sweep ignores source health | F, MEASURE on the journal first | ring.py |
+| 12 | socket stuck in CONNECTING | D | live.ts |
+| 13 | agent swallows outage events | F; A applies the same rule to the watch service | agent/ |
+| 14 | aftershock forecasts lack `expires` | C | sources/aftershock.py |
+| 15 | security headers sent twice | me, at deploy (owner go) | VPS host vhost |
+| 16 | Meteoalarm HTML entities; geocode global queue | C; me | sources/, geocode.py |
+| -- | docs drift (19/26/28 sources, test counts, API docs) | me, at integration | README, CLAUDE.md, .env.example |
+| -- | nginx 1.27 EOL, CI gaps | F | frontend/Dockerfile, .github/ |
+| -- | backend lockfile | owner decision | -- |
+| -- | structure (registry, protocol, routers) | me, after B merges, behind a golden contract test | main.py |
+
+Lane F (new) owns the critical files no other lane holds: `pipeline.py`,
+`store/ring.py`, `swarm.py`, `agent/`, the Dockerfiles, `deploy/nginx.conf`,
+CI. This section is its written plan.
+
+## Alerting contract v2 for the native app (2026-10-26, lane B)
+
+Additive. With no new parameter, `/ws` and `/api/events` answer with the
+same messages and the same body keys as before; the only change a legacy
+client sees is the snapshot composition (below), asked for by the
+orchestrator after the production audit. `hub.py` keeps its slow-client
+eviction policy untouched: a scoped client gets a narrowed message (or
+none) and then goes through the same bounded queue and the same eviction.
+
+- [x] `app/scope.py`: `zones` (<= 10, lat/lon bounded, radius 1..2000 km),
+      `min_severity`, `kinds`, `unplaced` (`drop` | `all` | ISO country
+      list). Great-circle match on the event's point, and since lane C on
+      its `bbox` when the source published a shape (`Zone.touches`).
+      Events with no position: dropped by default and COUNTED
+      (`unplaced.dropped`), or delivered by country / all on request.
+- [x] Snapshot composition (`scope.compose`): latest N primaries + every
+      older primary that is ongoing, severe-or-above or tsunami; the zone
+      filter runs BEFORE the cut. Same composition for v2 full REST reads.
+- [x] `app/hub.py`: `Client.scope` + held ids; tick always passes; an
+      event/update that stops matching a held id becomes
+      `purge reason=out_of_scope`; purges narrowed to held ids; snapshot
+      ids held before the first await. `changelog.record` cannot break the
+      fan-out.
+- [x] `app/changelog.py`: in-memory log with, per entry, the event's
+      matching fields BEFORE the change, so a REST delta can tell "left
+      your scope" from "never was in it". Seeded from the store after the
+      journal replay and backfill. Opaque cursor `<epoch>:<seq>`.
+- [x] `app/main.py`: `/ws` params (refused with an `error` message, then
+      close 1008), `/api/events` v2 (`lat`/`lon`/`radius_km`, the ws scope
+      params, `since`, ETag + `Cache-Control: no-cache`, 304), legacy path
+      byte-for-byte (and deliberately no ETag), `/api/version`,
+      `/api/guidance`.
+- [x] `app/guidance.py` + `app/data/guidance.json`: 13 kinds x 3 phases x
+      5 languages, 753 lines, each with source URL, source language and the
+      verbatim excerpt it paraphrases. Every excerpt re-checked as a
+      substring of the fetched page (680 on a fresh fetch, 73 against the
+      saved page where the site refuses plain curl).
+- [x] Tests: test_scope, test_changelog, test_ws_contract,
+      test_events_v2, test_guidance (113 new; mutation-checked).
+- [x] Live measurement on :8310 (review below).
+
+### Chunked snapshot, opt-in (`/ws?chunks=1`)
+
+The pinned snapshot in one message regressed slow links: the web's 15 s
+silence watchdog runs while it downloads, so a fresh tab closed mid-snapshot
+and reconnected forever. Pre-chunking web builds THROW on an unknown frame
+and installed macOS agents are old, so chunking is opt-in:
+
+- without `chunks=1`: the pre-v2 snapshot rule, byte for byte in keys and
+  content (latest `snapshot_size` primaries, scope applied if given, no
+  pinning, no `more`);
+- with `chunks=1` (any other value: `bad_chunks`, error + 1008): the
+  composed snapshot (latest + every ongoing / severe+ / tsunami primary,
+  scope before the cut) as `snapshot` + `more: N`, then `snapshot_more`
+  `{events, remaining, server_time}` chunks in composition order, all
+  before the first queued delta, every id held from the start. Chunks are
+  cut at 40 events or 32 KB of JSON, whichever comes first; the first
+  message is the first chunk.
+
+Measured on :8310, permessage-deflate as negotiated by uvicorn 0.54
+(server_max_window_bits=12), real wire bytes through a counting proxy and a
+deflate simulator that matched them to the byte:
+
+| | messages | largest on the wire | floor for no 15 s gap |
+|---|---|---|---|
+| pre-merge (= no opt-in) | 1 (300 events) | 54.6 KiB | 29.8 kbit/s |
+| PR #3, one message | 1 (469 events) | 79.7 KiB | 43.5 kbit/s |
+| `chunks=1` | 18 (469 events) | 6.9 KiB (total 81.6) | 3.8 kbit/s |
+
+### Not done, on purpose
+
+- **A magnitude-dependent reach** for earthquakes (the local agent's felt
+  radius): the zone is the client's own radius, by contract.
+- **The 1 Hz tick costs about 1 KiB on the wire** (8.3 KB of JSON, 28
+  sources' health): roughly 8 kbit/s sustained. Below that, a client that
+  got its snapshot still falls further behind every second and is evicted
+  at the queue bound. Slimming the tick (sources only when they change) is
+  a protocol change for lanes D and F, not done here.

@@ -22,11 +22,12 @@ describe('a feed row', () => {
         emptyKey="filters.empty"
       />,
     )
-    // The translated label ("Severe") and the glyph ("⚠") accompany the
+    // The translated label ("Severe") and the glyph ("◆") accompany the
     // color: the row stays readable with color-deficient vision as well as
-    // in black-and-white print.
+    // in black-and-white print. The glyph was "⚠" until 2026-10: a triangle,
+    // like moderate's "▲", so the shape told the two ranks apart for nobody.
     expect(screen.getByText('Severe')).toBeInTheDocument()
-    expect(screen.getByText('⚠')).toBeInTheDocument()
+    expect(screen.getByText('◆')).toBeInTheDocument()
   })
 
   it('no identifiable country: a globe, never an approximate flag', () => {

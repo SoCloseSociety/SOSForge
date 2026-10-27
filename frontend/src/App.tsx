@@ -1,10 +1,14 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { ALL_KINDS, WINDOWS, filterEvents, useStore } from "./store";
 import { emptyReason } from "./emptyReason";
+import { criticalEvents } from "./critical";
+import { degradedFeeds, hasIssue } from "./sourceHealth";
 import { connectLive } from "./live";
 import { syncDeepLink } from "./deeplink";
 import { Feed } from "./components/Feed";
 import { useIsPhone } from "./useMediaQuery";
+import { useWatchAlarms } from "./useWatchAlarms";
+import type { Alarm } from "./alarm";
 
 /** MapLibre is over a megabyte, and the feed is readable without it. Loading it
  * lazily takes the entry bundle from 1277 kB to a fraction of that, which is
@@ -18,6 +22,7 @@ import { SearchBar } from "./components/SearchBar";
 import { ArrivalAlert } from "./components/ArrivalAlert";
 import { WatchPanel } from "./components/WatchPanel";
 import { LANGS } from "./i18n";
+import { applyTheme, currentTheme, type Theme } from "./theme";
 import {
   KIND_GLYPH,
   SEVERITY_META,
@@ -46,6 +51,7 @@ function Kpis({ now }: { now: number }) {
   const sources = useStore((s) => s.sources);
   const events = useStore((s) => s.events);
   const t = useStore((s) => s.t);
+  const loading = useStore((s) => s.snapshotRemaining > 0);
 
   const lastQuake = useMemo(
     () => events.find((e) => e.kind === "earthquake"),
@@ -59,7 +65,10 @@ function Kpis({ now }: { now: number }) {
         <div className="label">{t("kpi.quakes")}</div>
         <div className="value">{stats?.earthquakes_last_hour ?? "--"}</div>
         <div className="sub">
-          {lastQuake
+          {/* the newest quake may still be in a snapshot chunk on its way */}
+          {loading
+            ? t("kpi.loading")
+            : lastQuake
             ? t("kpi.quakes.last", {
                 age: formatAge(t, (now - Date.parse(lastQuake.time)) / 1000),
               })
@@ -75,14 +84,16 @@ function Kpis({ now }: { now: number }) {
       </div>
       <div className="kpi">
         <div className="label">{t("kpi.tsunami")}</div>
+        {/* An active tsunami bulletin is said by the extreme glyph AND the
+            colour, never the colour alone (it used to be a red number). */}
         <div
-          className="value"
-          style={{
-            color: stats?.tsunami_active
-              ? SEVERITY_META.extreme.text
-              : undefined,
-          }}
+          className={`value${stats?.tsunami_active ? " sev-extreme" : ""}`}
         >
+          {stats?.tsunami_active ? (
+            <span className="glyph" aria-hidden="true">
+              {SEVERITY_META.extreme.glyph}{" "}
+            </span>
+          ) : null}
           {stats?.tsunami_active ?? "--"}
         </div>
         <div className="sub">{t("kpi.tsunami.sub")}</div>
@@ -107,13 +118,7 @@ function Kpis({ now }: { now: number }) {
 
 function Banner({ events, now }: { events: SosEvent[]; now: number }) {
   const t = useStore((s) => s.t);
-  const critical = useMemo(() => {
-    const cutoff = now - 6 * 3600 * 1000;
-    return events.filter(
-      (e) =>
-        Date.parse(e.time) > cutoff && (e.tsunami || e.severity === "extreme"),
-    );
-  }, [events, now]);
+  const critical = useMemo(() => criticalEvents(events, now), [events, now]);
 
   if (critical.length === 0) return null;
   const top = critical[0];
@@ -122,8 +127,9 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
       <span className="icon" aria-hidden="true">
         {top.tsunami ? "🌊" : SEVERITY_META.extreme.glyph}
       </span>
-      <span>
-        {top.tsunami ? t("banner.tsunami") : t("banner.major")} :{" "}
+      <span className="banner-text">
+        <strong>{top.tsunami ? t("banner.tsunami") : t("banner.major")}</strong>
+        {": "}
         {/* The place alone is not enough: the NHC names a storm by its
             given name, so the banner read "MAJOR ALERT: Polo" and nothing
             told the reader that Polo was a hurricane. The hazard type comes
@@ -142,8 +148,9 @@ function Banner({ events, now }: { events: SosEvent[]; now: number }) {
   );
 }
 
-function Filters({ events, now }: { events: SosEvent[]; now: number }) {
+function Filters({ events, alarms }: { events: SosEvent[]; alarms: Alarm[] }) {
   const filters = useStore((s) => s.filters);
+  const loading = useStore((s) => s.snapshotRemaining > 0);
   const toggleKind = useStore((s) => s.toggleKind);
   const setMinMagnitude = useStore((s) => s.setMinMagnitude);
   const setWindow = useStore((s) => s.setWindow);
@@ -220,7 +227,7 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
 
       {/* Location watch sits right under the search: both answer the same
           question, "what is happening where I care about". */}
-      <WatchPanel events={events} now={now} />
+      <WatchPanel alarms={alarms} />
 
       {/* Then the window: it's what separates live from historical, and
           therefore the question the user is asking when they arrive. */}
@@ -259,7 +266,12 @@ function Filters({ events, now }: { events: SosEvent[]; now: number }) {
             >
               <span aria-hidden="true">{KIND_GLYPH[kind]}</span>
               {kindLabel(t, kind)}
-              <span className="count">{n}</span>
+              {/* "+" while the snapshot is still arriving: a count of what
+                  has landed so far is a floor, not a total */}
+              <span className="count">
+                {n}
+                {loading ? "+" : ""}
+              </span>
             </button>
           );
         })}
@@ -303,7 +315,98 @@ function LangPicker() {
   );
 }
 
-function Footer() {
+/** Lunar (dark, the default) or Soft (light, for daylight). A pressed toggle
+ * with a constant label, not a button whose word flips: a screen reader hears
+ * "Soft, toggle button, pressed", which says both the choice and the state.
+ * The map stays dark in both themes, as Sentinel House keeps its sky. */
+function ThemeToggle() {
+  const t = useStore((s) => s.t);
+  const [theme, setTheme] = useState<Theme>(currentTheme);
+  const soft = theme === "soft";
+  return (
+    <button
+      type="button"
+      className="btn btn-secondary btn-compact"
+      aria-pressed={soft}
+      title={t("theme.title")}
+      onClick={() => {
+        const next: Theme = soft ? "lunar" : "soft";
+        applyTheme(next);
+        setTheme(next);
+      }}
+    >
+      <span aria-hidden="true">◐</span>
+      <span className="label">{t("theme.soft")}</span>
+    </button>
+  );
+}
+
+/** What is wrong with the sources, behind "Show more". The state of every
+ * source stays on screen permanently (dot, triangle or cross, and a word for
+ * screen readers); the DETAIL -- an error string with a URL in it, the feeds
+ * that failed, when the last event came -- is long secondary text that would
+ * push the footer past its card on a phone. */
+function SourceErrors({ now }: { now: number }) {
+  const sources = useStore((s) => s.sources);
+  const t = useStore((s) => s.t);
+  const [open, setOpen] = useState(false);
+  const troubled = useMemo(() => sources.filter(hasIssue), [sources]);
+  if (troubled.length === 0) return null;
+  return (
+    <div className="source-errors">
+      <button
+        type="button"
+        className="btn btn-quiet btn-inline"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? t("more.hide") : t("footer.errors", { n: troubled.length })}
+      </button>
+      {open ? (
+        <ul>
+          {troubled.map((source) => {
+            const failed = degradedFeeds(source);
+            return (
+              <li key={source.name}>
+                <strong>{SOURCE_LABEL[source.name] ?? source.name}</strong>
+                {!source.connected && source.last_error ? (
+                  <code>{source.last_error}</code>
+                ) : null}
+                {failed && failed.length > 0 ? (
+                  <span>{t("footer.failed", { feeds: failed.join(", ") })}</span>
+                ) : null}
+                {source.last_event_at ? (
+                  <span>
+                    {t("footer.lastevent", {
+                      age: formatAge(
+                        t,
+                        (now - Date.parse(source.last_event_at)) / 1000,
+                      ),
+                    })}
+                  </span>
+                ) : null}
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
+function Credit() {
+  return (
+    <span className="credit">
+      Developed by{" "}
+      <a href="https://soclose.co" target="_blank" rel="noopener">
+        SoClose Pte. Ltd.
+      </a>
+      , Singapore
+    </span>
+  );
+}
+
+function Footer({ now }: { now: number }) {
   const sources = useStore((s) => s.sources);
   const clients = useStore((s) => s.clients);
   const t = useStore((s) => s.t);
@@ -337,13 +440,8 @@ function Footer() {
         </button>
         <span className="spacer" />
         <span>{t("footer.clients", { n: clients })}</span>
-        <span className="credit">
-          Developed by{" "}
-          <a href="https://soclose.co" target="_blank" rel="noopener">
-            SoClose Pte. Ltd.
-          </a>
-          , Singapore
-        </span>
+        <SourceErrors now={now} />
+        <Credit />
       </footer>
     );
   }
@@ -361,41 +459,35 @@ function Footer() {
           <span aria-hidden="true">✕</span>
         </button>
       ) : null}
-      {sources.map((source) => (
-        <span
-          className={`source${source.connected ? "" : " source-down"}`}
-          key={source.name}
-          title={source.last_error ?? "OK"}
-        >
-          {/* A green dot and a red dot, 7 px wide, measure 1.43:1 against
-              each other: for a deuteranopic reader the footer said nothing at
-              all -- and telling you WHICH source is dead is the only reason
-              this footer exists. The glyph carries it now; the colour only
-              reinforces it. */}
+      {sources.map((source) => {
+        const degraded = source.connected && degradedFeeds(source) !== null;
+        const state = !source.connected ? "down" : degraded ? "degraded" : "up";
+        return (
           <span
-            className={`dot ${source.connected ? "up" : "down"}`}
-            aria-hidden="true"
-          />
-          <span className="sr-only">
-            {source.connected ? t("footer.source.up") : t("footer.source.down")}
+            className={`source source-${state}`}
+            key={source.name}
+            title={source.last_error ?? "OK"}
+          >
+            {/* A green dot and a red dot, 7 px wide, measure 1.43:1 against
+                each other: for a deuteranopic reader the footer said nothing
+                at all -- and telling you WHICH source is dead is the only
+                reason this footer exists. The SHAPE carries it now (dot,
+                triangle, cross); the colour only reinforces it. */}
+            <span className={`dot ${state}`} aria-hidden="true" />
+            <span className="sr-only">{t(`footer.source.${state}`)}</span>
+            <span aria-hidden="true" className="source-mark">
+              {state === "down" ? "\u00d7" : state === "degraded" ? "\u25b2" : ""}
+            </span>
+            {SOURCE_LABEL[source.name] ?? source.name}
+            <span className="count">{source.ingested ?? source.events_seen}</span>
           </span>
-          <span aria-hidden="true" className="source-mark">
-            {source.connected ? "" : "\u00d7"}
-          </span>
-          {SOURCE_LABEL[source.name] ?? source.name}
-          <span className="count">{source.ingested ?? source.events_seen}</span>
-        </span>
-      ))}
+        );
+      })}
       <span className="spacer" />
       <span>{t("footer.clients", { n: clients })}</span>
       <span>{t("footer.basemap")}</span>
-      <span className="credit">
-        Developed by{" "}
-        <a href="https://soclose.co" target="_blank" rel="noopener">
-          SoClose Pte. Ltd.
-        </a>
-        , Singapore
-      </span>
+      <SourceErrors now={now} />
+      <Credit />
     </footer>
   );
 }
@@ -410,6 +502,7 @@ export default function App() {
   const selected = useStore((s) => s.selected);
   const lang = useStore((s) => s.lang);
   const t = useStore((s) => s.t);
+  const remaining = useStore((s) => s.snapshotRemaining);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
@@ -420,6 +513,10 @@ export default function App() {
     () => filterEvents(events, filters, bucket * 10_000),
     [events, filters, bucket],
   );
+
+  // The watch alarm rings from HERE, whatever panel is mounted: on a phone
+  // the watch panel lives in the collapsed filter sheet (audit 2026-10, #3).
+  const alarms = useWatchAlarms(events, now);
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selected) ?? null,
@@ -444,32 +541,12 @@ export default function App() {
           {/* The only heading present at all times. Without it a screen-reader
               user pressing H landed on the map legend, or on nothing. */}
           <h1>SOSForge</h1>
-          <span>{t("app.tagline")}</span>
+          <span className="tagline">{t("app.tagline")}</span>
         </div>
         <span className="spacer" />
-        <LangPicker />
-        <span
-          className="clock"
-          aria-label={`${formatClock(new Date(now))} UTC`}
-        >
-          {formatClock(new Date(now))} UTC
-        </span>
-        <button
-          type="button"
-          className="toggle"
-          aria-pressed={soundOn}
-          onClick={toggleSound}
-          title={t("app.sound.title")}
-        >
-          <span aria-hidden="true">{soundOn ? "🔔" : "🔕"}</span>
-          {/* wrapped so the phone layout can drop the word and keep the icon:
-              a bare text node cannot be targeted by CSS */}
-          <span className="label">
-            {soundOn ? t("app.sound.on") : t("app.sound.off")}
-          </span>
-        </button>
         {/* aria-live: connection status is THE thing a screen reader user
-            needs to learn without having to go looking for it */}
+            needs to learn without having to go looking for it. First in the
+            bar after the name: it is what every other number depends on. */}
         <span
           className={`live ${connected ? "on" : "off"}`}
           role="status"
@@ -477,6 +554,30 @@ export default function App() {
         >
           <span className="dot" aria-hidden="true" />
           {connected ? t("app.live") : t("app.reconnecting")}
+        </span>
+        <span
+          className="clock"
+          aria-label={`${formatClock(new Date(now))} UTC`}
+        >
+          {formatClock(new Date(now))} UTC
+        </span>
+        <span className="header-tools">
+          <button
+            type="button"
+            className="btn btn-secondary btn-compact toggle"
+            aria-pressed={soundOn}
+            onClick={toggleSound}
+            title={t("app.sound.title")}
+          >
+            <span aria-hidden="true">{soundOn ? "🔔" : "🔕"}</span>
+            {/* wrapped so the phone layout can drop the word and keep the
+                icon: a bare text node cannot be targeted by CSS */}
+            <span className="label">
+              {soundOn ? t("app.sound.on") : t("app.sound.off")}
+            </span>
+          </button>
+          <ThemeToggle />
+          <LangPicker />
         </span>
       </header>
 
@@ -487,11 +588,12 @@ export default function App() {
 
       <div className="body">
         <section className="panel">
-          <Filters events={events} now={now} />
+          <Filters events={events} alarms={alarms} />
           <Feed
             events={visible}
             now={now}
-            emptyKey={emptyReason({ events, visible, filters })}
+            remaining={remaining}
+            emptyKey={emptyReason({ events, visible, filters, remaining })}
           />
         </section>
         <div className="map-column">
@@ -502,7 +604,7 @@ export default function App() {
         </div>
       </div>
 
-      <Footer />
+      <Footer now={now} />
     </div>
   );
 }

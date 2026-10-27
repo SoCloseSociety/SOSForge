@@ -53,7 +53,8 @@ VIEWPORTS = [
     ("large phone", 414, 896),
     ("phone landscape", 844, 390),
     ("tablet portrait", 768, 1024),
-    ("breakpoint edge", 820, 1180),
+    ("breakpoint edge, phone side", 779, 1180),
+    ("breakpoint edge, two columns", 780, 1180),
     ("small laptop", 1024, 768),
     ("desktop", 1440, 900),
 ]
@@ -163,7 +164,7 @@ async def measure(url: str, width: int, height: int, port: int) -> dict:
             # landscape phone: the `pointer: coarse` rules that fix them were
             # simply never applied, so it was measuring a device that does not
             # exist.
-            touch = width <= 820 or height <= 560
+            touch = width <= 779 or height <= 560
             await call("Emulation.setDeviceMetricsOverride", {
                 "width": width, "height": height, "deviceScaleFactor": 2,
                 "mobile": touch, "screenWidth": width, "screenHeight": height,
@@ -245,7 +246,7 @@ def verdict(label: str, width: int, m: dict) -> list[str]:
         failures.append(f"the feed is {feed['h'] if feed else 0} px tall: no events are readable")
     if m["itemsAboveFold"] < 1 and m["items"] > 0:
         failures.append("not one event is visible without scrolling")
-    if width < 820 and m["mapOffset"] is not None and m["mapOffset"] > 3 * 844:
+    if width < 780 and m["mapOffset"] is not None and m["mapOffset"] > 3 * 844:
         failures.append(f"the map starts {m['mapOffset']} px down the page: unreachable")
     if m.get("cssPhone") is not None and m["cssPhone"] != m["jsPhone"]:
         failures.append(
@@ -263,7 +264,7 @@ def verdict(label: str, width: int, m: dict) -> list[str]:
 
 async def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default="http://localhost:5273/")
+    ap.add_argument("--url", default="http://localhost:5380/")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
 

@@ -151,6 +151,14 @@ class Event(BaseModel):
 
     lat: float | None = None
     lon: float | None = None
+    # The EXTENT of an area alert, when its source draws one (an NWS polygon or
+    # zone, a CAP area, a UK Meteoalarm polygon, an ash cloud): `(west, south,
+    # east, north)` in degrees, RFC 7946 order. `west > east` means the box
+    # crosses the antimeridian. `lat`/`lon` stay the centre, for the map;
+    # this is what an "is it near me" test must use, because the centre of a
+    # warning drawn over 800 km of coast is 400 km from places it covers.
+    # None means the source gave a point, or nothing -- never "nowhere".
+    bbox: tuple[float, float, float, float] | None = None
     depth_km: float | None = None
 
     magnitude: float | None = None
@@ -325,6 +333,21 @@ class Event(BaseModel):
             raise ValueError(f"longitude out of range: {value}")
         return value
 
+    @field_validator("bbox")
+    @classmethod
+    def _valid_bbox(
+        cls, value: tuple[float, float, float, float] | None
+    ) -> tuple[float, float, float, float] | None:
+        if value is None:
+            return None
+        west, south, east, north = value
+        # lesson 15, for a box: out of range or upside down is refused
+        if not (-180 <= west <= 180 and -180 <= east <= 180):
+            raise ValueError(f"bbox longitude out of range: {value}")
+        if not (-90 <= south <= north <= 90):
+            raise ValueError(f"bbox latitude out of range or inverted: {value}")
+        return value
+
     @property
     def age_seconds(self) -> float:
         return (utcnow() - self.time).total_seconds()
@@ -377,6 +400,11 @@ class Event(BaseModel):
             # the whole point of re-reading the alert.
             f"{self.instruction}|{self.response_type}|{self.description}",
         ]
+        # The EXTENT, when there is one: a warning re-drawn over a wider area
+        # is the same alert covering more people. Appended only when present,
+        # so every event without a box keeps the fingerprint it always had.
+        if self.bbox is not None:
+            parts.append(",".join(f"{v:.3f}" for v in self.bbox))
         return hashlib.sha1("|".join(parts).encode()).hexdigest()[:12]
 
     def public(self) -> dict[str, Any]:

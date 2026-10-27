@@ -9,7 +9,7 @@ its lift.
 
 from __future__ import annotations
 
-from datetime import UTC
+from datetime import UTC, datetime
 
 from app.models.event import Kind, Severity
 from app.sources.jma_tsunami import JmaTsunamiSource, classify
@@ -81,6 +81,11 @@ ROW_ADVISORY = {
 
 LIVE_LIST = [ROW_LIFTED, ROW_INFORMATION, ROW_ADVISORY]
 
+# While the advisory of these fixtures was in force (issued 16:29 JST, i.e.
+# 07:29 UTC). The fixtures are replayed against THAT moment: replayed against
+# today, a July advisory is long past its ceiling and is withdrawn.
+DURING = datetime(2026, 7, 28, 8, 0, tzinfo=UTC)
+
 
 def test_the_category_lives_in_the_text_not_in_the_code():
     """`kind[].code` is the AREA code (712 = Ariake Sea), never a severity.
@@ -119,14 +124,14 @@ def test_one_event_not_one_marker_per_bulletin():
     rows that precede the lift.
     """
     source = JmaTsunamiSource()
-    events = source.parse_payload([ROW_INFORMATION, ROW_ADVISORY])
+    events = source.parse_payload([ROW_INFORMATION, ROW_ADVISORY], now=DURING)
     assert len(events) == 1
     assert events[0].id == "jma-tsunami:20260728162718"
 
 
 def test_the_advisory_parses_with_the_severity_of_its_worst_area():
     source = JmaTsunamiSource()
-    (event,) = source.parse_payload([ROW_ADVISORY])
+    (event,) = source.parse_payload([ROW_ADVISORY], now=DURING)
 
     assert event.kind is Kind.TSUNAMI
     assert event.tsunami is True
@@ -153,7 +158,7 @@ def test_an_advisory_is_ongoing_and_can_expire():
     """An alert that can never expire is a bug: JMA quotes no expiry, so the
     ceiling is ours and it is explicit."""
     source = JmaTsunamiSource(max_advisory_hours=12.0)
-    (event,) = source.parse_payload([ROW_ADVISORY])
+    (event,) = source.parse_payload([ROW_ADVISORY], now=DURING)
     assert event.ongoing is True
     assert event.expires is not None
     assert (event.expires - event.time).total_seconds() == 12 * 3600
@@ -173,7 +178,7 @@ def test_a_bulletin_with_no_category_never_decides_the_level():
     it must not be read as the latest word -- even though it is newer than the
     advisory it accompanies."""
     source = JmaTsunamiSource()
-    (event,) = source.parse_payload([ROW_ADVISORY, ROW_INFORMATION])
+    (event,) = source.parse_payload([ROW_ADVISORY, ROW_INFORMATION], now=DURING)
     assert event.severity is Severity.MODERATE
     assert source.retractions == []
 
@@ -189,7 +194,7 @@ def test_a_partially_lifted_bulletin_keeps_the_areas_still_at_risk():
         ],
     }
     source = JmaTsunamiSource()
-    (event,) = source.parse_payload([row])
+    (event,) = source.parse_payload([row], now=DURING)
     assert event.severity is Severity.SEVERE
     assert source.retractions == []
 
@@ -200,3 +205,15 @@ def test_junk_never_takes_the_batch_down():
     assert source.parse_payload(None) == []
     # no eid, no key; no category, no level
     assert source.parse_payload([{"kind": [{"code": "1", "kind": "津波警報"}]}]) == []
+
+
+def test_an_advisory_past_its_ceiling_is_withdrawn_not_reemitted():
+    """Measured live on 2026-10-26: the list still carried two forecasts of
+    2026-09-30 and 2026-10-10. Emitted on every 30 s poll, they were purged by
+    each sweep and put back by the next poll -- a purge and a fresh "event"
+    for a month-old forecast, every five minutes, on every open tab."""
+    source = JmaTsunamiSource(max_advisory_hours=12.0)
+    later = datetime(2026, 7, 29, 8, 0, tzinfo=UTC)  # 24 h after issue
+    assert source.parse_payload([ROW_ADVISORY], now=later) == []
+    assert source.expirations == ["jma-tsunami:20260728162718"]
+    assert source.retractions == []
