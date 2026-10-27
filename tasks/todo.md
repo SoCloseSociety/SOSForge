@@ -922,6 +922,22 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       Meteoalarm colour floor (owner rule: an official orange is never shown
       below moderate, red never below severe)
 - [ ] then owner go on PR #5, merge, deploy, APK published
+- [x] app 0.1.2 (lane A, branch lane-a-app-0.1.2, PR #6): the Fold location
+      bug fixed (request survives the step change, last known from every
+      provider, fused + network + GPS for 30 s, honest timer), near me by
+      default, onboarding with lane K's art and real captures, offline
+      packs (world z0..3 54 MB, place 21 MB, unmetered only), update check
+      pinned to the release certificate, honest privacy wording. APK sha256
+      d56b0c20...a6e9b3, versionCode 7, same signer; copied to _apk-drops
+      with its checklist. I reviewed the welcome, location-wait and Live
+      captures myself.
+- [ ] Fold: 0.1.2 install queued at 13:00 but the Fold was not connected
+      (adb: device not found, lock released at once); a watch installs it
+      when it reappears
+- [ ] lane P: opt-in lighter tick for zoned sockets (the app's watch costs
+      ~4.7 MB/h off Wi-Fi: 5 KB ticks, no permessage-deflate on OkHttp)
+- [ ] later: an OpenFreeMap style without the unused relief raster, for the
+      app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
 
 ## Fold evidence (2026-10-27, read-only, under the adb lock)
