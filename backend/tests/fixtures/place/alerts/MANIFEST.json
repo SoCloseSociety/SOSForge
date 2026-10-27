@@ -1,0 +1,15 @@
+{
+ "copied_utc": "2026-10-27T18:45:00Z",
+ "source": "scratchpad/fixes/geo/captures",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "meteoalarm_feeds-france_2026-10-27.json": {
+   "bytes": 736762,
+   "sha256": "176ab58f28831d671f05550d2036547e55fa2a602812b17150751bce6cd62ac0"
+  },
+  "meteoalarm_feeds-france_2026-10-27.json.meta.json": {
+   "bytes": 495,
+   "sha256": "dbd3aed51522fac52ac019ee6cd6b99e63de40d83c4f2c35e54e08f4594fb626"
+  }
+ }
+}

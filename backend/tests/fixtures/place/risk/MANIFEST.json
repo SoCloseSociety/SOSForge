@@ -259,6 +259,14 @@
    "bytes": 853,
    "sha256": "a74623358d43f95e2680ab1d4d3fd32fee129b3da553c180ab6f614a46a2cc9d"
   },
+  "inform_mid2026_bvt_empty.json": {
+   "bytes": 2,
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "inform_mid2026_bvt_empty.json.meta.json": {
+   "bytes": 560,
+   "sha256": "d5b5da889a739f7f8096f67263d555dc53a492c78317076c60145d0fd0c48175"
+  },
   "inform_mid2026_tha.json": {
    "bytes": 1560,
    "sha256": "47f5ba8968a498ed73cb5f27c16c35a7fd33f46b38136260aecf6b698ea7eaeb"
@@ -350,6 +358,15 @@
     "gdo_hst_spi_anchorage_point.json.meta.json",
     "gdo_hst_rdria_anchorage_point.json",
     "gdo_hst_rdria_anchorage_point.json.meta.json"
+   ],
+   "removed": []
+  },
+  {
+   "utc": "2026-10-27T18:45:00Z",
+   "source": "scratchpad/fixes/geo/captures (SOSForge User-Agent), body byte for byte",
+   "added": [
+    "inform_mid2026_bvt_empty.json",
+    "inform_mid2026_bvt_empty.json.meta.json"
    ],
    "removed": []
   }

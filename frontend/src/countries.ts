@@ -7,8 +7,8 @@
  * so this is not a reverse-geocoding call: it is a point-in-polygon test on
  * Natural Earth's 1:10m countries (src/data/countries.json, built by
  * build_countries.py beside it, which also gives the French overseas
- * departments and the Caribbean Netherlands their own codes), loaded
- * lazily, the first time a position or a place needs it.
+ * departments, the Caribbean Netherlands, Clipperton and Bouvet their own
+ * codes), loaded lazily, the first time a position or a place needs it.
  *
  * A point within NEAR_BORDER_KM of another country gets that country too: a
  * reader on a border is concerned by both sides, and every such row is
@@ -30,11 +30,13 @@ export const OFFSHORE_KM = 100
  * with NL; added to the table's RE or BQ, the parent code brought back the
  * metropolitan warnings of France or the Netherlands, 9,000 km away
  * (recheck of PR #5). The alert feeds that read a parent code cover its
- * home territory only (Meteoalarm's "France" is metropolitan). */
+ * home territory only (Meteoalarm's "France" is metropolitan). It answers
+ * "Clipperton Island, France" with FR and "Bouvet Island, Norway" with NO
+ * too (/api/geocode, 2026-10-27). */
 export const OVERSEAS_PARENT: Record<string, string> = {
   // France
   RE: 'FR', GF: 'FR', GP: 'FR', MQ: 'FR', YT: 'FR', PF: 'FR', NC: 'FR', MF: 'FR',
-  BL: 'FR', PM: 'FR', WF: 'FR', TF: 'FR',
+  BL: 'FR', PM: 'FR', WF: 'FR', TF: 'FR', CP: 'FR',
   // the Netherlands
   BQ: 'NL', AW: 'NL', CW: 'NL', SX: 'NL',
   // the United Kingdom
@@ -42,6 +44,8 @@ export const OVERSEAS_PARENT: Record<string, string> = {
   GS: 'GB', SH: 'GB', PN: 'GB', IO: 'GB',
   // Denmark
   GL: 'DK', FO: 'DK',
+  // Norway
+  BV: 'NO',
 }
 
 interface Shape {

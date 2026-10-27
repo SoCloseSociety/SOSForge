@@ -73,10 +73,14 @@ def test_extremes_need_ten_centimetres_of_range() -> None:
 @pytest.mark.parametrize(
     ("lat", "lon", "applies", "km"),
     [
-        (48.857, 2.352, False, 150),
-        (27.717, 85.324, False, 648),
+        (48.857, 2.352, False, 149),
+        (27.717, 85.324, False, 642),
         (9.512, 100.013, True, None),
         (0.0, -160.0, True, None),
+        # islands the 1:10m country table draws: on the 1:50m coastline they
+        # were land with the ocean 137 and 592 km away, "inland"
+        (35.50, 12.60, True, None),  # Lampedusa
+        (-19.70, 63.42, True, None),  # Rodrigues
     ],
 )
 def test_sea_gate(lat: float, lon: float, applies: bool, km: int | None) -> None:

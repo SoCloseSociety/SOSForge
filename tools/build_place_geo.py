@@ -6,18 +6,26 @@ domain), next to the country table the page already ships:
   `frontend/src/data/countries.json` is built from. The INFORM index is
   keyed by alpha-3, every SOSForge source by alpha-2. The only hand-written
   rows are OVERSEAS_A3: the territories `build_countries.py` splits out of
-  FR and NL, which Natural Earth files under FRA and NLD. Without them
-  Reunion would be scored as mainland France.
-- `backend/app/data/coastline_50m.json`: the 1:50m OCEAN coastline, for the
-  sea gate ("is this place on a coast"). Vertices in hundredths of a degree
-  (about 1 km), the first pair of a line absolute and every following pair a
-  delta from the previous one -- the encoding of countries.json.
+  FR, NL and NO, which Natural Earth files under FRA, NLD and NOR. Without
+  them Reunion would be scored as mainland France. Clipperton (CP) has no
+  alpha-3 at all: it gets none, and INFORM says it has no score for it.
+- `backend/app/data/coastline_10m.json`: the 1:10m OCEAN coastline, for the
+  sea gate ("is this place on a coast"). The SAME scale as the country table:
+  with the 1:50m coastline beside the 1:10m countries, every island 1:50m
+  does not draw (Lampedusa, Rodrigues, Lakshadweep, Wake) was land with the
+  ocean 71 to 957 km away, and its sea blocks said "inland". Vertices in
+  hundredths of a degree (about 1 km), the first pair of a line absolute and
+  every following pair a delta from the previous one -- the encoding of
+  countries.json. Not simplified: a ring smaller than the tolerance would
+  vanish, which is the very defect this table fixes.
 
 A dev tool: never imported at run time.
 
 Usage:
-  python3 tools/build_place_geo.py ne_10m_admin_0_countries.geojson ne_50m_coastline.geojson
-Sources: https://github.com/nvkelso/natural-earth-vector (geojson/).
+  python3 tools/build_place_geo.py ne_10m_admin_0_countries.geojson ne_10m_coastline.geojson
+Sources: https://github.com/nvkelso/natural-earth-vector (geojson/), both
+files at the same commit (ca96624, master since 2022-06-02: the one that
+reproduces frontend/src/data/countries.json byte for byte).
 """
 
 from __future__ import annotations
@@ -28,8 +36,17 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "backend" / "app" / "data"
 # ISO 3166-1 alpha-3 of the codes `frontend/src/data/build_countries.py`
-# (OVERSEAS) gives the overseas territories it splits out of FR and NL
-OVERSEAS_A3 = {"BQ": "BES", "GF": "GUF", "GP": "GLP", "MQ": "MTQ", "RE": "REU", "YT": "MYT"}
+# (OVERSEAS) gives the overseas territories it splits out of FR, NL and NO.
+# CP (Clipperton) is a reserved alpha-2 with no alpha-3: deliberately absent.
+OVERSEAS_A3 = {
+    "BQ": "BES",
+    "BV": "BVT",
+    "GF": "GUF",
+    "GP": "GLP",
+    "MQ": "MTQ",
+    "RE": "REU",
+    "YT": "MYT",
+}
 
 
 def encode(line: list[list[float]]) -> list[int]:
@@ -92,10 +109,10 @@ def main() -> None:
 
     lines = coastline(coast)
     out = {
-        "src": "Natural Earth 1:50m coastline, public domain; tools/build_place_geo.py",
+        "src": "Natural Earth 1:10m coastline, public domain; tools/build_place_geo.py",
         "l": lines,
     }
-    path = DATA / "coastline_50m.json"
+    path = DATA / "coastline_10m.json"
     path.write_text(json.dumps(out, separators=(",", ":")) + "\n", encoding="utf-8")
     print(f"{path}: {len(lines)} lines, {sum(len(x) for x in lines) // 2} vertices")
 

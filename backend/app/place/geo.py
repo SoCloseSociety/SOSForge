@@ -5,15 +5,24 @@
   holes: Maseru is LS, not ZA) OR lies within NEAR_BORDER_KM; with none,
   the one nearest country within OFFSHORE_KM (basis
   `nearest_within_100km`). The table is Natural Earth 1:10m simplified at
-  0.01 deg, with the overseas departments under their own codes (Reunion
-  is RE). `app/data/countries.json` is a byte copy of the frontend table.
+  0.02 deg (stored in hundredths), with the overseas departments under their
+  own codes (Reunion is RE), Clipperton CP and Bouvet BV (Natural Earth
+  files them under FR and NO). `app/data/countries.json` is a byte copy of
+  the frontend table.
 - `at_sea` is "no country within 25 km", whatever OFFSHORE_KM found. Known
   limit, measured: an island the table omits reads as at sea (Ko Tao, 37 km
   from mapped land) -- with TH as its country, as the feed's Near me says.
-- `coast_km` is the distance to the nearest 1:50m OCEAN coastline segment,
-  searched only among segments in a box around the point (a segment
-  straddling the ANTIPODE projects through the point on a local plane:
-  Kathmandu once came out 191 km from Texas). Null beyond about 1000 km.
+- `coast_km` is the distance to the nearest 1:10m OCEAN coastline segment
+  (`app/data/coastline_10m.json`), searched only among segments in a box
+  around the point (a segment straddling the ANTIPODE projects through the
+  point on a local plane: Kathmandu once came out 191 km from Texas). Null
+  beyond about 1000 km. The coastline is at the SAME scale as the country
+  table: with 1:50m beside the 1:10m countries, every island 1:50m does not
+  draw was land (`at_sea` false) with its coast 71 to 957 km away, so the
+  sea blocks told Lampedusa, Rodrigues and Wake they were inland. Known
+  limit, measured: Hans Island's Danish half is a 1:10m MINOR island, in
+  the country table but not in this coastline, so it reads 16.8 km from the
+  coast (its gate still holds).
 """
 
 from __future__ import annotations
@@ -244,18 +253,35 @@ def countries(lat: float, lon: float) -> tuple[list[str], str | None, str | None
 
 @lru_cache(maxsize=1)
 def _segments() -> np.ndarray:
-    """(n, 4): lon1, lat1, lon2, lat2 of every coastline segment."""
-    rows = []
-    for deltas in _data("coastline_50m.json")["l"]:
+    """(n, 4): lon1, lat1, lon2, lat2 of every 1:10m coastline segment
+    (383 163, 12.3 MB), sorted by lat1 so a query reads only its latitude
+    band. Filled in place and sorted one column at a time: stacking per-line
+    arrays and then sorting a copy held three of them at once."""
+    lines = _data("coastline_10m.json")["l"]
+    seg = np.empty((sum(len(d) // 2 - 1 for d in lines), 4), dtype=np.float64)
+    at = 0
+    for deltas in lines:
         pts = np.cumsum(np.asarray(deltas, dtype=np.float64).reshape(-1, 2), axis=0) / 100.0
-        rows.append(np.hstack([pts[:-1], pts[1:]]))
-    return np.vstack(rows)
+        n = len(pts) - 1
+        seg[at : at + n, :2] = pts[:-1]
+        seg[at : at + n, 2:] = pts[1:]
+        at += n
+    del lines
+    order = np.argsort(seg[:, 1], kind="stable")
+    for column in range(4):
+        seg[:, column] = seg[order, column]
+    return seg
 
 
 def coast_km(lat: float, lon: float) -> float | None:
-    seg = _segments()
     window_lat = COAST_SEARCH_KM / 111.32
     window_lon = window_lat / max(0.05, math.cos(math.radians(lat)))
+    every = _segments()
+    # the band holding every lat1 the box test below can accept (a hair
+    # wider, so float rounding at its edges never drops one): the same answer
+    # as a scan of the whole table, reading a median 11 % of it (28 % at most)
+    lo, hi = np.searchsorted(every[:, 1], [lat - window_lat - 1e-6, lat + window_lat + 1e-6])
+    seg = every[lo:hi]
 
     def dlon(values: np.ndarray) -> np.ndarray:
         return (values - lon + 540.0) % 360.0 - 180.0
@@ -282,7 +308,9 @@ def coast_km(lat: float, lon: float) -> float | None:
 
 
 def preload() -> None:
-    """Read the country, ISO and coastline tables now (about 40 ms)."""
+    """Read the country, ISO and coastline tables now (about 150 ms). The
+    1:10m coastline keeps 12.3 MB (1.9 at 1:50m) and peaks at 20.6 MB while
+    it loads (tracemalloc; macOS RSS grows about 24 MB)."""
     shapes()
     iso3_table()
     _segments()

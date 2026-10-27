@@ -11,6 +11,9 @@
   {"name": "Maseru", "lat": -29.31, "lon": 27.48, "codes": ["LS", "ZA"], "country_code": "LS", "at_sea": false},
   {"name": "Saint-Denis, Reunion", "lat": -20.88, "lon": 55.45, "codes": ["RE"], "country_code": "RE", "at_sea": false},
   {"name": "mid-Pacific", "lat": 0.0, "lon": -160.0, "codes": ["UM"], "country_code": "UM", "at_sea": true},
-  {"name": "open Pacific", "lat": 0.0, "lon": -140.0, "codes": [], "country_code": null, "at_sea": true}
+  {"name": "open Pacific", "lat": 0.0, "lon": -140.0, "codes": [], "country_code": null, "at_sea": true},
+  {"name": "Clipperton", "lat": 10.29, "lon": -109.22, "codes": ["CP"], "country_code": "CP", "at_sea": false},
+  {"name": "off Clipperton", "lat": 10.29, "lon": -108.5, "codes": ["CP"], "country_code": "CP", "at_sea": true},
+  {"name": "Bouvet", "lat": -54.42, "lon": 3.36, "codes": ["BV"], "country_code": "BV", "at_sea": false}
  ]
 }
