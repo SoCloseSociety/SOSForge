@@ -963,8 +963,19 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       install -r only): installed sha256 d56b0c20...a6e9b3 matches, versionCode
       7, the owner's grants kept (notifications, approximate location).
       Reported to agentcockpit.
-- [ ] lane P: opt-in lighter tick for zoned sockets (the app's watch costs
-      ~4.7 MB/h off Wi-Fi: 5 KB ticks, no permessage-deflate on OkHttp)
+- [x] lane P: opt-in lighter tick (`tick=lite`) merged. Measured ON THE WIRE
+      by lane A (dumpsys netstats, background zoned socket, 6 min windows):
+      full tick 6.59 MB/h rx on lane P's server, lite 0.26 MB/h (x25 less);
+      production today 4.00 MB/h (0.1.3 stays on the full tick until
+      /api/version lists tick_lite). Correction: OkHttp 4.12 DOES negotiate
+      permessage-deflate (production answers server_max_window_bits=12);
+      that is why the wire figure is far below the 42.6 MB/h raw one.
+- [x] drill: the timeline hook raised on Hub.broadcast(..., lite=) and the
+      drill server sent no tick at all (found by lane A); fixed in f97a4e8,
+      `check` now asserts the heartbeat (mutation-checked), 75/75.
+- [ ] lane A paused its emulator at agentfarm's request (host swap 32.5 of
+      33.8 GB, farm posting first); 0.1.3 continues without it until
+      agentfarm pings; the offline style copy still needs an on-device run
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
       app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
