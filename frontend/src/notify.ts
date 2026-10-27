@@ -17,7 +17,18 @@ export interface NotifyOptions {
   tag: string
   /** where a click should take the reader (a deep link to the event) */
   url?: string
+  /** Alert again although a notification with this tag is already in the
+   * tray. Without it the browser swaps the text SILENTLY (Notifications
+   * spec: no sound, no vibration, no heads-up), so an escalation never
+   * reached a phone in a pocket (review of PR #5, HIGH). Not in every DOM
+   * typing, hence declared here. */
+  renotify?: boolean
 }
+
+/** Closes still running, by tag. A show for the same tag waits for them:
+ * otherwise the close of the OLD place's notification, still between its
+ * two awaits, could land on the NEW one Chromium files under the same tag. */
+const closing = new Map<string, Promise<void>>()
 
 /** The notifications shown through the page constructor, by tag: the only
  * handle there is to close one (the service worker ones are found again with
@@ -27,17 +38,21 @@ const pageNotes = new Map<string, Notification>()
 export async function showNotification(title: string, options: NotifyOptions): Promise<boolean> {
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return false
   const { url, ...rest } = options
+  await closing.get(rest.tag)
   try {
     const registration = await navigator.serviceWorker?.getRegistration?.()
     if (registration) {
-      await registration.showNotification(title, { ...rest, data: { url: url ?? '/' } })
+      await registration.showNotification(title, {
+        ...rest,
+        data: { url: url ?? '/' },
+      } as NotificationOptions)
       return true
     }
   } catch {
     /* fall through to the page constructor */
   }
   try {
-    pageNotes.set(rest.tag, new Notification(title, rest))
+    pageNotes.set(rest.tag, new Notification(title, rest as NotificationOptions))
     return true
   } catch {
     return false
@@ -49,14 +64,21 @@ export async function showNotification(title: string, options: NotifyOptions): P
  * "take cover" early warning left in the tray is an alarm still ringing for
  * nothing (lane N's browser drill). Both paths, since either may have shown
  * it; closing a tag that is not there costs nothing. */
-export async function closeNotification(tag: string): Promise<void> {
+export function closeNotification(tag: string): Promise<void> {
   pageNotes.get(tag)?.close()
   pageNotes.delete(tag)
-  try {
-    const registration = await navigator.serviceWorker?.getRegistration?.()
-    const shown = await registration?.getNotifications?.({ tag })
-    for (const note of shown ?? []) note.close()
-  } catch {
-    /* no worker, or a browser that cannot list them: nothing to close there */
-  }
+  const done = (async () => {
+    try {
+      const registration = await navigator.serviceWorker?.getRegistration?.()
+      const shown = await registration?.getNotifications?.({ tag })
+      for (const note of shown ?? []) note.close()
+    } catch {
+      /* no worker, or a browser that cannot list them: nothing to close there */
+    }
+  })()
+  closing.set(tag, done)
+  void done.then(() => {
+    if (closing.get(tag) === done) closing.delete(tag)
+  })
+  return done
 }

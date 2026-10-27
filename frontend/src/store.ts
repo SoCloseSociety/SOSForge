@@ -202,6 +202,9 @@ interface State {
   setWatch: (watch: State["watch"]) => void;
   /** remember what rang, at which rank (the highest wins) */
   markAlarmed: (rung: { id: string; rank: number }[]) => void;
+  /** No longer concerns the watched place: forgotten, so it rings again if
+   * it comes back in reach. */
+  forgetAlarmed: (ids: string[]) => void;
   setLang: (lang: Lang) => void;
   t: (key: string, vars?: Record<string, string | number>) => string;
 }
@@ -327,7 +330,13 @@ function loadAlarmed(): Map<string, number | null> {
     if (!Array.isArray(saved)) return out;
     for (const entry of saved) {
       if (typeof entry === "string") out.set(entry, null);
-      else if (Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "number")
+      // [id, null] is an old-format id saved again before its rank was seen:
+      // still remembered, or it rang again at the next reload (review of PR #5)
+      else if (
+        Array.isArray(entry) &&
+        typeof entry[0] === "string" &&
+        (typeof entry[1] === "number" || entry[1] === null)
+      )
         out.set(entry[0], entry[1]);
     }
     return out;
@@ -569,6 +578,14 @@ export const useStore = create<State>((set, get) => ({
       alarmed.delete(id);
       alarmed.set(id, Math.max(before, rank));
     }
+    saveAlarmed(alarmed);
+    set({ alarmed });
+  },
+  forgetAlarmed: (ids) => {
+    const current = get().alarmed;
+    if (!ids.some((id) => current.has(id))) return;
+    const alarmed = new Map(current);
+    for (const id of ids) alarmed.delete(id);
     saveAlarmed(alarmed);
     set({ alarmed });
   },
