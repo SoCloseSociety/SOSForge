@@ -353,6 +353,26 @@ def test_a_station_the_next_read_dropped_is_still_the_nearest(metar_pair) -> Non
     assert block.data["station"]["icao"] == icao
 
 
+def test_a_same_time_correction_replaces_the_report_it_corrects(metar_pair) -> None:
+    # pair_a lists ETAR's 17:10Z SPECI as "AUTO ... 4000 BR"; pair_b re-issues
+    # it at the SAME observation time as "COR ... 9999", and SAZG's 17:00Z
+    # COR takes out the SCT100 layer. The original is retracted, not current.
+    a, b = metar_pair
+    assert _stations(a)["ETAR"].time == _stations(b)["ETAR"].time
+    merged = weather.merge_metar(a, b)
+    now = at("2026-10-27T17:40:00Z")
+    etar = _stations(b)["ETAR"]
+    d = weather.now_block(merged, ctx_for(etar.lat, etar.lon, now)).data
+    assert d is not None and d["station"]["icao"] == "ETAR"
+    assert " COR " in d["raw"] and "4000 BR" not in d["raw"]
+    assert (d["visibility_km"], d["wx"], d["flight_category"]) == (10.0, None, "VFR")
+    sazg = _stations(b)["SAZG"]
+    d = weather.now_block(merged, ctx_for(sazg.lat, sazg.lon, now)).data
+    assert d is not None and d["station"]["icao"] == "SAZG"
+    assert d["raw"].startswith("METAR SAZG 271700Z COR ")
+    assert d["clouds"] == [{"cover": "SCT", "base_ft": 2500}]
+
+
 def test_after_a_restart_no_station_names_the_window_it_holds(metar_pair) -> None:
     a, b = metar_pair
     merged = weather.merge_metar(a, b)

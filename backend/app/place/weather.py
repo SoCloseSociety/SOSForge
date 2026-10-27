@@ -138,9 +138,12 @@ def _index(latest: dict[str, Station], rows: int, since: datetime | None) -> Met
 
 def merge_metar(held: MetarIndex | None, fresh: MetarIndex) -> MetarIndex:
     """The fresh file over the reports already held: the newest report per
-    station, none older than STATION_MAX_AGE before the newest one. A file
-    that does not reach back to the last one held (the reads failed for
-    longer than the file's window) starts the cover over."""
+    station, none older than STATION_MAX_AGE before the newest one. A
+    same-time tie goes to the fresh file: it is the issuer's correction
+    (ETAR's 17:10Z SPECI re-issued as COR, 4000 BR -> 9999), and the
+    original it retracts is never served as current. A file that does not
+    reach back to the last one held (the reads failed for longer than the
+    file's window) starts the cover over."""
     if (
         held is None
         or held.newest is None
@@ -154,7 +157,7 @@ def merge_metar(held: MetarIndex | None, fresh: MetarIndex) -> MetarIndex:
     for cell in fresh.cells.values():
         for station in cell:
             kept = latest.get(station.icao)
-            if kept is None or station.time > kept.time:
+            if kept is None or station.time >= kept.time:
                 latest[station.icao] = station
     since = max(held.since or fresh.since, horizon)
     return _index(latest, fresh.rows, since)
