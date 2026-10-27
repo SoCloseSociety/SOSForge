@@ -1,0 +1,65 @@
+{
+  "name": "burst",
+  "title": "Sixty minor quakes inside the Tokyo zone in about a second, then fresh clients read the chunked snapshot",
+  "_shape": "USGS GeoJSON features, M3.0 to M3.9 (minor: no alarm anywhere), origin times spread back over 100 minutes so nothing pairs.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "60 USGS features",
+      "burst": {
+        "source": "usgs",
+        "count": 60,
+        "center": [
+          35.6762,
+          139.6503
+        ],
+        "spread_km": 150,
+        "magnitude": [
+          3.0,
+          3.9
+        ],
+        "every_s": 0.02,
+        "id": "drill{run}b{i}",
+        "place": "[DRILL] burst quake {i}, Kanto, Japan"
+      }
+    }
+  ],
+  "expect": {
+    "world": {
+      "count": {
+        "event": 60
+      }
+    },
+    "web": "world",
+    "app_fg": "world",
+    "zoned_drop": "world",
+    "app_bg": {
+      "count": {
+        "event": 0
+      }
+    },
+    "poll": {
+      "events_count": 0,
+      "removed": []
+    },
+    "agent_tokyo": [],
+    "agent_paris": []
+  },
+  "fresh": [
+    {
+      "client": "app_fg",
+      "ids_min": 60,
+      "messages_min": 2
+    },
+    {
+      "client": "web",
+      "ids_min": 60,
+      "messages_min": 2
+    },
+    {
+      "client": "world",
+      "ids_min": 60,
+      "messages_max": 1
+    }
+  ]
+}

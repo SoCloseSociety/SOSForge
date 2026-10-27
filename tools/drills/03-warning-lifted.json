@@ -1,0 +1,241 @@
+{
+  "name": "warning-lifted",
+  "title": "An orange wind warning for Paris (no geometry, country only), then Meteo-France lifts it (AllClear)",
+  "_shape": "Meteoalarm feeds-france warning, keys copied from the live feed of 2026-10-27; the lift is an Update with a new identifier and `references`, exactly as the feed sends it.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "orange wind warning, unplaced, FR",
+      "source": "meteoalarm",
+      "country": "france",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.250.0.FR.drill{run}w1",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "vigilance@meteo.fr",
+          "sent": "@iso-30m",
+          "status": "Actual",
+          "info": [
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercice, ceci n'est pas une vraie alerte.",
+              "effective": "@iso-30m",
+              "event": "Vigilance orange vent-violent",
+              "expires": "@iso+20h",
+              "headline": "[DRILL] Vigilance orange vent-violent",
+              "instruction": "[DRILL] Exercice.",
+              "language": "fr-FR",
+              "onset": "@iso-30m",
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Monitor"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Severe",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            },
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercise, not a real warning.",
+              "effective": "@iso-30m",
+              "event": "Severe wind warning",
+              "expires": "@iso+20h",
+              "headline": "[DRILL] Severe wind warning",
+              "instruction": "[DRILL] Exercise.",
+              "language": "en-GB",
+              "onset": "@iso-30m",
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Monitor"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Severe",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": 8,
+      "note": "AllClear update replacing it (new identifier, references w1)",
+      "source": "meteoalarm",
+      "country": "france",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.250.0.FR.drill{run}w2",
+          "incidents": "Update",
+          "msgType": "Update",
+          "scope": "Public",
+          "sender": "vigilance@meteo.fr",
+          "sent": "@iso-0s",
+          "status": "Actual",
+          "info": [
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercice, ceci n'est pas une vraie alerte.",
+              "effective": "@iso-0s",
+              "event": "Vigilance jaune vent-violent",
+              "expires": "@iso-0s",
+              "headline": "[DRILL] Vigilance jaune vent-violent",
+              "instruction": "[DRILL] Exercice.",
+              "language": "fr-FR",
+              "onset": "@iso-0s",
+              "parameter": [
+                {
+                  "value": "1; green; Minor",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "AllClear"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Minor",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            },
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercise, not a real warning.",
+              "effective": "@iso-0s",
+              "event": "Moderate wind warning",
+              "expires": "@iso-0s",
+              "headline": "[DRILL] Moderate wind warning",
+              "instruction": "[DRILL] Exercise.",
+              "language": "en-GB",
+              "onset": "@iso-0s",
+              "parameter": [
+                {
+                  "value": "1; green; Minor",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "1; Wind",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "AllClear"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Minor",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            }
+          ],
+          "references": "vigilance@meteo.fr,2.49.0.0.250.0.FR.drill{run}w1,@iso-30m"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w1",
+        {}
+      ],
+      [
+        "gone",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w1"
+      ]
+    ],
+    "web": "world",
+    "app_fg": "world",
+    "app_bg": "world",
+    "zoned_drop": [],
+    "poll": {
+      "events": [],
+      "removed": []
+    },
+    "agent_tokyo": [],
+    "agent_paris": []
+  }
+}
