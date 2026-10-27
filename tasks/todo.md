@@ -1689,6 +1689,19 @@ conflicts in core/privacy.py imports, tasks/todo.md and frontend/src/i18n.ts
       fails the same five. Fix in progress (workflow, on the round-2 branch so
       PR #5 carries it).
 - [ ] Adversarial review of this branch's own commits, then PR.
-- [ ] Known limits: coast_km comes from the 1:50m coastline (Jarvis is 342 km
-      "from the coast"); the Chrome-overlap test of the responsive tool failed
+- [x] Review (geo): the coastline is now 1:10m, the country table's scale
+      (branch place-fix-geo). Islands 1:10m draws were land "inland" 71 to
+      957 km from the ocean (Lampedusa 137.1, Rodrigues 592.1, Wake 903.3);
+      now 0.0 to 22.6 km, sea_gate true for all 15 of the review's points,
+      Paris 149 / Kathmandu 642 still inland. Live: Lampedusa's waves, level
+      and SST served (cells 5.2 / 5.2 / 3.6 km), Paris "149 km away".
+      1.91 MB table, 383 163 segments; preload 150 ms (80), the coastline
+      keeps 12.3 MB and peaks at 20.6 (tracemalloc; 1.9 / 4.2 at 1:50m);
+      coast_km p50 0.69 ms, p95 1.68 (a latitude band, exact). Clipperton
+      CP and Bouvet BV have their own codes (no France or Norway warnings,
+      INFORM no_coverage); the country build was proven byte-reproducible
+      first (natural-earth-vector ca96624, shapely 2.1.2). Known limit: Hans
+      Island's Danish half is a MINOR island the coastline omits (16.8 km,
+      gate still true).
+- [ ] Known limit: the Chrome-overlap test of the responsive tool failed
       once under load (passes alone and in two full runs).
