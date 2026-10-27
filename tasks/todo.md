@@ -982,6 +982,172 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 - [x] round 2 final head 138f632: pytest 981, vitest 468, agent 58, drills
       75/75, CI green on PR #5 (backend, frontend, agent). Waiting for the
       owner's go to merge and deploy (scripts ready in the scratchpad).
+- [x] Round-2 regression found by --near: Near me at a granted position (what
+      real visitors get) shows NO event above the fold on 280x653, 320x568,
+      360x640, 375x667 and 568x320, where production shows 1 to 4. Place mode
+      fails the same five. Fix on branch fold-fix-2026-10-27 (from b1e5bc2),
+      judged plan "same places, shorter controls" + grafts:
+  - [x] 1. ScopeBar: the two `.scope-elsewhere` pills become ONE control, one
+        `.scope-count` per count (far danger permanent, zero included;
+        unlocated with its own "?" glyph and full label, only when > 0), the
+        two labels joined by `scope.counts.sep` in the control's name
+  - [x] 2. styles.css base: `.scope-elsewhere` wraps (16 px radius, not a
+        pill), `.scope-count` parts, the amber glyph per part
+  - [x] 3. App.tsx: Kpis short labels on a phone, `panel-scoped` on the
+        panel in Near me / place, `data-scope` on `.app`
+  - [x] 4. i18n: `kpi.quakes.short`, `kpi.maxmag.short`, `kpi.tsunami.short`,
+        `scope.counts.sep` in the five dictionaries
+  - [x] 5. phone block: header, kpi, filters (inset search border), scope bar
+        (inset switch), banner paddings
+  - [x] 6. short-screen block: the scoped landscape grid (filters full
+        width, feed left, scope bar right); counters stand down on portrait
+        phones under 600 px tall outside World
+  - [x] 7. under 600 px: the scope switch drops its decorative glyphs
+  - [x] 8. tests: phoneFold.test.tsx (one control, its name, per-part amber,
+        short labels on a phone, panel-scoped + data-scope), 14 tests,
+        mutation-checked (each of three reverts fails its test)
+  - [x] 9. verify: tsc, vitest, build; responsive.py World / --near /
+        --place, 29 viewports, >= 48 px of the first event on the 6 small
+        ones; shots of iPhone SE 1 and landscape 568, both themes
+  - [x] 10. review section: before/after table, residual risks
+
+### Review -- the phone fold (fold-fix-2026-10-27, 2026-10-27)
+
+Measured with the integrator's tools/responsive.py (measure() + verdict(),
+plus the first `.item` box), one Chrome at a time, live data from :8341,
+Near me at 48.85,2.35, place "Ko Samui". Before = b1e5bc2, after = this
+branch, run back to back. Cells: tool verdict, first event top / px of it
+visible (viewport height minus top, capped by the row's bottom).
+
+| en | World before | World after | Near me before | Near me after | place before | place after |
+|---|---|---|---|---|---|---|
+| 280x653 | pass 605/48 | pass 513/140 | FAIL 691/-38 | pass 561/92 | FAIL 691/-38 | pass 561/92 |
+| 320x568 | pass 555/13 | pass 465/103 | FAIL 659/-91 | pass 466/102 | FAIL 659/-91 | pass 466/102 |
+| 360x640 | pass 597/43 | pass 525/115 | FAIL 701/-61 | pass 525/115 | FAIL 701/-61 | pass 573/67 |
+| 375x667 | pass 624/43 | pass 552/115 | FAIL 676/-9 | pass 552/115 | FAIL 728/-61 | pass 600/67 |
+| 568x320 | pass 306/14 | pass 286/34 | FAIL 358/-38 | pass 238/82 | FAIL 420/-100 | pass 238/82 |
+| 390x844 | pass 681/117 | pass 609/116 | pass 733/111 | pass 609/116 | pass 785/59 | pass 657/91 |
+
+| fr | World before | World after | Near me before | Near me after | place before | place after |
+|---|---|---|---|---|---|---|
+| 280x653 | pass 595/58 | pass 513/140 | FAIL 673/-20 | pass 561/92 | FAIL 673/-20 | pass 561/92 |
+| 320x568 | pass 538/30 | pass 465/103 | FAIL 641/-73 | pass 466/102 | FAIL 641/-73 | pass 466/91 |
+| 360x640 | pass 597/43 | pass 525/115 | FAIL 701/-61 | pass 539/101 | FAIL 701/-61 | pass 573/67 |
+| 375x667 | pass 624/43 | pass 552/115 | FAIL 728/-61 | pass 552/115 | FAIL 728/-61 | pass 600/67 |
+| 568x320 | pass 306/14 | pass 286/34 | FAIL 358/-38 | pass 238/82 | FAIL 420/-100 | pass 238/82 |
+| 390x844 | pass 701/112 | pass 628/96 | pass 753/91 | pass 628/139 | pass 805/39 | pass 676/71 |
+
+All 29 viewports, after: 29/29 in World, Near me and place, en AND fr
+(before, en: 29, 24, 24). The unmodified tool exits 0 in World and --near;
+with --place it fails all 29 on "the place report did not open" only: the
+PlaceReport button is another lane's component, not on b1e5bc2. The 20
+near/place checks of the plan: lowest 67 px. Tops as predicted (561, 466,
+525, 552, 600, 238; fr 360x640 at 539 for 538 predicted).
+
+Deviation from the plan, measured: the plan's visually hidden ", " span
+between the two counts named the control "17 severe elsewhere , 9 ..." in
+Chrome (it pads inline-flex parts) and "elsewhere,1 severe" in jsdom (it
+trims each part). The control gets `aria-label` = the two visible labels
+joined by `scope.counts.sep`, only when both parts show; Chrome's
+accessibility tree now reads "17 severe elsewhere, 9 severe without a
+location" and "ほかの地域で重大 17 件、位置不明の重大 9 件".
+
+Shots (iPhone SE 1, landscape 568, Near me and place, Lunar and Soft):
+search and switch at 44 px with the frame drawn inside, Tab into the search
+shows the ring around it, the "?" part and the triangle in amber, the
+circle of "nothing elsewhere" not.
+
+Not reached, and why: World at 568x320 shows 34 px of the first event
+(14 before), under the 48 px target though it passes the gate. The plan
+keeps World's landscape grid, and it needs two 44 px control rows (the
+search + Filters, the watch line, and the switch do not fit one 544 px
+row): header 53 + banner 32 + map floor 100 + 101 = 286. 48 px needs one
+of what the judge dropped or did not take: the header/banner/panel
+squeezes (-16 px), the scoped grid in World (the World feed at 7/13 of the
+width, beside a column holding only the switch), or the watch line out of
+the panel. Without a major alert banner it is 66 px.
+
+Residual risks:
+- the scoped landscape feed is 7/13 of the width;
+- focus reaches the right-hand scope bar before the feed;
+- without :has() support, the open watch card stays about 254 px wide;
+- short KPI labels also apply on 600 to 779 px portrait screens;
+- laptop 1280x720, Near me: the one control wraps to two lines in the
+  sidebar, scope bar 101 -> 109 px, first event 507 -> 515 (still 2 above
+  the fold); place mode there went 547 -> 515;
+- 841x673 (two columns, outside this fix) in place mode: 12 px of the
+  first event before and after, unchanged;
+- in landscape place mode the count wraps to three lines (59 px) in the
+  right column: beside the feed, it no longer moves the fold.
+
+### Review -- recheck of the fold fix (63923e4, 2026-10-27)
+
+Each claim reproduced first (Vite :5342 from this worktree, API :8341, one
+Chrome at a time), then fixed or explained.
+
+- [x] FIXED, forced colours (medium + its low twin): at 320x568, forced
+      colours on, `.tools-row .search` border 0 / shadow none and
+      `.scope-switch` the same: no frame. The pressed segment was
+      indistinguishable too (pressed bg black, unpressed transparent on
+      black) at EVERY width, 1280x720 included: that half predates this
+      branch. Now an outline (1px CanvasText, offset -1px) in forced colours
+      at phone widths only (the desktop border is not doubled), and the
+      pressed segment in Highlight / HighlightText with
+      `forced-color-adjust: none`: without the opt-out Chrome painted its
+      Canvas backplate behind the HighlightText label, a black box where
+      "Near me" was (seen in the shot, then fixed). Normal rendering is
+      unchanged (same computed shadows, same block heights).
+- [x] FIXED, mouse on the phone layout: input 22.4 px in its 44 px frame,
+      `elementFromPoint` 4 px inside the top and bottom hit `div.search`.
+      `align-self: stretch`: input 44 px with a mouse AND with touch, all
+      three points hit the input.
+- [x] FIXED, id `kpi.tsunami.short` "Tsunami aktif" -> "Buletin tsunami":
+      92.0 px in a 95 px card at 320 (one line), two lines at 280 where
+      "M maks 1 jam" already took two: the counters' height is unchanged
+      (63 / 47 px).
+- [x] FIXED (comments), "one line per count": true only when the label fits;
+      ScopeBar.tsx and styles.css now say a longer label wraps inside the
+      control (344 px, French at 360), never out of it.
+- [ ] NOT FIXED, landscape 568x320: the far-danger count is fully visible
+      (16/16 px) but "9 severe without a location" shows 8 of 16 px (Near
+      me) and the clear button 23 of 44 (place); the page scrolls, nothing
+      is clipped. Structural: 320 - 238 = 82 px below the tools row cannot
+      hold two stacked 44 px targets (88 px), and moving the bar up beside
+      the tools (the base layout) drops the first event to 34 px. Needs a
+      DOM change (the watch line out of `.filters`), not a CSS tweak.
+- [ ] NOT FIXED here, the App.tsx conflict: still the one conflict against
+      0b809f8 AND the current head aeea1e3 (styles.css, i18n.ts, todo.md
+      merge cleanly). Resolution: keep the head's `.map-report` block, then
+      this branch's `panel-scoped` section line. Built that way in scratch:
+      tsc clean, vitest 567/567, and the unmodified tool (head version, with
+      `data-focus-at` and 568x320 at 200 %) passes --place 11/11 (the place
+      report opens, the place lands clear of its button) and --near 11/11
+      on the 11 small and reference viewports.
+- [x] EXPLAINED, place mode on this branch alone: every viewport fails only
+      on "the place report did not open" (and, with the tool's newer
+      version, "no data-focus-at"): both are the integration branch's
+      features, absent from b1e5bc2. On the merged tree both pass (above).
+- [ ] PRE-EXISTING, landscape map controls under the attribution: not
+      changed by this branch; a horizontal zoom group would collide with
+      the head's `.map-report` (it reserves only 56 px at the right edge).
+      To fix on the integration head.
+- [ ] PRE-EXISTING, found on the way: in forced colours no keyboard focus
+      shows at all (the global `:focus-visible` ring is a box-shadow with
+      `outline: none`; a focused button measured outline none, shadow
+      none). Needs a global forced-colors focus rule, every focusable
+      element, so not in this branch.
+
+Measured back to back, before = 6dbd086, after = 63923e4, en, fold.py (the
+tool's own measure() + verdict()): World, Near me and place 29/29 before
+and after; every block above the feed identical before/after on all 87
+rows (only feed length and live-data heights moved; the 50 px map change
+on 841x673 was A/B-checked with HEAD's stylesheet vs this one: 304 = 304).
+First event top / px visible, after (same as before): 280x653 513/140,
+561/92, 561/92; 320x568 465/103, 466/102, 466/102; 360x640 525/115,
+525/115, 573/67; 375x667 552/95, 552/115, 600/67; 568x320 286/34, 238/82,
+238/82 (World / Near me / place). The unmodified tool, current version:
+World 30/30, --near 30/30. Gates: tsc, vitest 482/482, build (the
+forced-colors rules survive minification).
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
       app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
@@ -1784,3 +1950,7 @@ they are).
       live MET Norway warnings (feeds-norway, 2026-10-27) lack a position, all
       carry polygons, so no unplaced NO warning exists to count there today; the
       BV code itself is asserted in the shared country points.
+
+- [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
+      (warning) for a counter of every bulletin; the phone's short label is now
+      「津波情報」, JMA's umbrella term (2026-10-27, integrator).
