@@ -14,7 +14,7 @@
  * are still rendered by the client -- what changes is that the PRODUCT is
  * findable in five languages instead of one.
  */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, statSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -44,53 +44,105 @@ function escapeHtml(text) {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
+/** og:locale wants language_TERRITORY; a bare "fr" is not one. */
+const OG_LOCALE = { en: 'en_US', fr: 'fr_FR', es: 'es_ES', ja: 'ja_JP', id: 'id_ID' }
+
+/** The line that points at the Android app, in the page's own language.
+ * Kept here rather than in src/seo.json (another lane's file); es, ja and id
+ * need a native reader, like the rest of those dictionaries. */
+const APP_LINE = {
+  en: '<a href="/download/">SOSForge for Android</a>: the same live feed as an app that watches your places in the background and notifies you.',
+  fr: '<a href="/download/">SOSForge pour Android</a> : le même flux en direct, en application qui surveille vos lieux en arrière-plan et vous prévient.',
+  es: '<a href="/download/">SOSForge para Android</a>: el mismo flujo en directo, en una aplicación que vigila sus lugares en segundo plano y le avisa.',
+  ja: '<a href="/download/">Android 版 SOSForge</a>：同じライブフィードを、登録した場所をバックグラウンドで見守り通知するアプリで。',
+  id: '<a href="/download/">SOSForge untuk Android</a>: umpan langsung yang sama, dalam aplikasi yang memantau tempat Anda di latar belakang dan memberi tahu Anda.',
+}
+
+/** A replacement that MUST happen. These used to be silent no-ops when
+ * index.html changed shape: og:locale was never replaced at all (the tag did
+ * not exist), and a renamed paragraph would have shipped English text on the
+ * Japanese page without a word. Now the build stops instead. */
+function replaceOnce(html, pattern, replacement, what) {
+  if (!pattern.test(html)) throw new Error(`prerender: ${what} not found in dist/index.html`)
+  return html.replace(pattern, replacement)
+}
+
 function pageFor(lang, template) {
   const copy = seo[lang]
   const url = `${ORIGIN}${pathFor(lang)}`
   let html = template
 
-  html = html.replace('<html lang="en">', `<html lang="${lang}">`)
-  html = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeHtml(copy.title)}</title>`)
-  html = html.replace(
+  html = replaceOnce(html, /<html lang="en">/, `<html lang="${lang}">`, 'html lang')
+  html = replaceOnce(html, /<title>[^<]*<\/title>/, `<title>${escapeHtml(copy.title)}</title>`, 'title')
+  html = replaceOnce(
+    html,
     /(<meta\s+name="description"\s+content=")[^"]*(")/s,
     `$1${escapeHtml(copy.description)}$2`,
+    'description',
   )
-  html = html.replace(
+  html = replaceOnce(
+    html,
     /<link rel="canonical" href="[^"]*" \/>/,
     `<link rel="canonical" href="${url}" />\n${alternates()}`,
+    'canonical',
   )
-  html = html.replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
-  html = html.replace(
+  html = replaceOnce(html, /(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`, 'og:url')
+  html = replaceOnce(
+    html,
     /(<meta property="og:title" content=")[^"]*(")/,
     `$1${escapeHtml(copy.title)}$2`,
+    'og:title',
   )
-  html = html.replace(
+  html = replaceOnce(
+    html,
     /(<meta\s+property="og:description"\s+content=")[^"]*(")/s,
     `$1${escapeHtml(copy.social)}$2`,
+    'og:description',
   )
-  html = html.replace(
+  html = replaceOnce(
+    html,
     /(<meta name="twitter:title" content=")[^"]*(")/,
     `$1${escapeHtml(copy.title)}$2`,
+    'twitter:title',
   )
-  html = html.replace(
+  html = replaceOnce(
+    html,
     /(<meta\s+name="twitter:description"\s+content=")[^"]*(")/s,
     `$1${escapeHtml(copy.social)}$2`,
+    'twitter:description',
   )
-  html = html.replace(
+  html = replaceOnce(
+    html,
     /(<meta property="og:locale" content=")[^"]*(")/,
-    `$1${lang}$2`,
+    `$1${OG_LOCALE[lang]}$2`,
+    'og:locale',
   )
 
-  // The noscript body: the only text a crawler that does not run JavaScript
-  // will ever read. Its heading and first paragraph carry the words people
-  // actually search for, so they must be in the page's own language.
-  html = html.replace(/<h1>[^<]*<\/h1>/, `<h1>${escapeHtml(copy.heading)}</h1>`)
-  html = html.replace(
-    /(<noscript>[\s\S]*?<p>\s*)[\s\S]*?(<strong>)[\s\S]*?(<\/strong>)/,
-    `$1${escapeHtml(copy.intro)}\n          $2${escapeHtml(copy.needsJs)}$3`,
+  // The text inside #root: what a crawler that does not run JavaScript reads,
+  // and what everyone sees until the app mounts. Its heading and first
+  // paragraph carry the words people actually search for, so they must be in
+  // the page's own language.
+  html = replaceOnce(html, /<h1>[^<]*<\/h1>/, `<h1>${escapeHtml(copy.heading)}</h1>`, 'h1')
+  html = replaceOnce(
+    html,
+    /(<p data-seo="intro">)[\s\S]*?(<\/p>)/,
+    `$1${escapeHtml(copy.intro)}$2`,
+    'intro paragraph',
   )
-  html = html.replace(/<h2>[^<]*<\/h2>/, `<h2>${escapeHtml(copy.sourcesHeading)}</h2>`)
-  html = html.replace(/<em>[\s\S]*?<\/em>/, `<em>${escapeHtml(copy.disclaimer)}</em>`)
+  html = replaceOnce(
+    html,
+    /(<strong data-seo="needs-js">)[\s\S]*?(<\/strong>)/,
+    `$1${escapeHtml(copy.needsJs)}$2`,
+    'needs-JavaScript note',
+  )
+  html = replaceOnce(html, /<h2>[^<]*<\/h2>/, `<h2>${escapeHtml(copy.sourcesHeading)}</h2>`, 'h2')
+  html = replaceOnce(
+    html,
+    /(<p data-seo="app">)[\s\S]*?(<\/p>)/,
+    `$1${APP_LINE[lang]}$2`,
+    'app paragraph',
+  )
+  html = replaceOnce(html, /<em>[\s\S]*?<\/em>/, `<em>${escapeHtml(copy.disclaimer)}</em>`, 'disclaimer')
 
   return html
 }
@@ -123,12 +175,27 @@ ${alt}
   </url>`
 }).join('\n')
 
+// The download page: one URL, both of its languages on it (no hreflang --
+// the SPA serves a language per URL, that page does not). Its lastmod is the
+// day its source last changed, not the build day: git rewrites a file's
+// mtime only when the file changes, and Docker's COPY keeps it.
+const downloadSource = join(here, '..', 'public', 'download', 'index.html')
+const downloadModified = statSync(downloadSource).mtime
+const downloadLastmod = (downloadModified > new Date() ? new Date() : downloadModified).toISOString().slice(0, 10)
+const download = `  <url>
+    <loc>${ORIGIN}/download/</loc>
+    <lastmod>${downloadLastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`
+
 writeFileSync(
   join(dist, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls}
+${download}
 </urlset>
 `,
 )

@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- One page: the tracker is a single live view, not a set of documents.
-     Individual events are addressable (#e/<id>) but they expire within days,
-     so listing them would publish links that die. -->
+<!-- The build REPLACES this file (scripts/prerender-langs.mjs writes one
+     URL per language plus /download/, with lastmod). This copy is what the
+     dev server serves. Individual events are addressable (#e/<id>) but they
+     expire within days, so listing them would publish links that die. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://sosforge.soclose.co/</loc>
     <changefreq>always</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://sosforge.soclose.co/download/</loc>
   </url>
 </urlset>
