@@ -240,12 +240,18 @@ def test_a_red_warning_still_to_come_is_severe_not_extreme():
 
 def test_a_rank_the_forecaster_is_unsure_of_drops_one_further():
     """CAP keeps certainty separate from severity for a reason, and reading
-    only the second put "this may happen" on the rung of "this is happening"."""
+    only the second put "this may happen" on the rung of "this is happening".
+    The demotion itself stands (NWS / WMO). For a Meteoalarm colour it stops
+    at the colour's own rung: an official orange is never shown as a yellow
+    (owner's rule, 2026-10-27)."""
+    from app.models.event import severity_for_cap
+
+    assert severity_for_cap("severe", "expected", "possible") is Severity.MINOR
     unsure = deepcopy(ORANGE_FORECAST)
     unsure["alert"]["info"][0]["certainty"] = "Possible"
     event = parse_meteoalarm(unsure, "poland")
     assert event is not None
-    assert event.severity is Severity.MINOR
+    assert event.severity is Severity.MODERATE
 
 
 def test_meteoalarm_garbage_is_ignored():
@@ -510,8 +516,13 @@ def test_wmo_country_comes_from_the_id_prefix():
     """It is the feed's only country indication, and it is enough for the flag."""
     assert parse_wmo(WMO_ITEM).country_code == "IN"
     assert parse_wmo({**WMO_ITEM, "id": "CN-42"}).country_code == "CN"
-    # an identifier without a country prefix must not invent a flag
-    assert parse_wmo({**WMO_ITEM, "id": "12345-x"}).country_code is None
+    # without a country prefix, the issuing service's directory (in-ndma-xx,
+    # a land hazard over Tripura) is the indication...
+    assert parse_wmo({**WMO_ITEM, "id": "12345-x"}).country_code == "IN"
+    # ...and with neither, no flag is invented
+    bare = {**WMO_ITEM, "id": "12345-x"}
+    bare.pop("url")
+    assert parse_wmo(bare).country_code is None
 
 
 def test_wmo_classification():

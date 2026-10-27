@@ -228,6 +228,9 @@ class TsunamiSource(Source):
                         resp.raise_for_status()
                         root = ET.fromstring(resp.content)
                         alive += 1
+                        # before the emits: a centre back after failing since
+                        # startup lists its baseline, not new bulletins
+                        self.health.feed_ok(center)
                         for entry in root.findall(".//atom:entry", NS):
                             event = parse_entry(entry, center)
                             if not event:
@@ -245,7 +248,6 @@ class TsunamiSource(Source):
                                 )
                             seen += 1
                             await emit(event)
-                        self.health.feed_ok(center)
                     except Exception as exc:
                         last_error = exc
                         # Remembered per centre: PTWC down while NTWC answers

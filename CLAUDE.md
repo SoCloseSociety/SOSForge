@@ -132,6 +132,15 @@ off. Concretely:
   (`sender,identifier,sent` triples) and the old one is never listed again
   (0 of 1009 on 2026-10-27). Read `references` BEFORE the level filter and
   withdraw what they name, or a lifted orange stays on every client.
+  **Greece issues two warnings per region** (thunderstorm AND rain, different
+  ids, no reference between them): two hazards, two events -- never merge
+  them. Its rain headline names only the colour ("Orange warning for
+  Thessalia"): the awareness type is put in the title. **An official colour
+  is never contradicted on screen**: the CAP rule demotes a forecast one rung
+  and `certainty: Possible` one more, which published Croatia's ORANGE Velebit
+  warning as MINOR (2026-10-27). For Meteoalarm only, the colour is a floor:
+  orange >= MODERATE, red >= SEVERE (the NWS/WMO Severe-Possible demotion is
+  unchanged).
 - **WMO**: `s`/`u`/`c` are CAP ranks that grow **WITH** the severity, not
   against it: `s` 0=Unknown 1=Minor 2=Moderate 3=Severe 4=Extreme, `u` 1=Past
   2=Future 3=Expected 4=Immediate, `c` 2=Possible 3=Likely 4=Observed. Read
@@ -151,8 +160,23 @@ off. Concretely:
   published vs 59 -- NWS relays, Meteoalarm/EA copies, "Forestfire", "Low
   water"); only a TARGETED second tier is kept: issuers we do not read
   directly, kinds we lack (heat, landslide, drought, avalanche, flood), never
-  minor, never BOM (no polygon, reuse refused). The issuer is the CAP source
-  directory (`co-ideam-es/...`). **IDEAM re-sends an unchanged warning under a
+  minor, never BOM in that second tier (its CAP has no polygon: 0 of 5
+  placeable). BOM STAYS in the top tier: those are public-safety warnings WMO
+  relays for redistribution, which is not the reuse of BOM's own API that was
+  refused in round 1 -- the refusal was about that API's payload terms, not
+  about a warning the issuing service hands to WMO to spread. The issuer is
+  the CAP source directory (`co-ideam-es/...`). **The aggregate's OID ids
+  carry no country** (0 of 1319 by id prefix): the flag comes from the
+  issuer's ISO prefix (`uk` = GB), for land hazards only, never for a marine
+  product -- read from the area and headline, because "Gale" is a sea-area
+  warning for MET Norway and SMHI but CMA's land strong-wind warning, and
+  DWD's "gale-force gusts" are over towns -- and never when a TOP-LEVEL area
+  name is another country (Colombia has towns called Armenia, Montenegro,
+  Albania, Florida, California: municipality lists in parentheses are not
+  read). NWS territories are postal suffixes (`Saipan, MP`): their own code.
+  The CAP id is a WMO OID naming the issuer's country too (`2.49.0.0.170` =
+  ISO numeric 170, Colombia; table in `sources/iso3166.py`): it must agree
+  with the directory prefix (882 of 882 did on 2026-10-27). **IDEAM re-sends an unchanged warning under a
   new identifier every few hours, without `references`**: identical content
   from one issuer is collapsed to the newest copy.
 - **SWPC alerts**: `alerts.json` keeps a bulletin listed for weeks after its
@@ -202,7 +226,11 @@ off. Concretely:
   aggregators BEFORE counting a gap as missing coverage.
 - **US Drought Monitor**: a weekly MAP (5 MultiPolygons, `DM` 0-4), no date
   but `Last-Modified`, 17 MB uncompressed: `If-Modified-Since`, and never a
-  6 h wait to retry a failure.
+  6 h wait to retry a failure. Region ids are category + rounded centre and
+  change every week (7 of 9 D4 ids between the maps valid 2026-10-13 and
+  -20): last week's regions are withdrawn against the map last PUBLISHED,
+  kept in the source memory, or a restart between two releases leaves both
+  weeks on screen. Past maps: `data/json/usdm_YYYYMMDD.json` (the Tuesday).
 - **PHIVOLCS** revises a quake under a NEW bulletin name and drops the old
   row (`2026_1026_204121_B1` -> `2026_1026_2041_B2`); same-minute rows are
   mostly DIFFERENT quakes (500 km apart). Only the page says what is current:
@@ -212,7 +240,11 @@ off. Concretely:
   preferred `id`; an alias stored as its own quake is withdrawn (the day feed
   is read for `ids`, a merge lands after the hour feed has dropped it).
 - **INGV** re-identifies events (`eventid=46940061` -> 302 -> `47630362`, same
-  origin): same origin + position withdraws the old id. Italian places end in
+  origin): same origin + position withdraws the old id, ONLY once the page
+  stops listing it. The catalogue also lists TWO solutions of one quake at
+  once (47459342/47459372, 0.2 s and 0.12 km apart; four such pairs in
+  October 2026): withdrawn on the match alone, each removed the other every
+  cycle and the quake re-arrived as new every minute. Italian places end in
   a province code `(PZ)`; seas and abroad use brackets (`[Mare]`, `[Sea:
   Vanuatu]`): Italy only on a province code.
 - **Area centres** (NWS zones, CAP polygons, UK Meteoalarm, SIGMETs) go

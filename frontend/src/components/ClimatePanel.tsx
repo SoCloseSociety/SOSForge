@@ -26,6 +26,10 @@ import './ClimatePanel.css'
 export type ClimateTrend = 'up' | 'down' | 'flat'
 
 export interface ClimateBaseline {
+  /** Stable id of the reference ("day_1991_2020", "day_year_earlier",
+   * "week_1991_2020"): what the panel translates. `label` is the server's
+   * English fallback for a kind it does not know yet. */
+  kind?: string
   label: string
   value: number | null
   as_of?: string
@@ -66,6 +70,8 @@ export interface ClimateIndicator {
   baseline: ClimateBaseline | null
   previous: ClimatePrevious | null
   trend: ClimateTrend | null
+  /** The value (and its anomaly) is a minimum: part of the area had no data. */
+  lower_bound?: boolean
   stale: boolean
   max_age_days: number | null
   detail: Record<string, unknown>
@@ -344,6 +350,7 @@ function IndicatorCard({
     trend,
     stale,
     status,
+    lower_bound: lowerBound = false,
   } = indicator
   const source = indicator.source ?? null
   const state = indicator.state ?? null
@@ -398,8 +405,27 @@ function IndicatorCard({
         <p className="climate-asof">{rich(t('climate.asof'), { date: <DayTime iso={asOf} fmt={fmt} /> })}</p>
       ) : null}
 
-      {status === 'preliminary' || stale ? (
+      {status === 'preliminary' || stale || lowerBound ? (
         <ul className="climate-flags">
+          {lowerBound ? (
+            // Visible on the card, not behind "Show more": the figure above
+            // is a minimum, and the reader must know before trusting it.
+            <li className="climate-flag is-lower-bound">
+              <span className="climate-flag-glyph" aria-hidden="true">
+                ≥
+              </span>
+              <span>
+                {typeof detail.missing_million_km2 === 'number'
+                  ? t('climate.lowerbound', {
+                      amount: withUnit(
+                        fmt.value(detail.missing_million_km2),
+                        unitLabel(t, 'million km²'),
+                      ),
+                    })
+                  : t('climate.lowerbound.short')}
+              </span>
+            </li>
+          ) : null}
           {status === 'preliminary' ? (
             <li className="climate-flag is-preliminary">
               <span className="climate-flag-glyph" aria-hidden="true">
@@ -463,7 +489,9 @@ function IndicatorCard({
       <dl className="climate-detail" id={detailId} hidden={!open}>
         {baseline ? (
           <DetailRow label={t('climate.detail.baseline')}>
-            {baseline.label}
+            {baseline.kind
+              ? orServer(t, `climate.baseline.${baseline.kind}`, baseline.label)
+              : baseline.label}
             {typeof baseline.value === 'number'
               ? `: ${withUnit(fmt.value(baseline.value), unit)}`
               : null}

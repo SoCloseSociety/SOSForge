@@ -354,6 +354,11 @@ const fr: Dict = {
   "climate.ind.antarctic_sea_ice_extent": "Étendue de la banquise antarctique",
   "climate.ind.nino34_weekly": "Température de surface de la mer Niño 3.4 (hebdomadaire)",
   "climate.ind.enso_status": "Statut d’alerte ENSO",
+  "climate.lowerbound": "Borne inférieure : {amount} de la surface sans données",
+  "climate.lowerbound.short": "Borne inférieure : une partie de la surface sans données",
+  "climate.baseline.day_1991_2020": "moyenne 1991-2020 pour ce jour",
+  "climate.baseline.day_year_earlier": "même jour un an plus tôt",
+  "climate.baseline.week_1991_2020": "moyenne hebdomadaire 1991-2020",
 };
 
 const en: Dict = {
@@ -685,6 +690,11 @@ const en: Dict = {
   "climate.ind.antarctic_sea_ice_extent": "Antarctic sea ice extent",
   "climate.ind.nino34_weekly": "Niño 3.4 sea surface temperature (weekly)",
   "climate.ind.enso_status": "ENSO alert status",
+  "climate.lowerbound": "Lower bound: {amount} of the area had no data",
+  "climate.lowerbound.short": "Lower bound: part of the area had no data",
+  "climate.baseline.day_1991_2020": "1991-2020 average for this day",
+  "climate.baseline.day_year_earlier": "same day a year earlier",
+  "climate.baseline.week_1991_2020": "1991-2020 weekly average",
 };
 
 const es: Dict = {
@@ -1016,6 +1026,11 @@ const es: Dict = {
   "climate.ind.antarctic_sea_ice_extent": "Extensión del hielo marino antártico",
   "climate.ind.nino34_weekly": "Temperatura de la superficie del mar en Niño 3.4 (semanal)",
   "climate.ind.enso_status": "Estado de alerta de ENSO",
+  "climate.lowerbound": "Límite inferior: {amount} del área sin datos",
+  "climate.lowerbound.short": "Límite inferior: parte del área sin datos",
+  "climate.baseline.day_1991_2020": "promedio 1991-2020 para este día",
+  "climate.baseline.day_year_earlier": "mismo día un año antes",
+  "climate.baseline.week_1991_2020": "promedio semanal 1991-2020",
 };
 
 const ja: Dict = {
@@ -1345,6 +1360,11 @@ const ja: Dict = {
   "climate.ind.antarctic_sea_ice_extent": "南極の海氷面積",
   "climate.ind.nino34_weekly": "Niño 3.4海域の海面水温（週別）",
   "climate.ind.enso_status": "ENSO警戒状況",
+  "climate.lowerbound": "下限値：{amount} の範囲でデータが欠けています",
+  "climate.lowerbound.short": "下限値：一部の範囲でデータが欠けています",
+  "climate.baseline.day_1991_2020": "この日の1991〜2020年平均",
+  "climate.baseline.day_year_earlier": "1年前の同じ日",
+  "climate.baseline.week_1991_2020": "1991〜2020年の週平均",
 };
 
 const id: Dict = {
@@ -1678,6 +1698,11 @@ const id: Dict = {
   "climate.ind.antarctic_sea_ice_extent": "Luas es laut Antarktika",
   "climate.ind.nino34_weekly": "Suhu permukaan laut Niño 3.4 (mingguan)",
   "climate.ind.enso_status": "Status peringatan ENSO",
+  "climate.lowerbound": "Batas bawah: {amount} dari wilayah tanpa data",
+  "climate.lowerbound.short": "Batas bawah: sebagian wilayah tanpa data",
+  "climate.baseline.day_1991_2020": "rata-rata 1991-2020 untuk hari ini",
+  "climate.baseline.day_year_earlier": "hari yang sama setahun sebelumnya",
+  "climate.baseline.week_1991_2020": "rata-rata mingguan 1991-2020",
 };
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id };

@@ -1,0 +1,588 @@
+{
+ "_captured": "2026-10-27T13:11:42Z, feeds.meteoalarm.org/api/v1/warnings/feeds-{country}. Portugal: the whole feed, verbatim (3 warnings, none orange or red). Greece: three of its 20 published warnings (orange thunderstorm Dodekanisa, orange rain Thessalia, red thunderstorm Thessalia), each copied unmodified.",
+ "now": "2026-10-27T13:11:42+00:00",
+ "portugal": {
+  "warnings": [
+   {
+    "alert": {
+     "identifier": "2.49.0.0.620.0.PT.261027101400.AZ-10-661",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Ocidental",
+         "geocode": [
+          {
+           "value": "PT001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Precipitação por vezes FORTE.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Aviso Amarelo Precipitação",
+       "expires": "2026-10-28T15:00:00+00:00",
+       "headline": "Aviso Amarelo Precipitação para Açores - Grupo Ocidental",
+       "language": "pt-PT",
+       "onset": "2026-10-28T03:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/pt/otempo/prev-sam/"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Ocidental",
+         "geocode": [
+          {
+           "value": "PT001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Occasionally heavy precipitation.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Yellow Rain Warning",
+       "expires": "2026-10-28T15:00:00+00:00",
+       "headline": "Yellow Rain Warning for Açores - Grupo Ocidental",
+       "language": "en-GB",
+       "onset": "2026-10-28T03:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/en/otempo/prev-sam/"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "https://www.ipma.pt",
+     "sent": "2026-10-27T10:14:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "93b65a16-5448-46e1-bebe-8a12c37f122b"
+   },
+   {
+    "alert": {
+     "identifier": "2.49.0.0.620.0.PT.261027101400.AZ-10-662",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Central",
+         "geocode": [
+          {
+           "value": "PT002",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Precipitação por vezes FORTE.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Aviso Amarelo Precipitação",
+       "expires": "2026-10-29T00:00:00+00:00",
+       "headline": "Aviso Amarelo Precipitação para Açores - Grupo Central",
+       "language": "pt-PT",
+       "onset": "2026-10-28T09:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/pt/otempo/prev-sam/"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Central",
+         "geocode": [
+          {
+           "value": "PT002",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Occasionally heavy precipitation.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Yellow Rain Warning",
+       "expires": "2026-10-29T00:00:00+00:00",
+       "headline": "Yellow Rain Warning for Açores - Grupo Central",
+       "language": "en-GB",
+       "onset": "2026-10-28T09:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/en/otempo/prev-sam/"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "https://www.ipma.pt",
+     "sent": "2026-10-27T10:14:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "ad960eda-4a3f-40ea-ba38-9a47ebf55ead"
+   },
+   {
+    "alert": {
+     "identifier": "2.49.0.0.620.0.PT.261027101400.AZ-10-663",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Oriental",
+         "geocode": [
+          {
+           "value": "PT003",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Precipitação por vezes FORTE.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Aviso Amarelo Precipitação",
+       "expires": "2026-10-29T09:00:00+00:00",
+       "headline": "Aviso Amarelo Precipitação para Açores - Grupo Oriental",
+       "language": "pt-PT",
+       "onset": "2026-10-28T21:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/pt/otempo/prev-sam/"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Açores - Grupo Oriental",
+         "geocode": [
+          {
+           "value": "PT003",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Occasionally heavy precipitation.",
+       "effective": "2026-10-27T10:14:00+00:00",
+       "event": "Yellow Rain Warning",
+       "expires": "2026-10-29T09:00:00+00:00",
+       "headline": "Yellow Rain Warning for Açores - Grupo Oriental",
+       "language": "en-GB",
+       "onset": "2026-10-28T21:00:00+00:00",
+       "parameter": [
+        {
+         "value": "2; yellow; Moderate",
+         "valueName": "awareness_level"
+        },
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Instituto Português do Mar e da Atmosfera",
+       "severity": "Moderate",
+       "urgency": "Expected",
+       "web": "https://www.ipma.pt/en/otempo/prev-sam/"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "https://www.ipma.pt",
+     "sent": "2026-10-27T10:14:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "68dbb536-b7c4-454f-bc05-125c54643312"
+   }
+  ]
+ },
+ "greece": {
+  "warnings": [
+   {
+    "alert": {
+     "identifier": "2.49.0.0.300.0.GR.261026121400.010000013",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Dodekanisa Islands",
+         "geocode": [
+          {
+           "value": "GR013",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Severe thunderstorms in place probably accompanied by strong winds  and hail at times. BE PREPARED for severe thunderstorms causing significant impact and protect yourself from lightning. Damage to property and trees may occur. Flash flooding, wind gusts and hail are possible. Transport and outdoor activities disruption can be expected.",
+       "effective": "2026-10-26T12:14:00+00:00",
+       "event": "Orange Warning",
+       "expires": "2026-10-27T21:59:00+00:00",
+       "headline": "Orange warning for Dodekanisa Islands",
+       "language": "en-GB",
+       "onset": "2026-10-27T13:00:00+00:00",
+       "parameter": [
+        {
+         "value": "3; Thunderstorm",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "3; Orange; Severe",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Severe",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Δωδεκάνησα΄",
+         "geocode": [
+          {
+           "value": "GR013",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Καταιγίδες κατά τόπους ισχυρές που πιθανώς να συνοδεύονται πρόσκαιρα από χαλαζοπτώσεις και ισχυρούς ριπαίους ανέμους. ΠΡΟΕΤΟΙΜΑΣΤΕΙΤΕ για ισχυρές καταιγίδες που έχουν σημαντικές επιπτώσεις και προστατεύστε τον εαυτό σας από τους κεραυνούς. Είναι δυνατό να προκληθούν ζημιές σε περιουσίες και δέντρα από τις πλημμύρες, τις ριπές του ανέμου και το χαλάζι. Αναμένονται προβλήματα στις υπαίθριες δραστηριότητες και τις μεταφορές.",
+       "effective": "2026-10-26T12:14:00+00:00",
+       "event": "Πορτοκαλί Προειδοποίηση",
+       "expires": "2026-10-27T21:59:00+00:00",
+       "headline": "Πορτοκαλί προειδοποίηση για Δωδεκάνησα΄",
+       "language": "el-GR",
+       "onset": "2026-10-27T13:00:00+00:00",
+       "parameter": [
+        {
+         "value": "3; Thunderstorm",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "3; Orange; Severe",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Severe",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "emk@hnms.gr",
+     "sent": "2026-10-26T12:14:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "c13e24d0-3414-40a8-8efe-3fb3d6b67d2e"
+   },
+   {
+    "alert": {
+     "identifier": "2.49.0.0.300.0.GR.261026121900.001000001",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Thessalia",
+         "geocode": [
+          {
+           "value": "GR001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Locally heavy rain mainly over Sporades region until midday and again from the evening hours, as well as Larissa and Magnesia region. Precipitation amount forecasted from  30  to 60 mm  in 12 hours. BE PREPARED to protect yourself and your property. Some flooding of properties and transport networks are possible. Disruption to power, communications and water supplies are possible. Some evacuations may be required. Dangerous driving conditions due to reduced visibility and aquaplaning",
+       "effective": "2026-10-26T12:19:00+00:00",
+       "event": "Orange Warning",
+       "expires": "2026-10-27T21:59:00+00:00",
+       "headline": "Orange warning for Thessalia",
+       "language": "en-GB",
+       "onset": "2026-10-26T22:00:00+00:00",
+       "parameter": [
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "3; Orange; Severe",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Severe",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Θεσσαλία",
+         "geocode": [
+          {
+           "value": "GR001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Τοπικά ισχυρές βροχοπτώσεις κυρίως στην περιοχή των Σποράδων έως το μεσημέρι και εκ νέου από τις βραδινές ώρες, ενώ στους νομούς Λάρισας και Μαγνησίας από τις βραδινές ώρες. Πιθανό ύψος υετού σε διάστημα 12 ωρών από 30  έως 60 χιλιοστά. ΠΡΟΕΤΟΙΜΑΣΤΕΙΤΕ να προστατεύσετε τον εαυτό σας και την περιουσία σας.  Ενδέχεται να υπάρξουν κάποιες πλημμύρες σε ακίνητα και δίκτυα μεταφορών. Ενδέχεται διακοπή στην παροχή ρεύματος και νερού καθώς και διακοπή στις επικοινωνίες. Μπορεί να χρειαστεί εκκένωση κάποιων περιοχών. Επικίνδυνες συνθήκες οδήγησης λόγω περιορισμένης ορατότητας και ολισθηρότητας του οδικού δικτύου.",
+       "effective": "2026-10-26T12:19:00+00:00",
+       "event": "Πορτοκαλί Προειδοποίηση",
+       "expires": "2026-10-27T21:59:00+00:00",
+       "headline": "Πορτοκαλί προειδοποίηση για Θεσσαλία",
+       "language": "el-GR",
+       "onset": "2026-10-26T22:00:00+00:00",
+       "parameter": [
+        {
+         "value": "10; Rain",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "3; Orange; Severe",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Severe",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "emk@hnms.gr",
+     "sent": "2026-10-26T12:19:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "44bc5e2e-08b1-4b3a-bb65-6bd53b76a92a"
+   },
+   {
+    "alert": {
+     "identifier": "2.49.0.0.300.0.GR.261027122600.010000001",
+     "incidents": "Alert",
+     "info": [
+      {
+       "area": [
+        {
+         "areaDesc": "Thessalia",
+         "geocode": [
+          {
+           "value": "GR001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Severe thunderstorms accompanied  by heavy rainfall and strong winds are expected mainly in Magnesia, Larisa, Sporades and Evia. TAKE ACTION to protect yourself and act on advice given by authorities. Widespread, violent thunderstorms are likely with danger to life from lightning, hail, flooding and storm damage. Transport and power disruption can be expected. Significant disruption to normal routines is possible. Avoid making non-essential journeys.",
+       "effective": "2026-10-27T12:26:00+00:00",
+       "event": "Red Warning",
+       "expires": "2026-10-28T21:59:00+00:00",
+       "headline": "Red warning for Thessalia",
+       "language": "en-GB",
+       "onset": "2026-10-27T22:00:00+00:00",
+       "parameter": [
+        {
+         "value": "3; Thunderstorm",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "4; Red; Extreme",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Extreme",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      },
+      {
+       "area": [
+        {
+         "areaDesc": "Θεσσαλία",
+         "geocode": [
+          {
+           "value": "GR001",
+           "valueName": "EMMA_ID"
+          }
+         ]
+        }
+       ],
+       "category": [
+        "Met"
+       ],
+       "certainty": "Likely",
+       "description": "Αναμένονται ισχυρές καταιγίδες, συνοδευόμενες από έντονη βροχή και δυνατούς ανέμους κυρίως (ν. Μαγνησίας, ν. Λάρισας), τις Σποράδες και την Εύβοια. ΠΑΡΤΕ ΜΕΤΡΑ για να προστατεύσετε τον εαυτό σας και ενεργείτε σύμφωνα με τις συμβουλές των αρμόδιων αρχών. Είναι πιθανή η εκδήλωση εκτεταμένων και σφοδρών καταιγίδων με κίνδυνο της ανθρώπινης ζωής από κεραυνούς, χαλάζι και πλημμύρες. Αναμένονται προβλήματα στις μεταφορές και στην ηλεκτροδότηση. Σημαντικά προβλήματα στις καθημερινές δραστηριότητες είναι πιθανά. Αποφύγετε τις άσκοπες μετακινήσεις.",
+       "effective": "2026-10-27T12:26:00+00:00",
+       "event": "Κόκκινη Προειδοποίηση",
+       "expires": "2026-10-28T21:59:00+00:00",
+       "headline": "Κόκκινη προειδοποίηση για Θεσσαλία",
+       "language": "el-GR",
+       "onset": "2026-10-27T22:00:00+00:00",
+       "parameter": [
+        {
+         "value": "3; Thunderstorm",
+         "valueName": "awareness_type"
+        },
+        {
+         "value": "4; Red; Extreme",
+         "valueName": "awareness_level"
+        }
+       ],
+       "responseType": [
+        "None"
+       ],
+       "senderName": "Hnms Forecaster",
+       "severity": "Extreme",
+       "urgency": "Expected",
+       "web": "https://www.emy.gr"
+      }
+     ],
+     "msgType": "Alert",
+     "scope": "Public",
+     "sender": "emk@hnms.gr",
+     "sent": "2026-10-27T12:26:00+00:00",
+     "status": "Actual"
+    },
+    "uuid": "d4b7e4b6-66d8-457a-8a73-8269c8df984b"
+   }
+  ]
+ }
+}

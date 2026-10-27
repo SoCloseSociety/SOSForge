@@ -33,7 +33,11 @@ def test_global_air_temperature_carries_its_own_date_and_status():
     assert r.as_of == date(2026, 10, 25)
     assert r.value == 15.054
     assert r.anomaly == 0.949
-    assert r.baseline == {"label": "1991-2020 average for this day", "value": 14.106}
+    assert r.baseline == {
+        "kind": "day_1991_2020",
+        "label": "1991-2020 average for this day",
+        "value": 14.106,
+    }
     assert r.previous == {"as_of": "2026-10-24", "value": 15.167, "anomaly": 1.024}
     # the last day is PRELIMINARY in the file, and says so here
     assert r.status == "preliminary"
@@ -73,6 +77,41 @@ def test_enso_status_and_issue_date_come_from_the_discussion():
     assert r.value == "El Niño Advisory"
     assert r.as_of == date(2026, 10, 8)
     assert r.extra["next_issue"] == "2026-11-12"
+
+
+def test_the_enso_synopsis_is_the_synopsis_not_the_whole_discussion():
+    """PR #5 review: it ran 2545 characters, through every paragraph and the
+    e-mail sign-up line, because the whitespace collapse erased the boundary
+    the parser looked for. The page is now read block by block."""
+    synopsis = parse_enso_discussion(read("ensodisc.html")).extra["synopsis"]
+    assert synopsis == (
+        "El Niño continues to strengthen, with a strong-to-very strong El Niño "
+        "likely through January-March 2027 (remaining greater than an 83% chance)."
+    )
+    assert "ncep.list" not in synopsis
+
+
+def test_missing_coverage_makes_the_extent_a_lower_bound_with_no_trend():
+    """2026-10-17 south: 16.204 with 0.382 missing, after 16.225 with none. A
+    0.021 drop inside 0.382 of missing area is no direction at all."""
+    from app.climate import _lower_bound, _trend
+
+    south = parse_nsidc(read("nsidc_S.csv"))
+    assert _lower_bound(south) is True
+    assert _trend(south) is None
+    north = parse_nsidc(read("nsidc_N.csv"))  # nothing missing
+    assert _lower_bound(north) is False
+    assert _trend(north) == "down"
+
+
+def test_every_baseline_carries_a_stable_kind_for_translation():
+    kinds = {
+        parse_pulse(read("pulse_2t.csv")).baseline["kind"],
+        parse_co2_daily(read("co2_daily_mlo.csv")).baseline["kind"],
+        parse_nsidc(read("nsidc_N.csv")).baseline["kind"],
+        parse_nino_weekly(read("wksst9120.for")).baseline["kind"],
+    }
+    assert kinds == {"day_1991_2020", "day_year_earlier", "week_1991_2020"}
 
 
 def test_a_file_that_does_not_say_what_it_should_is_an_error_not_a_value():

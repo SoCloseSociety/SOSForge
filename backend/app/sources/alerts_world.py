@@ -40,11 +40,13 @@ from typing import Any
 
 import httpx
 
+from app.countries import resolve as resolve_country
 from app.models.event import Event, Kind, Severity, severity_for_cap, to_utc
 from app.sources import geometry
 from app.sources.base import Emit, Source
 from app.sources.cap_area import WMO_CAP_BASE, CapAreaCache, polygon_points
 from app.sources.cap_text import CapText
+from app.sources.iso3166 import NUMERIC_TO_ALPHA2
 from app.sources.nws import _matches
 from app.sources.regional import USER_AGENT, JsonPollSource
 
@@ -183,6 +185,10 @@ def _label(value: str | None) -> str | None:
     return html.unescape(value) if isinstance(value, str) else value
 
 
+# Meteoalarm awareness level (the colour) -> the lowest rung it may show.
+METEOALARM_COLOUR_FLOOR: dict[str, Severity] = {"3": Severity.MODERATE, "4": Severity.SEVERE}
+
+
 def meteoalarm_references(warning: dict) -> list[str]:
     """Identifiers a Meteoalarm message replaces. CAP `references` is a
     space-separated list of `sender,identifier,sent` triples, e.g.
@@ -193,6 +199,23 @@ def meteoalarm_references(warning: dict) -> list[str]:
         if len(parts) >= 2 and parts[1].strip():
             found.append(parts[1].strip())
     return found
+
+
+# "Orange warning for Thessalia": a headline that names the colour and not the
+# hazard. Greece (HNMS) issues a thunderstorm AND a rain warning for the same
+# region, and the rain one is titled that way -- so the pair read as one
+# warning listed twice (5 of the 8 Greek warnings published on 2026-10-27).
+# The hazard is in the record (`awareness_type`, "10; Rain"): it goes in.
+RE_COLOUR_ONLY = re.compile(r"^(yellow|orange|red)\s+warning\b(.*)$", re.IGNORECASE)
+
+
+def _meteoalarm_title(info: dict, params: dict, place: str) -> str:
+    title = _label(info.get("headline")) or _label(info.get("event")) or place
+    match = RE_COLOUR_ONLY.match(title or "")
+    hazard = (params.get("awareness_type") or "").split(";")[-1].strip().lower()
+    if match and hazard:
+        return f"{match.group(1)} {hazard} warning{match.group(2)}"
+    return title
 
 
 def parse_meteoalarm(warning: dict, country: str) -> Event | None:
@@ -227,6 +250,17 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         # Extending an unmeasured rule to a second population is exactly the
         # mistake lesson 24 is about.
     )
+    # An official colour is never contradicted on screen. The CAP rule above
+    # puts a forecast one rung below the agency's rank and drops a `Possible`
+    # one more -- right for the NWS's "Severe, Possible" fire-weather watches,
+    # wrong for a European colour: Croatia's ORANGE wind warning for the
+    # Velebit channel (certainty Possible) went out as MINOR on 2026-10-27,
+    # the rung of a yellow. Meteoalarm only, so the floor is the colour's own
+    # rung: orange never below MODERATE, red never below SEVERE. Yellow keeps
+    # the CAP reading; a lift is handled below.
+    floor = METEOALARM_COLOUR_FLOOR.get(level or "")
+    if floor is not None:
+        severity = max(severity, floor, key=list(Severity).index)
     kind = AWARENESS_TYPE_KIND.get(awareness_type or "", Kind.OTHER)
 
     # `AllClear` means the warning is LIFTED. Like the "no danger" tsunami
@@ -275,7 +309,7 @@ def parse_meteoalarm(warning: dict, country: str) -> Event | None:
         expires=to_utc(info.get("expires")),
         alert=("lifted" if lifted else (params.get("awareness_level") or "").split(";")[-1].strip())
         or None,
-        title=_label(info.get("headline")) or _label(info.get("event")) or place,
+        title=_meteoalarm_title(info, params, place),
         instruction=info.get("instruction"),
         description=info.get("description"),
         response_type=responses[0] if responses else None,
@@ -323,24 +357,29 @@ class MeteoalarmSource(Source):
             timeout=25.0, headers=headers, follow_redirects=True
         ) as client:
             while True:
-                seen, alive = 0, 0
+                seen, alive, answered = 0, 0, 0
                 last_error: Exception | None = None
                 for country in self.countries:
                     try:
                         resp = await client.get(METEOALARM_API.format(country=country))
                         resp.raise_for_status()
                         alive += 1
+                        data = resp.json()
+                        # before the emits: a country back after failing
+                        # since startup lists its baseline, not new data
+                        self.health.feed_ok(country)
                         kept = 0
-                        for event in self.select(resp.json(), country):
+                        for event in self.select(data, country):
                             kept += 1
                             await emit(event)
                         await self.flush_retractions()
                         seen += kept
-                        self.health.feed_ok(country)
                         # mark health at EACH country: ten sequential GETs
                         # take over a minute, and the source looked dead for
-                        # its entire first cycle
-                        self.health.ok(kept)
+                        # its entire first cycle. `partial`: one country is
+                        # not the cycle, and only the cycle primes freshness
+                        self.health.ok(kept, partial=True)
+                        answered += 1
                     except Exception as exc:
                         last_error = exc
                         # Per country, and never cleared by the next one: a
@@ -349,7 +388,10 @@ class MeteoalarmSource(Source):
                         self.health.feed_failed(country, exc)
                         log.warning("meteoalarm %s: %s", country, exc)
                 # health is already marked country by country above; marking it
-                # here again added the same total a second time
+                # here again added the same total a second time (n=0 adds
+                # nothing: this call only closes the cycle)
+                if answered:
+                    self.health.ok()
                 if not alive:
                     log.warning("meteoalarm: no country reachable this cycle")
                     if last_error is not None:
@@ -563,6 +605,8 @@ def parse_wmo(
     # a flag
     prefix = str(item_id).split("-", 1)[0]
     country_code = prefix.upper() if len(prefix) == 2 and prefix.isalpha() else None
+    kind = classify_wmo(item.get("event") or "alert")
+    country_code = country_code or issuer_country(item, kind)
     event_name = item.get("event") or "alert"
     place = item.get("areaDesc") or ""
     cap_path = wmo_cap_path(item)
@@ -641,6 +685,377 @@ METEOALARM_MEMBERS = frozenset(
     }
 )  # fmt: skip
 TIER2_KINDS = frozenset({Kind.HEAT, Kind.LANDSLIDE, Kind.DROUGHT, Kind.AVALANCHE, Kind.FLOOD})
+
+
+# ------------------------------------------------- country from the issuer
+#
+# The aggregate's ids are CAP OIDs (`2.49.0.0.170...`) with no country in
+# them: the id-prefix rule above flagged 0 of 1319 items on 2026-10-27, and
+# the pipeline cannot read a country out of "Antioquia (Dabeiba, ...)". The
+# CAP source directory names the ISSUING national service (`co-ideam-es`),
+# and for a land hazard a national weather service warns about its own
+# territory. Lesson 16 still applies -- the publisher is not always the
+# place -- so the flag is given only where that holds:
+#
+#   * the prefix is a real ISO 3166-1 alpha-2 code (`uk` is the United
+#     Kingdom's own spelling, GB in ISO); anything else is a regional or
+#     multinational issuer and gets nothing;
+#   * the issuer is not a marine feed (`us-noaa-nws-en-marine`) and the
+#     product is not a marine one (sea areas, gale/high-seas/wave/swell);
+#   * the kind is a land hazard;
+#   * the area does not name another country.
+ISO_3166_ALPHA2 = frozenset(
+    [
+        "AD",
+        "AE",
+        "AF",
+        "AG",
+        "AI",
+        "AL",
+        "AM",
+        "AO",
+        "AQ",
+        "AR",
+        "AS",
+        "AT",
+        "AU",
+        "AW",
+        "AX",
+        "AZ",
+        "BA",
+        "BB",
+        "BD",
+        "BE",
+        "BF",
+        "BG",
+        "BH",
+        "BI",
+        "BJ",
+        "BL",
+        "BM",
+        "BN",
+        "BO",
+        "BQ",
+        "BR",
+        "BS",
+        "BT",
+        "BV",
+        "BW",
+        "BY",
+        "BZ",
+        "CA",
+        "CC",
+        "CD",
+        "CF",
+        "CG",
+        "CH",
+        "CI",
+        "CK",
+        "CL",
+        "CM",
+        "CN",
+        "CO",
+        "CR",
+        "CU",
+        "CV",
+        "CW",
+        "CX",
+        "CY",
+        "CZ",
+        "DE",
+        "DJ",
+        "DK",
+        "DM",
+        "DO",
+        "DZ",
+        "EC",
+        "EE",
+        "EG",
+        "EH",
+        "ER",
+        "ES",
+        "ET",
+        "FI",
+        "FJ",
+        "FK",
+        "FM",
+        "FO",
+        "FR",
+        "GA",
+        "GB",
+        "GD",
+        "GE",
+        "GF",
+        "GG",
+        "GH",
+        "GI",
+        "GL",
+        "GM",
+        "GN",
+        "GP",
+        "GQ",
+        "GR",
+        "GS",
+        "GT",
+        "GU",
+        "GW",
+        "GY",
+        "HK",
+        "HM",
+        "HN",
+        "HR",
+        "HT",
+        "HU",
+        "ID",
+        "IE",
+        "IL",
+        "IM",
+        "IN",
+        "IO",
+        "IQ",
+        "IR",
+        "IS",
+        "IT",
+        "JE",
+        "JM",
+        "JO",
+        "JP",
+        "KE",
+        "KG",
+        "KH",
+        "KI",
+        "KM",
+        "KN",
+        "KP",
+        "KR",
+        "KW",
+        "KY",
+        "KZ",
+        "LA",
+        "LB",
+        "LC",
+        "LI",
+        "LK",
+        "LR",
+        "LS",
+        "LT",
+        "LU",
+        "LV",
+        "LY",
+        "MA",
+        "MC",
+        "MD",
+        "ME",
+        "MF",
+        "MG",
+        "MH",
+        "MK",
+        "ML",
+        "MM",
+        "MN",
+        "MO",
+        "MP",
+        "MQ",
+        "MR",
+        "MS",
+        "MT",
+        "MU",
+        "MV",
+        "MW",
+        "MX",
+        "MY",
+        "MZ",
+        "NA",
+        "NC",
+        "NE",
+        "NF",
+        "NG",
+        "NI",
+        "NL",
+        "NO",
+        "NP",
+        "NR",
+        "NU",
+        "NZ",
+        "OM",
+        "PA",
+        "PE",
+        "PF",
+        "PG",
+        "PH",
+        "PK",
+        "PL",
+        "PM",
+        "PN",
+        "PR",
+        "PS",
+        "PT",
+        "PW",
+        "PY",
+        "QA",
+        "RE",
+        "RO",
+        "RS",
+        "RU",
+        "RW",
+        "SA",
+        "SB",
+        "SC",
+        "SD",
+        "SE",
+        "SG",
+        "SH",
+        "SI",
+        "SJ",
+        "SK",
+        "SL",
+        "SM",
+        "SN",
+        "SO",
+        "SR",
+        "SS",
+        "ST",
+        "SV",
+        "SX",
+        "SY",
+        "SZ",
+        "TC",
+        "TD",
+        "TF",
+        "TG",
+        "TH",
+        "TJ",
+        "TK",
+        "TL",
+        "TM",
+        "TN",
+        "TO",
+        "TR",
+        "TT",
+        "TV",
+        "TW",
+        "TZ",
+        "UA",
+        "UG",
+        "UM",
+        "US",
+        "UY",
+        "UZ",
+        "VA",
+        "VC",
+        "VE",
+        "VG",
+        "VI",
+        "VN",
+        "VU",
+        "WF",
+        "WS",
+        "YE",
+        "YT",
+        "ZA",
+        "ZM",
+        "ZW",
+    ]
+)
+ISSUER_PREFIX_ISO = {"uk": "GB"}
+LAND_KINDS = frozenset(
+    {
+        Kind.HEAT,
+        Kind.LANDSLIDE,
+        Kind.FLOOD,
+        Kind.DROUGHT,
+        Kind.AVALANCHE,
+        Kind.WILDFIRE,
+        Kind.STORM,
+    }
+)
+# What makes a product a MARINE one, read on the real aggregate of
+# 2026-10-27. The area and the headline say it better than the event name:
+# "Gale" is a sea-area warning for MET Norway and SMHI (Roest Bank,
+# Skagerrak) but CMA's word for a LAND strong-wind warning (大风, issued per
+# county), and DWD's "gale-force gusts" are over towns. So:
+#   * unambiguous phrases (substrings);
+#   * "sea"/"seas" as words -- except for a flood: "Irish Sea at New
+#     Brighton" is a coastal flood on land;
+#   * "gale" as a word, unless it is "gale-force" or the issuer is one that
+#     uses it for land wind.
+MARINE_PHRASES = (
+    "marine",
+    "maritime",
+    "small craft",
+    "high seas",
+    "offshore",
+    "coastal waters",
+    "sea area",
+    "near gale",
+    "wave",
+    "swell",
+)
+LAND_GALE_ISSUERS = ("cn-cma",)
+# The NWS warns for territories that have their own ISO code, and writes them
+# as postal suffixes ("Saipan, MP; Tinian, MP"): flagged "US" by the first
+# version of this rule, which is wrong.
+US_TERRITORIES = {"PR": "PR", "GU": "GU", "MP": "MP", "AS": "AS", "VI": "VI"}
+
+
+def _is_marine(item: dict, issuer: str, kind: Kind) -> bool:
+    text = " ".join(str(item.get(k) or "") for k in ("event", "headline", "areaDesc")).lower()
+    if any(phrase in text for phrase in MARINE_PHRASES):
+        return True
+    words = set(re.findall(r"[^\W\d_]+", text))
+    if kind is not Kind.FLOOD and words & {"sea", "seas"}:
+        return True
+    return "gale" in words and "gale-force" not in text and not issuer.startswith(LAND_GALE_ISSUERS)
+
+
+# The CAP identifier is a WMO OID that names the issuing country too:
+# `2.49.0.0.170...` is Colombia (ISO 3166 numeric 170), `2.49.0.1.840...` the
+# NWS (840, the US). 882 of the 1319 items of 2026-10-27 carry one.
+RE_OID_COUNTRY = re.compile(r"(?:^|:)2\.49\.0\.[01]\.(\d{1,3})\.")
+
+
+def oid_country(item: dict) -> str | None:
+    match = RE_OID_COUNTRY.search(str(item.get("id") or ""))
+    return NUMERIC_TO_ALPHA2.get(int(match.group(1))) if match else None
+
+
+def issuer_country(item: dict, kind: Kind) -> str | None:
+    if kind not in LAND_KINDS:
+        return None
+    issuer = wmo_issuer(item)
+    if "marine" in issuer:
+        return None
+    oid = oid_country(item)
+    prefix = issuer.split("-", 1)[0] if issuer else ""
+    code = ISSUER_PREFIX_ISO.get(prefix, prefix.upper()) if prefix else oid
+    if not code or code not in ISO_3166_ALPHA2 or _is_marine(item, issuer, kind):
+        return None
+    # Cross-check: the directory and the identifier must name the same
+    # country. (A US territory is resolved below, after this check: the NWS
+    # warns for it under 840.)
+    if oid and oid != code:
+        return None
+    # The area names another country: say nothing. Only the top-level names
+    # are read -- a municipality list in parentheses is not a country list:
+    # Colombia has towns called Armenia, Montenegro, Albania, Florida and
+    # California, and the first version of this check refused 18 Colombian
+    # warnings for it.
+    if code == "US":
+        postal = set(re.findall(r"\b([A-Z]{2})\b", str(item.get("areaDesc") or "")))
+        territories = {US_TERRITORIES[p] for p in postal if p in US_TERRITORIES}
+        if territories:
+            # one territory and nothing else: its own flag; mixed: none
+            return (
+                territories.pop()
+                if len(territories) == 1 and postal <= set(US_TERRITORIES)
+                else None
+            )
+    top_level = re.sub(r"\([^)]*\)", " ", str(item.get("areaDesc") or ""))
+    for chunk in re.split(r"[,;/]", top_level):
+        other = resolve_country(None, chunk.strip()) if chunk.strip() else None
+        if other and other != code:
+            return None
+    return code
 
 
 def wmo_issuer(item: dict) -> str:

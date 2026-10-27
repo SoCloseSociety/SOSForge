@@ -123,7 +123,11 @@ def parse_pulse(text: str, unit: str = "°C") -> Reading:
         unit=unit,
         as_of=date.fromisoformat(last[0]),
         anomaly=round(float(last[3]), 3),
-        baseline={"label": "1991-2020 average for this day", "value": round(float(last[2]), 3)},
+        baseline={
+            "kind": "day_1991_2020",
+            "label": "1991-2020 average for this day",
+            "value": round(float(last[2]), 3),
+        },
         previous={
             "as_of": prev[0],
             "value": round(float(prev[1]), 3),
@@ -165,6 +169,7 @@ def parse_co2_daily(text: str) -> Reading:
         )
         if nearest is not None:
             reading.baseline = {
+                "kind": "day_year_earlier",
                 "label": "same day a year earlier",
                 "as_of": nearest.isoformat(),
                 "value": round(series[nearest], 2),
@@ -202,12 +207,17 @@ def parse_nsidc(text: str) -> Reading:
         value=round(extent, 3),
         unit="million km²",
         as_of=last,
-        previous={"as_of": prev.isoformat(), "value": round(series[prev][0], 3)},
+        previous={
+            "as_of": prev.isoformat(),
+            "value": round(series[prev][0], 3),
+            "missing_million_km2": round(series[prev][1], 3),
+        },
         extra={"missing_million_km2": round(missing, 3)},
     )
     if same_day:
         mean = sum(same_day) / len(same_day)
         reading.baseline = {
+            "kind": "day_1991_2020",
             "label": "1991-2020 average for this day",
             "value": round(mean, 3),
             "years": len(same_day),
@@ -240,30 +250,57 @@ def parse_nino_weekly(text: str) -> Reading:
         unit="°C",
         as_of=week,
         anomaly=ssta,
-        baseline={"label": "1991-2020 weekly average", "value": round(sst - ssta, 1)},
+        baseline={
+            "kind": "week_1991_2020",
+            "label": "1991-2020 weekly average",
+            "value": round(sst - ssta, 1),
+        },
         previous={"as_of": pweek.isoformat(), "value": psst, "anomaly": pssta},
         extra={"week": "centred on as_of"},
     )
 
 
 RE_ISSUED = re.compile(r"issued by\s+CLIMATE PREDICTION CENTER/NCEP/NWS\s+(\d{1,2} \w+ \d{4})")
-RE_STATUS = re.compile(r"ENSO Alert System Status:\s*(.+?)\s{2,}")
-RE_SYNOPSIS = re.compile(r"Synopsis:\s*(.+?)\s{2,}")
 RE_NEXT = re.compile(r"next ENSO Diagnostics Discussion is scheduled for (\d{1,2} \w+ \d{4})")
+# Block-level tags end a paragraph. The page is read as BLOCKS, not as one
+# collapsed string: the first version collapsed every whitespace run to one
+# space, so the regex looking for the end of the synopsis never found one and
+# the "synopsis" ran 2545 characters, through every discussion paragraph and
+# CPC's e-mail sign-up boilerplate (PR #5 review). In the page, the synopsis
+# and the status each sit in their own block.
+RE_BLOCK_TAG = re.compile(r"<\s*/?\s*(?:p|td|tr|br|div|table|li|h[1-6])\b[^>]*>", re.IGNORECASE)
+STATUS_LABEL = "ENSO Alert System Status:"
+SYNOPSIS_LABEL = "Synopsis:"
+
+
+def _blocks(page: str) -> list[str]:
+    text = RE_BLOCK_TAG.sub("\x00", page)
+    text = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    # str.split() also splits on the non-breaking spaces of `&nbsp;`
+    return [b for b in (" ".join(chunk.split()) for chunk in text.split("\x00")) if b]
+
+
+def _after(blocks: list[str], label: str) -> str | None:
+    for block in blocks:
+        if block.startswith(label):
+            rest = block[len(label) :].strip()
+            return rest or None
+    return None
 
 
 def parse_enso_discussion(page: str) -> Reading:
-    text = html.unescape(re.sub(r"<[^>]+>", " ", page))
-    text = re.sub(r"[ \t\r\f\v]+", " ", text.replace("\n", "  "))
-    issued, status = RE_ISSUED.search(text), RE_STATUS.search(text)
+    blocks = _blocks(page)
+    flat = " ".join(blocks)
+    issued = RE_ISSUED.search(flat)
+    status = _after(blocks, STATUS_LABEL)
     if not issued or not status:
         raise ClimateParseError("ENSO discussion: issue date or alert status not found")
-    synopsis, upcoming = RE_SYNOPSIS.search(text), RE_NEXT.search(text)
+    upcoming = RE_NEXT.search(flat)
     return Reading(
-        value=status.group(1).strip(),
+        value=status,
         as_of=datetime.strptime(issued.group(1), "%d %B %Y").date(),
         extra={
-            "synopsis": synopsis.group(1).strip() if synopsis else None,
+            "synopsis": _after(blocks, SYNOPSIS_LABEL),
             "next_issue": (
                 datetime.strptime(upcoming.group(1), "%d %B %Y").date().isoformat()
                 if upcoming
@@ -316,6 +353,9 @@ class Indicator:
             "baseline": reading.baseline if reading else None,
             "previous": reading.previous if reading else None,
             "trend": _trend(reading),
+            # additive: the value (and its anomaly) is a minimum, not a
+            # measurement -- part of the area had no data
+            "lower_bound": _lower_bound(reading),
             "stale": stale,
             "max_age_days": self.max_age_days,
             "detail": reading.extra if reading else {},
@@ -336,9 +376,30 @@ class Indicator:
         return body
 
 
+def _lower_bound(reading: Reading | None) -> bool:
+    """An extent measured with part of the area missing is a LOWER BOUND."""
+    return bool(reading and (reading.extra.get("missing_million_km2") or 0) > 0)
+
+
 def _trend(reading: Reading | None) -> str | None:
-    """up / down / flat against the previous value the dataset itself gives."""
+    """up / down / flat against the previous value the dataset itself gives.
+
+    None when the change is within the data the dataset says it is missing:
+    on 2026-10-17 the Antarctic extent went 16.225 -> 16.204 (a 0.021 drop)
+    with 0.382 of coverage missing, so "falling" was not something the file
+    could say (PR #5 review).
+    """
     if reading is None or reading.previous is None or isinstance(reading.value, str):
+        return None
+    missing = (reading.extra.get("missing_million_km2") or 0) + (
+        reading.previous.get("missing_million_km2") or 0
+    )
+    previous_value = reading.previous.get("value")
+    if (
+        missing
+        and isinstance(previous_value, (int, float))
+        and abs(float(reading.value) - float(previous_value)) <= missing
+    ):
         return None
     key = "anomaly" if reading.anomaly is not None and "anomaly" in reading.previous else "value"
     now_v = reading.anomaly if key == "anomaly" else reading.value

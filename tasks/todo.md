@@ -1289,3 +1289,52 @@ today): the source list grows with every `last_error` it carries.
 through the same filter (Nominatim URLs redacted), the geocode warning logs
 no URL, a refused socket logs its code only, and redact_query blanks bare
 parts and safe names holding a value of the wrong shape.
+
+## Lane C2 -- WMO country from the issuer (critical file `sources/alerts_world.py`)
+
+- [x] The aggregate's OID ids carry no country (id-prefix rule: 0 of 1319
+      items). Flag from the CAP source directory (`co-ideam-es` -> CO) only
+      for land hazards (heat, landslide, flood, drought, avalanche, wildfire,
+      storm over land), only when the prefix is a national ISO 3166-1 code
+      (`uk` -> GB), never for a marine issuer or product, never when the CAP
+      area names another country. Measure on the real aggregate: flags gained,
+      and every one judged by eye.
+
+## Lane C2 -- Meteoalarm colour floor (critical file `sources/alerts_world.py`)
+
+- [x] Owner/coordinator rule: an official colour is never contradicted on
+      screen. Meteoalarm ONLY: after the CAP demotions, orange never below
+      MODERATE, red never below SEVERE; yellow and lifts unchanged; NWS / WMO
+      Severe-Possible demotion unchanged. Test: the Velebit orange (certainty
+      Possible, published MINOR on 2026-10-27). Measure what moves.
+      Measured on today's captures (ten countries, 09:53 / 11:40 UTC): 1 of
+      the 15 published warnings moves -- the Velebit orange, MINOR -> MODERATE.
+
+## Lane C2 -- PR #5 final review, sources (critical files `sources/regional.py`, `sources/base.py`, `sources/alerts_world.py`, `sources/tsunami.py`, `sources/usdm.py`)
+
+- [x] INGV re-identification: withdraw an old id only when the CURRENT page no
+      longer lists it (the 302 case). Two ids listed at once within 1 s and
+      10 km are two catalogue solutions, both kept. Test on real pages
+      holding both ids (Sefro 47459342/47459372, Eolie 47569802/47569772);
+      reproduce the double withdrawal first.
+      Reproduced on the two real pages: cycle 1 withdrew one id of each pair,
+      every later cycle all four. After: 0 withdrawn over 3 cycles; the page
+      without 47569772 withdraws exactly that id.
+- [x] Freshness baseline per feed, not per first `ok()`: Meteoalarm's
+      per-country `ok()` no longer primes the source (the cycle's end does),
+      and a feed answering for the first time after failing since startup
+      lists its baseline, not new data (`feed_ok` before that feed's emits in
+      Meteoalarm and tsunami). Replay the real country payloads in `run()`
+      order before/after.
+      Ten real feeds (13:11 UTC) through `run()`: before, `last_event_at` =
+      startup time from cycle 1 (and re-stamped when Greece, 503 in cycle 1,
+      came back); after, null for 3 cycles in both cases, and stamped when a
+      warning appears after the baseline. Live :8333: meteoalarm up, 25
+      events, `last_event_at` null after its first full cycle.
+- [x] USDM: persist the published week's region ids in the source memory, so
+      a restart between a weekly release and the next poll still withdraws
+      the previous map's regions. Test with the real map.
+      Real maps valid 2026-10-13 and 2026-10-20 (D4): 9 -> 7 regions, 7 ids
+      gone. Before: a restart between them withdrew 0; after: the 7, as
+      `stale`. Live :8333: `memory-usdm.json` holds the 30 ids of the
+      2026-10-22 release.
