@@ -364,13 +364,12 @@ class MeteoalarmSource(Source):
                         resp = await client.get(METEOALARM_API.format(country=country))
                         resp.raise_for_status()
                         alive += 1
-                        data = resp.json()
+                        events = self.select(resp.json(), country)
                         # before the emits: a country back after failing
                         # since startup lists its baseline, not new data
-                        self.health.feed_ok(country)
-                        kept = 0
-                        for event in self.select(data, country):
-                            kept += 1
+                        self.health.feed_ok(country, (e.id for e in events))
+                        kept = len(events)
+                        for event in events:
                             await emit(event)
                         await self.flush_retractions()
                         seen += kept
@@ -978,7 +977,13 @@ LAND_KINDS = frozenset(
 #   * "sea"/"seas" as words -- except for a flood: "Irish Sea at New
 #     Brighton" is a coastal flood on land;
 #   * "gale" as a word, unless it is "gale-force" or the issuer is one that
-#     uses it for land wind.
+#     uses it for land wind;
+#   * "wave(s)" as a word, unless a heat or cold wave. A substring, it made
+#     every heatwave marine ("Severe heatwave warning for Queensland", BOM),
+#     so no heatwave got its country; a whole word alone still reads "Heat
+#     Wave" as the sea. Measured on four real aggregates (978 to 1373
+#     items): the 2 BOM heatwaves gain AU, nothing else moves, and "Wave
+#     height warning" (UA), "Wind Wave Advisory" (KMA) stay marine.
 MARINE_PHRASES = (
     "marine",
     "maritime",
@@ -988,9 +993,9 @@ MARINE_PHRASES = (
     "coastal waters",
     "sea area",
     "near gale",
-    "wave",
     "swell",
 )
+WAVE_QUALIFIERS = frozenset({"heat", "cold"})
 LAND_GALE_ISSUERS = ("cn-cma",)
 # The NWS warns for territories that have their own ISO code, and writes them
 # as postal suffixes ("Saipan, MP; Tinian, MP"): flagged "US" by the first
@@ -1002,7 +1007,13 @@ def _is_marine(item: dict, issuer: str, kind: Kind) -> bool:
     text = " ".join(str(item.get(k) or "") for k in ("event", "headline", "areaDesc")).lower()
     if any(phrase in text for phrase in MARINE_PHRASES):
         return True
-    words = set(re.findall(r"[^\W\d_]+", text))
+    tokens = re.findall(r"[^\W\d_]+", text)
+    if any(
+        token in ("wave", "waves") and (i == 0 or tokens[i - 1] not in WAVE_QUALIFIERS)
+        for i, token in enumerate(tokens)
+    ):
+        return True
+    words = set(tokens)
     if kind is not Kind.FLOOD and words & {"sea", "seas"}:
         return True
     return "gale" in words and "gale-force" not in text and not issuer.startswith(LAND_GALE_ISSUERS)

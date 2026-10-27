@@ -6,7 +6,7 @@ import abc
 import asyncio
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -89,10 +89,16 @@ class SourceHealth:
       The baseline is per FEED: a feed that answers for the first time after
       failing since startup lists its baseline too, not new data (PR #5:
       Greece down in the first cycle, then all of Greece "new" when it came
-      back). A multi-feed source that marks health per feed calls
-      `ok(partial=True)` for each, so only the cycle's end primes it
-      (Meteoalarm's per-country `ok()` primed it after France, and the nine
-      other countries' standing warnings were stamped as news at startup).
+      back). Only THAT feed's listing: an event feed declares the ids it
+      lists (`feed_ok(feed, ids)`), and a new id is baseline only when every
+      feed listing it is one just back. One flag for the whole source hid
+      the other centre's new tsunami bulletin in the cycle PAAQ came back
+      (recheck of 0cc11f6). A feed with no events of its own -- a catalogue,
+      an alias list -- declares nothing, so its return hides nothing. A
+      multi-feed source that marks health per feed calls `ok(partial=True)`
+      for each, so only the cycle's end primes it (Meteoalarm's per-country
+      `ok()` primed it after France, and the nine other countries' standing
+      warnings were stamped as news at startup).
     - `newest_event_time`: the event time (origin, issue) of the newest event
       the source has delivered -- how recent the source's own data is.
     - `last_delivery_at`: the last poll that returned anything at all, new or
@@ -117,9 +123,10 @@ class SourceHealth:
         self._primed = False
         # feeds that have answered at least once since startup
         self._answered: set[str] = set()
-        # True from a feed's first answer after a failure to the next `ok()`:
-        # what is observed meanwhile is that feed's baseline
-        self._baseline = False
+        # Until the next `ok()`: the ids each feed declared, and which of
+        # those feeds answer for the first time after failing since startup
+        self._listing: dict[str, set[str]] = {}
+        self._returning: set[str] = set()
         # feed name -> its last error, for the feeds failing RIGHT NOW
         self.failed_feeds: dict[str, str] = {}
 
@@ -130,7 +137,7 @@ class SourceHealth:
             self._seen[event_id] = None
             if len(self._seen) > self.MAX_SEEN:
                 del self._seen[next(iter(self._seen))]
-            if self._primed and not self._baseline:
+            if self._primed and not self._is_baseline(event_id):
                 self.last_event_at = now
         # a time in the future is a source error, not freshness
         if (event_time - now).total_seconds() <= 120 and (
@@ -150,7 +157,8 @@ class SourceHealth:
         # seen before is new data
         if not partial:
             self._primed = True
-        self._baseline = False
+        self._listing.clear()
+        self._returning.clear()
         # A partial success does not erase a partial failure.
         self.last_error = self._failed_summary()
 
@@ -159,14 +167,21 @@ class SourceHealth:
         self.errors += 1
         self.last_error = f"{type(exc).__name__}: {exc}"
 
-    def feed_ok(self, feed: str) -> None:
-        """One feed of a multi-feed source answered. Call it BEFORE emitting
-        that feed's events: a feed failing since startup that answers for the
-        first time lists its baseline, which must not read as new data."""
+    def feed_ok(self, feed: str, ids: Iterable[str] | None = None) -> None:
+        """One feed of a multi-feed source answered. A feed with events of
+        its own passes `ids`, the event ids it lists this cycle, BEFORE they
+        are emitted: if it is failing since startup and answers for the first
+        time, those are its baseline, not new data."""
         if feed in self.failed_feeds and feed not in self._answered:
-            self._baseline = True
+            self._returning.add(feed)
         self._answered.add(feed)
         self.failed_feeds.pop(feed, None)
+        if ids is not None:
+            self._listing[feed] = set(ids)
+
+    def _is_baseline(self, event_id: str) -> bool:
+        listed_by = {feed for feed, ids in self._listing.items() if event_id in ids}
+        return bool(listed_by) and listed_by <= self._returning
 
     def feed_failed(self, feed: str, exc: BaseException) -> None:
         """One feed of a multi-feed source failed. The source as a whole is

@@ -325,7 +325,9 @@ class IgpSource(Source):
                         self.health.feed_failed(str(year), exc)
                         log.warning("%s: %s (%d)", self.name, exc, year)
                         continue
-                    self.health.feed_ok(str(year))
+                    # a year back after failing since startup lists its
+                    # baseline, not new quakes
+                    self.health.feed_ok(str(year), (e.id for e in batch or []))
                     if batch is not None:
                         successes += 1
                         events.extend(batch)

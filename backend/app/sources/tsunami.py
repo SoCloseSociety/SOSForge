@@ -228,13 +228,15 @@ class TsunamiSource(Source):
                         resp.raise_for_status()
                         root = ET.fromstring(resp.content)
                         alive += 1
+                        parsed = [
+                            (entry, event)
+                            for entry in root.findall(".//atom:entry", NS)
+                            if (event := parse_entry(entry, center))
+                        ]
                         # before the emits: a centre back after failing since
                         # startup lists its baseline, not new bulletins
-                        self.health.feed_ok(center)
-                        for entry in root.findall(".//atom:entry", NS):
-                            event = parse_entry(entry, center)
-                            if not event:
-                                continue
+                        self.health.feed_ok(center, (event.id for _, event in parsed))
+                        for entry, event in parsed:
                             # One extra GET the first time a bulletin appears,
                             # and none ever again: the document is immutable
                             # and the cache keeps the parsed result, empty

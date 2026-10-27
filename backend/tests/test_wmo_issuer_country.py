@@ -53,3 +53,41 @@ def test_the_flag_reaches_the_event():
     assert event is not None and event.country_code == "CO"
     event = parse_wmo(REAL["metno_gale_sea"])
     assert event is not None and event.country_code is None
+
+
+# Recheck of 0cc11f6: "wave" was a substring of the marine phrases, so every
+# heatwave was a sea product and lost its country. Items copied unmodified
+# from the aggregate of 2026-10-27 13:47 UTC (`wmo_wave_2026-10-27.json`).
+WAVE = json.loads(
+    (Path(__file__).parent / "fixtures" / "wmo_wave_2026-10-27.json").read_text(encoding="utf-8")
+)
+
+
+@pytest.mark.parametrize(
+    ("key", "expected"),
+    [
+        ("bom_heatwave_0", "AU"),  # "Severe heatwave warning for Queensland"
+        ("bom_heatwave_1", "AU"),  # "... for Northern Territory"
+        ("wind_wave_advisory", None),  # KMA, nearshore waters: the sea
+    ],
+)
+def test_a_heatwave_is_not_a_sea_product(key: str, expected: str | None):
+    item = WAVE[key]
+    assert issuer_country(item, classify_wmo(item.get("event") or "")) == expected
+
+
+def test_wave_is_read_as_a_word_not_after_heat_or_cold():
+    from app.sources.alerts_world import _is_marine, wmo_issuer
+
+    def marine(item: dict) -> bool:
+        return _is_marine(item, wmo_issuer(item), classify_wmo(item.get("event") or ""))
+
+    assert marine(WAVE["wave_height_warning"])  # UA, Danube Delta
+    assert marine(WAVE["wind_wave_advisory"])
+    assert not marine(WAVE["bom_heatwave_0"])
+    assert not marine(WAVE["cold_wave"])  # CMA, Gaoyi County
+    assert not marine(WAVE["coldwave_advisory"])  # KMA, Yangpyeong
+    # the two-word heat wave has no item in any capture: the same BOM item,
+    # with the name spelled the way other services spell it
+    heat_wave = dict(WAVE["bom_heatwave_0"], headline="Heat Wave warning for Queensland")
+    assert not marine(heat_wave)

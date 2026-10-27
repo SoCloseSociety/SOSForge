@@ -259,14 +259,20 @@ class BmkgSource(JsonPollSource):
     kind = "poll"
     url = BMKG_BASE + "gempaterkini.json"
 
+    @staticmethod
+    def rows(data: Any) -> list[dict]:
+        """The quakes of one feed: a list, or `autogempa`'s single object."""
+        gempa = ((data or {}).get("Infogempa") or {}).get("gempa") or []
+        return [
+            row
+            for row in (gempa if isinstance(gempa, list) else [gempa])
+            if isinstance(row, dict) and row.get("DateTime")
+        ]
+
     def merge(self, payloads: dict[str, Any]) -> list[dict]:
         rows: dict[str, dict] = {}
         for feed in BMKG_FEEDS:
-            data = payloads.get(feed)
-            gempa = ((data or {}).get("Infogempa") or {}).get("gempa") or []
-            for row in gempa if isinstance(gempa, list) else [gempa]:
-                if not isinstance(row, dict) or not row.get("DateTime"):
-                    continue
+            for row in self.rows(payloads.get(feed)):
                 merged = rows.setdefault(row["DateTime"], {"_feeds": []})
                 merged["_feeds"].append(feed)
                 for key, value in row.items():
@@ -351,7 +357,12 @@ class BmkgSource(JsonPollSource):
                         resp = await client.get(f"{BMKG_BASE}{feed}.json")
                         resp.raise_for_status()
                         payloads[feed] = resp.json()
-                        self.health.feed_ok(feed)
+                        # the ids this feed lists (one quake, one id, in
+                        # every feed): a feed back after failing since
+                        # startup lists its baseline
+                        self.health.feed_ok(
+                            feed, (f"bmkg:{row['DateTime']}" for row in self.rows(payloads[feed]))
+                        )
                     except Exception as exc:
                         last_error = exc
                         self.health.feed_failed(feed, exc)

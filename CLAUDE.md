@@ -170,10 +170,13 @@ off. Concretely:
   issuer's ISO prefix (`uk` = GB), for land hazards only, never for a marine
   product -- read from the area and headline, because "Gale" is a sea-area
   warning for MET Norway and SMHI but CMA's land strong-wind warning, and
-  DWD's "gale-force gusts" are over towns -- and never when a TOP-LEVEL area
-  name is another country (Colombia has towns called Armenia, Montenegro,
-  Albania, Florida, California: municipality lists in parentheses are not
-  read). NWS territories are postal suffixes (`Saipan, MP`): their own code.
+  DWD's "gale-force gusts" are over towns, and "wave" is a WORD not after
+  "heat"/"cold" (a substring, it made "Severe heatwave warning" a sea
+  product; whole word alone still sinks "Heat Wave") -- and never when a
+  TOP-LEVEL area name is another country (Colombia has towns called Armenia,
+  Montenegro, Albania, Florida, California: municipality lists in
+  parentheses are not read). NWS territories are postal suffixes
+  (`Saipan, MP`): their own code.
   The CAP id is a WMO OID naming the issuer's country too (`2.49.0.0.170` =
   ISO numeric 170, Colombia; table in `sources/iso3166.py`): it must agree
   with the directory prefix (882 of 882 did on 2026-10-27). **IDEAM re-sends an unchanged warning under a
