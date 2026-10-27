@@ -889,6 +889,17 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       (scratchpad pr5-review-web.md), tool findings -> N
       (pr5-review-tools.md). HIGH: Near me hides unplaced warnings;
       an escalation re-shown without `renotify` is silent.
+- [x] lane C2 merged (8a96c57): Meteoalarm lifts (references / AllClear),
+      /api/climate (7 live indicators, dataset dates), US Drought Monitor,
+      UK EA built off (5/5 duplicates of Meteoalarm UK), lane Q's source
+      defects, `label` / `last_event_at` / `newest_event_time` in
+      /api/sources. Gates: pytest 884, vitest 334, mypy 52 files.
+- [x] lane G follow-up merged (f771f42): automatic offline precache 1.47 MB
+      transfer (was 17.3 MB), the rest on request or known unmetered link.
+- [x] WMO two tiers globally: REJECTED on measurement (today: +164 events,
+      125 moderate + 30 minor, relays of NWS and Meteoalarm UK, 55 bare
+      "Forestfire"). A targeted tier-2 rule for uncovered issuers and kinds
+      goes to C2, numbers before shipping.
 - [ ] PR #5 fixes landed and re-verified, then owner go, merge, deploy
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
 
