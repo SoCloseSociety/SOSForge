@@ -1,7 +1,11 @@
 """`drought`, `fire.hotspots`, `fire.danger`, `risk.water`, `risk.country`.
 
 - `drought`: Copernicus GDO point time series (SPI-3, soil moisture
-  anomaly, risk of drought impact for agriculture), each indicator the LAST
+  anomaly, risk of drought impact for agriculture), asked AT THE ROUNDED
+  POINT: the soil grid is finer than 0.1 deg, and the cell centre this used
+  to send read Anchorage's soil anomaly as 0.25 where GDO gives -2.15 at the
+  point (the value changes every 0.03 to 0.04 deg there; final live check
+  of the place report). Each indicator is the LAST
   element of its own series. A null there stays null: an older dekad is
   never passed off as the current one. `at_sea` only when the soil series is
   empty AND every rdria is null AND our table says sea (Reykjavik's rdria is
@@ -149,7 +153,7 @@ def drought_block(
         return B.unavailable(SPEC_DROUGHT, "masked", "GDO publishes no indicator at this point")
     rd_class = int(rd_v) if rd_v is not None else None
     data = {
-        "cell": dict(zip(("lat", "lon"), geo.cell_key(ctx.lat, ctx.lon, 0.1), strict=True)),
+        "point": dict(zip(("lat", "lon"), gdo_point(ctx), strict=True)),
         "spi_3": {"value": spi_v, "period_start": spi_d, "class": spi_class(spi_v)},
         "soil_moisture_anomaly": {"value": sm_v, "period_start": sm_d},
         "agri_risk": {
@@ -168,8 +172,14 @@ def drought_block(
     return B.ok(SPEC_DROUGHT, oldest, data, source=source)
 
 
+def gdo_point(ctx: Context) -> tuple[float, float]:
+    """The rounded point as GDO is asked about it (2 decimals, like the
+    URL), lon folded into -180..180 and lat kept off the pole."""
+    return round(min(ctx.lat, 89.99), 2), round(geo.wrap_lon(ctx.lon), 2)
+
+
 async def build_drought(ctx: Context) -> B.Block:
-    clat, clon = geo.cell_key(ctx.lat, ctx.lon, 0.1)
+    clat, clon = gdo_point(ctx)
     today = ctx.now.date()
     start = (today - timedelta(days=120)).isoformat()
     entries = {}

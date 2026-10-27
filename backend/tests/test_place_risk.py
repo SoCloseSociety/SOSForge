@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote
 
+import httpx
 import pytest
 
 from app.place import fetch, png, risk
@@ -82,6 +83,32 @@ def test_land_with_no_soil_series_keeps_every_other_indicator() -> None:
     assert land.status == "ok" and land.data is not None
     assert land.data["soil_moisture_anomaly"] == {"value": None, "period_start": "2026-09-11"}
     assert land.data["spi_3"]["value"] == -0.43
+
+
+async def test_drought_is_asked_at_the_point_not_the_cell_centre() -> None:
+    # the soil grid is finer than 0.1 deg: GDO's last dekad is -2.15 at
+    # Anchorage's point and 0.25 at the centre of its 0.1 deg cell
+    cell = read_json("risk", "gdo_hst_smang_anchorage_cell.json")
+    assert cell["smang"][-1] == 0.25
+    router = install()
+    answers = {
+        "spaST": read_bytes("risk", "gdo_hst_spi_anchorage_point.json"),
+        "smang": read_bytes("risk", "gdo_hst_smang_anchorage_point.json"),
+        "rdria": read_bytes("risk", "gdo_hst_rdria_anchorage_point.json"),
+    }
+
+    def gdo(request: httpx.Request) -> httpx.Response:
+        params = request.url.params
+        if (params["lat"], params["lon"]) != ("61.22", "-149.90"):
+            return httpx.Response(599, content=b"not the point")
+        return httpx.Response(200, content=answers[params["srvs"]])
+
+    router.prefix("https://drought.emergency.copernicus.eu/", gdo)
+    block = await risk.build_drought(ctx_for(61.22, -149.9, NOW))
+    assert block.status == "ok" and block.data is not None
+    assert block.data["point"] == {"lat": 61.22, "lon": -149.9}
+    assert block.data["soil_moisture_anomaly"] == {"value": -2.15, "period_start": "2026-10-11"}
+    assert len(router.seen) == 3
 
 
 @pytest.mark.parametrize(

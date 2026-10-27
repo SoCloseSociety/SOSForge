@@ -1,0 +1,12 @@
+{
+  "url": "https://drought.emergency.copernicus.eu/services/webmap/hst?lon=-149.90&lat=61.22&appCode=gdo_map&srvs=spaST&inds=spa01,spa03&date_ini=2026-06-29&date_end=2026-10-27",
+  "fetched_at_utc": "2026-10-27T17:20:45Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 17:20:46 GMT",
+    "content-type": "application/json",
+    "cache-control": "no-cache, private"
+  },
+  "bytes": 289,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}
