@@ -949,9 +949,10 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       d56b0c20...a6e9b3, versionCode 7, same signer; copied to _apk-drops
       with its checklist. I reviewed the welcome, location-wait and Live
       captures myself.
-- [ ] Fold: 0.1.2 install queued at 13:00 but the Fold was not connected
-      (adb: device not found, lock released at once); a watch installs it
-      when it reappears
+- [x] Fold: 0.1.2 installed at 20:42 device time when it came back (queue,
+      install -r only): installed sha256 d56b0c20...a6e9b3 matches, versionCode
+      7, the owner's grants kept (notifications, approximate location).
+      Reported to agentcockpit.
 - [ ] lane P: opt-in lighter tick for zoned sockets (the app's watch costs
       ~4.7 MB/h off Wi-Fi: 5 KB ticks, no permessage-deflate on OkHttp)
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
