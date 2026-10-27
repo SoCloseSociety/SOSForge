@@ -146,7 +146,15 @@ off. Concretely:
   end. Colombia (IDEAM) sets `headline` to the literal
   **"CAP Alert"** on every message; the real name is in `event`. The `event`
   values are in Spanish, French, Indonesian too ("Inundación urbana",
-  "ORAGE", "Hujan Lebat dan Petir"): the patterns carry those words.
+  "ORAGE", "Hujan Lebat dan Petir"), and Arabic ("فيضان مفاجئ"): the patterns
+  carry those words. **The whole second tier is noise** (rank 2: 223
+  published vs 59 -- NWS relays, Meteoalarm/EA copies, "Forestfire", "Low
+  water"); only a TARGETED second tier is kept: issuers we do not read
+  directly, kinds we lack (heat, landslide, drought, avalanche, flood), never
+  minor, never BOM (no polygon, reuse refused). The issuer is the CAP source
+  directory (`co-ideam-es/...`). **IDEAM re-sends an unchanged warning under a
+  new identifier every few hours, without `references`**: identical content
+  from one issuer is collapsed to the newest copy.
 - **SWPC alerts**: `alerts.json` keeps a bulletin listed for weeks after its
   "Valid To". A G3 warning valid until 2026-10-10 was still published, SEVERE,
   on the 26th: severe and not a quake, it escaped the horizon and nothing ever
