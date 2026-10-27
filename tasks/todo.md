@@ -880,10 +880,12 @@ Changes, smallest first:
       removal, promotion); `last_seen` refreshes do not bump it, so the
       cache also expires after 1 s. Scoped sockets keep their own snapshot.
       Gate: same bytes as the uncached path for the same store.
-- [ ] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
+- [x] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
       second) on cache misses, 429 + `Retry-After` beyond. The web debounces
       at 450 ms and treats a failure as "no places", so a person typing is
-      never refused.
+      never refused. **After: a burst of 10 or 30 from one
+      address costs another visitor 2.95 s (was 9.96 / 29.98 s); the burst
+      gets 3 answers and 429 for the rest.**
 - [ ] `Dockerfile`: dependency layer before the code (a code change no
       longer reinstalls every dependency); prod footprint measured.
 - [x] `dedupe.py`: the number said so. cProfile of the startup replay on the

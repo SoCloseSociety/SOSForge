@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import time
 import uuid
 from contextlib import asynccontextmanager
@@ -23,6 +24,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app import geocode
 from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
 from app.core.config import settings
 from app.dedupe import Deduper
@@ -718,9 +720,20 @@ async def api_event(event_id: str) -> dict:
 
 
 @app.get("/api/geocode")
-async def api_geocode(q: str = Query(min_length=2, max_length=120)) -> dict:
+async def api_geocode(request: Request, q: str = Query(min_length=2, max_length=120)) -> dict:
     """Area search by name. Proxied to hold the rate Nominatim imposes
-    (1 req/s), which browser calls would violate."""
+    (1 req/s), which browser calls would violate. A search that would reach
+    Nominatim also spends the caller's own budget (`geocode.AddressBudget`),
+    so one address cannot make every other visitor wait behind its burst; a
+    cached answer costs nothing and is never refused."""
+    if not geocode.cached(q):
+        wait = geocode.budget.take(request.client.host if request.client else None)
+        if wait:
+            raise HTTPException(
+                status_code=429,
+                detail="too many searches from this address, try again shortly",
+                headers={"Retry-After": str(max(1, math.ceil(wait)))},
+            )
     return {"query": q, "results": await geocode_search(q)}
 
 
