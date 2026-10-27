@@ -847,3 +847,12 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
       at the 2026-10-26 19:10 capture, 3 (UK) were replaced by an Update by
       the next morning and would have stayed until their own `expires` -- a
       lower bound, since a chain of updates references only its predecessor.
+- [ ] Lane Q audit findings in `sources/` (critical files), each re-read on the
+      original record first, measured before/after with `tools/audit_live.py`:
+      PHIVOLCS newer bulletin withdraws the older one of the same quake; USGS
+      `ids` aliases withdrawn; INGV re-identified event withdraws the old id;
+      zone/CAP/UK centroids through `geometry.center` (antimeridian) and the
+      two persisted area caches versioned so bad centres are re-read; INGV
+      stamps no country it cannot read; footer freshness = first-seen time of
+      a NEW event + the newest event's own time (not "last poll returned
+      something"); EEW/CENC preliminary; HANS NMI -> MP.

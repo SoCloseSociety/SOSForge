@@ -140,8 +140,7 @@ def _meteoalarm_area(
     Returns the centre (the average of the ring centres) and the extent
     (every vertex of every ring).
     """
-    lats: list[float] = []
-    lons: list[float] = []
+    centres: list[tuple[float, float]] = []
     vertices: list[tuple[float, float]] = []
     for area in areas:
         rings = area.get("polygon")
@@ -149,13 +148,13 @@ def _meteoalarm_area(
             rings = [rings]
         for ring in rings or []:
             points = polygon_points(ring)
-            if points:
-                lats.append(sum(p[0] for p in points) / len(points))
-                lons.append(sum(p[1] for p in points) / len(points))
+            middle = geometry.center(points) if points else None
+            if points and middle:
+                centres.append(middle)
                 vertices += points
-    if not lats:
+    if not centres:
         return None, None
-    return (sum(lats) / len(lats), sum(lons) / len(lons)), geometry.extent(vertices)
+    return geometry.center(centres), geometry.extent(vertices)
 
 
 def _pick_info(blocks: list[dict]) -> dict | None:

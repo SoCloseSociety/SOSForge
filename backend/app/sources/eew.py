@@ -151,6 +151,10 @@ class JmaEewSource(JsonPollSource):
                 country="Japan",
                 country_code="JP",
                 severity=severity,
+                # An early warning is an estimate made while the waves are
+                # still travelling: never the reviewed solution, and labelled
+                # so the pipeline can let the reviewed one take over.
+                preliminary=True,
                 alert=f"EEW shindo {shindo}" if shindo else "EEW",
                 title=f"Early warning -- {place} (shindo {shindo})" if shindo else place,
                 url="https://www.jma.go.jp/bosai/map.html#contents=earthquake_map",
@@ -266,6 +270,7 @@ class CencSource(JsonPollSource):
                     severity=severity_for_quake(magnitude, depth),
                     # "reviewed" (checked by an analyst) vs "automatic"
                     alert=row.get("type"),
+                    preliminary=str(row.get("type") or "").strip().lower() != "reviewed",
                     title=f"M {magnitude} -- {place}" if magnitude else place,
                     url="https://news.ceic.ac.cn/",
                     raw={
