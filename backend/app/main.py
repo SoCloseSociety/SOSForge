@@ -789,6 +789,17 @@ async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
         pass
 
 
+async def refuse_busy(ws: WebSocket) -> None:
+    """Accept, then close 1013 ("try again later") with a reason. No `error`
+    message: the quota is not the client's mistake, and a pre-v2 client
+    would throw on a frame type it does not know."""
+    try:
+        await ws.accept()
+        await ws.close(code=1013, reason="too_many_connections")
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     try:
@@ -798,13 +809,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await refuse_ws(ws, refused)
         return
 
-    # Refuse BEFORE accepting: an accepted connection has already cost a
-    # snapshot, and refusing after would be the expensive half of the work we
-    # are declining to do.
+    # Decided before any snapshot work: the snapshot is the expensive half of
+    # what we are declining to do. But the handshake IS accepted first. A
+    # close before accept never reaches the wire as a close code: the ASGI
+    # server answers it with an HTTP 403, which tells a client nothing about
+    # backing off, so web and app retried as hard as on any other failure
+    # while the contract promised them 1013 (lane N's drills, 2026-10-27).
     address = ws.client.host if ws.client else None
     if not ws_quota.acquire(address):
         log.warning("websocket refused: %s is already at the per-address cap", address)
-        await ws.close(code=1013)  # 1013 = try again later
+        await refuse_busy(ws)
         return
 
     await ws.accept()
