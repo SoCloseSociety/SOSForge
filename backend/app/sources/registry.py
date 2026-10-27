@@ -40,9 +40,14 @@ class ExtraSourceSettings(BaseSettings):
     enable_ncs: bool = True
     ncs_poll_seconds: float = 180.0
 
-    # England flood warnings (Environment Agency). Level 1 = most severe;
-    # 2 keeps Flood Warnings and above, 3 adds the yellow-tier Flood Alerts.
-    enable_ukea: bool = True
+    # England flood warnings (Environment Agency). OFF by default, measured:
+    # Meteoalarm's UK feed already relays the EA's Flood Warnings word for
+    # word ("Flooding is expected: Irish Sea at New Brighton"): 5 of 5 on
+    # 2026-10-27, same places, same positions, so enabling it at level 2 puts
+    # every warning on the map twice. What it alone has is the yellow tier:
+    # SOS_ENABLE_UKEA=true with SOS_UKEA_MAX_LEVEL=3 adds the Flood Alerts
+    # (35 that morning). Level 1 = most severe.
+    enable_ukea: bool = False
     ukea_poll_seconds: float = 300.0
     ukea_max_level: int = 2
 

@@ -152,3 +152,42 @@ def test_a_northern_mariana_volcano_gets_its_own_flag():
     assert ahyi is not None and ahyi.country_code == "MP"
     kilauea = source.parse(rows["Kilauea"])
     assert kilauea is not None and kilauea.country_code is None  # resolved downstream
+
+
+# ------------------------------------------------------------------- GDACS
+
+
+def test_a_green_gdacs_quake_is_graded_on_its_magnitude_too():
+    import xml.etree.ElementTree as ET
+
+    from app.models.event import Severity
+    from app.sources.gdacs import parse_item
+
+    root = ET.parse(FX / "gdacs_2026-10-26_green_quake.xml").getroot()
+    (item,) = root.findall(".//item")
+    event = parse_item(item)
+    assert event is not None
+    # green M5.5 at 641.8 km: GDACS's colour said MINOR, the depth rule says
+    # MODERATE (a deep-focus quake is capped there, never raised above it)
+    assert event.magnitude == 5.5
+    assert event.severity is Severity.MODERATE
+
+
+# ------------------------------------------------------------------ memory
+
+
+def test_phivolcs_and_ingv_remember_across_a_restart(tmp_path, monkeypatch):
+    from app.sources.base import Source
+
+    monkeypatch.setattr(Source, "memory_path", lambda self: tmp_path / f"memory-{self.name}.json")
+    ingv = IngvSource()
+    ingv.parse_payload({"features": [REAL["ingv_feature_47630362"]]})
+    ingv.persist()
+    restarted = IngvSource()
+    restarted.restore()
+    assert "ingv:47630362" in restarted._emitted
+
+    phivolcs = PhivolcsSource()
+    phivolcs.superseded(_phivolcs_events(), PHIVOLCS_NOW)
+    phivolcs.save_memory({"listed": {k: v.isoformat() for k, v in phivolcs._listed.items()}})
+    assert set(PhivolcsSource().load_memory()["listed"]) == set(phivolcs._listed)

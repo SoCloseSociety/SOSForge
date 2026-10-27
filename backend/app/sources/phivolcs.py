@@ -402,6 +402,14 @@ class PhivolcsSource(Source):
             # keeps the reason visible to whoever edits this next.
             "Accept-Encoding": "gzip, deflate",
         }
+        # what the previous process listed: a bulletin replaced while the
+        # server was down is still withdrawn on the first complete read
+        if not self._listed:
+            for key, value in (self.load_memory().get("listed") or {}).items():
+                try:
+                    self._listed[key] = datetime.fromisoformat(value)
+                except (TypeError, ValueError):
+                    continue
         async with httpx.AsyncClient(
             timeout=90.0, headers=headers, follow_redirects=True, verify=build_ssl_context()
         ) as client:
@@ -441,6 +449,9 @@ class PhivolcsSource(Source):
                         # only a complete read can say what is no longer listed
                         self.expirations.extend(self.superseded(ordered, datetime.now(UTC)))
                         await self.flush_retractions()
+                        self.save_memory(
+                            {"listed": {k: v.isoformat() for k, v in self._listed.items()}}
+                        )
                     self.health.ok(len(ordered))
                 elif last_error is not None:
                     self.health.fail(last_error)

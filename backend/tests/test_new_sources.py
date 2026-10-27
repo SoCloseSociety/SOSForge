@@ -175,6 +175,9 @@ def test_ncs_refuses_a_time_without_its_zone():
 
 def test_the_registry_builds_every_new_source_and_honours_its_switches():
     names = [s.name for s in extra_sources(ExtraSourceSettings())]
-    assert names == ["imo", "imo-volcano", "jma-volcano", "ncs", "ukea", "usdm"]
+    assert names == ["imo", "imo-volcano", "jma-volcano", "ncs", "usdm"]
+    # off by default: a 1:1 duplicate of Meteoalarm UK at the warning tier
+    opted = ExtraSourceSettings(enable_ukea=True)
+    assert "ukea" in [s.name for s in extra_sources(opted)]
     off = ExtraSourceSettings(enable_imo=False, enable_ncs=False)
-    assert [s.name for s in extra_sources(off)] == ["imo-volcano", "jma-volcano", "ukea", "usdm"]
+    assert [s.name for s in extra_sources(off)] == ["imo-volcano", "jma-volcano", "usdm"]

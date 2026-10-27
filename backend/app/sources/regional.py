@@ -24,7 +24,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -56,8 +56,15 @@ class JsonPollSource(Source):
         on the current moment (AFAD wants a sliding time window)."""
         return self.url
 
+    def restore(self) -> None:
+        """Hook: reload what this source must remember across a restart."""
+
+    def persist(self) -> None:
+        """Hook: save it after a successful cycle."""
+
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        self.restore()
         # follow_redirects: AFAD answers 302 before its JSON
         async with httpx.AsyncClient(
             timeout=30.0, headers=headers, follow_redirects=True
@@ -70,6 +77,7 @@ class JsonPollSource(Source):
                     for event in events:
                         await emit(event)
                     await self.flush_retractions()
+                    self.persist()
                     self.health.ok(len(events))
                 except Exception as exc:
                     self.health.fail(exc)
@@ -589,6 +597,29 @@ class IngvSource(JsonPollSource):
         if len(self._emitted) > 5000:
             for old_id in list(self._emitted)[: len(self._emitted) - 5000]:
                 del self._emitted[old_id]
+
+    def restore(self) -> None:
+        # INGV re-identifies days later: a restarted process must still know
+        # the origins it published under the old ids
+        if self._emitted:
+            return
+        for key, (origin, lat, lon) in (self.load_memory().get("emitted") or {}).items():
+            try:
+                self._emitted[key] = (datetime.fromisoformat(origin), lat, lon)
+            except (TypeError, ValueError):
+                continue
+
+    def persist(self) -> None:
+        horizon = datetime.now(UTC) - timedelta(days=7)
+        self.save_memory(
+            {
+                "emitted": {
+                    key: [origin.isoformat(), lat, lon]
+                    for key, (origin, lat, lon) in self._emitted.items()
+                    if origin > horizon
+                }
+            }
+        )
 
     # Standard FDSN: exactly the same contract as USGS, down to the field
     # casing. The cheapest source to maintain of the lot.

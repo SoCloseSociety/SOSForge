@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import abc
 import asyncio
+import json
 import logging
 from collections.abc import Awaitable, Callable
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from app.models.event import Event, utcnow
@@ -229,6 +231,36 @@ class Source(abc.ABC):
     @abc.abstractmethod
     async def run(self, emit: Emit) -> None:
         """Infinite loop: reads the source and calls `emit` for each event."""
+
+    # ------------------------------------------------------------- memory
+    #
+    # A few kilobytes a source must not lose at a restart: what PHIVOLCS listed
+    # last (so a bulletin replaced while the server was down is still
+    # withdrawn), which origins INGV has already published under another id.
+    # Read and written only by the live loop, never by the parsers, so tests
+    # that call parsers touch no disk. Path: next to the journal.
+
+    def memory_path(self) -> Path:
+        from app.core.config import settings
+
+        return Path(settings.data_dir) / f"memory-{self.name}.json"
+
+    def load_memory(self) -> dict[str, Any]:
+        try:
+            data = json.loads(self.memory_path().read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+        return data if isinstance(data, dict) else {}
+
+    def save_memory(self, data: dict[str, Any]) -> None:
+        path = self.memory_path()
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(".tmp")
+            tmp.write_text(json.dumps(data), encoding="utf-8")
+            tmp.replace(path)
+        except OSError as exc:  # a memory is an optimisation, never a dependency
+            log.warning("%s: could not save its memory (%s)", self.name, exc)
 
     def observed(self, emit: Emit) -> Emit:
         """`emit`, plus the freshness bookkeeping of `SourceHealth.observe`."""
