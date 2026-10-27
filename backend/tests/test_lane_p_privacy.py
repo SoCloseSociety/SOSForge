@@ -9,10 +9,12 @@ own logging configuration, because that is what writes the production log.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import logging
 import threading
 import time
+import urllib.error
 import urllib.request
 from collections.abc import Iterator
 
@@ -37,8 +39,8 @@ class TestRedactQuery:
                 "/ws?zones=-&unplaced=-&chunks=1",
             ),
             (
-                "/api/events?lat=48.8566&lon=2.3522&radius_km=50&since=ab12:3",
-                "/api/events?lat=-&lon=-&radius_km=-&since=ab12:3",
+                "/api/events?lat=48.8566&lon=2.3522&radius_km=50&since=ab12cd34:3",
+                "/api/events?lat=-&lon=-&radius_km=-&since=ab12cd34:3",
             ),
             ("/api/geocode?q=Rue%20de%20Rivoli", "/api/geocode?q=-"),
             # a typo is refused by the API, but it carries a home all the same
@@ -66,6 +68,25 @@ class TestRedactQuery:
                 "/api/events?limit=-&min_severity=-",
             ),
             ("/ws?chunks", "/ws?chunks"),  # a bare safe name is a flag, kept
+            # the recheck at 0cc11f6: the NAME carried the place
+            ("/ws?48.8566,2.3522,25=", "/ws?-"),
+            ("/ws?zones%3D48.8566%2C2.3522%2C25=1", "/ws?-"),
+            ("/api/events?48.8566=2.3522", "/api/events?-"),
+            # ... and free text or a coordinate inside a safe name's alphabet
+            ("/api/guidance?lang=Montmartre", "/api/guidance?lang=-"),
+            ("/api/events?min_severity=Rue_de_Rivoli,Paris", "/api/events?min_severity=-"),
+            ("/api/events?hours=48.857&limit=2.352", "/api/events?hours=-&limit=-"),
+            ("/ws?tick=full&chunks=2", "/ws?tick=-&chunks=-"),
+            # the real values stay readable, a negative magnitude included
+            (
+                "/api/events?min_magnitude=-1&hours=24.0&limit=500&primary_only=false",
+                "/api/events?min_magnitude=-1&hours=24.0&limit=500&primary_only=false",
+            ),
+            (
+                "/ws?kinds=earthquake,space_weather&min_severity=severe&tick=lite",
+                "/ws?kinds=earthquake,space_weather&min_severity=severe&tick=lite",
+            ),
+            ("/api/guidance?lang=fr", "/api/guidance?lang=fr"),
             ("/api/events?%6Cat=48.8", "/api/events?%6Cat=-"),  # an encoded name is still `lat`
         ],
     )
@@ -133,6 +154,35 @@ def test_the_real_server_logs_no_place(logged_server):
     assert '"WebSocket /ws?zones=-&unplaced=-" [accepted]' in text, text
     for secret in (*PARIS, "Montmartre", "unplaced=FR"):
         assert secret not in text, f"{secret!r} reached the log"
+
+
+def test_the_real_server_logs_no_place_in_a_name_or_a_safe_value(logged_server):
+    """The recheck's requests, through uvicorn's own logging: a place in a
+    parameter NAME, free text in a safe name, a coordinate in two numbers."""
+    host, lines = logged_server
+    for path in (
+        "/api/events?48.8566=2.3522",
+        "/api/guidance?lang=Montmartre",
+        "/api/events?min_severity=Rue_de_Rivoli,Paris",
+        "/api/events?hours=48.857&limit=2.352",
+        "/api/events?min_magnitude=-1&limit=500",
+    ):
+        # a 422 is logged all the same, which is the point
+        with contextlib.suppress(urllib.error.HTTPError):
+            urllib.request.urlopen(f"http://{host}{path}", timeout=10).close()
+
+    async def sockets() -> None:
+        for query in ("48.8566,2.3522,25=", "zones%3D48.8566%2C2.3522%2C25=1"):
+            async with websockets.connect(f"ws://{host}/ws?{query}") as ws:
+                assert json.loads(await ws.recv())["type"] == "error"
+
+    asyncio.run(sockets())
+    time.sleep(0.2)
+    text = "\n".join(lines)
+    for secret in ("48.8566", "2.3522", "48.857", "Montmartre", "Rivoli"):
+        assert secret not in text, f"{secret!r} reached the log:\n{text}"
+    assert "min_magnitude=-1&limit=500" in text, "a real value must stay readable"
+    assert '"WebSocket /ws?-" [accepted]' in text, text
 
 
 # ------------------------------------------------- the app's own log lines
