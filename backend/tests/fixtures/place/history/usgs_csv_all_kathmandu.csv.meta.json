@@ -1,0 +1,29 @@
+{
+ "url": "https://earthquake.usgs.gov/fdsnws/event/1/query?latitude=27.717&longitude=85.324&maxradiuskm=300&minmagnitude=4.5&starttime=1900-01-01&format=csv&orderby=time",
+ "status": 200,
+ "headers": {
+  "content-type": "text/csv; charset=utf-8",
+  "transfer-encoding": "chunked",
+  "connection": "keep-alive",
+  "date": "Tue, 27 Oct 2026 10:38:46 GMT",
+  "x-xss-protection": "1; mode=block",
+  "content-encoding": "gzip",
+  "server": "nginx",
+  "cache-control": "public, max-age=60",
+  "expires": "Tue, 27 Oct 2026 10:39:46 GMT",
+  "last-modified": "Tue, 27 Oct 2026 10:38:46 GMT",
+  "access-control-allow-headers": "*",
+  "access-control-allow-methods": "GET, OPTIONS",
+  "access-control-allow-origin": "*",
+  "access-control-max-age": "86400",
+  "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+  "x-frame-options": "SAMEORIGIN",
+  "x-content-type-options": "nosniff",
+  "vary": "Accept-Encoding",
+  "x-cache": "Miss from cloudfront",
+  "via": "1.1 3e8699d5bbe03adc994344640fbc9266.cloudfront.net (CloudFront)",
+  "x-amz-cf-pop": "MRS53-P3",
+  "x-amz-cf-id": "dSynHJMzdU-GuNIMVkS78jqgkAjrpoqTa40nXfOtf7gxqhW0MpIvSQ=="
+ },
+ "fetched_utc": "2026-10-27T10:38:50Z"
+}

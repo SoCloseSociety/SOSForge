@@ -1,0 +1,17 @@
+{
+ "url": "https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows?service=WFS&version=1.0.0&request=GetFeature&outputFormat=application%2Fjson&typeName=GVP-VOTW%3ASmithsonian_VOTW_Holocene_Volcanoes&bbox=98.645%2C8.163%2C101.381%2C10.861&propertyName=Volcano_Number%2CVolcano_Name%2CPrimary_Volcano_Type%2CLast_Eruption_Year%2CCountry%2CLatitude%2CLongitude%2CElevation%2CEvidence_Category",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 10:57:20 GMT",
+  "x-frame-options": "SAMEORIGIN",
+  "x-content-type-options": "nosniff",
+  "content-disposition": "inline; filename=Smithsonian_VOTW_Holocene_Volcanoes.json",
+  "content-encoding": "gzip",
+  "content-type": "application/json;charset=UTF-8",
+  "keep-alive": "timeout=5, max=100",
+  "connection": "Keep-Alive",
+  "set-cookie": "TS01c2db25=01a3504f4c4c4162747bf5737686390ec3f1fd080df4319c3f5ca94dec89f0d053a844a12933344c1501570764e58ec2ddcf0c3144; Path=/; Domain=.si.edu; Secure; HttpOnly",
+  "transfer-encoding": "chunked"
+ },
+ "fetched_utc": "2026-10-27T10:57:25Z"
+}

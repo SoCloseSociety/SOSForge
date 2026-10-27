@@ -1,0 +1,21 @@
+{
+ "url": "https://aqs.epa.gov/aqsweb/documents/codetables/aqi_breakpoints.csv",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 13:55:48 GMT",
+  "server": "Apache",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "last-modified": "Tue, 27 Oct 2026 04:00:11 GMT",
+  "etag": "\"195e-65eca7ba58c32\"",
+  "accept-ranges": "bytes",
+  "content-length": "6494",
+  "x-xss-protection": "1; mode=block",
+  "content-type": "text/csv"
+ },
+ "fetched_utc": "2026-10-27T13:55:48Z",
+ "bytes": 6494,
+ "sha256": "00460436574eb146f0b1293cf591a831c272c3d2a5be1fbef76b98193f9ff3c4",
+ "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+ "note": "captured with curl -D (--compressed: body as delivered after content decoding)"
+}

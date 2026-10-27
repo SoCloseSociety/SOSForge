@@ -1,0 +1,14 @@
+{
+  "url": "https://drmkc.jrc.ec.europa.eu/inform-index/API/InformAPI/Countries/Scores/?WorkflowId=515&Iso3=UMI&IndicatorId=INFORM,HA,HA.NAT,HA.NAT.EQ,HA.NAT.FL,HA.NAT.CFL,HA.NAT.TC,HA.NAT.DR,HA.NAT.TS,HA.NAT.EPI,VU,CC",
+  "fetched_at_utc": "2026-10-27T11:12:21Z",
+  "status": 200,
+  "headers": {
+    "cache-control": "no-cache",
+    "content-type": "application/json; charset=utf-8",
+    "expires": "-1",
+    "date": "Tue, 27 Oct 2026 11:12:04 GMT",
+    "content-length": "2"
+  },
+  "bytes": 2,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

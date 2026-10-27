@@ -1,0 +1,119 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/sea",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "coastwatch_blendedsst_box_kathmandu_all_land.json": {
+   "bytes": 7160,
+   "sha256": "d0cf227d877de0710670bfcdb2346f339561eec2dbd0838eedd0644ee9bcc22d"
+  },
+  "coastwatch_blendedsst_box_kathmandu_all_land.json.meta.json": {
+   "bytes": 899,
+   "sha256": "cba0e83178af1cc5ab1fa7c598d958ae1b69f852fc0340cb2ac53bc8d97150ea"
+  },
+  "coastwatch_blendedsst_box_kohsamui.json": {
+   "bytes": 7680,
+   "sha256": "91a1caf512743f24a282e5f5e322d2408176ed53b9b4acdc8fafb6760de1f54d"
+  },
+  "coastwatch_blendedsst_box_kohsamui.json.meta.json": {
+   "bytes": 899,
+   "sha256": "ed831bb15d777b85c7afb74c3df2870460d85ae3ce4b143b2af236478d8e68fe"
+  },
+  "coastwatch_blendedsst_info.csv": {
+   "bytes": 10680,
+   "sha256": "2b2c58e46f9a1103414238a37f218bd42a5a31ffbf35fbca8367f0b429c65a2b"
+  },
+  "coastwatch_blendedsst_info.csv.meta.json": {
+   "bytes": 667,
+   "sha256": "50cbc05995adca6743c51f34f6d7085320ba8ad26c367062e64e1c1e9950014d"
+  },
+  "ndbc_latest_obs.txt": {
+   "bytes": 102102,
+   "sha256": "0b0aea4afef80c880c4946ac75ac835ce6678959c970db4b46dbc8f7fc2d6da0"
+  },
+  "ndbc_latest_obs.txt.meta.json": {
+   "bytes": 1170,
+   "sha256": "caffe05ea41dff6753482fe36e634fe6e6358100e423026bf743263d8ba35eeb"
+  },
+  "ndbc_station_table.txt": {
+   "bytes": 364703,
+   "sha256": "982bf7b5b0b26e40b531dee255918e9aa647b256ae043017dddaea4080d105c2"
+  },
+  "ndbc_station_table.txt.meta.json": {
+   "bytes": 1161,
+   "sha256": "d9f3aaa46ba4a099fbbb6f5061064c95f6f58c32fd3d71e52ca1b19ccf28074b"
+  },
+  "openmeteo_s3_meteofrance_currents_meta.json": {
+   "bytes": 612,
+   "sha256": "1781ca71b0ebc3bd12b8ad197981cc89e3b3ffe4b7a3b803309be73038e6c635"
+  },
+  "openmeteo_s3_meteofrance_currents_meta.json.meta.json": {
+   "bytes": 774,
+   "sha256": "8673ad37b3e67b1b5a3dd5e9c647d14a37c03070303a9a463c627e863937b09f"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/000.body": {
+   "bytes": 612,
+   "sha256": "1781ca71b0ebc3bd12b8ad197981cc89e3b3ffe4b7a3b803309be73038e6c635"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/001.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/002.body": {
+   "bytes": 24,
+   "sha256": "3619d9b72d48a7b69a2b2b34b4852b8d920346de81bb1b1f9d2d4677b759ad6d"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/003.body": {
+   "bytes": 88,
+   "sha256": "c1fedd65ed8ce7b5a7b8605060aae93acabcead8c0a028e698d86ee5be76a2e7"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/004.body": {
+   "bytes": 98,
+   "sha256": "6ce5214be99a00f79b06984d5e5f38d8cee5f5e3d2ad4c96727f14910f86f121"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/005.body": {
+   "bytes": 1200,
+   "sha256": "a9e81841eaf6d7fa71e5a6d6863ee083c8ca2eb2f162ce05596347f061b50740"
+  },
+  "openmeteo_s3_meteofrance_currents_sea_level_lima/cassette.json": {
+   "bytes": 5999,
+   "sha256": "f458b7a7a8c2af3e0c39af70e6a940661bd4f3ff9000b807de6a450902fd45f5"
+  },
+  "openmeteo_s3_meteofrance_wave_meta.json": {
+   "bytes": 613,
+   "sha256": "686a94c7005b7f0f668452cb68a5d3c285eb5c7cc8ab5114a358219a1df9a272"
+  },
+  "openmeteo_s3_meteofrance_wave_meta.json.meta.json": {
+   "bytes": 771,
+   "sha256": "f97120633b4fba519b284f88d890d31984aa1cff6c35aca43cb14a62ac4510f7"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/000.body": {
+   "bytes": 613,
+   "sha256": "686a94c7005b7f0f668452cb68a5d3c285eb5c7cc8ab5114a358219a1df9a272"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/001.body": {
+   "bytes": 0,
+   "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/002.body": {
+   "bytes": 24,
+   "sha256": "cd2988e93e69bb5da2818330c440b4446a23a20059b17d293e1afd1cd375a87c"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/003.body": {
+   "bytes": 88,
+   "sha256": "79b6a4082a28c12ffcc053c408ef578c70b0a418bab372067b02a6d4921c617b"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/004.body": {
+   "bytes": 92,
+   "sha256": "d9d4273adb23277a060cd04cfb2549b1359a0ae3b54f5e8058af093b1f71be1e"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/005.body": {
+   "bytes": 840,
+   "sha256": "04c873e0deec23ad8f9595f2313f833030ca96638a80840c0ef7e32ab40fb6de"
+  },
+  "openmeteo_s3_meteofrance_wave_wave_height_kohsamui/cassette.json": {
+   "bytes": 6031,
+   "sha256": "61406391037c04305aeb01b31fc7ed74900b8f9c408472ed82d2d652340b1f6c"
+  }
+ }
+}

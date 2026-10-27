@@ -1,0 +1,20 @@
+{
+ "url": "https://coastwatch.noaa.gov/erddap/info/noaacwBLENDEDsstDNDaily/index.csv",
+ "range": null,
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 11:18:05 GMT",
+  "server": "Apache",
+  "content-disposition": "attachment;filename=noaacwBLENDEDsstDNDaily_info.csv",
+  "content-encoding": "gzip",
+  "content-type": "text/csv;charset=ISO-8859-1",
+  "via": "1.1 coastwatch.star.nesdis.noaa.gov",
+  "keep-alive": "timeout=15, max=98",
+  "connection": "Keep-Alive",
+  "transfer-encoding": "chunked"
+ },
+ "fetched_utc": "2026-10-27T11:18:05Z",
+ "elapsed_ms": 310,
+ "bytes": 10680,
+ "sha256": "2b2c58e46f9a1103414238a37f218bd42a5a31ffbf35fbca8367f0b429c65a2b"
+}

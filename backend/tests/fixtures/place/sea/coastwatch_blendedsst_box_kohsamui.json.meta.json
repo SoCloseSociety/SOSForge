@@ -1,0 +1,23 @@
+{
+ "url": "https://coastwatch.noaa.gov/erddap/griddap/noaacwBLENDEDsstDNDaily.json?analysed_sst[(last)][(9.262):(9.762)][(99.763):(100.263)],mask[(last)][(9.262):(9.762)][(99.763):(100.263)]",
+ "range": null,
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 11:18:03 GMT",
+  "server": "Apache",
+  "last-modified": "Tue, 27 Oct 2026 11:18:03 GMT",
+  "xdods-server": "dods/3.7",
+  "erddap-server": "2.31.1",
+  "content-disposition": "attachment;filename=noaacwBLENDEDsstDNDaily_b2d2_05c0_207e.json",
+  "content-encoding": "gzip",
+  "content-type": "application/json;charset=UTF-8",
+  "via": "1.1 coastwatch.star.nesdis.noaa.gov",
+  "keep-alive": "timeout=15, max=100",
+  "connection": "Keep-Alive",
+  "transfer-encoding": "chunked"
+ },
+ "fetched_utc": "2026-10-27T11:18:03Z",
+ "elapsed_ms": 1429,
+ "bytes": 7680,
+ "sha256": "91a1caf512743f24a282e5f5e322d2408176ed53b9b4acdc8fafb6760de1f54d"
+}

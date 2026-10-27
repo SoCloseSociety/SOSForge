@@ -1,0 +1,23 @@
+{
+ "url": "https://webservices.volcano.si.edu/geoserver/GVP-VOTW/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=GVP-VOTW:Smithsonian_VOTW_Holocene_Eruptions&outputFormat=application/json&CQL_FILTER=EndDateYearModifier%3D%27%3E%27&propertyName=Volcano_Number,Volcano_Name,StartDateYear,StartDateMonth,StartDateDay,EndDateYearModifier,EndDateYear,EndDateMonth,EndDateDay",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 11:01:25 GMT",
+  "x-frame-options": "SAMEORIGIN",
+  "x-content-type-options": "nosniff",
+  "content-disposition": "inline; filename=Smithsonian_VOTW_Holocene_Eruptions.json",
+  "content-encoding": "gzip",
+  "content-type": "application/json;charset=UTF-8",
+  "keep-alive": "timeout=5, max=100",
+  "connection": "Keep-Alive",
+  "set-cookie": "TS01c2db25=01a3504f4c47c31c7af1436092ea6381ad3364d284bd2da4e668af88412a1d924d5d317c9d64a11fbf960d650c2a741a75a7ac900e; Path=/; Domain=.si.edu; Secure; HttpOnly",
+  "transfer-encoding": "chunked"
+ },
+ "fetched_utc": "2026-10-27T11:01:28Z",
+ "latency_ms_p50": 692,
+ "latency_ms_all": [
+  2812,
+  692,
+  605
+ ]
+}

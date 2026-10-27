@@ -1,0 +1,12 @@
+{
+ "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=9.512&longitude=100.013&current=pm10,pm2_5,carbon_monoxide,nitrogen_dioxide,sulphur_dioxide,ozone,aerosol_optical_depth,dust,uv_index,uv_index_clear_sky,alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen,european_aqi,us_aqi&hourly=pm10,pm2_5,ozone,nitrogen_dioxide,sulphur_dioxide,dust,uv_index,european_aqi,us_aqi&timezone=GMT&forecast_days=2",
+ "status": 200,
+ "fetched_utc": "2026-10-27T10:36:55Z",
+ "headers": {
+  "date": "Tue, 27 Oct 2026 10:36:53 GMT",
+  "content-type": "application/json; charset=utf-8",
+  "transfer-encoding": "chunked",
+  "connection": "keep-alive",
+  "content-encoding": "deflate"
+ }
+}

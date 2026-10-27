@@ -1,0 +1,29 @@
+{
+ "url": "https://www.ngdc.noaa.gov/hazel/hazard-service/api/v1/earthquakes?itemsPerPage=3&order=year:desc&order=month:desc&order=day:desc",
+ "status": 200,
+ "headers": {
+  "date": "Tue, 27 Oct 2026 11:06:16 GMT",
+  "server": "Apache",
+  "strict-transport-security": "max-age=31536000;, max-age=31536000 ; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "0",
+  "cache-control": "no-cache, no-store, max-age=0, must-revalidate",
+  "pragma": "no-cache",
+  "expires": "0",
+  "x-frame-options": "SAMEORIGIN",
+  "vary": "accept-encoding",
+  "content-encoding": "gzip",
+  "content-type": "application/json",
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "X-Requested-With, Content-Type",
+  "transfer-encoding": "chunked",
+  "connection": "close"
+ },
+ "fetched_utc": "2026-10-27T11:06:24Z",
+ "latency_ms_p50": 3046,
+ "latency_ms_all": [
+  3046,
+  3547,
+  2185
+ ]
+}

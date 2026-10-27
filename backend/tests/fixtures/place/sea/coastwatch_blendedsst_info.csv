@@ -1,0 +1,137 @@
+Row Type,Variable Name,Attribute Name,Data Type,Value
+attribute,NC_GLOBAL,_NCProperties,String,"version=2,netcdf=4.9.2,hdf5=1.14.4"
+attribute,NC_GLOBAL,acknowledgement,String,NOAA/NESDIS
+attribute,NC_GLOBAL,analysed_sst_max,float,306.43
+attribute,NC_GLOBAL,analysed_sst_mean,double,290.9312305568394
+attribute,NC_GLOBAL,analysed_sst_min,float,271.15
+attribute,NC_GLOBAL,analysed_sst_std,double,10.280820218910527
+attribute,NC_GLOBAL,cdm_data_type,String,Grid
+attribute,NC_GLOBAL,comment,String,The Geo-Polar Blended Sea Surface Temperature (SST) Analysis combines multi-satellite retrievals of sea surface temperature into a single analysis of SST. This analysis includes Day and Night data.
+attribute,NC_GLOBAL,Conventions,String,"CF-1.6, Unidata Observation Dataset v1.0, COARDS, ACDD-1.3"
+attribute,NC_GLOBAL,creator_email,String,sheekela.baker-yeboah@noaa.gov
+attribute,NC_GLOBAL,creator_name,String,Office of Satellite Products and Operations
+attribute,NC_GLOBAL,creator_type,String,group
+attribute,NC_GLOBAL,creator_url,String,https://www.ospo.noaa.gov
+attribute,NC_GLOBAL,date_created,String,2020-09-01T11:02:07Z
+attribute,NC_GLOBAL,Easternmost_Easting,double,179.975
+attribute,NC_GLOBAL,gds_version_id,String,2.0
+attribute,NC_GLOBAL,geospatial_lat_max,double,89.975
+attribute,NC_GLOBAL,geospatial_lat_min,double,-89.975
+attribute,NC_GLOBAL,geospatial_lat_resolution,double,0.049999999999999996
+attribute,NC_GLOBAL,geospatial_lat_units,String,degrees_north
+attribute,NC_GLOBAL,geospatial_lon_max,double,179.975
+attribute,NC_GLOBAL,geospatial_lon_min,double,-179.975
+attribute,NC_GLOBAL,geospatial_lon_resolution,double,0.049999999999999996
+attribute,NC_GLOBAL,geospatial_lon_units,String,degrees_east
+attribute,NC_GLOBAL,history,String,"NESDIS geo-SST L1 to L2 processor, NESDIS Advanced Clear-Sky Processor for Oceans (ACSPO), NESDIS Geo-Polar 1/20th degree Blended SST Analysis"
+attribute,NC_GLOBAL,id,String,Geo_Polar_Blended-OSPO-L4-GLOB-v2.0
+attribute,NC_GLOBAL,infoUrl,String,https://podaac.jpl.nasa.gov/dataset/Geo_Polar_Blended-OSPO-L4-GLOB-v1.0
+attribute,NC_GLOBAL,institution,String,NOAA NESDIS CoastWatch
+attribute,NC_GLOBAL,keywords,String,"analysed, analysed_sst, analysis_error, area, bit, blended, cryosphere, data, day, deviation, distribution, earth, Earth Science > Cryosphere > Sea Ice > Ice Extent, Earth Science > Oceans > Ocean Temperature > Sea Surface Temperature, Earth Science > Oceans > Sea Ice > Ice Extent, error, estimated, extent, foundation, fraction, global, ice, ice distribution, infrared, input, land, latitude, longitude, mask, night, ocean, oceans, office, operations, over, products, satellite, science, sea, sea/land/ice, sea_ice_area_fraction, sea_ice_fraction, sea_land_ice_bit_mask, sea_surface_foundation_temperature, sst, standard, statistics, surface, temperature, time, using"
+attribute,NC_GLOBAL,keywords_vocabulary,String,GCMD Science Keywords
+attribute,NC_GLOBAL,license,String,GHRSST protocol describes data use as free and open
+attribute,NC_GLOBAL,metadata_link,String,https://podaac.jpl.nasa.gov/ws/metadata/dataset?format=iso&shortName=Geo_Polar_Blended-OSPO-L4-GLOB-v1.0
+attribute,NC_GLOBAL,naming_authority,String,gov.noaa.coastwatch
+attribute,NC_GLOBAL,Northernmost_Northing,double,89.975
+attribute,NC_GLOBAL,platform,String,"GOES-E , GOES-W , N20 , metopB , metopC , Meteosat-9 , Meteosat-10 , Himawari9 , N21"
+attribute,NC_GLOBAL,processing_level,String,L4
+attribute,NC_GLOBAL,product_version,String,2.0
+attribute,NC_GLOBAL,production_environment,String,prod
+attribute,NC_GLOBAL,production_site,String,NCCF
+attribute,NC_GLOBAL,project,String,Group for High Resolution Sea Surface Temperature
+attribute,NC_GLOBAL,publisher_email,String,ghrsst-po@nceo.ac.uk
+attribute,NC_GLOBAL,publisher_name,String,The GHRSST Project Office
+attribute,NC_GLOBAL,publisher_type,String,group
+attribute,NC_GLOBAL,publisher_url,String,https://www.ghrsst.org
+attribute,NC_GLOBAL,references,String,"Fieguth,P.W. et al. ""Mapping Mediterranean altimeter data with a multiresolution optimal interpolation algorithm"", J. Atmos. Ocean Tech, 15 (2): 535-546, 1998. Fieguth, P. Multiply-Rooted Multiscale Models for Large-Scale Estimation, IEEE Image Processing, 10(11), 1676-1686, 2001.     Khellah, F., P.W. Fieguth, M.J. Murray and M.R. Allen, ""Statistical Processing of Large Image Sequences"", IEEE Transactions on Geoscience and Remote Sensing, 12 (1), 80-93, 2005."
+attribute,NC_GLOBAL,sensor,String,"ABI/Imager , ABI/Imager , VIIRS , AVHRR , AVHRR , SEVIRI , SEVIRI , AHI/Imager , VIIRS"
+attribute,NC_GLOBAL,source,String,"STAR-GOES19_SST_L3 , STAR-GOES18_SST_L3 , OSPO-ACSPO_VIIRS_NOAA20 , OSPO-ACSPO_METOPB_FRAC , OSPO-ACSPO_METOPC_FRAC , OSPO-METEOSAT09_SST_L3 , OSPO-METEOSAT10_SST_L3 , OSPO-HIMA9_SST_L3 , OSPO-ACSPO_VIIRS_N21"
+attribute,NC_GLOBAL,sourceUrl,String,(local files)
+attribute,NC_GLOBAL,Southernmost_Northing,double,-89.975
+attribute,NC_GLOBAL,spatial_resolution,String,0.05 degree
+attribute,NC_GLOBAL,standard_name_vocabulary,String,CF Standard Name Table v29
+attribute,NC_GLOBAL,summary,String,"Analysed blended sea surface temperature over the global ocean using day and night input data. An SST estimation scheme which combines multi-satellite retrievals of sea surface temperature datasets available from polar orbiters, geostationary InfraRed (IR) and microwave sensors into a single global analysis. This global SST ananlysis provide a daily gap free map of the foundation sea surface temperature at 0.05o spatial resolution."
+attribute,NC_GLOBAL,testOutOfDate,String,now-4days
+attribute,NC_GLOBAL,time_coverage_end,String,2026-10-25T12:00:00Z
+attribute,NC_GLOBAL,time_coverage_start,String,2019-07-22T12:00:00Z
+attribute,NC_GLOBAL,title,String,"Sea-Surface Temperature, NOAA Geo-polar Blended Analysis Day+Night, GHRSST, Near Real-Time, Global 5km, 2019-Present, Daily"
+attribute,NC_GLOBAL,Westernmost_Easting,double,-179.975
+dimension,time,,double,"nValues=2636, evenlySpaced=false, averageSpacing=1 day 0h 9m 17s"
+attribute,time,_CoordinateAxisType,String,Time
+attribute,time,actual_range,double,"1.5637968E9, 1.7929296E9"
+attribute,time,axis,String,T
+attribute,time,calendar,String,Gregorian
+attribute,time,comment,String,Nominal time of Level 4 analysis
+attribute,time,ioos_category,String,Time
+attribute,time,long_name,String,reference time of sst field
+attribute,time,standard_name,String,time
+attribute,time,time_origin,String,01-JAN-1970 00:00:00
+attribute,time,units,String,seconds since 1970-01-01T00:00:00Z
+dimension,latitude,,float,"nValues=3600, evenlySpaced=true, averageSpacing=0.049999999999999996"
+attribute,latitude,_CoordinateAxisType,String,Lat
+attribute,latitude,actual_range,float,"-89.975, 89.975"
+attribute,latitude,axis,String,Y
+attribute,latitude,comment,String,equirectangular projection
+attribute,latitude,ioos_category,String,Location
+attribute,latitude,long_name,String,Latitude
+attribute,latitude,standard_name,String,latitude
+attribute,latitude,units,String,degrees_north
+attribute,latitude,valid_max,float,90.0
+attribute,latitude,valid_min,float,-90.0
+dimension,longitude,,float,"nValues=7200, evenlySpaced=true, averageSpacing=0.049999999999999996"
+attribute,longitude,_CoordinateAxisType,String,Lon
+attribute,longitude,actual_range,float,"-179.975, 179.975"
+attribute,longitude,axis,String,X
+attribute,longitude,comment,String,equirectangular projection
+attribute,longitude,ioos_category,String,Location
+attribute,longitude,long_name,String,Longitude
+attribute,longitude,standard_name,String,longitude
+attribute,longitude,units,String,degrees_east
+attribute,longitude,valid_max,float,180.0
+attribute,longitude,valid_min,float,-180.0
+variable,analysed_sst,,float,"time, latitude, longitude"
+attribute,analysed_sst,_FillValue,float,-327.68
+attribute,analysed_sst,colorBarMaximum,double,32.0
+attribute,analysed_sst,colorBarMinimum,double,0.0
+attribute,analysed_sst,comment,String,Day and Night analysed SST for each ocean grid point
+attribute,analysed_sst,ioos_category,String,Temperature
+attribute,analysed_sst,long_name,String,analysed sea surface temperature
+attribute,analysed_sst,references,String,"Fieguth,P.W. et al. ""Mapping Mediterranean altimeter data with a multiresolution optimal interpolation algorithm"", J. Atmos. Ocean Tech, 15 (2): 535-546, 1998.     Fieguth, P. Multiply-Rooted Multiscale Models for Large-Scale Estimation, IEEE Image Processing, 10(11), 1676-1686, 2001.     Khellah, F., P.W. Fieguth, M.J. Murray and M.R. Allen, ""Statistical Processing of Large Image Sequences"", IEEE Transactions on Geoscience and Remote Sensing, 12 (1), 80-93, 2005."
+attribute,analysed_sst,standard_name,String,sea_surface_foundation_temperature
+attribute,analysed_sst,units,String,degree_C
+attribute,analysed_sst,valid_max,float,39.999992
+attribute,analysed_sst,valid_min,float,-2.0000062
+variable,analysis_error,,float,"time, latitude, longitude"
+attribute,analysis_error,_FillValue,float,-327.68
+attribute,analysis_error,colorBarMaximum,double,5.0
+attribute,analysis_error,colorBarMinimum,double,0.0
+attribute,analysis_error,comment,String,Estimate of internal analysis accuracy
+attribute,analysis_error,ioos_category,String,Statistics
+attribute,analysis_error,long_name,String,estimated error standard deviation of analysed_sst
+attribute,analysis_error,units,String,degree_C
+attribute,analysis_error,valid_max,float,5.0
+attribute,analysis_error,valid_min,float,0.0
+variable,sea_ice_fraction,,float,"time, latitude, longitude"
+attribute,sea_ice_fraction,_FillValue,float,-1.28
+attribute,sea_ice_fraction,colorBarMaximum,double,1.0
+attribute,sea_ice_fraction,colorBarMinimum,double,0.0
+attribute,sea_ice_fraction,comment,String,Percentage of ice
+attribute,sea_ice_fraction,ioos_category,String,Ice Distribution
+attribute,sea_ice_fraction,long_name,String,sea ice fraction
+attribute,sea_ice_fraction,source,String,NCEP 1/12th degree ice mask
+attribute,sea_ice_fraction,standard_name,String,sea_ice_area_fraction
+attribute,sea_ice_fraction,units,String,1
+attribute,sea_ice_fraction,valid_max,float,1.0
+attribute,sea_ice_fraction,valid_min,float,0.0
+variable,mask,,byte,"time, latitude, longitude"
+attribute,mask,_FillValue,byte,0
+attribute,mask,colorBarMaximum,double,5.0
+attribute,mask,colorBarMinimum,double,0.0
+attribute,mask,comment,String,"b0: 1=grid cell is water, b1: 1=grid cell is land, b2: 1=grid cell is ice"
+attribute,mask,flag_meanings,String,water land ice
+attribute,mask,flag_values,byte,"1, 2, 4"
+attribute,mask,ioos_category,String,Ice Distribution
+attribute,mask,long_name,String,land sea ice lake bit mask
+attribute,mask,source,String," NCEP 1/12th degree ice mask, OSTIA land mask"
+attribute,mask,valid_max,byte,4
+attribute,mask,valid_min,byte,1

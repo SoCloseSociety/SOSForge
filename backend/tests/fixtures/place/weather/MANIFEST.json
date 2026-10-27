@@ -1,0 +1,63 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/weather",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "awc_metars_cache_global.csv.gz": {
+   "bytes": 254960,
+   "sha256": "8cf078f0bba611595381ce14a481b4ff4c7789b039a052d5d5276750b4b377ac"
+  },
+  "awc_metars_cache_global.csv.gz.meta.json": {
+   "bytes": 564,
+   "sha256": "9446585065457958c4dd3f36e2e81074445ccc8f8b7c965a9ea8201d6ccd198e"
+  },
+  "metno_complete_anchorage.json": {
+   "bytes": 61302,
+   "sha256": "3b8b69b703523e5cf32984cfb86cc42b2cb74e041a3d58f3858c11d6b0090a3d"
+  },
+  "metno_complete_anchorage.json.meta.json": {
+   "bytes": 807,
+   "sha256": "98686bcd3ead30b3fda5eb0541201801541e90c624207dfa4c5c697cb8ef9070"
+  },
+  "metno_complete_midpacific.json": {
+   "bytes": 62639,
+   "sha256": "711b170b5f8a12874d78c2615473d97ed70ddea6142a07c68137931a1e5414c4"
+  },
+  "metno_complete_midpacific.json.meta.json": {
+   "bytes": 791,
+   "sha256": "9287b0fd787a1afdc61bd76ab3b43ea1df9a23cab2708c5c9a12d48cdd816e49"
+  },
+  "metno_complete_oslo.json": {
+   "bytes": 90326,
+   "sha256": "ac986a674441a482f5f514e957fce1e06e5b90ce3de6e805514078349bd6d1bd"
+  },
+  "metno_complete_oslo.json.meta.json": {
+   "bytes": 1021,
+   "sha256": "017c17a6f04b7ed7755e6f55bf8e4c86f36794050e4034bd23e3d6b567bf2087"
+  },
+  "metno_complete_samui.json": {
+   "bytes": 61276,
+   "sha256": "cd47dd943595448af464f74a7f3f716b244e3ee3061176643950554e9e048a0b"
+  },
+  "metno_complete_samui.json.meta.json": {
+   "bytes": 805,
+   "sha256": "ba4584b565b46f447525bc64a75e44532be9b4bdddc4e983a7a8adce562d9c6a"
+  },
+  "nws_grid_anchorage.json": {
+   "bytes": 164956,
+   "sha256": "b87f355c35c30c7e0ae6f60438d5bc3b0b431f4306c717e690cd1f89a70e50e2"
+  },
+  "nws_grid_anchorage.json.meta.json": {
+   "bytes": 941,
+   "sha256": "7d8039c1ca262072cf25381e3906c62251252bd3f105bd84abea0f28ac86d7a6"
+  },
+  "nws_points_anchorage.json": {
+   "bytes": 3918,
+   "sha256": "d35183382501dae51bbbe11561c0229eaef114aa2ba7abbdae39e7ba03f37211"
+  },
+  "nws_points_anchorage.json.meta.json": {
+   "bytes": 893,
+   "sha256": "fd3cec08d454c6c23c05e0e1b2014e9961aceb7183c430dc3f9542088903cfc4"
+  }
+ }
+}

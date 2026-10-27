@@ -1,0 +1,183 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/risk",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "aqueduct40_annual_midpacific_empty.json": {
+   "bytes": 810,
+   "sha256": "de6a24116d282d511c43e2837ff19d5d5443e22e47f64b1c3b37c39f26eb18ff"
+  },
+  "aqueduct40_annual_midpacific_empty.json.meta.json": {
+   "bytes": 928,
+   "sha256": "67e2b07003d5b0b5e159c9890a8ebdc89fa5c3d346c621d5c586e549b4842982"
+  },
+  "aqueduct40_annual_samui.json": {
+   "bytes": 1205,
+   "sha256": "07a21f1d1e15f8779a6d8a4365917a1439b856775bacc0b16d36721e1be849fe"
+  },
+  "aqueduct40_annual_samui.json.meta.json": {
+   "bytes": 903,
+   "sha256": "48decc0e5b4d998ff720a9b399113cc02aedfd5fa69d6933fa51c60976489332"
+  },
+  "aqueduct40_distinct_labels.json": {
+   "bytes": 1859,
+   "sha256": "b86cab6681362c717b5000374e30c0d88dcfce798bf63dbc41aeb8694bebe55f"
+  },
+  "aqueduct40_distinct_labels.json.meta.json": {
+   "bytes": 1844,
+   "sha256": "39b966d8a8dc1df4c3ab97b7112fd543dca841b408a40b077bf27606becf30bb"
+  },
+  "firms_viirs_noaa21_alaska_24h_empty.csv": {
+   "bytes": 112,
+   "sha256": "fe0401e40606fd90dd4cf24dff508a93539089a4aecf701e2a3c85851fe9bf40"
+  },
+  "firms_viirs_noaa21_alaska_24h_empty.csv.meta.json": {
+   "bytes": 487,
+   "sha256": "0fbee5271d05ef08834b3b465c5a95bb7f7de5abb502078fa85c0731cd84962a"
+  },
+  "firms_viirs_noaa21_europe_24h.csv": {
+   "bytes": 50188,
+   "sha256": "3caefad300f2e9dc2bf211f4bae29a81fb2a742f13c28de2497407a5b4fa1607"
+  },
+  "firms_viirs_noaa21_europe_24h.csv.meta.json": {
+   "bytes": 491,
+   "sha256": "221379968f0510e18ef9fa89c1d0e70bd197c7c60bf54c0625d2670a95d45ae6"
+  },
+  "gdo_hst_rdria_midpacific.json": {
+   "bytes": 201,
+   "sha256": "1bf9f25a896c9ecb4622f7fa5c8ef8d685c603038ea0ba995a8253542d13a9d1"
+  },
+  "gdo_hst_rdria_midpacific.json.meta.json": {
+   "bytes": 457,
+   "sha256": "bf5ff1a5d064ea7781e45955f3e1c1113b5ecdb8331d6260c4bcc6d814e0abc8"
+  },
+  "gdo_hst_rdria_paris.json": {
+   "bytes": 171,
+   "sha256": "67216b55fe26fd58f1f829027837ba45c3031543ff73de19e44e9a650b9906ed"
+  },
+  "gdo_hst_rdria_paris.json.meta.json": {
+   "bytes": 459,
+   "sha256": "a5a55f074d2930c20bf85ab8a0a25fa6f7993ce99add7da4f24a63c95d0f7d91"
+  },
+  "gdo_hst_rdria_samui.json": {
+   "bytes": 180,
+   "sha256": "a081c47daf68c8f108daf189db3265cd8d46ba9054093f3fe01766660a37dcad"
+  },
+  "gdo_hst_rdria_samui.json.meta.json": {
+   "bytes": 460,
+   "sha256": "359ccb27faacf4a5d6cc691aa1379d4d649c24b5ffcec8b2d1d9da245b555499"
+  },
+  "gdo_hst_smang_midpacific.json": {
+   "bytes": 23,
+   "sha256": "0712b1b2acea81e914dffea613e492770cf07ca147e5e200d09cef6a75787b53"
+  },
+  "gdo_hst_smang_midpacific.json.meta.json": {
+   "bytes": 456,
+   "sha256": "dba8f970b81e190da84e640aa023090cd405351dcae71ab90588b03c222c5a77"
+  },
+  "gdo_hst_smang_samui.json": {
+   "bytes": 224,
+   "sha256": "d6c744d04b0c004cc151c91227ed6536a825acb5134fb7ed15ac5281b7a21880"
+  },
+  "gdo_hst_smang_samui.json.meta.json": {
+   "bytes": 460,
+   "sha256": "76ca89cbf6bc04bd66fa80a628a623922d247816b984fb2b17acbae55c21c6c7"
+  },
+  "gdo_hst_spi_midpacific.json": {
+   "bytes": 281,
+   "sha256": "9de458414969af32130a9a45c2cb04f50e13b4a38b7c03074f7b644c28f58ab6"
+  },
+  "gdo_hst_spi_midpacific.json.meta.json": {
+   "bytes": 463,
+   "sha256": "51d57d750fa3ad73ff6103cbd34edf36fbf57ec65cde430fa4f96a7ef55a9f39"
+  },
+  "gdo_hst_spi_paris.json": {
+   "bytes": 304,
+   "sha256": "2a10f2dbb5d054f2f8c3c98b5b7b1f71d126397df213939a6a0f29b316fd8de6"
+  },
+  "gdo_hst_spi_paris.json.meta.json": {
+   "bytes": 465,
+   "sha256": "fe0a442ce50c005c2bdd1f6fecb07a5caa5c03f6065bca2f9dc6961f658d6b66"
+  },
+  "gdo_hst_spi_samui.json": {
+   "bytes": 295,
+   "sha256": "c79ab267c765be78c647a7ca30c25668206af7e5b235816f30045762b0d85167"
+  },
+  "gdo_hst_spi_samui.json.meta.json": {
+   "bytes": 466,
+   "sha256": "78003e7f2020fb859bdddf7b0ecfd5b4a469d4842cf244e622df607089b675e6"
+  },
+  "gwis_fwi_ecmwf_lima_20261027_9x9.png": {
+   "bytes": 119,
+   "sha256": "002f85e7ee5c59dde1bc832d5815a0031aad8a95e77943d41cd93549fe496f4e"
+  },
+  "gwis_fwi_ecmwf_lima_20261027_9x9.png.meta.json": {
+   "bytes": 605,
+   "sha256": "517ac8e75bb874af89e7d0aa1048491c085b642a0c93faeb9d6c792a010da51f"
+  },
+  "gwis_fwi_legend.png": {
+   "bytes": 6442,
+   "sha256": "f8ab8f03f180b14ebf2fec938e3b40fc45db3e43403f021eda9531e30a67a674"
+  },
+  "gwis_fwi_legend.png.meta.json": {
+   "bytes": 552,
+   "sha256": "e0355d0add7065e11be9ad7f37c365788cf8e681f8c941c62850d9b17714f5b4"
+  },
+  "gwis_fwi_world_probe_2026-10-27.png": {
+   "bytes": 261,
+   "sha256": "963044fffa30d753b7143f87a83b83a57802691053743d527560d6c75390f423"
+  },
+  "gwis_fwi_world_probe_2026-10-27.png.meta.json": {
+   "bytes": 855,
+   "sha256": "cc007af3ae9a1474ab8f0fea90aa7b15196a91bf69c431de90bed91487a6a7a7"
+  },
+  "gwis_fwi_world_probe_2026-11-03.png": {
+   "bytes": 251,
+   "sha256": "a6ddd702238625295db0125bf3d443295aef65db995c8f502b8aa4f3cbb0854c"
+  },
+  "gwis_fwi_world_probe_2026-11-03.png.meta.json": {
+   "bytes": 855,
+   "sha256": "fb65df006c1ab5a5633dcca961a06d0b1a17025284faace248ac3353ee07e851"
+  },
+  "gwis_fwi_world_probe_2026-11-20.png": {
+   "bytes": 82,
+   "sha256": "6d43897d4279107ec5f4c1fee00fa87e287f83d40798789fa05ec861a57f66f0"
+  },
+  "gwis_fwi_world_probe_2026-11-20.png.meta.json": {
+   "bytes": 853,
+   "sha256": "a74623358d43f95e2680ab1d4d3fd32fee129b3da553c180ab6f614a46a2cc9d"
+  },
+  "inform_mid2026_tha.json": {
+   "bytes": 1560,
+   "sha256": "47f5ba8968a498ed73cb5f27c16c35a7fd33f46b38136260aecf6b698ea7eaeb"
+  },
+  "inform_mid2026_tha.json.meta.json": {
+   "bytes": 565,
+   "sha256": "a206bbf7f27d093154e93422fd2ed303b46db1971c57f7ef5223b464cc4fe9cf"
+  },
+  "inform_mid2026_umi_empty.json": {
+   "bytes": 2,
+   "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "inform_mid2026_umi_empty.json.meta.json": {
+   "bytes": 559,
+   "sha256": "d2fd2903a3b78d9b7d5ad446a50d4cc5c672b4b4722ab2f126a6b13412c24e65"
+  },
+  "inform_workflow_2026mid.json": {
+   "bytes": 648,
+   "sha256": "1ff0a4433a1c309d1eeb98025dda538d6b4535c29c318e632b50b3aa5fa5be69"
+  },
+  "inform_workflow_2026mid.json.meta.json": {
+   "bytes": 458,
+   "sha256": "315563b0088e0a84e87ec9777bea086c5d1b640ddb05de5be055a263ecaa1728"
+  },
+  "inform_workflow_groups.json": {
+   "bytes": 366,
+   "sha256": "15fdeaf7738bb1d1d2d0609feeea8eea6ec9a6ad51920c4b5dd9a4c2ac7bf18f"
+  },
+  "inform_workflow_groups.json.meta.json": {
+   "bytes": 1436,
+   "sha256": "fcb4357ee809e910798e4fa0c2d2ff383f3e41fa6b1dcd3ac74dfaba2f867d15"
+  }
+ }
+}

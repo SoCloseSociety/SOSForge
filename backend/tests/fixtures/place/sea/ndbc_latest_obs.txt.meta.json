@@ -1,0 +1,32 @@
+{
+ "url": "https://www.ndbc.noaa.gov/data/latest_obs/latest_obs.txt",
+ "range": null,
+ "status": 200,
+ "headers": {
+  "content-type": "text/plain; charset=ISO-8859-1",
+  "content-length": "21959",
+  "connection": "keep-alive",
+  "date": "Tue, 27 Oct 2026 11:10:45 GMT",
+  "server": "Apache",
+  "last-modified": "Tue, 27 Oct 2026 11:05:47 GMT",
+  "etag": "\"18ed6-65ed06dbcdb8d-gzip\"",
+  "accept-ranges": "bytes",
+  "content-encoding": "gzip",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "1; mode=block",
+  "x-frame-options": "deny",
+  "content-security-policy": "frame-ancestors 'none'; object-src 'self'; base-uri 'self';",
+  "cache-control": "max-age=600, must-revalidate",
+  "strict-transport-security": "max-age=31536000",
+  "vary": "Accept-Encoding",
+  "x-cache": "Hit from cloudfront",
+  "via": "1.1 d95e4afc1e00d1f8f6243cfdbce3c64e.cloudfront.net (CloudFront)",
+  "x-amz-cf-pop": "BKK50-P2",
+  "x-amz-cf-id": "AEYFy8yqi6iHFdDc7tfK0ui7MG6Ij_xjRRir25Ux6XkKS6pcvcpQ6w==",
+  "age": "419"
+ },
+ "fetched_utc": "2026-10-27T11:17:45Z",
+ "elapsed_ms": 676,
+ "bytes": 102102,
+ "sha256": "0b0aea4afef80c880c4946ac75ac835ce6678959c970db4b46dbc8f7fc2d6da0"
+}

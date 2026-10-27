@@ -1,0 +1,23 @@
+{
+ "url": "https://api.weather.gov/points/61.2180,-149.9000",
+ "status": 200,
+ "headers": {
+  "server": "nginx/1.28.3",
+  "content-type": "application/geo+json",
+  "access-control-allow-origin": "*",
+  "access-control-expose-headers": "X-Correlation-Id, X-Request-Id, X-Server-Id",
+  "x-request-id": "01a17cf3-587c-78f8-9eac-be470f3f8a75",
+  "x-correlation-id": "71044f86",
+  "x-server-id": "vm-bldr-api-ops-app13.ncep.noaa.gov",
+  "content-encoding": "gzip",
+  "content-length": "1006",
+  "cache-control": "public, max-age=86400, s-maxage=86400",
+  "expires": "Wed, 28 Oct 2026 10:41:25 GMT",
+  "date": "Tue, 27 Oct 2026 10:41:25 GMT",
+  "connection": "keep-alive",
+  "vary": "Accept-Encoding, Accept,Feature-Flags,Accept-Language",
+  "x-edge-request-id": "18442c02",
+  "strict-transport-security": "max-age=31536000 ; includeSubDomains ; preload"
+ },
+ "fetched_utc": "2026-10-27T10:41:25Z"
+}

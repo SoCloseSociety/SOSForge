@@ -1,0 +1,13 @@
+{
+ "note": "Points and the countries the page's rule (frontend/src/countries.ts, NEAR_BORDER_KM 25) must give them on the 1:50m table. Asserted by the pytest suite (tests/test_place_geo.py) and meant for the vitest suite too. Coordinates as the place report rounds them (2 decimals).",
+ "points": [
+  {"name": "Reykjavik", "lat": 64.15, "lon": -21.94, "codes": ["IS"], "country_code": "IS", "at_sea": false},
+  {"name": "Stockholm", "lat": 59.33, "lon": 18.07, "codes": ["SE"], "country_code": "SE", "at_sea": false},
+  {"name": "New York", "lat": 40.71, "lon": -74.01, "codes": ["US"], "country_code": "US", "at_sea": false},
+  {"name": "Lisbon", "lat": 38.72, "lon": -9.14, "codes": ["PT"], "country_code": "PT", "at_sea": false},
+  {"name": "Strasbourg", "lat": 48.58, "lon": 7.75, "codes": ["DE", "FR"], "country_code": "FR", "at_sea": false},
+  {"name": "Ko Samui", "lat": 9.51, "lon": 100.01, "codes": ["TH"], "country_code": "TH", "at_sea": false},
+  {"name": "Ko Tao", "lat": 10.09, "lon": 99.84, "codes": [], "country_code": null, "at_sea": true},
+  {"name": "mid-Pacific", "lat": 0.0, "lon": -160.0, "codes": [], "country_code": null, "at_sea": true}
+ ]
+}

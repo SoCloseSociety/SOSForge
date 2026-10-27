@@ -1,0 +1,159 @@
+{
+ "copied_utc": "2026-10-27T13:17:52Z",
+ "source": "scratchpad/place/fixtures/history",
+ "note": "Every body file is a byte-for-byte upstream response. *.meta.json and cassette.json are capture notes (url, status, headers, fetch time), not upstream bodies. Each sha256 was checked against the source file at copy time.",
+ "files": {
+  "gvp_continuing_eruptions_global.json": {
+   "bytes": 13798,
+   "sha256": "6135f73577d38e4b67315b8a87a5b497a1ad9a960764adca5a842e8be4d2432b"
+  },
+  "gvp_continuing_eruptions_global.json.meta.json": {
+   "bytes": 1091,
+   "sha256": "4e60de52638f68536f36b352275c2dd7ff6793db12e264521a4a70fa72f69d4a"
+  },
+  "gvp_holocene_volcanoes_samui.json": {
+   "bytes": 147,
+   "sha256": "e5080528abc18982154a3dd30a13361a8550537e1c951b2019e4b0805a3a0813"
+  },
+  "gvp_holocene_volcanoes_samui.json.meta.json": {
+   "bytes": 1034,
+   "sha256": "3020ac88838755e89ed22624a94cd5294ee31a391da108b034ccec71d90f0b7b"
+  },
+  "gvp_holocene_volcanoes_tokyo.json": {
+   "bytes": 7429,
+   "sha256": "e34d30d1557245fac67306144578db3853d3ce2bb9da04170e3a957fe233de18"
+  },
+  "gvp_holocene_volcanoes_tokyo.json.meta.json": {
+   "bytes": 856,
+   "sha256": "fdc74a50b3c8bbb451b542b8f2602ef302ff03e8e97aaab38744ad634df340f6"
+  },
+  "ibtracs_ACTIVE.list.v04r01.csv": {
+   "bytes": 146478,
+   "sha256": "a1e7272327bfc8933271daf317a4ae3b1cc0e66c9a8dafa6ae4580f4c373e2e0"
+  },
+  "ibtracs_ACTIVE.list.v04r01.csv.meta.json": {
+   "bytes": 770,
+   "sha256": "190fa173f42b1e9a0062b0d6d8079bd1388882d9664a7359c8eaeb89f7f1597c"
+  },
+  "ibtracs_ALL_range_GAY1989.csv": {
+   "bytes": 36596,
+   "sha256": "9a57519598f237be8fa5b6a0c082345863f5de2b909831fc180127ada0a70776"
+  },
+  "ibtracs_ALL_range_GAY1989.csv.meta.json": {
+   "bytes": 858,
+   "sha256": "cae9a8b54b2430b993a5966ef1584aff0373d2f885d1b5ca9b2e85b72ec55b89"
+  },
+  "ibtracs_ALL_range_header.csv": {
+   "bytes": 2942,
+   "sha256": "1a9584b2c6e590d02b6ffaf497f43b92bb3f11ee9c38449f95348e1e75dc7465"
+  },
+  "ibtracs_ALL_range_header.csv.meta.json": {
+   "bytes": 831,
+   "sha256": "4d80ea4a74b553701d22c9d46633f10a9980e75a08fcf442f7c1c450ea5ec508"
+  },
+  "ibtracs_column_documentation.pdf": {
+   "bytes": 71078,
+   "sha256": "a43655f3e94cfd5c67f31911af7789a2c4dadeb15e1203afbd17cdaf293d66a0"
+  },
+  "ibtracs_column_documentation.pdf.meta.json": {
+   "bytes": 1047,
+   "sha256": "1e883b22d643f101304a5486ba28848b4d28b525e45155e1a8fa23fafd12a172"
+  },
+  "ncei_earthquakes_kathmandu.json": {
+   "bytes": 8119,
+   "sha256": "3df4cc772a652f2b32b6d0af9af6789bbf18d1b441f9321bcabc0e6c23dc60ac"
+  },
+  "ncei_earthquakes_kathmandu.json.meta.json": {
+   "bytes": 883,
+   "sha256": "24027f0c3f5e405d84c08822b0ad3b8bc3fe6d8e6412bdebf62836f756d986ec"
+  },
+  "ncei_earthquakes_newest_global.json": {
+   "bytes": 2150,
+   "sha256": "12fd10473a3433374c9f99f9dac3ad091472e0f6982c4e91068ee16dfa8010db"
+  },
+  "ncei_earthquakes_newest_global.json.meta.json": {
+   "bytes": 917,
+   "sha256": "001325ac2af3b1928f83906172105f45918d5da0a9bd6fd12cc004530369aff4"
+  },
+  "ncei_openapi.json": {
+   "bytes": 266819,
+   "sha256": "efd460d2e6f66f43a4eda7acf288a10609e0eba692aa2d1ef921c0f9b0ce16d9"
+  },
+  "ncei_openapi.json.meta.json": {
+   "bytes": 297,
+   "sha256": "c607598538a0aabf92dc6c74ce3cf74bd2cc40af3f5e6a83937e161ac2cd315a"
+  },
+  "ncei_tsunamis_events_midpacific.json": {
+   "bytes": 70,
+   "sha256": "aeb51ebe7e0c754bf85aacb437d967caae0c41bc265b843bfaf2a6aed5b9ae39"
+  },
+  "ncei_tsunamis_events_midpacific.json.meta.json": {
+   "bytes": 890,
+   "sha256": "b7c04ab108caf9b18bbf4fb1295df48bf311f7ad8200a5128e04ecfb461b698e"
+  },
+  "ncei_tsunamis_events_newest_global.json": {
+   "bytes": 1237,
+   "sha256": "faf341fc27407e64f5b6210608057190479de3b535ee8df0fe52bb57bedf19ae"
+  },
+  "ncei_tsunamis_events_newest_global.json.meta.json": {
+   "bytes": 905,
+   "sha256": "848026b7c22470d4d6e9f110d09434b6c9c1d11a22d764ac3c106ab3f9a557ee"
+  },
+  "ncei_tsunamis_events_tokyo.json": {
+   "bytes": 53015,
+   "sha256": "6bca76645e08fa2267c5be7215163da7213e15249338b41f0beda9bb53a5043e"
+  },
+  "ncei_tsunamis_events_tokyo.json.meta.json": {
+   "bytes": 889,
+   "sha256": "889f52b10825b54d156f723fac71077377a147391d089399170f6542472fa3c4"
+  },
+  "ncei_tsunamis_runups_lima.json": {
+   "bytes": 45289,
+   "sha256": "1409b15dd72ac24ba21285156bb22e49a7187aeeba8940073eb03a82eb96706d"
+  },
+  "ncei_tsunamis_runups_lima.json.meta.json": {
+   "bytes": 891,
+   "sha256": "85dc5befc0f219105fb903b9cfd1dbdf26a9cedeab3379e6a7e061feebcc7680"
+  },
+  "ncei_volcanoes_reykjavik.json": {
+   "bytes": 23345,
+   "sha256": "3b3dfefdbd8c3227025515adf291e633c5720938a618b06dcd7e4c17bd09bc6c"
+  },
+  "ncei_volcanoes_reykjavik.json.meta.json": {
+   "bytes": 883,
+   "sha256": "bf102da8cf3d2bc91460c1b5248dd12eb2d46399ccae9cf8708dfd899d719fbb"
+  },
+  "usgs_csv_all_kathmandu.csv": {
+   "bytes": 65337,
+   "sha256": "204d7c6e25e832bc054962eda3bb1270af631f308ccb5d36352d1488725b80e6"
+  },
+  "usgs_csv_all_kathmandu.csv.meta.json": {
+   "bytes": 1194,
+   "sha256": "af365a982572564c81494e5c036a51dfcd1f0a45c275546e97d0fc04f1f04c99"
+  },
+  "usgs_csv_all_midpacific.csv": {
+   "bytes": 160,
+   "sha256": "d0011b19654d4069505c5263bdbd23d0992301571b783f489577472ebd3a7f17"
+  },
+  "usgs_csv_all_midpacific.csv.meta.json": {
+   "bytes": 1191,
+   "sha256": "3a6281057e06a5eadbeba1e83bfd7deaa696dfaeb1485559b6c87768fb5074ee"
+  },
+  "usgs_csv_all_samui.csv": {
+   "bytes": 857,
+   "sha256": "4e29b57030377dcdda48c7ffe702c1f486372e6ac1ee605f86ea53a3422fad7b"
+  },
+  "usgs_csv_all_samui.csv.meta.json": {
+   "bytes": 1194,
+   "sha256": "1a6915b8b08b4f8216a4ce908dc201b7b0818126272300bf1d9aa0677116ebb3"
+  },
+  "usgs_top10_tokyo.geojson": {
+   "bytes": 7853,
+   "sha256": "64fec44e98825da86dc28ab7bdd20a97b048170dbf93e98867e4dd311eb7a15f"
+  },
+  "usgs_top10_tokyo.geojson.meta.json": {
+   "bytes": 1220,
+   "sha256": "0b3404c845eef8f52cfea1ed5f76638a1a7c47fbc4ac9d48444afb0c785fa717"
+  }
+ }
+}
