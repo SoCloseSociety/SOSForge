@@ -55,12 +55,16 @@ function useServerNow(): number {
   return tick + skew;
 }
 
-function Kpis({ now }: { now: number }) {
+function Kpis({ now, phone }: { now: number; phone: boolean }) {
   const stats = useStore((s) => s.stats);
   const sources = useStore((s) => s.sources);
   const events = useStore((s) => s.events);
   const t = useStore((s) => s.t);
   const loading = useStore((s) => s.snapshotRemaining > 0);
+  // The long labels took 3 lines (89 px) in a 320 px phone's card; the short
+  // ones fit one line in IBM Plex at 13 px (the widest, fr "Alertes
+  // tsunami", is 92.1 px in a 93.7 px card).
+  const label = (key: string) => t(phone ? `${key}.short` : key);
 
   const received = useStore((s) => s.received);
   const connected = useStore((s) => s.connected);
@@ -74,7 +78,7 @@ function Kpis({ now }: { now: number }) {
   return (
     <div className="kpis">
       <div className="kpi">
-        <div className="label">{t("kpi.quakes")}</div>
+        <div className="label">{label("kpi.quakes")}</div>
         <div className="value">{stats?.earthquakes_last_hour ?? "--"}</div>
         <div className="sub">
           {/* the newest quake may still be in a snapshot chunk on its way */}
@@ -88,14 +92,14 @@ function Kpis({ now }: { now: number }) {
         </div>
       </div>
       <div className="kpi">
-        <div className="label">{t("kpi.maxmag")}</div>
+        <div className="label">{label("kpi.maxmag")}</div>
         <div className="value">
           {stats?.max_magnitude_last_hour?.toFixed(1) ?? "--"}
         </div>
         <div className="sub">{t("kpi.maxmag.sub")}</div>
       </div>
       <div className="kpi">
-        <div className="label">{t("kpi.tsunami")}</div>
+        <div className="label">{label("kpi.tsunami")}</div>
         {/* An active tsunami bulletin is said by the extreme glyph AND the
             colour, never the colour alone (it used to be a red number). */}
         <div
@@ -470,8 +474,9 @@ export default function App() {
 
   return (
     // `data-layout` is what tools/responsive.py reads to check that the
-    // components and the stylesheet agree on what a phone is.
-    <div className="app" data-layout={isPhone ? "phone" : "wide"}>
+    // components and the stylesheet agree on what a phone is. `data-scope`
+    // lets a short portrait phone stand the counters down outside World.
+    <div className="app" data-layout={isPhone ? "phone" : "wide"} data-scope={showing}>
       <header className="header">
         <div className="brand">
           {/* The only heading present at all times. Without it a screen-reader
@@ -519,11 +524,13 @@ export default function App() {
 
       {/* Above everything: it is the only element with a deadline. */}
       <ArrivalAlert events={events} now={now} />
-      <Kpis now={now} />
+      <Kpis now={now} phone={isPhone} />
       <Banner events={events} now={now} />
 
       <div className="body">
-        <section className="panel">
+        {/* `panel-scoped`: a state class, read only by the short-screen
+            block of styles.css (the landscape grid of Near me and a place) */}
+        <section className={showing === "world" ? "panel" : "panel panel-scoped"}>
           <GetAppBanner />
           <div className="filters">
             {/* Search first: it is the shortcut to "what is happening OVER

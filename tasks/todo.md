@@ -982,6 +982,33 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 - [x] round 2 final head 138f632: pytest 981, vitest 468, agent 58, drills
       75/75, CI green on PR #5 (backend, frontend, agent). Waiting for the
       owner's go to merge and deploy (scripts ready in the scratchpad).
+- [ ] Round-2 regression found by --near: Near me at a granted position (what
+      real visitors get) shows NO event above the fold on 280x653, 320x568,
+      360x640, 375x667 and 568x320, where production shows 1 to 4. Place mode
+      fails the same five. Fix on branch fold-fix-2026-10-27 (from b1e5bc2),
+      judged plan "same places, shorter controls" + grafts:
+  - [ ] 1. ScopeBar: the two `.scope-elsewhere` pills become ONE control, one
+        `.scope-count` per count (far danger permanent, zero included;
+        unlocated with its own "?" glyph and full label, only when > 0), a
+        visually hidden `scope.counts.sep` between them
+  - [ ] 2. styles.css base: `.scope-elsewhere` wraps (16 px radius, not a
+        pill), `.scope-count` parts, the amber glyph per part
+  - [ ] 3. App.tsx: Kpis short labels on a phone, `panel-scoped` on the
+        panel in Near me / place, `data-scope` on `.app`
+  - [ ] 4. i18n: `kpi.quakes.short`, `kpi.maxmag.short`, `kpi.tsunami.short`,
+        `scope.counts.sep` in the five dictionaries
+  - [ ] 5. phone block: header, kpi, filters (inset search border), scope bar
+        (inset switch), banner paddings
+  - [ ] 6. short-screen block: the scoped landscape grid (filters full
+        width, feed left, scope bar right); counters stand down on portrait
+        phones under 600 px tall outside World
+  - [ ] 7. under 600 px: the scope switch drops its decorative glyphs
+  - [ ] 8. tests: phoneFold.test.tsx (one control, its name, per-part amber,
+        short labels on a phone, panel-scoped + data-scope)
+  - [ ] 9. verify: tsc, vitest, build; responsive.py World / --near /
+        --place, 29 viewports, >= 48 px of the first event on the 6 small
+        ones; shots of iPhone SE 1 and landscape 568, both themes
+  - [ ] 10. review section: before/after table, residual risks
 - [ ] later: an OpenFreeMap style without the unused relief raster, for the
       app's offline packs (104 MB of the old 157 MB world pack)
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published

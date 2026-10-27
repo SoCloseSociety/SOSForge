@@ -10,7 +10,14 @@ import { effectiveScope } from '../scope'
  *
  * What is severe and carries no position at all is counted apart, "N without
  * a location": calling it "elsewhere" claimed a place we do not know (review
- * of PR #5). Shown only when there is one.
+ * of PR #5).
+ *
+ * Both counts are ONE control, because both open World. The far-danger part
+ * is permanent, zero included. The unlocated part keeps its own "?" glyph
+ * and its full label, and shows only when there is one. On a phone the
+ * control takes at most one line per count: two pills beside the switch
+ * made a three-row, 173 px bar, and no event was left above the fold of a
+ * 320x568 phone in Near me (tools/responsive.py --near, 2026-10-27).
  */
 export function ScopeBar({
   severeElsewhere,
@@ -53,6 +60,18 @@ export function ScopeBar({
                   : null
       : null
 
+  // while the snapshot arrives, the count is a floor ("2+"), and "nothing
+  // elsewhere" would be a claim about unseen events
+  const elsewhereLabel =
+    severeElsewhere > 0
+      ? t('scope.elsewhere', { n: `${severeElsewhere}${loading ? '+' : ''}` })
+      : loading
+        ? t('scope.elsewhere.loading')
+        : offline
+          ? t('scope.elsewhere.offline')
+          : t('scope.elsewhere.none')
+  const unlocatedLabel = unlocated > 0 ? t('scope.unlocated', { n: `${unlocated}${loading ? '+' : ''}` }) : null
+
   return (
     // data-here: the coarse position the view is centred on, readable by the
     // browser drill (tools/location_e2e.py); the page holds it anyway
@@ -94,31 +113,30 @@ export function ScopeBar({
       {showing !== 'world' ? (
         <button
           type="button"
-          className={`scope-elsewhere${severeElsewhere > 0 ? ' has-severe' : ''}`}
+          className={`scope-elsewhere${severeElsewhere > 0 || unlocated > 0 ? ' has-severe' : ''}`}
+          // Two counts, heard apart: "2 severe elsewhere, 1 severe without a
+          // location". The name is the two visible labels and the separator,
+          // in this order. A visually hidden ", " between the parts was
+          // measured: Chrome named it "17 severe elsewhere , 9 ..." (it pads
+          // the inline-flex parts), jsdom "elsewhere,1 severe" (it trims each
+          // part), 2026-10-27.
+          aria-label={unlocatedLabel ? `${elsewhereLabel}${t('scope.counts.sep')}${unlocatedLabel}` : undefined}
           onClick={() => setScope('world')}
         >
-          <span className="state-glyph" aria-hidden="true">
-            {severeElsewhere > 0 ? '▲' : '○'}
+          <span className={`scope-count${severeElsewhere > 0 ? ' has-severe' : ''}`}>
+            <span className="state-glyph" aria-hidden="true">
+              {severeElsewhere > 0 ? '▲' : '○'}
+            </span>
+            <span>{elsewhereLabel}</span>
           </span>
-          <span>
-            {/* while the snapshot arrives, the count is a floor ("2+"), and
-                "nothing elsewhere" would be a claim about unseen events */}
-            {severeElsewhere > 0
-              ? t('scope.elsewhere', { n: `${severeElsewhere}${loading ? '+' : ''}` })
-              : loading
-                ? t('scope.elsewhere.loading')
-                : offline
-                  ? t('scope.elsewhere.offline')
-                  : t('scope.elsewhere.none')}
-          </span>
-        </button>
-      ) : null}
-      {showing !== 'world' && unlocated > 0 ? (
-        <button type="button" className="scope-elsewhere has-severe" onClick={() => setScope('world')}>
-          <span className="state-glyph" aria-hidden="true">
-            ?
-          </span>
-          <span>{t('scope.unlocated', { n: `${unlocated}${loading ? '+' : ''}` })}</span>
+          {unlocatedLabel ? (
+            <span className="scope-count has-severe">
+              <span className="state-glyph" aria-hidden="true">
+                ?
+              </span>
+              <span>{unlocatedLabel}</span>
+            </span>
+          ) : null}
         </button>
       ) : null}
       {reason ? (

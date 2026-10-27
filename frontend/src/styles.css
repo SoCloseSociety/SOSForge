@@ -1349,28 +1349,52 @@ a {
   padding: 0 12px;
 }
 
+/* One control for both counts (far danger, then what has no location): each
+   count is a `.scope-count`, and the control wraps them, one per line when
+   they do not fit side by side. */
 .scope-elsewhere {
+  position: relative;
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 6px;
+  align-content: center;
+  gap: 2px 12px;
+  min-width: 0;
   min-height: 32px;
   max-width: 100%;
   padding: 0 12px;
-  border-radius: var(--pill);
+  /* NOT a pill: it wraps to two lines (see .map-report-open) */
+  border-radius: 16px;
   border: 1px solid var(--line-strong);
   background: var(--surface-pill);
   color: var(--t2);
   font-size: var(--ts-label);
+  text-align: start;
   overflow-wrap: anywhere;
 }
 
-/* far danger exists: the attention triangle and readable ink */
+/* severe danger counted: readable ink */
 .scope-elsewhere.has-severe {
   color: var(--t1);
   border-color: var(--edge);
 }
 
-.scope-elsewhere.has-severe .state-glyph {
+.scope-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.scope-count > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The attention glyph, per part: the ○ of "nothing severe elsewhere" never
+   turns amber because the unlocated part is there beside it. */
+.scope-count.has-severe .state-glyph {
   color: var(--amber);
 }
 
@@ -2678,7 +2702,7 @@ a {
     top: 0;
     z-index: 20;
     gap: 6px 10px;
-    padding: 8px 12px;
+    padding: 4px 12px;
   }
 
   .brand h1 {
@@ -2710,7 +2734,7 @@ a {
 
   .kpi {
     min-width: 0;
-    padding: 6px 12px;
+    padding: 4px 6px;
     background: none;
     border: none;
     border-right: 1px solid var(--line);
@@ -2724,6 +2748,11 @@ a {
 
   .kpi .value {
     font-size: var(--ts-row);
+  }
+
+  /* the short labels (App.tsx) on one line, two at most in a 280 px card */
+  .kpi .label {
+    line-height: 1.25;
   }
 
   /* the footnotes ("worldwide", "active bulletins") cost a phone 17 px of
@@ -2761,7 +2790,9 @@ a {
        the fold: on a 568 px tall phone the map yields 56 px to it. 440 px is
        what sits above the feed on a 360 px phone; narrower, the header and
        the scope bar wrap to a second row (520 px at 280, measured), so the
-       map yields that width deficit too. Unchanged from 360 px up. */
+       map yields that width deficit too. Unchanged from 360 px up.
+       At its 140 px floor on 280 and 320 px phones, so the chrome above
+       the feed was cut instead (2026-10-27, tools/responsive.py --near). */
     height: max(140px, min(36dvh, calc(100dvh - 440px - max(0px, 360px - 100vw))));
     min-height: 140px;
     border-bottom: 1px solid var(--line);
@@ -2798,12 +2829,49 @@ a {
      button, the active chips, the watch line. The kinds live in the sheet
      below: 266 px of filters once pushed the feed off a phone screen. */
   .filters {
-    padding: 10px 12px;
-    gap: 8px;
+    padding: 4px 12px;
+    gap: 4px;
+  }
+
+  /* The border is drawn INSIDE: with the coarse `input { min-height: 44px }`
+     the field stays 44 px tall instead of 48 (search 44 + two 1 px borders
+     + the input's own 12 px paddings). */
+  .tools-row .search {
+    border: 0;
+    box-shadow: inset 0 0 0 1px var(--edge);
+  }
+
+  .tools-row .search:focus-within {
+    box-shadow: var(--ring), inset 0 0 0 1px var(--edge);
+  }
+
+  .tools-row .search input {
+    padding-top: 0;
+    padding-bottom: 0;
   }
 
   .scope-bar {
-    padding: 8px 12px;
+    padding: 4px 12px;
+    gap: 4px 6px;
+  }
+
+  /* the switch's frame drawn inside too: 44 px, not 52 */
+  .scope-switch {
+    padding: 0;
+    border-width: 0;
+    box-shadow: inset 0 0 0 1px var(--edge);
+  }
+
+  .scope-switch button {
+    padding: 0 10px;
+  }
+
+  /* beside the switch when 11rem fit, else under it; one line per count */
+  .scope-elsewhere {
+    flex: 1 1 11rem;
+    padding: 4px 10px;
+    line-height: 1.25;
+    row-gap: 0;
   }
 
   /* The filter dialog becomes a bottom sheet, thumb-reachable, over a dim
@@ -2856,7 +2924,7 @@ a {
 
   .banner {
     font-size: var(--ts-sub);
-    padding: 8px 12px;
+    padding: 6px 12px;
   }
 }
 
@@ -2939,6 +3007,73 @@ a {
   .panel > .get-app-banner ~ .scope-bar {
     grid-row: 2;
   }
+
+  /* Near me and a place (`panel-scoped`, App.tsx): the scope bar carries
+     the counts, the place chip and its clear button, and beside the tools
+     it took three rows (173 px): the first event started at 358 px on a
+     568x320 phone (tools/responsive.py --near, 2026-10-27). So the tools
+     take the full width in ONE 44 px row (the search and Filters beside
+     the watch line), and the scope bar moves beside the feed: the fold no
+     longer depends on how many rows the scope bar needs. */
+  .panel.panel-scoped {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 6fr);
+  }
+
+  .panel.panel-scoped > .filters {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .panel.panel-scoped > .filters > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .panel.panel-scoped > .filters > .tools-row {
+    flex: 1 1 16rem;
+  }
+
+  .panel.panel-scoped > .filters > .watch-compact {
+    flex: 1 1 14rem;
+  }
+
+  /* the open watch card takes the whole width again */
+  .panel.panel-scoped > .filters > .watch-compact:has(> #watch-compact-card) {
+    flex-basis: 100%;
+  }
+
+  .panel.panel-scoped > .feed,
+  .panel.panel-scoped > .feed-empty,
+  .panel.panel-scoped > .feed-loading,
+  .panel.panel-scoped > .feed-intro {
+    grid-column: 1;
+  }
+
+  /* spans the rows the feed may take (loading line, intro, list), so its
+     height never pushes the first event down */
+  .panel.panel-scoped > .scope-bar {
+    grid-column: 2;
+    grid-row: 2 / span 4;
+    align-self: start;
+    border-left: 1px solid var(--line);
+  }
+
+  .panel.panel-scoped > .get-app-banner ~ .scope-bar {
+    grid-row: 3 / span 4;
+  }
+}
+
+/* Portrait phones under 600 px tall, in Near me or a place: the world
+   counters stand down, as they already do in landscape. The far-danger
+   count beside the scope opens World, where they return, and the vital
+   banner names a tsunami first (review of PR #5, #19). Measured: with them
+   the first event of a 320x568 phone sat 7 px from the fold. */
+@media (max-width: 779px) and (max-height: 599px) {
+  .app:not([data-scope="world"]) .kpis {
+    display: none;
+  }
 }
 
 /* Under 600 px the header keeps its icons and drops their words: the sound
@@ -3003,6 +3138,18 @@ a {
 
   .banner-others-short {
     display: inline;
+  }
+
+  .scope-bar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  /* The switch's glyphs are decoration; the words stay. Without them the
+     French place switch is 237.9 px wide: it no longer shrinks, and
+     "Monde" no longer breaks mid-word. */
+  .scope-switch [aria-hidden="true"] {
+    display: none;
   }
 }
 
