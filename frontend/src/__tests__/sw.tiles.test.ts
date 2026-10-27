@@ -329,6 +329,49 @@ describe('what the worker downloads on its own', () => {
     expect(await autoRun()).toBe('skipped')
   })
 
+  /** Switches the connection after `after` fetches of world tiles above the
+   * small set (zooms 2..3), and counts those fetches. */
+  function leaveWifiAfter(after: number, to: typeof connection) {
+    let worldTiles = 0
+    network.mockImplementation(async (input: Request | string) => {
+      const url = abs(input)
+      calls.push(url)
+      if (/\/planet\/[^/]+\/[23]\//.test(url) && ++worldTiles === after) connection = to
+      return answer(url)
+    })
+    return () => worldTiles
+  }
+
+  for (const [left, to] of [
+    ['for mobile data', { type: 'cellular' }],
+    ['for a link that no longer says', {}],
+    ['into Save-Data', { type: 'wifi', saveData: true }],
+  ] as const) {
+    it(`stops the world the moment the phone leaves the Wi-Fi ${left}, small set complete`, async () => {
+      connection = { type: 'wifi' }
+      const fetched = leaveWifiAfter(5, to)
+      expect(await autoRun()).toBe('world stopped after 33') // 28 small + 5 world tiles
+      expect(fetched()).toBe(5)
+      const base = store('sosforge-tiles-base')!
+      for (const key of [
+        `${HOST}/planet/1/1/1.pbf`,
+        `${HOST}/sprites/ofm_f384/ofm@2x.png`,
+        `${HOST}/fonts/Noto%20Sans%20Regular/11520-11775.pbf`,
+      ]) {
+        expect(base.has(key), key).toBe(true)
+      }
+      expect(broadcasts()).toEqual([]) // nothing was asked, nothing is announced
+    })
+  }
+
+  it('lets the reader finish over mobile data what the Wi-Fi run left', async () => {
+    connection = { type: 'wifi' }
+    leaveWifiAfter(5, { type: 'cellular' })
+    await autoRun()
+    vi.useRealTimers()
+    expect((await message('sosforge:basemap-save')).result).toBe('world fetched 79')
+  })
+
   it('does nothing at all on Save-Data or 2G', async () => {
     connection = { saveData: true }
     expect(await autoRun()).toBe('skipped')

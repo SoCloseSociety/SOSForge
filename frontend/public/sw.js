@@ -507,6 +507,7 @@ async function broadcast(message) {
  *  - 'world' is the reader's request: no wait, no connection check, and every
  *    tab is told its progress. */
 async function runPrecache(level) {
+  const requested = level === 'world'
   if (level === 'auto') {
     if (constrained() || (autoComplete && (worldComplete || unmetered() !== true))) return 'skipped'
     await sleep(PRECACHE_DELAY_MS)
@@ -514,40 +515,63 @@ async function runPrecache(level) {
     if (constrained()) return 'skipped'
     if (unmetered() === true) level = 'world'
   }
-  const asked = level === 'world'
-  savingWorld = asked
+  const world = level === 'world'
+  savingWorld = world
   const cache = await caches.open(TILES_BASE_CACHE)
   const pending = []
-  const missing = await missingFrom(cache, await (asked ? worldManifest : autoManifest)((p) => pending.push(p)))
+  const keep = (p) => pending.push(p)
+  // The small set first, always: a world run cut short (the phone left the
+  // Wi-Fi) must still leave the automatic set complete.
+  const small = await autoManifest(keep)
+  const smallKeys = new Set(small.map((m) => m[1]))
+  const extra = world ? (await worldManifest(keep)).filter((m) => !smallKeys.has(m[1])) : []
+  const missingSmall = await missingFrom(cache, small)
+  const missing = [...missingSmall, ...(await missingFrom(cache, extra))]
   let done = 0
   let failed = 0
+  let failedSmall = 0
   let bytes = 0
-  for (const [url, key] of missing) {
-    if (!asked && constrained()) return 'stopped'
+  let stopped = false
+  for (let i = 0; i < missing.length; i++) {
+    const inSmall = i < missingSmall.length
+    // What the worker does ON ITS OWN re-reads the connection before every
+    // file. A world run that began on Wi-Fi used to be treated as asked once
+    // upgraded, and carried on over mobile data: ~15 MB nobody asked for
+    // (PR #5 review). Now it stops the moment the link is no longer known
+    // unmetered, or Save-Data comes on; the reader's own request does not.
+    if (!requested && (constrained() || (!inSmall && unmetered() !== true))) {
+      stopped = true
+      break
+    }
+    const [url, key] = missing[i]
     try {
       const response = await fetch(url, TILE_FETCH)
       if (!response.ok) throw new Error(String(response.status))
       bytes += Number(response.headers.get('content-length')) || 0
-      await cache.put(key, stamp(response, url))
+      await cache.put(key, await stamp(response, url))
       done++
     } catch {
       failed++
+      if (inSmall) failedSmall++
     }
-    if (asked) await broadcast({ type: 'sosforge:basemap-progress', done, failed, total: missing.length, bytes })
+    if (requested) await broadcast({ type: 'sosforge:basemap-progress', done, failed, total: missing.length, bytes })
   }
   await Promise.all(pending)
   sizes = null
-  if (failed === 0) {
-    autoComplete = true
-    if (asked) worldComplete = true
-  }
-  if (asked) {
+  const smallReached = !stopped || done + failed >= missingSmall.length
+  if (failedSmall === 0 && smallReached) autoComplete = true
+  if (world && !stopped && failed === 0) worldComplete = true
+  if (requested) {
     await broadcast(
       failed === 0
         ? { type: 'sosforge:basemap-saved', files: done, bytes }
         : { type: 'sosforge:basemap-failed', files: done, failed, bytes },
     )
+  } else if (world && worldComplete) {
+    // Saved on its own over Wi-Fi: a tab offering the button can drop it.
+    await broadcast({ type: 'sosforge:basemap-saved', files: done, bytes })
   }
+  if (stopped) return `${level} stopped after ${done}`
   return `${level} fetched ${done}${failed ? `, failed ${failed}` : ''}`
 }
 
