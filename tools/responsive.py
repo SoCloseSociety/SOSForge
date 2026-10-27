@@ -71,11 +71,14 @@ USER_AGENT = (
 # a long region name pushed the event age off screen. Each entry: label,
 # width, height, root text scale (2.0 = the reader's 200 % text).
 VIEWPORTS = [
+    # the owner's 280 px card rule, as a whole screen: the Galaxy Fold folded
+    ("Galaxy Fold 1, folded", 280, 653, 1.0),
     ("iPhone SE 1", 320, 568, 1.0),
     ("iPhone SE 1, 200 % text", 320, 568, 2.0),
     ("Android small", 360, 640, 1.0),
     ("iPhone 8", 375, 667, 1.0),
     ("iPhone 14", 390, 844, 1.0),
+    ("iPhone 14, 200 % text", 390, 844, 2.0),
     ("Pixel 7", 412, 915, 1.0),
     ("iPhone 15 Pro Max", 430, 932, 1.0),
     ("landscape 568", 568, 320, 1.0),
@@ -147,19 +150,20 @@ MEASURE = r"""
   // card's box, and no card scrolling sideways, except the two strips that
   // scroll on purpose.
   const CARDS = [
-    '.card', '.kpi', '.live-panel', '.legend', '.filter-dialog', '.source-detail',
+    '.card', '.kpis', '.kpi', '.live-panel', '.legend', '.filter-dialog', '.source-detail',
     '.watch-compact-toggle', '.scope-bar', '.footer', '.header', '.banner', '.arrival',
     '.item', '.filters', '.get-app-banner', '.maplibregl-popup-content',
   ].join(', ');
   for (const card of document.querySelectorAll(CARDS)) {
     const cr = card.getBoundingClientRect();
     if (!cr.width || !visible(card)) continue;
-    if (card.scrollWidth > card.clientWidth + 1 && getComputedStyle(card).overflowX !== 'visible'
-        && !card.matches('.kpis')) {
+    if (card.scrollWidth > card.clientWidth + 1 && getComputedStyle(card).overflowX !== 'visible') {
       out.cardOverflow.push({ card: name(card), by: card.scrollWidth - card.clientWidth });
     }
     for (const el of card.querySelectorAll('*')) {
-      if (el.closest('.sr-only, .sources-strip, .kpis')) continue;
+      // the sources slider scrolls on purpose; the counters do NOT any more
+      // (their third card was cut at the screen edge), so they are judged
+      if (el.closest('.sr-only, .sources-strip')) continue;
       const r = el.getBoundingClientRect();
       if (!r.width || !r.height) continue;
       if (r.right > cr.right + 1 || r.left < cr.left - 1) {
