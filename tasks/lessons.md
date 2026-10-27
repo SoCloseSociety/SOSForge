@@ -434,3 +434,37 @@ legitimately be on a port you were told about.
   (`lsof -p <pid> | grep cwd`, `ps -o lstart= -p <pid>`): a listener started
   from another worktree, or before you started yours, is not yours.
 - When a lane hands another lane a port to use, it stops using it.
+
+## 31. A test client is not the wire
+
+**What happened.** The websocket quota refusal was tested with Starlette's
+TestClient, which reported close 1013. A real client on a real uvicorn got an
+HTTP 403 on the handshake: `close()` ran before `accept()`. The drills (lane N)
+found it; the unit test had passed for weeks.
+
+**The rule.** A close code, a status line or a header that a client depends
+on is asserted against a real server and a real client (lane P's
+`test_ws_refusal_wire.py`), never only through the in-process test client.
+
+## 32. A service worker does not control the first visit
+
+**What happened.** The offline map was "cached" but an offline reload after
+a first visit showed a blank page: the first visit ran before the worker took
+control, so no bundle was ever stored. Separately, `Vary: Origin` on the
+server plus the Origin header Chrome sends on module scripts made every
+cache lookup miss.
+
+**The rules.** The install step caches the build itself. Content-hashed
+files ignore `Vary` in the cache lookup. Prove offline with a reload in a
+fresh profile, never with a page the worker already controlled.
+
+## 33. A 50 ms timing test measures the machine, not the code
+
+**What happened.** The heartbeat test expected 18 of 20 ticks at a 50 ms
+period. During the round-2 integration the Mac sat at load 57 (an emulator,
+Gradle and six agents) and it got 12, on correct code; alone it passed 3 of 3.
+
+**The rules.** The logic goes in a pure function tested without a clock
+(`next_tick`). An integration test of timing uses a period that dwarfs the
+scheduler's jitter (250 ms here) and a bound that still separates the old
+behaviour from the new (7 versus 10 ticks).

@@ -882,8 +882,14 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       (android/ only, CI green). Nothing deployed by it.
 - [x] lane N merged (351f161): drills + guards, pytest 759
 - [x] lane H merged: vitest 299, tsc, build; responsive 27/27 viewports
-- [ ] PR #5 = round 2 so far (N + H), deploy it: the web location fixes are
-      what the owner is hitting now
+- [x] lanes G (11925b4), Q, P (1b64666) merged: pytest 847, vitest 319,
+      agent 58, ruff, mypy, tsc, build
+- [x] PR #5 adversarial review (92 agents): 41 findings judged, 35
+      confirmed (2 high, 21 medium, 12 low), 6 refuted. Web findings -> H
+      (scratchpad pr5-review-web.md), tool findings -> N
+      (pr5-review-tools.md). HIGH: Near me hides unplaced warnings;
+      an escalation re-shown without `renotify` is silent.
+- [ ] PR #5 fixes landed and re-verified, then owner go, merge, deploy
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
 
 ## Fold evidence (2026-10-27, read-only, under the adb lock)
