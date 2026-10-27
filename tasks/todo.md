@@ -928,3 +928,44 @@ Changes, smallest first:
 - [x] `pipeline.py`: measured, no change. After the deduper fix the replay
       is 0.60 s for 5714 real entries (was 1.23 s, cProfile), dominated by
       journal validation; `emit` itself is 0.28 s.
+
+### Lane P, second batch: lane Q's live-data findings in the core (plan)
+
+Q's proofs: `scratchpad/laneq/` (prove_dedupe_churn.py, saved reads run2,
+run3) and `tools/audit_live.py`. Critical files: dedupe.py, pipeline.py,
+store/ring.py. Measured on real data before and after, like every dedup
+change (rule 5).
+
+1. [ ] **Re-listing churn** (dedupe.py). A re-polled row scans the window
+   newest-first, meets ANOTHER agency's newer copy of the same quake before
+   its own entry, matches it and appends itself again. Q's proof, my tree:
+   after 399 cycles of two agencies re-listing one quake, 400 copies each
+   fill the 800-entry window and an unrelated quake drops out; its late
+   EMSC twin then forms its own cluster (shown twice). Fix: an id already
+   in the window answers from its own entry, O(1), without appending. The
+   store already keeps the first cluster of a stored id, so clusters can
+   only change where the churn evicted the real match.
+2. [ ] **Two quakes in one cluster** (dedupe.py). A second USGS quake 90 s
+   after the first joins its cluster through EMSC's solution of the first.
+   Rule: a cluster never takes two events from the same source (an agency
+   does not publish one quake twice). Measure first, on the real journals:
+   same-source clusters (with their time and magnitude gaps, to tell two
+   quakes from an agency duplicate) and cross-source merges lost.
+3. [ ] **Cyclones served 2-3 times** (dedupe only clusters quakes). Plan
+   only here: grouping storms by name + basin + distance, with the
+   agency face chosen by authority, needs item 4's re-election, or the
+   first poller after a restart becomes the face. Measure the duplicates.
+4. [ ] **The first estimate stays the face.** Re-electing the cluster's
+   representative (reviewed > automatic > early warning) changes which id
+   is `primary` under every client's feet: the web, the app and the agent
+   hide non-primaries. A protocol-visible change (lanes N, H, A); plan and
+   numbers, not shipped by this lane alone.
+5. [ ] **Journal-replay residue.** The replay already goes through the
+   current pipeline (expiry, horizon, min magnitude, removals). What it
+   cannot re-apply is a NORMALIZER rule changed since the line was written
+   (depth cap, preliminary flag): the line holds the normalized event, and
+   `raw` is not a parser input. Options and their cost, measured.
+6. [ ] **Major events kept 14 days** (owner call by default). Needs the
+   horizon to exempt them, the replay to read 14 days of journal for them,
+   `journal_keep_days` >= 14, and the ring not to evict them. Measure how
+   many events that keeps before building it.
