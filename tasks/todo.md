@@ -815,12 +815,356 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 | C2 | lane C resumed | `backend/app/sources/**`, new `backend/app/climate.py` + its route, new `frontend/src/components/ClimatePanel.tsx` (I mount it) | sources found through ScanGithub + probed live; live climate indicators each with its own as-of date; new sources map onto EXISTING kinds (no contract change) |
 | N | lane B resumed | `tools/drill.py` (new, no production code), fixes in hub/scope/changelog only if a drill proves a defect | drill harness that injects real-shaped events into a local server, then proves every alert path: web alarm, macOS agent, websocket scope/purge/escalation, `/api/events` cursor |
 | A | lane A resumed | `android/**` | 0.1.2: offline map packs for the user's places + world low zooms, update check from `latest.json`, location flow verified, full notification E2E on the emulator with `tools/drill.py` |
+| P | fresh | `backend/app/main.py`, `pipeline.py`, `store/**`, `core/**`, `backend/Dockerfile`, `pyproject.toml`, `agent/**` | measured efficiency (CPU, RSS, fan-out at 1/100/1000 clients, startup replay, journal growth, loop lag, latency), fixes with before/after |
+| Q | fresh | new `tools/audit_live.py` + `make audit` only | live data audit, production vs branch: freshness lag, validity, cross-source precision, noise vs importance, missing major events; defects routed with record ids |
 
 ## Me
 
 - [ ] plan committed, lanes briefed
+- [x] Fold: 0.1.1 installed through the adb queue (owner go, 2026-10-27,
+      10:16:58 -> 10:17:01, 3 s): installed base.apk sha256 matches the drop,
+      versionCode 6. Notifications and location not granted: the owner's own
+      first-run funnel. Reported to agentcockpit.
+- [x] reply to agentcockpit with what is needed from the owner (merge #3 and
+      #4; optional Search Console, FIRMS key, Play Console, native review)
+- [x] production read (2026-10-27, read-only): 28/28 sources connected, no
+      last_error, a tick every second, snapshot 300 events / 312 KB raw. A
+      +3 s local-vs-server skew was the link (ssh RTT 6 to 21 s at that
+      moment), not the server: the VPS is NTP-synchronised, the Mac is
+      +0.13 s from time.apple.com.
+
+## Defects found by the drills, routed
+
+| Found by | Defect | Owner |
+|---|---|---|
+| N | Meteoalarm lifts never reach anyone: an Update carries a NEW identifier and `references` the old one (FR 143/161, IT 120/120, old id never still listed 0/419); `references` ignored, and Meteo-France's AllClear (level 1 green) dropped by select(). Lifted orange warnings stay until `expires` or the 6 h sweep | C2 |
+| N | ws quota refusal is a 403 handshake rejection, never close 1013: `close(1013)` runs before `accept()` in websocket_endpoint | P |
+| N | web alarm never rings for an escalation: `alarmed` keyed by id only (M6.4 -> M7.3 = one notification) | H |
+| N | web never closes the system notification of a cancelled / relocated-out event (a cancelled EEW stays in the tray) | H |
+| N | macOS agent silent on an EEW cancel and on a quake relocated out of reach | P |
+| N | macOS agent judges area warnings by their centre, ignores `bbox` (UK amber 232 km from Paris: silent) | P |
+
+| Q | duplicates on screen: dedupe `assign()` matches another agency's newer entry before the event's own and re-appends it every poll (usgs:us7000ttfe + emsc:20261027_0000114 both shown) | P |
+| Q | two quakes folded into one cluster (us6000u4t9 hidden inside us6000u4t8; 13 on prod-09) | P |
+| Q | each cyclone served 2-3 times with different severities (Champi, Arnab, Vance, Olana: GDACS / NHC / EONET) | P |
+| Q | the first estimate stays the face (Bonin: JMA EEW M7.5 EXTREME vs M6.2-6.5 everywhere else; Bouvet GEOFON 6.07 vs 5.8) | P + C2 (`preliminary`) |
+| Q | journal replay restores events the current rules would reject (36 of 37 post-deploy defects) | P |
+| Q | major quakes vanish after 3 days (USGS M7.0 Nagqu 10-22, PAGER orange): keep M6.5+ / orange-red 14 days as past events, owner ask "tout l'historique" | P |
+| Q | PHIVOLCS revised bulletins kept as extra quakes (53 of 193) | C2 |
+| Q | USGS merged ids kept (aka2026vddzqy inside us6000u4t8) | C2 |
+| Q | INGV re-identified events kept twice (46940061 -> 47630362) | C2 |
+| Q | NWS PKZ767 (Bering Sea) marker placed off Greenland: centroid averaged across the antimeridian; clear `nws-zones.json` on deploy | C2 |
+| Q | INGV stamps "Italy" on foreign quakes (M6.1 Vanuatu) | C2 |
+| Q | footer "Last event 40s" for re-listed old events (BMKG newest is 29 h old): breaks the freshness rule | C2 (field) + H (label) |
+| Q | static text says "Twenty-six" / "nineteen" sources, /api/sources lists 32 | G |
+| Q | `/download/latest.json` answers 200 with the SPA HTML on production | G |
+
+Lane Q result (commit 1fa5ed2, merged): `tools/audit_live.py` + `make audit`.
+No important event inside the horizon is missing (every USGS significant /
+M5.5+, EMSC M5.5+, GDACS red cyclone, NHC storm is served). The round-1 deploy
+removed 180 expired German Meteoalarm warnings, 8 all-clear items, the
+expired JMA tsunami forecasts, 4 finished GDACS droughts, a stale SWPC G3 and
+a false Sicily swarm; BMKG serves again.
+
+Lane N result (commit 4970235, `tools/drill.py` + `tools/drills/`): `check` 67
+pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
+15 pass / 3 fail. Every failure is one of the rows above.
+- [x] PR #3 merged (772ad82, 2026-10-27) and DEPLOYED: b18a272 -> 772ad82,
+      rollback images sosforge-{api,web}:rollback-b18a272 + data copy
+      /root/backups/sosforge-20261027T100237Z. Verified from outside: /readyz
+      32/32 sources up, /api/version api 2 with every v2 feature, zone +
+      cursor + ETag 304, ticks 1.01 s; chunked snapshot complete in 0.06 s
+      measured inside the server (the 12 s seen from the Mac was its
+      saturated link). Host vhost /ws now forwards X-Real-IP /
+      X-Forwarded-For / X-Forwarded-Proto (backup, nginx -t, reload).
+      Pings to agentcockpit before and after.
+- [x] PR #4 merged (6685dce, owner go 2026-10-27): the Android app source
+      (android/ only, CI green). Nothing deployed by it.
+- [x] lane N merged (351f161): drills + guards, pytest 759
+- [x] lane H merged: vitest 299, tsc, build; responsive 27/27 viewports
+- [x] lanes G (11925b4), Q, P (1b64666) merged: pytest 847, vitest 319,
+      agent 58, ruff, mypy, tsc, build
+- [x] PR #5 adversarial review (92 agents): 41 findings judged, 35
+      confirmed (2 high, 21 medium, 12 low), 6 refuted. Web findings -> H
+      (scratchpad pr5-review-web.md), tool findings -> N
+      (pr5-review-tools.md). HIGH: Near me hides unplaced warnings;
+      an escalation re-shown without `renotify` is silent.
+- [x] lane C2 merged (8a96c57): Meteoalarm lifts (references / AllClear),
+      /api/climate (7 live indicators, dataset dates), US Drought Monitor,
+      UK EA built off (5/5 duplicates of Meteoalarm UK), lane Q's source
+      defects, `label` / `last_event_at` / `newest_event_time` in
+      /api/sources. Gates: pytest 884, vitest 334, mypy 52 files.
+- [x] lane G follow-up merged (f771f42): automatic offline precache 1.47 MB
+      transfer (was 17.3 MB), the rest on request or known unmetered link.
+- [x] WMO two tiers globally: REJECTED on measurement (today: +164 events,
+      125 moderate + 30 minor, relays of NWS and Meteoalarm UK, 55 bare
+      "Forestfire"). A targeted tier-2 rule for uncovered issuers and kinds
+      goes to C2, numbers before shipping.
+- [ ] PR #5 fixes landed and re-verified, then owner go, merge, deploy
+- [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
+
+## Fold evidence (2026-10-27, read-only, under the adb lock)
+
+The owner ran the funnel at 17:05 (device time). Notifications granted,
+coarse location granted APPROXIMATE + while using. Then
+LocationManagerService: the app's fused request (BALANCED, duration 30 s) was
+added at 17:05:30.428 and REMOVED by the app at 17:05:33.115 with
+`locations = 0`. The app cancelled its own request: that is the "location
+does not work" the owner sees. No foreground watch running, no notification
+posted since. Four channels exist (extreme 4, severe 3, digest 2, status 2).
+-> lane A, priority 1 for 0.1.2.
+
+## Every owner ask of 2026-10-27, and where it stands
+
+| Ask | Where |
+|---|---|
+| deploy live | round 1 live (772ad82); round 2 in progress |
+| APK on his phone | 0.1.1 installed; 0.1.2 next (lane A) |
+| notifications fully working | drills (N): 67/73 server, web fixed (H); app drills (A); agent fixes (P) |
+| "use my location" / geolocation, web and app | web fixed (H, 4 Chrome scenarios); app bug proven on the Fold (A) |
+| live view on the person's location by default, world otherwise | web done (H); app (A) |
+| OpenFreeMap pre-downloaded | measured: already cached 10 years; offline added (G web, A app) |
+| site fully indexed | G |
+| APK downloadable from the site | G (page + latest.json), H (entry) |
+| responsive on every format | web 27/27 (H); app (A) |
+| sources in a slider, filters in a button | done (H) |
+| ScanGithub: more sources, climate, live change | C2 |
+| optimise / perfect / complete everything | P (efficiency), Q (live data audit) |
+| nothing fake, only real live data | rule sent to every lane; drills guarded (N) |
+| onboarding with images, overview, preview (kie.ai) | K (art), A (funnel) |
+| "quand je fais une recherche rien ne s'affiche" (koh samui) | H: the picked place left `filters.query` set, so the feed text-matched "koh samui" against titles and emptied; fix = picking a place clears the text filter and scopes the feed to that place, nearest events shown when nothing is near |
+| "notre système devrait tout donner! météo, mers, vent, air, risque, tout l'historique" | place report workflow: sources measured live at 8 places with licences checked -> contract + critique -> backend `app/place/` + `/api/place` and `PlaceReport.tsx` in worktrees -> live truth check against each upstream, reviews, fixes |
+| adversarial review before PR #5 goes live (ultracode) | review workflow: 5 lenses, 3 skeptics per serious finding |
+
 - [ ] Fold: install 0.1.1 through the adb queue (owner go, 2026-10-27), report
 - [ ] reply to agentcockpit with what is needed from the owner
 - [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
 - [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
       pull + build, host vhost headers, publish the APK, verify live)
+
+## Lane P -- measured efficiency of the core (plan, critical files)
+
+Scope: `main.py`, `pipeline.py`, `store/**`, `dedupe.py` (measure only),
+`core/**`, `backend/Dockerfile`, `backend/pyproject.toml`, `agent/**`. Every
+item is measured first, on a live run of all 32 real sources (:8335) or on
+real journals, and re-measured after. Tools: `tools/ws_load.py` (N websocket
+clients, tick period / latency, server CPU and RSS from `ps`),
+`tools/bench_core.py` (hot paths in-process, full ring), `tools/bench_geocode.py`.
+
+Measured before (2026-10-27, M4 Pro, machine load ~13 from other lanes):
+
+- 1 / 100 / 1000 sockets: server CPU 1.3 / 1.4 / 14.8 %, tick period
+  1.0019 / 1.0015 / 1.0256 s (the heartbeat sleeps 1 s AFTER its work),
+  tick latency p99 6 / 9 / 518 ms, RSS 0.15-0.45 MB per connected socket
+  (the higher figure while 1000 sockets opened at 400/s).
+- 1000 sockets opened at 400/s: snapshot p50 0.83 s, p95 4.68 s, while every
+  tick to the sockets already open stalls (max gap 1.46 s).
+- Full ring (5000): `stats()` 2.1 ms per call (each tick and each snapshot),
+  legacy snapshot 5.8 ms, chunked 17 ms, `/api/events` 12.9 ms p50.
+- Restart: `read_journal` drops every event whose `time` is over 24 h old,
+  while the pipeline's own horizon is 3 days and exempts ongoing alerts. On
+  the real 3 h journal of 2026-10-26 a restart restored **679 of 1347**
+  events: 362 of 499 alerts and 44 of 104 severe-or-above lost until their
+  source's next poll (Meteoalarm 227, GDACS 75, EONET 20...), and the quakes
+  between 24 h and 3 days old lost for good.
+- Journal: `raw` (the upstream payload, never read back from a restored
+  event) is 19.4 % of the live journal's bytes. Plan 1.8, never done.
+- Geocode: one address firing N searches makes every other visitor wait N
+  seconds (10 -> 9.96 s, 30 -> 29.98 s). The queue is unbounded.
+
+Changes, smallest first:
+
+- [x] `main.py`: the quota refusal closed before `accept()`, which a real
+      server sends as HTTP 403 (lane N's drill). Accept, close 1013 with a
+      reason; tested with a real uvicorn and a real client (e7a3d9a).
+- [x] `agent/`: the reconnect backoff never reset (`run_once` only leaves by
+      an exception). Reset after a session that delivered (a022416).
+- [x] `agent/`: lane N's drills, real agent, notifier recorded (f36ba98).
+      A cancelled / lifted / ended / relocated alert it had rung got no
+      follow-up; now one, once, without sound. An area alert was judged by
+      its centre; now by its bbox, the clamp of `Zone.touches`. Drill rows:
+      eew-cancelled tokyo M6.1, M6.6 -> + "Cancelled"; relocated-out tokyo
+      M5.9 -> + "No longer near you"; relocated-out paris silent -> UK
+      amber, then "No longer near you".
+- [x] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
+      pipeline's horizon is the one rule (expired, too old and not ongoing).
+      Read line by line instead of `read_text()` (no whole-file copy at
+      startup). Test: an ongoing alert dated 30 days ago and a quake of 2
+      days ago, both journaled today, survive a restart; a quake of 4 days
+      does not. **After: 1348 of 1348 restored (was 679), alerts 500 (137),
+      severe+ 104 (60); second journal 1196 (622).**
+- [x] `store/ring.py` journal lines without `raw`. Test: the line carries no
+      `raw`, the replayed event is equal on every public field.
+- [x] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
+      whatever the fan-out costs; a stalled loop resumes from now instead of
+      firing a burst of catch-up ticks. **After: mean period 1.0000004 s
+      (was 1.0019) with one socket, 0.99994 s (was 1.025) with 1000.**
+- [x] `main.py` + `store/ring.py`: the unscoped snapshot (web `chunks=1`,
+      agent legacy) serialized once per store version and shared, instead
+      of composed and serialized for every socket. The store gets a
+      `version` counter bumped on every mutation (insert, revision,
+      removal, promotion); `last_seen` refreshes do not bump it, so the
+      cache also expires after 1 s. Scoped sockets keep their own snapshot.
+      Gate: same bytes as the uncached path for the same store. Built in
+      its own coroutine too: as locals of the endpoint it stayed referenced
+      for the whole connection (339 -> 87 KB held per socket in-process).
+      **After, 1000 web sockets opened at 100/s: 1000/1000 connected (was
+      908, 92 handshake timeouts), snapshot p95 0.029 s (was 8.45 s), CPU
+      7.8 % (23.4 %), RSS 108 MB (189). At 300/s: 1000/1000 (770), the
+      watcher's tick period max 1.017 s (1.86 s).**
+- [x] `main.py` legacy `/api/events` returns its JSONResponse: FastAPI's
+      `jsonable_encoder` re-walked 300 JSON-native dicts, 6.9 ms of 14.
+      Same bytes (tested). **After, live: p50/p95 6.5/10.2 ms (was
+      15.1/35.9), limit=2000 17.9/34.5 ms (66.0/233).**
+- [x] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
+      second) on cache misses, 429 + `Retry-After` beyond. The web debounces
+      at 450 ms and treats a failure as "no places", so a person typing is
+      never refused. **After: a burst of 10 or 30 from one
+      address costs another visitor 2.95 s (was 9.96 / 29.98 s); the burst
+      gets 3 answers and 429 for the rest.**
+- [ ] `Dockerfile`: NOT changed. Measured: `pip install .` adds 22 MB to
+      python:3.12-slim (~125 MB); removable parts are watchfiles 1.0 MB and
+      pyyaml 0.66 MB (uvicorn[standard], dev reload / YAML logging only)
+      and a second 1 MB copy of `app` in site-packages. About 2 % of the
+      image, and Docker does not run on this Mac, so an unbuilt Dockerfile
+      is not worth that. For whoever can build: install the dependencies
+      from pyproject (tomllib) BEFORE `COPY app`, and drop `pip install .`
+      (uvicorn runs /srv/app), so a code change stops reinstalling 22 MB.
+- [x] `dedupe.py`: the number said so. cProfile of the startup replay on the
+      real journals: `Deduper.assign` is 0.83 s of 1.23 s, of which 0.37 s
+      is 1.38 million `datetime.timestamp()` calls -- every located quake,
+      re-polls included, scans the 800-entry window converting each
+      entry's time twice. Live, a 400-726 event poll (GEOFON, PHIVOLCS)
+      blocks the loop for roughly 65-115 ms, which matches the 170 ms tick
+      stalls measured over 15 min. Change: each entry's time cached as
+      integer microseconds in a parallel deque (exact, no float rounding),
+      same scan, same order, same tests. Gate: the cluster of EVERY event
+      identical between the old and the new deduper on the real journals.
+      **After: 6678 assigns on 6707 real entries, 0 clusters different,
+      same window; 136.6 -> 21.5 us per assign (x6.3).**
+- [x] `pipeline.py`: measured, no change. After the deduper fix the replay
+      is 0.60 s for 5714 real entries (was 1.23 s, cProfile), dominated by
+      journal validation; `emit` itself is 0.28 s.
+
+### Lane P, second batch: lane Q's live-data findings in the core (plan)
+
+Q's proofs: `scratchpad/laneq/` (prove_dedupe_churn.py, saved reads run2,
+run3) and `tools/audit_live.py`. Critical files: dedupe.py, pipeline.py,
+store/ring.py. Measured on real data before and after, like every dedup
+change (rule 5).
+
+1. [x] **Re-listing churn** (dedupe.py). A re-polled row scans the window
+   newest-first, meets ANOTHER agency's newer copy of the same quake before
+   its own entry, matches it and appends itself again. Q's proof, my tree:
+   after 399 cycles of two agencies re-listing one quake, 400 copies each
+   fill the 800-entry window and an unrelated quake drops out; its late
+   EMSC twin then forms its own cluster (shown twice). Fix: an id already
+   in the window answers from its own entry, O(1), without appending. The
+   store already keeps the first cluster of a stored id, so clusters can
+   only change where the churn evicted the real match.
+   **After, Q's proof: the window never overflows in 1000 cycles and the
+   late twin joins usgs:us7000ttfe. Real journals (10-26 + 10-27, 1228
+   quakes, re-listed every 50 entries): visible twins 4 -> 0, multi-source
+   clusters 92 -> 96, window 486 -> 800 distinct ids of 800.**
+2. [ ] **Two quakes in one cluster** (dedupe.py). NOT SHIPPED, measured. A second USGS quake 90 s
+   after the first joins its cluster through EMSC's solution of the first.
+   Rule: a cluster never takes two events from the same source (an agency
+   does not publish one quake twice). Measure first, on the real journals:
+   same-source clusters (with their time and magnitude gaps, to tell two
+   quakes from an agency duplicate) and cross-source merges lost.
+   **Measured, the rule is wrong as stated.** Built and replayed: same-source
+   clusters 28 -> 0 and 14 -> 0 on Q's two production reads, but visible
+   twins 1 -> 21 and 2 -> 15 (after item 1). PHIVOLCS publishes ONE quake
+   under several bulletin ids (`2026_1026_1509_B2F` and `B3F`, same M3.5,
+   2 km), INGV shows the same, and refusing them a shared cluster then splits
+   identical EMSC/INGV solutions (0 s, 0 km) through the chain. Reverted
+   before commit. A per-source rule (USGS / EMSC / GEOFON ids are one per
+   quake, PHIVOLCS bulletins are not) needs each source's id semantics
+   checked against its payload first: lane C2 knows them.
+3. [ ] **Cyclones served 2-3 times** (dedupe only clusters quakes). Plan
+   only here: grouping storms by name + basin + distance, with the
+   agency face chosen by authority, needs item 4's re-election, or the
+   first poller after a restart becomes the face. Measure the duplicates.
+   **Measured (Q's run3): 4 of 6 named storms served by two sources --
+   Arnab gdacs extreme + eonet severe, Champi gdacs extreme + eonet
+   moderate, Olana nhc minor + eonet moderate, Vance nhc + eonet.**
+4. [ ] **The first estimate stays the face.** Re-electing the cluster's
+   representative (reviewed > automatic > early warning) changes which id
+   is `primary` under every client's feet: the web, the app and the agent
+   hide non-primaries. A protocol-visible change (lanes N, H, A); plan and
+   numbers, not shipped by this lane alone. **Measured (run3): 17 of 214
+   multi-member clusters show an early warning or a preliminary solution
+   while a reviewed one exists (e.g. jma_eew:20261027092519 M5.0 over USGS
+   and EMSC M4.8, geofon:gfz2026vacc M5.1 over USGS and EMSC M4.7).**
+   Mechanism when it is decided: the store re-points the cluster to the
+   better member (rank: reviewed > automatic > early warning, then source
+   authority), broadcasts the new face as `update primary: true` and the old
+   one as `purge reason=superseded`, which every client already handles.
+5. [ ] **Journal-replay residue.** The replay already goes through the
+   current pipeline (expiry, horizon, min magnitude, removals). What it
+   cannot re-apply is a NORMALIZER rule changed since the line was written
+   (depth cap, preliminary flag): the line holds the normalized event, and
+   `raw` is not a parser input. Not built: the proof (36 of 37 defects on
+   restored events) is on production journals this lane cannot read. Two
+   options for the owner, with their cost: (a) journal lines carry a hash
+   of the source module that normalized them and the replay drops lines
+   from an older normalizer (correct at once, loses the history of
+   sources whose feed no longer lists the event); (b) the replay
+   re-derives what is derivable from the normalized fields (quake
+   severity from magnitude + depth through the current `severity_for_quake`,
+   EEW `preliminary`) and keeps the rest.
+6. [ ] **Major events kept 14 days** (owner call by default). Needs the
+   horizon to exempt them, the replay to read 14 days of journal for them,
+   `journal_keep_days` >= 14, and the ring not to evict them. Measure how
+   many events that keeps before building it. **Measured on Q's reference
+   read: 3 quakes in 7 days meet M6.5+ or PAGER orange/red (Nagqu M7.0
+   orange 10-22, Vanuatu M6.9 10-24, Bonin M6.5 10-25), so 3-6 over 14
+   days.** Smallest build: a separate `major.jsonl` journal (a few lines a
+   week) replayed whatever its age up to 14 days, a horizon exemption for
+   those events only, and the ring re-appending a major event it evicts.
+   Not built in this lane: it changes what the feed calls current, and
+   the UI must show them as past (lane H).
+
+**Q's audit, same minute (2026-10-27 10:47:29Z), base code vs this lane,
+both started from one copy of the real journal, 32 live sources:** restored
+592 vs 954 events; dedupe summary clean on both (0 split, 0 extra
+primaries, 0 over-merged; multi-source groups 46 vs 48 -- the churn needs
+hours of polling to show, its proof is Q's script above). Two more defects
+on the new side, both on events the base had dropped at restart and both
+normalizer rules (item 5, lane C2): gdacs:EQ1573942 under-graded and
+phivolcs:2026_1026_1025_B1 superseded but never retracted. Also new only:
+ingv:47788232 stamped IT at the Vanuatu position (C2). Read with care: the
+new side's sources show `ingested=0`, "newest 88 m" because restored events
+keep their real `received_at` and re-polls are no-ops; the base re-ingested
+them as new at restart (lesson 4).
+## Lane C2 (sources + climate) -- plan
+
+- [x] Meteoalarm lifts (critical file `sources/alerts_world.py`): an Update /
+      AllClear carries a NEW identifier and `references` the old one (France
+      143/161, Italy 120/120; referenced id still listed: 0 of 1009 today).
+      Fix in `MeteoalarmSource.select`: every warning's `references` withdraws
+      the referenced event, BEFORE the level filter -- AllClear as `lifted`, a
+      replacing Update as `stale` (its successor is published under its own
+      id). No stable-key remapping: the store key of a replaced warning is its
+      own identifier, which survives restarts; a chain map would not.
+      Measure: published warnings replaced/lifted between two real captures.
+- [ ] New sources measured live first: UK EA floods, DWD WFS warnings,
+      ECCC alerts, INMET Brazil (research report 2026-10-27)
+- [ ] `app/climate.py` + `GET /api/climate` + `climate` feature; real dataset
+      dates only, unavailable with the real error when a fetch fails
+- [ ] `frontend/src/components/ClimatePanel.tsx` (+ css, test, i18n strings)
+      Done: one cycle on the 2026-10-27 feeds withdraws 333 referenced
+      warnings as lifted (Croatia 172, France 143, Germany 18) and 902 as
+      stale (most never stored: no-ops). Of the 35 orange+ warnings published
+      at the 2026-10-26 19:10 capture, 3 (UK) were replaced by an Update by
+      the next morning and would have stayed until their own `expires` -- a
+      lower bound, since a chain of updates references only its predecessor.
+- [ ] Lane Q audit findings in `sources/` (critical files), each re-read on the
+      original record first, measured before/after with `tools/audit_live.py`:
+      PHIVOLCS newer bulletin withdraws the older one of the same quake; USGS
+      `ids` aliases withdrawn; INGV re-identified event withdraws the old id;
+      zone/CAP/UK centroids through `geometry.center` (antimeridian) and the
+      two persisted area caches versioned so bad centres are re-read; INGV
+      stamps no country it cannot read; footer freshness = first-seen time of
+      a NEW event + the newest event's own time (not "last poll returned
+      something"); EEW/CENC preliminary; HANS NMI -> MP.

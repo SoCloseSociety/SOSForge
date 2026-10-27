@@ -118,6 +118,7 @@ class EmscWebsocketSource(Source):
             raise ConnectionError("emsc websocket closed by the server")
 
     async def supervise(self, emit: Emit) -> None:
+        emit = self.observed(emit)
         delay = 1.0
         while True:
             try:

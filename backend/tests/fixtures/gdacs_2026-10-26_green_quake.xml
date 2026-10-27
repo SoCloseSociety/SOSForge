@@ -1,0 +1,59 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:geo="http://www.w3.org/2003/01/geo/wgs84_pos#" xmlns:gdacs="http://www.gdacs.org" xmlns:glide="http://glidenumber.net" xmlns:georss="http://www.georss.org/georss" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+<item>
+      <title>Green earthquake (Magnitude 5.5M, Depth:641.812km) in Fiji 26/10/2026 10:13 UTC, 2 thousand in 100km.</title>
+      <description>On 10/26/2026 10:13:01 AM, an earthquake occurred in Fiji potentially affecting 2 thousand in 100km. The earthquake had Magnitude 5.5M, Depth:641.812km.</description>
+      <enclosure type="image/png" length="1" url="https://www.gdacs.org/contentdata/resources/imgtemp/gdacs/eq/eq1742778_1.png" />
+      <gdacs:temporary>false</gdacs:temporary>
+      <link>http://www.gdacs.org/report.aspx?eventtype=EQ&amp;eventid=1573942</link>
+      <pubDate>Mon, 26 Oct 2026 10:30:25 GMT</pubDate>
+      <gdacs:dateadded>Mon, 26 Oct 2026 10:30:25 GMT</gdacs:dateadded>
+      <gdacs:datemodified>Mon, 26 Oct 2026 10:53:08 GMT</gdacs:datemodified>
+      <gdacs:iscurrent>true</gdacs:iscurrent>
+      <gdacs:fromdate>Mon, 26 Oct 2026 10:13:01 GMT</gdacs:fromdate>
+      <gdacs:todate>Mon, 26 Oct 2026 10:13:01 GMT</gdacs:todate>
+      <gdacs:durationinweek>0</gdacs:durationinweek>
+      <gdacs:year>2026</gdacs:year>
+      <dc:subject>EQ1</dc:subject>
+      <guid isPermaLink="false">EQ1573942</guid>
+      <geo:Point>
+        <geo:lat>-18.283</geo:lat>
+        <geo:long>-178.0109</geo:long>
+      </geo:Point>
+      <!--gdacs:bbox format = lonmin lonmax latmin latmax-->
+      <gdacs:bbox>-182.0109 -174.0109 -22.283 -14.283</gdacs:bbox>
+      <georss:point>-18.283 -178.0109</georss:point>
+      <gdacs:cap>https://www.gdacs.org/contentdata/resources/EQ/1573942/cap_1573942.xml</gdacs:cap>
+      <gdacs:icon>http://www.gdacs.org/Images/gdacs_icons/alerts/Green/EQ.png</gdacs:icon>
+      <gdacs:version>1</gdacs:version>
+      <gdacs:eventtype>EQ</gdacs:eventtype>
+      <gdacs:alertlevel>Green</gdacs:alertlevel>
+      <gdacs:alertscore>0</gdacs:alertscore>
+      <gdacs:episodealertlevel>Green</gdacs:episodealertlevel>
+      <gdacs:episodealertscore>1</gdacs:episodealertscore>
+      <gdacs:eventname />
+      <gdacs:eventid>1573942</gdacs:eventid>
+      <gdacs:episodeid>1742778</gdacs:episodeid>
+      <gdacs:calculationtype>earthquakeonly</gdacs:calculationtype>
+      <gdacs:severity unit="M" value="5.5">Magnitude 5.5M, Depth:641.8km</gdacs:severity>
+      <gdacs:population unit="in MMI I" value="3137">3 thousand in MMI I</gdacs:population>
+      <gdacs:vulnerability value="1.3145341380124" />
+      <gdacs:iso3>FJI</gdacs:iso3>
+      <gdacs:country>Fiji</gdacs:country>
+      <gdacs:glide />
+      <gdacs:mapimage />
+      <gdacs:maplink />
+      <gdacs:gtsimage />
+      <gdacs:gtslink />
+      <gdacs:resources>
+        <gdacs:resource id="event_rss" version="0" source="EC-JRC" url="http://www.gdacs.org//datareport/resources/EQ/1573942/rss_1573942.xml" type="rss">
+          <gdacs:title>Event in rss format</gdacs:title>
+          <gdacs:description>Joint Research Center of the European Commission</gdacs:description>
+          <gdacs:acknowledgements>Copyright notice: European Union (CC BY 4.0), reuse is allowed, provided appropriate credit to GDACS is given.</gdacs:acknowledgements>
+          <gdacs:accesslevel>Public</gdacs:accesslevel>
+        </gdacs:resource>
+      </gdacs:resources>
+    </item>
+</channel>
+</rss>

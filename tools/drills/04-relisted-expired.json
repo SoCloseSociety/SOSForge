@@ -1,0 +1,302 @@
+{
+  "name": "relisted-expired",
+  "title": "Alerts their source keeps listing after they ended: a Meteoalarm warning (Paris) and an NWS warning (Anchorage)",
+  "_shape": "Meteoalarm: keys of the live France feed; the re-listing carries an `expires` already past, as 241 of 276 orange-and-red warnings did on 2026-10-26. NWS: /alerts/active GeoJSON feature keys.",
+  "steps": [
+    {
+      "at": 0,
+      "note": "orange thunderstorm warning, ends in 2 h",
+      "source": "meteoalarm",
+      "country": "france",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.250.0.FR.drill{run}w3",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "vigilance@meteo.fr",
+          "sent": "@iso-3h",
+          "status": "Actual",
+          "info": [
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercice, ceci n'est pas une vraie alerte.",
+              "effective": "@iso-3h",
+              "event": "Vigilance orange orages",
+              "expires": "@iso+2h",
+              "headline": "[DRILL] Vigilance orange orages",
+              "instruction": "[DRILL] Exercice.",
+              "language": "fr-FR",
+              "onset": "@iso-3h",
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "3; Thunderstorm",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Monitor"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Severe",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": 0.5,
+      "note": "NWS Winter Storm Warning, ends in 3 h",
+      "source": "nws",
+      "payload": {
+        "id": "https://api.weather.gov/alerts/urn:oid:drill{run}n1",
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -150.2,
+                61.0
+              ],
+              [
+                -149.2,
+                61.0
+              ],
+              [
+                -149.2,
+                61.4
+              ],
+              [
+                -150.2,
+                61.4
+              ],
+              [
+                -150.2,
+                61.0
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "@id": "https://api.weather.gov/alerts/urn:oid:drill{run}n1",
+          "id": "urn:oid:drill{run}n1",
+          "areaDesc": "[DRILL] Anchorage Municipality",
+          "affectedZones": [],
+          "sent": "@iso-2h",
+          "effective": "@iso-2h",
+          "onset": "@iso-2h",
+          "expires": "@iso+3h",
+          "ends": "@iso+3h",
+          "status": "Actual",
+          "messageType": "Alert",
+          "category": "Met",
+          "severity": "Severe",
+          "certainty": "Likely",
+          "urgency": "Expected",
+          "event": "Winter Storm Warning",
+          "sender": "w-nws.webmaster@noaa.gov",
+          "senderName": "NWS Anchorage AK",
+          "headline": "[DRILL] Winter Storm Warning issued by NWS Anchorage AK",
+          "description": "[DRILL] Exercise, not a real warning.",
+          "instruction": "[DRILL] Exercise.",
+          "response": "Prepare"
+        }
+      }
+    },
+    {
+      "at": 6,
+      "note": "the feed lists the same warning, now ended 10 min ago",
+      "source": "meteoalarm",
+      "country": "france",
+      "payload": {
+        "alert": {
+          "identifier": "2.49.0.0.250.0.FR.drill{run}w3",
+          "incidents": "Alert",
+          "msgType": "Alert",
+          "scope": "Public",
+          "sender": "vigilance@meteo.fr",
+          "sent": "@iso-3h",
+          "status": "Actual",
+          "info": [
+            {
+              "area": [
+                {
+                  "areaDesc": "[DRILL] Paris",
+                  "geocode": [
+                    {
+                      "value": "FR101",
+                      "valueName": "NUTS3"
+                    }
+                  ]
+                }
+              ],
+              "category": [
+                "Met"
+              ],
+              "certainty": "Likely",
+              "contact": "METEO-FRANCE",
+              "description": "[DRILL] Exercice, ceci n'est pas une vraie alerte.",
+              "effective": "@iso-3h",
+              "event": "Vigilance orange orages",
+              "expires": "@iso-10m",
+              "headline": "[DRILL] Vigilance orange orages",
+              "instruction": "[DRILL] Exercice.",
+              "language": "fr-FR",
+              "onset": "@iso-3h",
+              "parameter": [
+                {
+                  "value": "3; orange; Severe",
+                  "valueName": "awareness_level"
+                },
+                {
+                  "value": "3; Thunderstorm",
+                  "valueName": "awareness_type"
+                }
+              ],
+              "responseType": [
+                "Monitor"
+              ],
+              "senderName": "METEO-FRANCE",
+              "severity": "Severe",
+              "urgency": "Future",
+              "web": "https://vigilance.meteofrance.fr/"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "at": 6.5,
+      "note": "NWS re-lists its warning past `ends`",
+      "source": "nws",
+      "payload": {
+        "id": "https://api.weather.gov/alerts/urn:oid:drill{run}n1",
+        "type": "Feature",
+        "geometry": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [
+                -150.2,
+                61.0
+              ],
+              [
+                -149.2,
+                61.0
+              ],
+              [
+                -149.2,
+                61.4
+              ],
+              [
+                -150.2,
+                61.4
+              ],
+              [
+                -150.2,
+                61.0
+              ]
+            ]
+          ]
+        },
+        "properties": {
+          "@id": "https://api.weather.gov/alerts/urn:oid:drill{run}n1",
+          "id": "urn:oid:drill{run}n1",
+          "areaDesc": "[DRILL] Anchorage Municipality",
+          "affectedZones": [],
+          "sent": "@iso-2h",
+          "effective": "@iso-2h",
+          "onset": "@iso-2h",
+          "expires": "@iso-5m",
+          "ends": "@iso-5m",
+          "status": "Actual",
+          "messageType": "Alert",
+          "category": "Met",
+          "severity": "Severe",
+          "certainty": "Likely",
+          "urgency": "Expected",
+          "event": "Winter Storm Warning",
+          "sender": "w-nws.webmaster@noaa.gov",
+          "senderName": "NWS Anchorage AK",
+          "headline": "[DRILL] Winter Storm Warning issued by NWS Anchorage AK",
+          "description": "[DRILL] Exercise, not a real warning.",
+          "instruction": "[DRILL] Exercise.",
+          "response": "Prepare"
+        }
+      }
+    }
+  ],
+  "expect": {
+    "world": [
+      [
+        "event",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        {}
+      ],
+      [
+        "event",
+        "drill:nws:drill{run}n1",
+        {}
+      ],
+      [
+        "purge",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        {
+          "reason": "stale"
+        }
+      ],
+      [
+        "purge",
+        "drill:nws:drill{run}n1",
+        {
+          "reason": "expired"
+        }
+      ]
+    ],
+    "web": "world",
+    "app_fg": [
+      [
+        "event",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        {}
+      ],
+      [
+        "purge",
+        "drill:meteoalarm:2.49.0.0.250.0.FR.drill{run}w3",
+        {
+          "reason": "stale"
+        }
+      ]
+    ],
+    "app_bg": "app_fg",
+    "zoned_drop": [],
+    "poll": {
+      "events": [],
+      "removed": []
+    },
+    "agent_tokyo": [],
+    "agent_paris": []
+  }
+}

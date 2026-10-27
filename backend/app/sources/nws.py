@@ -108,33 +108,6 @@ def classify(event_name: str) -> Kind:
     return Kind.OTHER
 
 
-def _centroid(geometry: dict | None) -> tuple[float | None, float | None]:
-    """NWS alerts are polygons (or nothing at all when the area is described
-    by UGC codes). We reduce to the centroid to place a point."""
-    if not geometry:
-        return None, None
-    coords = geometry.get("coordinates")
-    points: list[tuple[float, float]] = []
-
-    def walk(node) -> None:
-        if (
-            isinstance(node, (list, tuple))
-            and len(node) == 2
-            and all(isinstance(v, (int, float)) for v in node)
-        ):
-            points.append((float(node[0]), float(node[1])))
-        elif isinstance(node, (list, tuple)):
-            for child in node:
-                walk(child)
-
-    walk(coords)
-    if not points:
-        return None, None
-    lon = sum(p[0] for p in points) / len(points)
-    lat = sum(p[1] for p in points) / len(points)
-    return lat, lon
-
-
 def _points(feature_geometry: dict | None) -> list[tuple[float, float]]:
     """(lat, lon) of every vertex of a GeoJSON geometry, any nesting depth."""
     points: list[tuple[float, float]] = []
@@ -166,8 +139,10 @@ def parse_feature(feature: dict, zones: ZoneResolver | None = None) -> Event | N
 
     event_name = props.get("event") or "alert"
     kind = classify(event_name)
-    lat, lon = _centroid(feature.get("geometry"))
-    extent = geometry.extent(_points(feature.get("geometry")))
+    vertices = _points(feature.get("geometry"))
+    middle = geometry.center(vertices)
+    lat, lon = middle if middle else (None, None)
+    extent = geometry.extent(vertices)
     affected = props.get("affectedZones") or []
     if (lat is None or lon is None) and zones is not None:
         # The alert did not draw itself, but it said which zones it covers.

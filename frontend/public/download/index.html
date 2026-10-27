@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Download SOSForge for Android (APK) -- live disaster alerts for your places</title>
+    <meta
+      name="description"
+      content="Download the free SOSForge Android app (APK): earthquake, tsunami, volcano and official warning alerts for the places you watch, live from public sources. No account, no tracking."
+    />
+    <link rel="canonical" href="https://sosforge.soclose.co/download/" />
+    <meta name="theme-color" content="#05070a" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3ecdf" media="(prefers-color-scheme: light)" />
+    <meta name="color-scheme" content="dark light" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="SOSForge" />
+    <meta property="og:url" content="https://sosforge.soclose.co/download/" />
+    <meta property="og:title" content="SOSForge for Android -- download the APK" />
+    <meta
+      property="og:description"
+      content="Live earthquake, tsunami, volcano and warning alerts for the places you watch. Free, no account, no tracking."
+    />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="fr_FR" />
+    <meta property="og:image" content="https://sosforge.soclose.co/og-capture-2026-10-27.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="Screen capture of the SOSForge website taken on 2026-10-27, showing the live map and feed as they were at that moment"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- What this page IS and who publishes it. The application itself is
+         described by a second block that download.js builds from
+         /download/latest.json, the file read back from the published APK:
+         a version written here would be a version nobody re-checks. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebPage",
+            "@id": "https://sosforge.soclose.co/download/#page",
+            "url": "https://sosforge.soclose.co/download/",
+            "name": "Download SOSForge for Android",
+            "inLanguage": ["en", "fr"],
+            "isPartOf": { "@id": "https://sosforge.soclose.co/#website" },
+            "about": { "@id": "https://sosforge.soclose.co/download/#app" },
+            "publisher": { "@id": "https://soclose.co/#organization" },
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                { "@type": "ListItem", "position": 1, "name": "SOSForge", "item": "https://sosforge.soclose.co/" },
+                { "@type": "ListItem", "position": 2, "name": "Android app", "item": "https://sosforge.soclose.co/download/" }
+              ]
+            }
+          },
+          {
+            "@type": "Organization",
+            "@id": "https://soclose.co/#organization",
+            "name": "SoClose Pte. Ltd.",
+            "url": "https://soclose.co"
+          }
+        ]
+      }
+    </script>
+
+    <!-- Self-contained on purpose: the app's stylesheet is a hashed bundle
+         this page cannot name. The tokens are copied from src/styles.css
+         (Sentinel House: Lunar, and Soft for a light system theme). -->
+    <style>
+      :root {
+        color-scheme: dark;
+        --ground: #05070a;
+        --bg-2: #0e1318;
+        --bg-3: #121922;
+        --t1: #e9eef2;
+        --t2: #97a6b2;
+        --t3: #7c8a96;
+        --line: rgba(160, 185, 205, 0.13);
+        --edge: rgba(170, 195, 215, 0.5);
+        --mint: #34e5a0;
+        --cyan: #45c9e6;
+        --amber: #e8b13a;
+        --red: #ff5e5e;
+        --surface-card: rgba(14, 19, 24, 0.88);
+        --primary-bg: var(--t1);
+        --primary-ink: #0a0d10;
+        --focus-ring: var(--t1);
+        --focus-halo: var(--ground);
+        --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", "Hiragino Sans", sans-serif;
+        --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+        --ts-title: 1.625rem;
+        --ts-card: 1.0625rem;
+        --ts-body: 0.9375rem;
+        --ts-sub: 0.875rem;
+        --ts-over: 0.75rem;
+        --radius: 14px;
+        --radius-sm: 10px;
+        --btn-h: 2.75rem;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          color-scheme: light;
+          --ground: #f3ecdf;
+          --bg-2: #fcf9f2;
+          --bg-3: #ffffff;
+          --t1: #27221d;
+          --t2: #5a524a;
+          --t3: #6b635a;
+          --line: rgba(90, 70, 50, 0.12);
+          --edge: rgba(90, 70, 50, 0.62);
+          --mint: #0b7556;
+          --cyan: #0b6f86;
+          --amber: #8a5a00;
+          --red: #c03a2b;
+          --surface-card: rgba(255, 255, 255, 0.96);
+          --primary-ink: #fcf9f2;
+          --focus-halo: #f8f3e9;
+        }
+      }
+      /* The reader picked Soft in the app: same palette, whatever the system. */
+      :root[data-theme="soft"] {
+        color-scheme: light;
+        --ground: #f3ecdf;
+        --bg-2: #fcf9f2;
+        --bg-3: #ffffff;
+        --t1: #27221d;
+        --t2: #5a524a;
+        --t3: #6b635a;
+        --line: rgba(90, 70, 50, 0.12);
+        --edge: rgba(90, 70, 50, 0.62);
+        --mint: #0b7556;
+        --cyan: #0b6f86;
+        --amber: #8a5a00;
+        --red: #c03a2b;
+        --surface-card: rgba(255, 255, 255, 0.96);
+        --primary-ink: #fcf9f2;
+        --focus-halo: #f8f3e9;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--t1);
+        font-family: var(--sans);
+        font-size: var(--ts-body);
+        line-height: 1.5;
+        overflow-wrap: break-word;
+      }
+      a {
+        color: var(--cyan);
+      }
+      a:focus-visible,
+      button:focus-visible,
+      summary:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--focus-ring), 0 0 0 5px var(--focus-halo);
+        border-radius: 4px;
+      }
+      .bar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.5rem 1rem;
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 16px;
+      }
+      .brand {
+        color: var(--t1);
+        font-weight: 600;
+        font-size: var(--ts-card);
+        text-decoration: none;
+        flex: 1 1 8rem;
+        min-width: 0;
+      }
+      .langs {
+        display: none;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+        min-width: 0;
+        max-width: 100%;
+      }
+      .js .langs {
+        display: flex;
+      }
+      .langs button {
+        max-width: 100%;
+        min-height: 2.25rem;
+        min-width: 2.75rem;
+        padding: 0 0.6rem;
+        border: 1px solid var(--edge);
+        border-radius: 999px;
+        background: transparent;
+        color: var(--t2);
+        font: inherit;
+        font-size: var(--ts-sub);
+        cursor: pointer;
+      }
+      .langs button[aria-pressed="true"] {
+        background: var(--primary-bg);
+        border-color: var(--primary-bg);
+        color: var(--primary-ink);
+      }
+      /* Gutters and card padding in px, text in rem: at 280 px and 200 %
+         text, rem gutters took a third of the screen and broke words that
+         fit once the room was given back to the text. */
+      main {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 0 16px 2rem;
+      }
+      /* Without JavaScript both languages show, one after the other. With
+         it, the reader's language only (download.js sets data-lang before
+         the first paint). */
+      html[data-lang="en"] [data-lang="fr"],
+      html[data-lang="fr"] [data-lang="en"] {
+        display: none;
+      }
+      .copy + .copy {
+        margin-top: 2.5rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid var(--line);
+      }
+      /* At 280 px and 200 % text a heading word can be wider than the line:
+         hyphenate it (lang is set on each article) rather than cut it. */
+      h1,
+      h2,
+      h3 {
+        hyphens: auto;
+      }
+      h1 {
+        font-size: var(--ts-title);
+        line-height: 1.2;
+        letter-spacing: -0.012em;
+        margin: 0.5rem 0 0.75rem;
+      }
+      h2 {
+        font-size: var(--ts-card);
+        margin: 2rem 0 0.75rem;
+      }
+      h3 {
+        font-size: var(--ts-body);
+        margin: 1.25rem 0 0.5rem;
+      }
+      .lead {
+        color: var(--t2);
+        font-size: var(--ts-card);
+        margin: 0 0 1.5rem;
+      }
+      .card {
+        background: var(--surface-card);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 14px;
+        min-width: 0;
+        hyphens: auto;
+      }
+      .over {
+        font-family: var(--mono);
+        font-size: var(--ts-over);
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: var(--t3);
+        margin: 0 0 0.5rem;
+      }
+      .facts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem 1.5rem;
+        margin: 0 0 1rem;
+      }
+      .facts div {
+        flex: 1 1 7rem;
+        min-width: 0;
+      }
+      .facts dt {
+        color: var(--t3);
+        font-size: var(--ts-sub);
+      }
+      .facts dd {
+        margin: 0;
+        font-family: var(--mono);
+        font-size: var(--ts-card);
+        overflow-wrap: anywhere;
+      }
+      .state {
+        margin: 0 0 1rem;
+        color: var(--t2);
+      }
+      .state[data-tone="ok"] {
+        color: var(--mint);
+      }
+      .state[data-tone="warn"] {
+        color: var(--amber);
+      }
+      .state[data-tone="bad"] {
+        color: var(--red);
+      }
+      /* Full width of the card and a plain rounded rectangle: at 280 px and
+         200 % text the label takes three lines, and a pill around three lines
+         is a circle that cuts words. Words break only when one alone is
+         wider than the button. */
+      .btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 26rem;
+        min-height: var(--btn-h);
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--radius-sm);
+        background: var(--primary-bg);
+        color: var(--primary-ink);
+        font-weight: 600;
+        text-align: center;
+        text-decoration: none;
+        overflow-wrap: break-word;
+        hyphens: auto;
+      }
+      .btn[hidden],
+      [hidden] {
+        display: none !important;
+      }
+      .notes {
+        margin: 1rem 0 0;
+        color: var(--t2);
+      }
+      details {
+        margin-top: 1rem;
+        border-top: 1px solid var(--line);
+        padding-top: 0.75rem;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--cyan);
+        min-height: 2.25rem;
+        display: flex;
+        align-items: center;
+      }
+      .hashes dt {
+        color: var(--t3);
+        font-size: var(--ts-sub);
+        margin-top: 0.75rem;
+      }
+      .hashes dd {
+        margin: 0.25rem 0 0;
+      }
+      code,
+      .hash {
+        font-family: var(--mono);
+        font-size: var(--ts-sub);
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .hash {
+        display: block;
+        color: var(--t1);
+      }
+      ol,
+      ul {
+        padding-left: 1.25rem;
+      }
+      li {
+        margin: 0.4rem 0;
+      }
+      .perms li code {
+        display: block;
+        color: var(--t3);
+        font-size: var(--ts-over);
+      }
+      .muted {
+        color: var(--t3);
+      }
+      footer {
+        max-width: 48rem;
+        margin: 0 auto;
+        padding: 1.5rem 16px 2.5rem;
+        border-top: 1px solid var(--line);
+        color: var(--t3);
+        font-size: var(--ts-sub);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+      }
+      footer > * {
+        flex: 0 1 auto;
+        min-width: 0;
+      }
+    </style>
+    <!-- Blocking on purpose, and tiny: it sets the language and theme before
+         the first paint (no flash of both languages), then waits for the DOM.
+         An inline script would be simpler; the CSP (script-src 'self')
+         rightly forbids one. -->
+    <script src="/download/download.js"></script>
+  </head>
+  <body>
+    <header class="bar">
+      <a class="brand" href="/">SOSForge</a>
+      <div class="langs" role="group" aria-label="Language / Langue">
+        <button type="button" data-set-lang="en" lang="en" aria-pressed="false">English</button>
+        <button type="button" data-set-lang="fr" lang="fr" aria-pressed="false">Français</button>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ================================================================ EN -->
+      <article class="copy" lang="en" data-lang="en">
+        <h1>SOSForge for Android</h1>
+        <p class="lead">
+          The live tracker as a native app. It watches the places you choose, in the
+          background, and notifies you when an earthquake, a tsunami, a volcano or an
+          official warning concerns them. Free, no account.
+        </p>
+
+        <section class="card" aria-labelledby="release-en">
+          <p class="over" id="release-en">Current release</p>
+          <p class="state" data-field="state" role="status" aria-live="polite" hidden></p>
+          <noscript>
+            <p class="state">
+              Without JavaScript this page cannot read the release details. The link below
+              always points at the newest published APK; its version, size and checksums are
+              in <a href="/download/latest.json">latest.json</a>.
+            </p>
+          </noscript>
+          <dl class="facts" data-field="facts" hidden>
+            <div><dt>Version</dt><dd data-field="version"></dd></div>
+            <div><dt>Size</dt><dd data-field="size"></dd></div>
+            <div><dt>Released</dt><dd data-field="released"></dd></div>
+            <div><dt>Requires</dt><dd data-field="requires"></dd></div>
+          </dl>
+          <a class="btn" href="/download/sosforge-latest.apk" data-field="download" download>
+            Download the APK
+          </a>
+          <p class="notes" data-field="notes-block" hidden>
+            <strong>What is new:</strong> <span data-field="notes"></span>
+          </p>
+          <details data-field="details" hidden>
+            <summary data-more="Show more" data-less="Show less">Show more</summary>
+            <dl class="hashes">
+              <dt>SHA-256 of the file</dt>
+              <dd><span class="hash" data-field="sha256"></span></dd>
+              <dt>SHA-256 of the signing certificate</dt>
+              <dd><span class="hash" data-field="cert"></span></dd>
+              <dt>Files</dt>
+              <dd>
+                <a data-field="sha-file" href="/download/latest.json">checksum file</a> ·
+                <a href="/download/latest.json">latest.json</a>
+              </dd>
+            </dl>
+          </details>
+        </section>
+
+        <h2>Install it</h2>
+        <ol>
+          <li>On your Android phone, tap <strong>Download the APK</strong>.</li>
+          <li>
+            Open the downloaded file, from the notification or the Files / Downloads app.
+            Android first says that your browser is not allowed to install apps: tap
+            <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then
+            go back. You can turn it off again once SOSForge is installed.
+          </li>
+          <li>
+            Tap <strong>Install</strong>. A later version installs the same way, over this
+            one: your places and settings stay, because every release is signed with the same
+            key.
+          </li>
+          <li>Open SOSForge and follow the first steps: your places, what to watch, notifications.</li>
+        </ol>
+
+        <h3>Check the file (optional)</h3>
+        <p>
+          Under <strong>Show more</strong>, the SHA-256 is computed from the published file
+          itself. Compare it with yours: <code>shasum -a 256 &lt;file&gt;</code> on macOS,
+          <code>sha256sum -c &lt;file&gt;.sha256</code> on Linux,
+          <code>certutil -hashfile &lt;file&gt; SHA256</code> on Windows. The signer can be
+          checked with <code>apksigner verify --print-certs &lt;file&gt;</code>; Android
+          itself refuses to install an update signed with any other key.
+        </p>
+
+        <h2>Requirements</h2>
+        <ul>
+          <!-- download.js replaces this line with the real minimum, read from latest.json -->
+          <li data-field="requires-line">The minimum Android version is the <code>min_sdk</code> field of latest.json.</li>
+          <li>A phone or a tablet with an internet connection: the alerts are live, not stored.</li>
+        </ul>
+
+        <h2>Permissions, and why</h2>
+        <ul class="perms">
+          <li data-permission="android.permission.INTERNET">
+            Internet: to receive the live feed.
+            <code>android.permission.INTERNET</code>
+          </li>
+          <li data-permission="android.permission.ACCESS_NETWORK_STATE">
+            Network state: to reconnect the moment the network comes back.
+            <code>android.permission.ACCESS_NETWORK_STATE</code>
+          </li>
+          <li data-permission="android.permission.ACCESS_COARSE_LOCATION">
+            Approximate location, only if you tap "use my location" to add a place. Precise
+            location is not requested at all, and you can type a place instead.
+            <code>android.permission.ACCESS_COARSE_LOCATION</code>
+          </li>
+          <li data-permission="android.permission.POST_NOTIFICATIONS">
+            Notifications: to tell you when something concerns your places.
+            <code>android.permission.POST_NOTIFICATIONS</code>
+          </li>
+          <li data-permission="android.permission.VIBRATE">
+            Vibration, for those notifications.
+            <code>android.permission.VIBRATE</code>
+          </li>
+          <li data-permission="android.permission.FOREGROUND_SERVICE android.permission.FOREGROUND_SERVICE_SPECIAL_USE">
+            Foreground service: the background watch you can switch on. It keeps the live
+            connection open while the app is closed, with a permanent notification from which
+            you stop it.
+            <code>android.permission.FOREGROUND_SERVICE</code>
+            <code>android.permission.FOREGROUND_SERVICE_SPECIAL_USE</code>
+          </li>
+          <li data-permission="android.permission.RECEIVE_BOOT_COMPLETED">
+            Start at boot: to resume that watch after the phone restarts, if it was on.
+            <code>android.permission.RECEIVE_BOOT_COMPLETED</code>
+          </li>
+          <li data-permission="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS">
+            Battery optimisation exemption, optional: to ask Android not to put the watch to
+            sleep.
+            <code>android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS</code>
+          </li>
+          <li data-permission="android.permission.WAKE_LOCK">
+            Wake lock: lets the periodic fallback check finish while the screen is off.
+            <code>android.permission.WAKE_LOCK</code>
+          </li>
+          <li data-permission="co.soclose.sosforge.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION">
+            An internal permission AndroidX declares so that only the app itself can reach its
+            own receivers. It grants nothing.
+            <code>co.soclose.sosforge.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION</code>
+          </li>
+        </ul>
+
+        <h2>Privacy</h2>
+        <ul>
+          <li>No account, no sign-in, no advertising, no analytics, no tracking library.</li>
+          <li>
+            What leaves your phone: the connection to sosforge.soclose.co, which carries the
+            coordinates and radius of the places you watch and your filters, so that the
+            server only sends what concerns them; the place names you search for, which our
+            server looks up at OpenStreetMap's Nominatim; and the map tiles of the areas you
+            look at, from OpenFreeMap.
+          </li>
+          <li>
+            Everything the app shows is public data from official sources (EMSC, USGS, NOAA,
+            JMA, GDACS and others), the same feed as the website.
+          </li>
+        </ul>
+        <p class="muted">
+          <em>SOSForge is not an official warning service. In a real emergency, your local civil
+          protection authority is the reference.</em>
+        </p>
+      </article>
+
+      <!-- ================================================================ FR -->
+      <article class="copy" lang="fr" data-lang="fr">
+        <h1>SOSForge pour Android</h1>
+        <p class="lead">
+          Le suivi en direct, en application native. Elle surveille les lieux que vous
+          choisissez, en arrière-plan, et vous prévient quand un séisme, un tsunami, un volcan
+          ou une alerte officielle les concerne. Gratuite, sans compte.
+        </p>
+
+        <section class="card" aria-labelledby="release-fr">
+          <p class="over" id="release-fr">Version actuelle</p>
+          <p class="state" data-field="state" role="status" aria-live="polite" hidden></p>
+          <noscript>
+            <p class="state">
+              Sans JavaScript, cette page ne peut pas lire les détails de la version. Le lien
+              ci-dessous mène toujours au dernier APK publié ; sa version, sa taille et ses
+              empreintes sont dans <a href="/download/latest.json">latest.json</a>.
+            </p>
+          </noscript>
+          <dl class="facts" data-field="facts" hidden>
+            <div><dt>Version</dt><dd data-field="version"></dd></div>
+            <div><dt>Taille</dt><dd data-field="size"></dd></div>
+            <div><dt>Publiée le</dt><dd data-field="released"></dd></div>
+            <div><dt>Nécessite</dt><dd data-field="requires"></dd></div>
+          </dl>
+          <a class="btn" href="/download/sosforge-latest.apk" data-field="download" download>
+            Télécharger l'APK
+          </a>
+          <p class="notes" data-field="notes-block" hidden>
+            <strong>Nouveautés :</strong> <span data-field="notes"></span>
+          </p>
+          <details data-field="details" hidden>
+            <summary data-more="Voir plus" data-less="Voir moins">Voir plus</summary>
+            <dl class="hashes">
+              <dt>SHA-256 du fichier</dt>
+              <dd><span class="hash" data-field="sha256"></span></dd>
+              <dt>SHA-256 du certificat de signature</dt>
+              <dd><span class="hash" data-field="cert"></span></dd>
+              <dt>Fichiers</dt>
+              <dd>
+                <a data-field="sha-file" href="/download/latest.json">fichier d'empreinte</a> ·
+                <a href="/download/latest.json">latest.json</a>
+              </dd>
+            </dl>
+          </details>
+        </section>
+
+        <h2>L'installer</h2>
+        <ol>
+          <li>Sur votre téléphone Android, touchez <strong>Télécharger l'APK</strong>.</li>
+          <li>
+            Ouvrez le fichier téléchargé, depuis la notification ou l'application Fichiers /
+            Téléchargements. Android indique d'abord que votre navigateur n'a pas le droit
+            d'installer des applications : touchez <strong>Paramètres</strong>, activez
+            <strong>Autoriser cette source</strong>, puis revenez. Vous pourrez le désactiver
+            une fois SOSForge installée.
+          </li>
+          <li>
+            Touchez <strong>Installer</strong>. Une version suivante s'installe de la même
+            façon, par-dessus celle-ci : vos lieux et réglages restent, car chaque version est
+            signée avec la même clé.
+          </li>
+          <li>Ouvrez SOSForge et suivez les premières étapes : vos lieux, quoi surveiller, les notifications.</li>
+        </ol>
+
+        <h3>Vérifier le fichier (facultatif)</h3>
+        <p>
+          Sous <strong>Voir plus</strong>, le SHA-256 est calculé sur le fichier publié
+          lui-même. Comparez-le au vôtre : <code>shasum -a 256 &lt;fichier&gt;</code> sous
+          macOS, <code>sha256sum -c &lt;fichier&gt;.sha256</code> sous Linux,
+          <code>certutil -hashfile &lt;fichier&gt; SHA256</code> sous Windows. Le signataire se
+          vérifie avec <code>apksigner verify --print-certs &lt;fichier&gt;</code> ; Android
+          refuse de lui-même une mise à jour signée par une autre clé.
+        </p>
+
+        <h2>Configuration requise</h2>
+        <ul>
+          <li data-field="requires-line">La version minimale d'Android est le champ <code>min_sdk</code> de latest.json.</li>
+          <li>Un téléphone ou une tablette connecté à internet : les alertes sont en direct, pas stockées.</li>
+        </ul>
+
+        <h2>Les autorisations, et pourquoi</h2>
+        <ul class="perms">
+          <li>Internet : pour recevoir le flux en direct. <code>android.permission.INTERNET</code></li>
+          <li>
+            État du réseau : pour se reconnecter dès que le réseau revient.
+            <code>android.permission.ACCESS_NETWORK_STATE</code>
+          </li>
+          <li>
+            Position approximative, seulement si vous touchez « ma position » pour ajouter un
+            lieu. La position précise n'est pas demandée du tout, et vous pouvez saisir un lieu
+            à la place.
+            <code>android.permission.ACCESS_COARSE_LOCATION</code>
+          </li>
+          <li>
+            Notifications : pour vous prévenir quand quelque chose concerne vos lieux.
+            <code>android.permission.POST_NOTIFICATIONS</code>
+          </li>
+          <li>Vibration, pour ces notifications. <code>android.permission.VIBRATE</code></li>
+          <li>
+            Service de premier plan : la veille en arrière-plan, si vous l'activez. Elle garde
+            la connexion en direct ouverte application fermée, avec une notification permanente
+            depuis laquelle vous l'arrêtez.
+            <code>android.permission.FOREGROUND_SERVICE</code>
+            <code>android.permission.FOREGROUND_SERVICE_SPECIAL_USE</code>
+          </li>
+          <li>
+            Démarrage : pour reprendre cette veille après un redémarrage du téléphone, si elle
+            était active.
+            <code>android.permission.RECEIVE_BOOT_COMPLETED</code>
+          </li>
+          <li>
+            Exemption d'optimisation de la batterie, facultative : pour demander à Android de ne
+            pas endormir la veille.
+            <code>android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS</code>
+          </li>
+          <li>
+            Maintien éveillé : laisse la vérification périodique de secours se terminer écran
+            éteint.
+            <code>android.permission.WAKE_LOCK</code>
+          </li>
+          <li>
+            Une autorisation interne qu'AndroidX déclare pour que seule l'application atteigne
+            ses propres récepteurs. Elle ne donne aucun droit.
+            <code>co.soclose.sosforge.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION</code>
+          </li>
+        </ul>
+
+        <h2>Vie privée</h2>
+        <ul>
+          <li>Aucun compte, aucune connexion, aucune publicité, aucune mesure d'audience, aucune bibliothèque de pistage.</li>
+          <li>
+            Ce qui quitte votre téléphone : la connexion à sosforge.soclose.co, qui transmet les
+            coordonnées et le rayon des lieux surveillés et vos filtres, pour que le serveur
+            n'envoie que ce qui les concerne ; les noms de lieux que vous recherchez, que notre
+            serveur cherche dans Nominatim d'OpenStreetMap ; et les tuiles de carte des zones
+            que vous regardez, chez OpenFreeMap.
+          </li>
+          <li>
+            Tout ce que l'application affiche est public et vient de sources officielles (EMSC,
+            USGS, NOAA, JMA, GDACS et d'autres) : le même flux que le site.
+          </li>
+        </ul>
+        <p class="muted">
+          <em>SOSForge n'est pas un service d'alerte officiel. En cas d'urgence réelle, votre
+          autorité de protection civile fait foi.</em>
+        </p>
+      </article>
+    </main>
+
+    <footer>
+      <a href="/" lang="en" data-lang="en">Back to the live map</a>
+      <a href="/" lang="fr" data-lang="fr">Retour à la carte en direct</a>
+      <a href="https://github.com/SoCloseSociety/SOSForge">GitHub (MIT)</a>
+      <span>SoClose Pte. Ltd.</span>
+    </footer>
+  </body>
+</html>

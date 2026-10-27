@@ -35,6 +35,59 @@ _CACHE_MAX = 500
 _transport: httpx.AsyncBaseTransport | None = None
 
 
+def cached(query: str) -> bool:
+    """Whether this search would be answered without reaching Nominatim."""
+    return query.strip().lower() in _cache
+
+
+class AddressBudget:
+    """How many searches one address may send to Nominatim, as a token
+    bucket: `burst` at once, then `per_second`.
+
+    The 1 req/s queue above is shared by the whole product, which is the
+    policy, but nothing said who it was shared WITH: measured with Nominatim
+    mocked (tools/bench_geocode.py), one address firing 30 searches made
+    every other visitor wait 29.98 s. The web debounces at 450 ms and
+    aborts the previous search on a keystroke, so a person typing a name
+    stays far inside a burst of 3; a script or a broken client does not, and
+    is told to come back later instead of standing in front of everyone.
+    """
+
+    def __init__(self, burst: float = 3.0, per_second: float = 1.0, max_addresses: int = 10_000):
+        self.burst = burst
+        self.per_second = per_second
+        self.max_addresses = max_addresses
+        self._tokens: dict[str, tuple[float, float]] = {}  # address -> (tokens, at)
+
+    def take(self, address: str | None, now: float | None = None) -> float:
+        """0 if a search may go now (and spends a token), else how many
+        seconds until one may. An unknown address is not limited here: behind
+        a proxy that strips it, that would be every visitor in one bucket."""
+        if not address:
+            return 0.0
+        now = time.monotonic() if now is None else now
+        tokens, at = self._tokens.get(address, (self.burst, now))
+        tokens = min(self.burst, tokens + (now - at) * self.per_second)
+        if tokens < 1.0:
+            self._tokens[address] = (tokens, now)
+            return (1.0 - tokens) / self.per_second
+        if len(self._tokens) >= self.max_addresses and address not in self._tokens:
+            # bounded: forget every address whose bucket has refilled, which
+            # is exactly the state a forgotten address comes back in
+            self._tokens = {
+                a: (t, s)
+                for a, (t, s) in self._tokens.items()
+                if t + (now - s) * self.per_second < self.burst
+            }
+            while len(self._tokens) >= self.max_addresses:
+                self._tokens.pop(next(iter(self._tokens)))  # the longest-standing
+        self._tokens[address] = (tokens - 1.0, now)
+        return 0.0
+
+
+budget = AddressBudget()
+
+
 async def search(query: str, limit: int = 5) -> list[dict]:
     global _last_call
 

@@ -109,15 +109,55 @@ def _int(value: Any) -> int | None:
         return None
 
 
+def usgs_aliases(feature: dict) -> list[str]:
+    """The other ids USGS now files this quake under.
+
+    `properties.ids` is `,aka2026vddzqy,us6000u4t8,`: every network id that
+    was MERGED into the preferred one (`feature.id`). An event first
+    published under one of them is still in our store under that id -- lane
+    Q found `usgs:aka2026vddzqy` served as its own quake while USGS lists it
+    inside `us6000u4t8` (2026-10-27). 5 of the 183 events of that day carried
+    such aliases.
+    """
+    own = str(feature.get("id") or "")
+    ids = str((feature.get("properties") or {}).get("ids") or "")
+    return [alias for alias in ids.split(",") if alias and alias != own]
+
+
 class UsgsSource(Source):
     name = "usgs"
     kind = "poll"
 
+    # A merge usually lands after the quake has left the one-hour feed, so the
+    # day feed is read for its `ids` alone, every ten minutes (~250 KB).
+    alias_seconds = 600.0
+
     def __init__(self, url: str, poll_seconds: float = 5.0):
         super().__init__()
         self.url = url
+        self.alias_url = url.replace("all_hour", "all_day")
         self.poll_seconds = poll_seconds
         self._last_generated: int | None = None
+        self._aliases_at: float | None = None
+
+    def withdraw_aliases(self, features: list) -> None:
+        for feature in features:
+            if isinstance(feature, dict):
+                self.expirations.extend(f"usgs:{alias}" for alias in usgs_aliases(feature))
+
+    async def _alias_sweep(self, client: httpx.AsyncClient) -> None:
+        now = asyncio.get_running_loop().time()
+        if self._aliases_at is not None and now - self._aliases_at < self.alias_seconds:
+            return
+        self._aliases_at = now
+        try:
+            resp = await client.get(self.alias_url)
+            resp.raise_for_status()
+            self.withdraw_aliases((resp.json() or {}).get("features") or [])
+            self.health.feed_ok("day-feed-aliases")
+        except Exception as exc:  # noqa: BLE001 -- aliases are a correction, not the feed
+            self.health.feed_failed("day-feed-aliases", exc)
+            log.warning("usgs: alias sweep failed (%s)", exc)
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
@@ -142,6 +182,7 @@ class UsgsSource(Source):
                             if event:
                                 kept += 1
                                 await emit(event)
+                        self.withdraw_aliases(features)
                         # the cursor moves only once the batch is through: a
                         # crash mid-batch used to skip everything after it,
                         # permanently
@@ -149,6 +190,8 @@ class UsgsSource(Source):
                         self.health.ok(kept)
                     else:
                         self.health.ok()
+                    await self._alias_sweep(client)
+                    await self.flush_retractions()
                 except Exception as exc:
                     self.health.fail(exc)
                     log.warning("usgs poll: %s", exc)
