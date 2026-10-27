@@ -51,6 +51,14 @@
    "bytes": 491,
    "sha256": "221379968f0510e18ef9fa89c1d0e70bd197c7c60bf54c0625d2670a95d45ae6"
   },
+  "gdo_hst_rdria_anchorage_point.json": {
+   "bytes": 171,
+   "sha256": "34e3df09d078a4b9a5d4161ec294c3bd60669e146ebdb6a12333105afdd70ada"
+  },
+  "gdo_hst_rdria_anchorage_point.json.meta.json": {
+   "bytes": 461,
+   "sha256": "bbb79aecde5afab8f9f7d3f49770c51b64c20bcb37df40de6d923b2ee33bb9fc"
+  },
   "gdo_hst_rdria_midpacific.json": {
    "bytes": 201,
    "sha256": "1bf9f25a896c9ecb4622f7fa5c8ef8d685c603038ea0ba995a8253542d13a9d1"
@@ -83,6 +91,22 @@
    "bytes": 460,
    "sha256": "359ccb27faacf4a5d6cc691aa1379d4d649c24b5ffcec8b2d1d9da245b555499"
   },
+  "gdo_hst_smang_anchorage_cell.json": {
+   "bytes": 221,
+   "sha256": "ed35425e9ac7ffb33118428b2c889c594e0f00b506f35a1af92a280a25fd4c9c"
+  },
+  "gdo_hst_smang_anchorage_cell.json.meta.json": {
+   "bytes": 461,
+   "sha256": "e62bfa1305627524c48ecc277902a9681fb0716a83f4991a8c9b2bab7e9f1ac5"
+  },
+  "gdo_hst_smang_anchorage_point.json": {
+   "bytes": 223,
+   "sha256": "1797d375255005ac6b41bb365ab443c1ae13ab8a2e55cf6fc5261096d9b29006"
+  },
+  "gdo_hst_smang_anchorage_point.json.meta.json": {
+   "bytes": 461,
+   "sha256": "af4dda04197987a7b8d0c8b3f24b1e8764bea93cd03cfaf3cde627d8813a6c26"
+  },
   "gdo_hst_smang_midpacific.json": {
    "bytes": 23,
    "sha256": "0712b1b2acea81e914dffea613e492770cf07ca147e5e200d09cef6a75787b53"
@@ -114,6 +138,14 @@
   "gdo_hst_smang_samui.json.meta.json": {
    "bytes": 460,
    "sha256": "76ca89cbf6bc04bd66fa80a628a623922d247816b984fb2b17acbae55c21c6c7"
+  },
+  "gdo_hst_spi_anchorage_point.json": {
+   "bytes": 289,
+   "sha256": "3957d7e3d82cd52eb232b4dd084a4a2797af6c4e619cd32bcf2d69a789a63ee0"
+  },
+  "gdo_hst_spi_anchorage_point.json.meta.json": {
+   "bytes": 467,
+   "sha256": "f180084c615b30d3d5c0000a393ce44b29a7a6b2fbfb7eb61c328250b6dd57df"
   },
   "gdo_hst_spi_midpacific.json": {
    "bytes": 281,
@@ -303,6 +335,21 @@
    "added": [
     "wri_aqueduct40_data_page.html",
     "wri_open_data_commitment.html"
+   ],
+   "removed": []
+  },
+  {
+   "utc": "2026-10-27T17:45:00Z",
+   "source": "fresh captures by the integrator (SOSForge User-Agent), bodies byte for byte",
+   "added": [
+    "gdo_hst_smang_anchorage_point.json",
+    "gdo_hst_smang_anchorage_point.json.meta.json",
+    "gdo_hst_smang_anchorage_cell.json",
+    "gdo_hst_smang_anchorage_cell.json.meta.json",
+    "gdo_hst_spi_anchorage_point.json",
+    "gdo_hst_spi_anchorage_point.json.meta.json",
+    "gdo_hst_rdria_anchorage_point.json",
+    "gdo_hst_rdria_anchorage_point.json.meta.json"
    ],
    "removed": []
   }
