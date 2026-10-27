@@ -167,6 +167,24 @@ def test_republishing_the_same_release_changes_nothing(tmp_path):
     assert leftovers(tmp_path / "out") == []
 
 
+def test_the_download_page_explains_exactly_what_the_real_apk_asks_for():
+    """The page gives a reason per permission. Read from the real 0.1.1
+    badging, not from the manifest source: the build merges in permissions
+    the source never names (WAKE_LOCK from WorkManager, the AndroidX
+    receiver one)."""
+    asked = publish_apk.parse_permissions(BADGING)
+    assert "android.permission.ACCESS_COARSE_LOCATION" in asked
+    assert "android.permission.ACCESS_FINE_LOCATION" not in asked
+    assert publish_apk.page_permissions() == asked
+
+
+def test_no_page_carries_a_typed_software_version():
+    """softwareVersion lives only in what download.js builds from latest.json."""
+    assert publish_apk.stale_json_ld("any") == []
+    for page in ("frontend/index.html", "frontend/public/download/index.html"):
+        assert "softwareVersion" not in (ROOT / page).read_text(), page
+
+
 @pytest.mark.skipif(not REAL_APK.exists(), reason="the real APK is only on the Mac")
 def test_the_real_apk_through_the_real_tools(tmp_path):
     try:

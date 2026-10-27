@@ -107,6 +107,21 @@ def parse_signers(text: str) -> list[str]:
     ]
 
 
+def parse_permissions(text: str) -> set[str]:
+    """Every `uses-permission` of `aapt2 dump badging`."""
+    return set(re.findall(r"^uses-permission: name='([^']+)'", text, re.MULTILINE))
+
+
+def page_permissions() -> set[str]:
+    """The permissions the download page explains (its `data-permission`
+    attributes): the page promises a reason for each one the app asks for."""
+    page = ROOT / "frontend" / "public" / "download" / "index.html"
+    found: set[str] = set()
+    for attr in re.findall(r'data-permission="([^"]+)"', page.read_text()):
+        found.update(attr.split())
+    return found
+
+
 def find_build_tools() -> Path:
     """The newest Android build-tools directory holding both aapt2 and
     apksigner: $ANDROID_BUILD_TOOLS, else $ANDROID_HOME / $ANDROID_SDK_ROOT /
@@ -318,6 +333,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("note: release notes are empty (--notes-en / --notes-fr)")
     for line in stale_json_ld(latest["version"]):
         print(f"note: JSON-LD out of date, {line}: edit it and rebuild the web image")
+    published = args.out / latest["url"].rsplit("/", 1)[1]
+    badging = run_tool([str(find_build_tools() / "aapt2"), "dump", "badging", str(published)])
+    asked, explained = parse_permissions(badging.stdout), page_permissions()
+    for perm in sorted(asked - explained):
+        print(f"note: the APK asks for {perm} and the download page does not say why")
+    for perm in sorted(explained - asked):
+        print(f"note: the download page explains {perm}, which this APK no longer asks for")
     return 0
 
 
