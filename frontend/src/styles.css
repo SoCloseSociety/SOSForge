@@ -99,6 +99,7 @@
   --vital-ink: #ffffff;
 
   --shadow-panel: 0 18px 50px -18px rgba(0, 0, 0, 0.85);
+  --scrim: rgba(5, 7, 10, 0.55);
   --shadow-menu: 0 14px 34px -10px rgba(0, 0, 0, 0.7);
 
   /* severity: fills (map, swatches) and words (text) */
@@ -197,6 +198,7 @@
   --shadow-panel: -30px 0 70px -30px rgba(90, 60, 30, 0.35),
     0 18px 50px -18px rgba(90, 60, 30, 0.4);
   --shadow-menu: 0 12px 34px -8px rgba(90, 60, 30, 0.3);
+  --scrim: rgba(90, 70, 50, 0.25);
 
   --sev-info-text: #5e6166;
   --sev-minor-text: #087108;
@@ -530,7 +532,9 @@ a {
 
 .body {
   display: grid;
-  grid-template-columns: minmax(340px, 30%) 1fr;
+  /* capped at 520 px: on a 4K screen 30% was an 1150 px wide feed of
+     one-line rows and a map squeezed for nothing */
+  grid-template-columns: minmax(340px, min(30%, 520px)) 1fr;
   flex: 1;
   min-height: 0;
 }
@@ -1151,29 +1155,35 @@ a {
   color: var(--t1);
 }
 
-/* ---------------------------------------------- collapsed filter bar (phone) */
+/* ------------------------------------------- search + filters, one row */
 
-.filters-toggle,
-.sources-toggle {
-  display: inline-flex;
+.tools-row {
+  /* the popover is anchored to this row, not to the button: the button sits
+     at the row's right end, and a 420 px dialog hung from it started 5 px
+     off the left of a 1440 px screen (tools/responsive.py) */
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: center;
   gap: 8px;
-  min-height: var(--btn-h);
-  padding: 0 16px;
-  border-radius: var(--pill);
-  border: 1px solid var(--edge);
-  background: var(--bg-2);
-  color: var(--t1);
-  font-size: var(--ts-label);
-  font-weight: 500;
 }
 
-.filters-toggle {
-  width: 100%;
+.tools-row .search {
+  /* 150: the search and the Filters button share one row down to a 320 px
+     phone (with 200 they took two) */
+  flex: 1 1 150px;
+  min-width: 0;
 }
 
-.filters-toggle .badge {
+.filter-sheet {
+  flex: 0 0 auto;
+}
+
+.filter-trigger {
+  min-height: var(--field-h);
+}
+
+.filter-trigger .badge {
   min-width: 20px;
   padding: 0 6px;
   border-radius: var(--pill);
@@ -1182,12 +1192,196 @@ a {
   font-family: var(--mono);
   font-size: var(--ts-over);
   font-weight: 600;
+  line-height: 1.6;
 }
 
-.sources-toggle {
-  min-height: var(--target);
+/* What narrows the feed, outside the dialog: small chips that remove
+   themselves. */
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--pill);
+  border: 1px solid var(--edge);
+  background: var(--bg-2);
+  color: var(--t1);
+  font-size: var(--ts-label);
+  overflow-wrap: anywhere;
+}
+
+.filter-chip:hover {
+  background: var(--bg-3);
+}
+
+/* The dialog. A transparent click-catcher on a wide screen (the popover
+   closes when you click beside it), a dimmed scrim under the phone sheet. */
+.filter-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+}
+
+.filter-dialog {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 41;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  width: min(100%, 480px);
+  max-height: min(70vh, 640px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  /* Opaque, so the panel under it does not read through (at .96 the feed
+     showed behind the kinds, measured on the captures), with a backdrop
+     filter: an opaque scroller WITHOUT one over the WebGL map paints a
+     slab of page ground (the event panel's defect, bisected then: a
+     backdrop-filter is one of the two things that keep it clean). */
+  background: var(--surface-panel);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-panel);
+  animation: rise-in var(--d2) var(--ease);
+}
+
+.filter-dialog-head,
+.filter-group-head,
+.filter-dialog-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-dialog-head {
+  justify-content: space-between;
+}
+
+.filter-dialog-foot {
+  justify-content: flex-end;
+  padding-top: 4px;
+  border-top: 1px solid var(--line-soft);
+}
+
+.filter-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.filter-group-head {
+  justify-content: space-between;
+}
+
+.filter-kinds,
+.filter-severity {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ------------------------------------------------- Near me / World bar */
+
+.scope-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.scope-switch {
+  flex: 0 1 auto;
+}
+
+.scope-switch button {
+  /* shrinks and wraps its word at 200 % text on a 320 px phone, where two
+     fixed buttons ran 19 px past the bar (tools/responsive.py) */
+  flex: 1 1 auto;
+  min-width: 0;
   padding: 0 12px;
+}
+
+.scope-elsewhere {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  max-width: 100%;
+  padding: 0 12px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line-strong);
+  background: var(--surface-pill);
+  color: var(--t2);
+  font-size: var(--ts-label);
+  overflow-wrap: anywhere;
+}
+
+/* far danger exists: the attention triangle and readable ink */
+.scope-elsewhere.has-severe {
+  color: var(--t1);
+  border-color: var(--edge);
+}
+
+.scope-elsewhere.has-severe .state-glyph {
+  color: var(--amber);
+}
+
+.scope-reason {
+  /* beside the switch when it fits, under it when it does not */
+  flex: 1 1 14ch;
+  min-width: 0;
+  margin: 0;
   font-size: var(--ts-meta);
+  color: var(--t3);
+  overflow-wrap: anywhere;
+}
+
+/* ------------------------------------------------ the app entry (Android) */
+
+.get-app-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 16px;
+  background: var(--surface-mini);
+  border-bottom: 1px solid var(--line);
+}
+
+.get-app-banner p {
+  flex: 1 1 16ch;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--ts-sub);
+  color: var(--t1);
+  overflow-wrap: anywhere;
+}
+
+.get-app-glyph {
+  font-size: 1.1rem;
+  color: var(--mint);
+}
+
+.get-app-link {
+  color: var(--t2);
 }
 
 /* ---------------------------------------------------------- location watch */
@@ -1289,6 +1483,59 @@ a {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 6px;
+}
+
+/* The watch on a phone: one line, opening the card. */
+.watch-compact {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.watch-compact-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-mini);
+  text-align: left;
+  color: var(--t2);
+  font-size: var(--ts-sub);
+}
+
+.watch-compact-toggle .state-glyph {
+  flex: 0 0 1.1em;
+}
+
+.watch-compact-toggle.state-ok .state-glyph {
+  color: var(--mint);
+}
+
+.watch-compact-toggle.state-alert .state-glyph {
+  color: var(--red);
+}
+
+.watch-compact-text {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.watch-compact-text strong {
+  color: var(--t1);
+  font-weight: 600;
+}
+
+.watch-compact-chevron {
+  flex: 0 0 auto;
+  color: var(--t3);
 }
 
 /* --------------------------------------------------------------------- feed */
@@ -1940,10 +2187,9 @@ a {
 /* ------------------------------------------------------------------- footer */
 
 .footer {
-  display: flex;
-  align-items: center;
-  gap: 6px 14px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 6px;
   padding: 8px 16px;
   background: var(--ground);
   border-top: 1px solid var(--line);
@@ -1951,38 +2197,123 @@ a {
   color: var(--t3);
 }
 
-.source {
-  display: inline-flex;
-  align-items: center;
+.sources-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
   min-width: 0;
 }
 
-/* Each state has its own SHAPE: a dot online, a triangle degraded, a cross
-   offline. A green dot and a red dot measure 1.43:1 against each other: for a
-   deuteranopic reader the source list said nothing at all. */
-.source .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+/* One row: the summary, the sources with a problem (pinned, never in the
+   scroll), then the slider of the healthy ones. Wraps on a narrow screen. */
+.sources-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  min-width: 0;
 }
 
-.source .dot.up {
-  background: var(--mint);
+.sources-summary {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+  color: var(--t2);
+  font-family: var(--mono);
 }
 
-.source .dot.degraded,
-.source .dot.down {
+.sources-pinned {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.sources-slider {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.sources-strip {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  /* room for the focus ring inside the scroller, which would cut it off */
+  padding: calc(var(--ring-w) + var(--ring-gap));
+  margin: calc(-1 * (var(--ring-w) + var(--ring-gap))) 0;
+  cursor: grab;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+
+.sources-strip::-webkit-scrollbar {
   display: none;
 }
 
+.sources-strip:focus-visible {
+  box-shadow: var(--ring-inset);
+}
+
+.sources-step:disabled {
+  opacity: 0.35;
+}
+
+.source {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border-radius: var(--pill);
+  border: 1px solid var(--line);
+  color: var(--t2);
+  font-size: var(--ts-meta);
+  white-space: nowrap;
+  scroll-snap-align: start;
+}
+
+.source:hover {
+  background: var(--bg-2);
+}
+
+.source[aria-pressed="true"] {
+  border-color: var(--t1);
+  background: var(--bg-3);
+  color: var(--t1);
+}
+
+/* Each state has its own SHAPE (dot, triangle, cross) and its own colour;
+   the colour only reinforces it. */
 .source-mark {
   font-weight: 700;
   line-height: 1;
 }
 
+.source-up .source-mark,
+.source-mark.all-up {
+  color: var(--mint);
+  font-size: 0.7em;
+}
+
 .source-degraded,
-.source-degraded .source-mark {
+.source-degraded .source-mark,
+.source-mark.some-down {
   color: var(--amber);
 }
 
@@ -1991,79 +2322,68 @@ a {
   color: var(--red);
 }
 
-.footer-compact .dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+.sources-pinned .source {
+  border-color: currentColor;
 }
 
-.footer-compact .dot.up {
-  background: var(--mint);
-}
-
-.footer-compact .dot.down {
-  width: 9px;
-  height: 8px;
-  border-radius: 0;
-  background: var(--amber);
-  clip-path: polygon(50% 0, 100% 100%, 0 100%);
-}
-
-/* Long detail, behind "Show more": the full line, wrapped, never clipped. */
-.source-errors {
-  flex-basis: 100%;
+/* One source in full, behind a tap ("Show more" rule). */
+.source-detail {
   min-width: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-mini);
+  border: 1px solid var(--line);
+  color: var(--t2);
 }
 
-.source-errors ul {
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 6px;
-}
-
-.source-errors li {
+.source-detail-head {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px 8px;
-  color: var(--t2);
-  overflow-wrap: anywhere;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0 0 6px;
 }
 
-.source-errors li > * {
-  min-width: 0;
-}
-
-.source-errors strong {
+.source-detail-head strong {
   color: var(--t1);
-  font-weight: 600;
 }
 
-.source-errors code {
-  font-family: var(--mono);
+.source-detail dl {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 2px 12px;
+  margin: 0;
+}
+
+.source-detail dt {
   color: var(--t3);
+}
+
+.source-detail dd {
+  margin: 0;
+  font-family: var(--mono);
   overflow-wrap: anywhere;
 }
 
-/* Agency credit: one discreet line on its own row at the very bottom of the
-   footer, in every language (it is not translated on purpose). A plain link
-   loads nothing, so the CSP (default-src 'self') is untouched. */
-.footer .credit {
-  flex-basis: 100%;
+/* The credits, one quiet line. The agency credit is not translated on
+   purpose. A plain link loads nothing, so the CSP is untouched. */
+.footer-credit {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px 14px;
+  margin: 0;
   color: var(--t3);
-  text-align: right;
 }
 
-.footer .credit a {
+.footer-credit a {
   color: inherit;
   text-decoration: underline;
   text-underline-offset: 2px;
   text-decoration-color: var(--line-strong);
 }
 
-.footer .credit a:hover {
+.footer-credit a:hover {
   color: var(--t2);
 }
 
@@ -2222,6 +2542,12 @@ a {
     font-size: var(--ts-row);
   }
 
+  /* the footnotes ("worldwide", "active bulletins") cost a phone 17 px of
+     its first screen; the number and its label stay */
+  .kpi .sub {
+    display: none;
+  }
+
   .body {
     display: flex;
     flex-direction: column;
@@ -2247,7 +2573,9 @@ a {
      the fold on its own. */
   .map-column {
     order: 1;
-    height: 36dvh;
+    /* a third of the screen, but never so much that the feed starts below
+       the fold: on a 568 px tall phone the map yields 56 px to it */
+    height: max(140px, min(36dvh, calc(100dvh - 420px)));
     min-height: 140px;
     border-bottom: 1px solid var(--line);
   }
@@ -2279,21 +2607,35 @@ a {
     opacity: 0;
   }
 
-  /* Filters collapse behind one line. Open, they are a sheet over the feed
-     rather than 266 px pushing it off screen. */
-  .filters-collapsed {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--line);
-  }
-
+  /* The panel tools fit in one row and a line: search and the Filters
+     button, the active chips, the watch line. The kinds live in the sheet
+     below: 266 px of filters once pushed the feed off a phone screen. */
   .filters {
     padding: 10px 12px;
-    gap: 10px;
+    gap: 8px;
   }
 
-  .chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
+  .scope-bar {
+    padding: 8px 12px;
+  }
+
+  /* The filter dialog becomes a bottom sheet, thumb-reachable, over a dim
+     scrim. */
+  .filter-scrim {
+    background: var(--scrim);
+  }
+
+  .filter-dialog.filter-dialog-sheet {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    width: 100%;
+    max-height: 85dvh;
+    border-radius: var(--radius) var(--radius) 0 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    padding: 16px 16px max(16px, env(safe-area-inset-bottom));
   }
 
   /* it was eating a third of an already tiny map */
@@ -2317,17 +2659,17 @@ a {
   }
 
   .footer {
-    gap: 6px 10px;
     padding: 8px 12px;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 
-  .footer .spacer {
-    display: none;
+  .footer-credit {
+    justify-content: flex-start;
   }
 
-  .footer-compact .spacer {
-    display: block;
+  .banner {
+    font-size: var(--ts-sub);
+    padding: 8px 12px;
   }
 }
 
@@ -2335,7 +2677,10 @@ a {
    number and lose their footnote, and the vital banner tightens: the first
    event has to make it above the fold (it did not, measured at 844x390). */
 @media (max-height: 560px) {
-  .kpi .sub {
+  /* The counters go: 52 px of a 390 px screen, and every one of them is a
+     server statistic the feed and the footer already carry. The feed is the
+     product: in landscape not one event made it above the fold. */
+  .kpis {
     display: none;
   }
 
@@ -2343,6 +2688,64 @@ a {
   .arrival {
     padding-top: 6px;
     padding-bottom: 6px;
+  }
+
+  .header {
+    padding-top: 4px;
+    padding-bottom: 4px;
+  }
+
+  .map-column {
+    height: max(100px, min(30dvh, calc(100dvh - 300px)));
+    min-height: 100px;
+  }
+
+  /* the vital banner in one line: its age follows the place instead of
+     sitting under it */
+  .banner br {
+    display: none;
+  }
+
+  .banner small::before {
+    content: " · ";
+  }
+
+  /* "2 other alerts ongoing" waits for a taller screen; the age stays */
+  .banner-others {
+    display: none;
+  }
+
+  /* the tools and the Near me / World bar side by side: landscape has the
+     width a portrait phone lacks */
+  .panel {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+
+  .panel > .get-app-banner,
+  .panel > .feed,
+  .panel > .feed-empty,
+  .panel > .feed-loading,
+  .panel > .sr-only {
+    grid-column: 1 / -1;
+  }
+
+  .panel > .scope-bar {
+    grid-column: 2;
+    grid-row: 1;
+    border-bottom: 1px solid var(--line);
+    align-self: stretch;
+  }
+
+  .panel > .filters {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .panel > .get-app-banner ~ .filters,
+  .panel > .get-app-banner ~ .scope-bar {
+    grid-row: 2;
   }
 }
 
@@ -2357,6 +2760,34 @@ a {
   .header-tools .btn-compact {
     padding: 0;
     width: 44px;
+  }
+
+  /* One row down to 360 px, measured: brand 75 + pill 100 + three 44 px
+     buttons + gaps. In French the pill ("EN DIRECT") pushed it to two rows,
+     95 px of a phone's first screen for a header. */
+  .header {
+    gap: 4px;
+  }
+
+  .header-tools {
+    gap: 4px;
+  }
+
+  .live {
+    padding: 0 4px;
+    gap: 6px;
+    letter-spacing: 0.06em;
+  }
+
+  /* a smaller name and gutter keep one row down to 360 px (a folded Fold
+     is 344: two rows there, the only phone where it happens) */
+  .header {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .brand h1 {
+    font-size: var(--ts-body);
   }
 }
 
@@ -2384,10 +2815,23 @@ a {
     padding: 12px 0;
   }
 
-  .footer .credit a {
+  .footer-credit a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
+  }
+
+  .source,
+  .filter-chip,
+  .scope-elsewhere {
+    min-height: 44px;
+  }
+
+  /* MapLibre's zoom buttons are 29 px: a thumb misses them. Scoped under
+     .map, like every .maplibregl-* override (its sheet lands after ours). */
+  .map .maplibregl-ctrl-group button {
+    width: 44px;
+    height: 44px;
   }
 }
 

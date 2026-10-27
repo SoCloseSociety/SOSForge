@@ -19,8 +19,13 @@ export function emptyReason(state: {
   filters: Pick<Filters, 'query' | 'kinds' | 'minMagnitude' | 'windowMinutes'>
   /** snapshot events still on their way (chunked snapshot) */
   remaining?: number
+  /** has the first snapshot arrived? Absent = yes (older callers) */
+  received?: boolean
 }): string {
   const { events, filters } = state
+  // Before the feed has spoken at all, there is no "no event": only "not
+  // connected yet".
+  if (state.received === false) return 'feed.waiting'
   // First, before any blame: while the snapshot is still arriving, "no
   // event" would be a statement about events we have not received yet.
   if ((state.remaining ?? 0) > 0) return 'feed.loading'

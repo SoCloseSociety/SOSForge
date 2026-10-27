@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useStore } from '../store'
+import { coarse, useStore } from '../store'
 import { ALARM_RULES, alarmText, type Alarm } from '../alarm'
 import { KIND_GLYPH, SEVERITY_META, kindLabel, severityLabel, type T } from '../format'
 import { showNotification } from '../notify'
+import { useAppPublished } from './GetApp'
 import type { Kind } from '../types'
+
+/** How long "Use my location" waits, prompt included, before saying so. */
+const WATCH_LOCATE_TIMEOUT_MS = 20_000
 
 /** Every kind that can raise a proximity alarm, in the rule table's order. */
 const WATCHABLE: Kind[] = ALARM_RULES.map((rule) => rule.kind)
@@ -64,7 +68,8 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
   const watch = useStore((s) => s.watch)
   const setWatch = useStore((s) => s.setWatch)
   const soundOn = useStore((s) => s.soundOn)
-  const loading = useStore((s) => s.snapshotRemaining > 0)
+  // nothing is checked until the feed has spoken AND the snapshot is whole
+  const loading = useStore((s) => s.snapshotRemaining > 0 || !s.received)
   const select = useStore((s) => s.select)
   const t = useStore((s) => s.t)
 
@@ -80,6 +85,7 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
   const [draft, setDraft] = useState<Set<Kind> | null>(null)
   const [tested, setTested] = useState<'idle' | 'sent' | 'failed'>('idle')
   const [showRules, setShowRules] = useState(false)
+  const appPublished = useAppPublished()
 
   // A permission changed from the site settings must show up here without a
   // reload: re-read it whenever the tab comes back into view.
@@ -89,26 +95,66 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
     return () => document.removeEventListener('visibilitychange', refresh)
   }, [])
 
+  /** "Use my location", checked in a real browser (tools/location_e2e.py):
+   *  - every failure used to say "Location refused", a timeout included;
+   *  - a browser prompt left unanswered left "Locating..." on screen
+   *    forever: the browser's own timeout does not run while it is open;
+   *  - an insecure page was reported as a refusal.
+   * Now each failure says what it is, our own clock ends the wait, a late
+   * answer still counts, and a position Near me already has is reused
+   * instead of asking twice. Stored at two decimals, like Near me. */
   const locate = () => {
+    setError(null)
+    if (!window.isSecureContext) {
+      setError(t('watch.insecure'))
+      return
+    }
     if (!navigator.geolocation) {
       setError(t('watch.unavailable'))
       return
     }
+    const known = useStore.getState().here
+    if (known) {
+      setWatch({ lat: known.lat, lon: known.lon, name: t('watch.here') })
+      return
+    }
     setLocating(true)
-    setError(null)
+    let settled = false
+    const guard = window.setTimeout(() => {
+      if (settled) return
+      settled = true
+      setLocating(false)
+      setError(t('watch.timeout'))
+    }, WATCH_LOCATE_TIMEOUT_MS)
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        // late or not, a position is an answer: take it
+        settled = true
+        window.clearTimeout(guard)
+        setLocating(false)
+        setError(null)
         setWatch({
-          lat: position.coords.latitude,
-          lon: position.coords.longitude,
+          lat: coarse(position.coords.latitude),
+          lon: coarse(position.coords.longitude),
           name: t('watch.here'),
         })
-        setLocating(false)
       },
-      () => {
-        // a refusal is a legitimate answer, not an error to shout about
-        setError(t('watch.denied'))
+      (failure) => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(guard)
         setLocating(false)
+        // a refusal is a legitimate answer, not an error to shout about --
+        // but it must be named for what it is
+        setError(
+          t(
+            failure.code === failure.PERMISSION_DENIED
+              ? 'watch.denied'
+              : failure.code === failure.TIMEOUT
+                ? 'watch.timeout'
+                : 'watch.unavailable',
+          ),
+        )
       },
       { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 },
     )
@@ -403,7 +449,13 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
             ○
           </span>
           <span>
-            {t('watch.closed')} {t('watch.android')}
+            {t('watch.closed')}{' '}
+            {/* the way out, once the app is really published */}
+            {appPublished ? (
+              <a href="/download/">{t('watch.android.get')}</a>
+            ) : (
+              t('watch.android')
+            )}
           </span>
         </li>
       </ul>
@@ -417,5 +469,52 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
       </button>
       {showRules ? <RuleList t={t} kinds={watch.kinds} /> : null}
     </section>
+  )
+}
+
+/** The watch on a phone: one line that says where it stands, opening the
+ * whole card on demand. The full funnel above the feed cost a phone 200 px
+ * of its first screen (lesson 21); the line keeps the state visible -- not
+ * watching, watching and quiet, N alarms, still loading -- in 48. */
+export function WatchCompact({ alarms }: { alarms: Alarm[] }) {
+  const watch = useStore((s) => s.watch)
+  const loading = useStore((s) => s.snapshotRemaining > 0 || !s.received)
+  const t = useStore((s) => s.t)
+  const [open, setOpen] = useState(false)
+
+  const state = !watch
+    ? { glyph: '⌖', text: t('watch.title'), tone: '' }
+    : alarms.length > 0
+      ? { glyph: '●', text: t('watch.compact.alarms', { n: alarms.length }), tone: ' state-alert' }
+      : loading
+        ? { glyph: '○', text: t('watch.compact.checking'), tone: '' }
+        : { glyph: '✓', text: t('watch.compact.quiet'), tone: ' state-ok' }
+
+  return (
+    <div className="watch-compact">
+      <button
+        type="button"
+        className={`watch-compact-toggle${state.tone}`}
+        aria-expanded={open}
+        aria-controls="watch-compact-card"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="state-glyph" aria-hidden="true">
+          {state.glyph}
+        </span>
+        <span className="watch-compact-text">
+          {watch ? <strong>{watch.name}</strong> : null}
+          <span>{state.text}</span>
+        </span>
+        <span className="watch-compact-chevron" aria-hidden="true">
+          {open ? '▴' : '▾'}
+        </span>
+      </button>
+      {open ? (
+        <div id="watch-compact-card">
+          <WatchPanel alarms={alarms} />
+        </div>
+      ) : null}
+    </div>
   )
 }

@@ -7,6 +7,7 @@ import type { SosEvent } from '../types'
 import { isWaveCandidate, waveFronts } from '../waves'
 import { forecastTracks } from '../tracks'
 import { useMediaQuery } from '../useMediaQuery'
+import { WORLD_VIEW, worldZoom } from '../scope'
 
 /** Someone who asked their system for less motion asked the whole product,
  * not just the stylesheet. The map is where the motion actually is: camera
@@ -181,8 +182,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       instance = new maplibregl.Map({
         container: container.current,
         style: BASEMAP_STYLE_URL,
-        center: [10, 20],
-        zoom: 1.4,
+        center: [WORLD_VIEW.lon, WORLD_VIEW.lat],
+        zoom: worldZoom(container.current.clientWidth),
         attributionControl: { compact: true },
       })
     } catch (error) {
@@ -329,6 +330,15 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       })
 
       setReady(true)
+      // MapLibre opens its compact attribution EXPANDED, and on a phone it
+      // covered a third of a 147 px map. Closed to its "i" there; the page
+      // footer carries the same credit permanently ("Basemap OpenStreetMap /
+      // OpenFreeMap"), so nothing is hidden from the reader.
+      if (container.current && container.current.clientWidth < 640) {
+        container.current
+          .querySelector('.maplibregl-ctrl-attrib')
+          ?.classList.remove('maplibregl-compact-show')
+      }
       instance.getSource('events') &&
         (instance.getSource('events') as maplibregl.GeoJSONSource).setData(
           toFeatureCollection(latest.current.events, useStore.getState().fresh),
