@@ -21,7 +21,15 @@ const shapes = decode(table as CountryTable)
 describe('the shared country points', () => {
   it('holds the cases the rule turns on', () => {
     expect(points.map((p) => p.name)).toEqual(
-      expect.arrayContaining(['Ko Tao', 'Maseru', 'Saint-Denis, Reunion', 'mid-Pacific']),
+      expect.arrayContaining([
+        'Ko Tao',
+        'Maseru',
+        'Saint-Denis, Reunion',
+        'mid-Pacific',
+        'Clipperton',
+        'off Clipperton',
+        'Bouvet',
+      ]),
     )
   })
 

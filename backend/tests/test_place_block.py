@@ -78,7 +78,7 @@ def _manifests() -> list[Path]:
 
 def test_every_family_has_a_manifest() -> None:
     families = {p.parent.name for p in _manifests()}
-    assert families == {"air", "history", "risk", "sea", "weather"}
+    assert families == {"air", "alerts", "history", "risk", "sea", "weather"}
 
 
 @pytest.mark.parametrize("manifest", _manifests(), ids=lambda p: p.parent.name)
@@ -139,6 +139,42 @@ def test_alerts_as_of_is_the_newest_source_poll_not_the_server_clock() -> None:
     live = [_health("usgs", 4.0), _health("emsc", 7300.0)]
     fresh = compose.body(ctx, {"alerts_now": alerts.build(ctx, lambda: ([], live))}, True)
     assert fresh["blocks"]["alerts_now"]["stale"] is False
+
+
+def test_a_france_wide_warning_is_not_counted_at_clipperton() -> None:
+    """Meteoalarm France covers the metropolitan departments. Clipperton is
+    filed under FR by Natural Earth: before its own code, the place report
+    said "{n} alerts for France carry no position: they may cover this
+    place", 10,700 km away. The warning is a real one, read by the real
+    normalizer from the verbatim feed, and placed as the pipeline places it."""
+    from app.countries import resolve
+    from app.place import alerts
+    from app.sources.alerts_world import parse_meteoalarm
+    from tests.place_helpers import at, ctx_for, read_json
+
+    feed = read_json("alerts", "meteoalarm_feeds-france_2026-10-27.json")
+    (warning,) = [
+        w
+        for w in feed["warnings"]
+        if w["alert"]["identifier"] == "2.49.0.0.250.0.FR.20261022160032.170031"
+    ]
+    event = parse_meteoalarm(warning, "france")
+    assert event is not None and event.place == "Côtes d'Armor, Finistère, Morbihan"
+    assert event.severity.value == "moderate" and event.lat is None and event.bbox is None
+    event.country_code = resolve(event.country, event.place)
+    assert event.country_code == "FR"
+    now = at("2026-10-22T18:00:00Z")  # orange from 14:00 to 22:00 UTC that day
+    health = [_health("meteoalarm", 60.0)]
+
+    def unplaced(lat: float, lon: float) -> int:
+        block = alerts.build(ctx_for(lat, lon, now), lambda: ([event], health))
+        assert block.status == "ok" and block.data is not None
+        return int(block.data["unplaced_in_country"])
+
+    assert unplaced(48.86, 2.35) == 1  # Paris: France, the warning may concern it
+    assert unplaced(10.29, -109.22) == 0  # Clipperton (CP)
+    assert unplaced(10.29, -108.50) == 0  # open sea 77 km from it, nearest country CP
+    assert unplaced(-20.88, 55.45) == 0  # Reunion (RE), as before
 
 
 def test_alerts_warming_before_any_source_cycle() -> None:

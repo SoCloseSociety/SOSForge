@@ -447,6 +447,27 @@ def test_latest_global_group_comes_from_the_listing() -> None:
     )
 
 
+async def test_clipperton_has_no_alpha_3_and_is_not_scored_as_france() -> None:
+    install()  # no route: a request to INFORM would answer 599
+    block = await risk.build_country(ctx_for(10.29, -109.22, NOW))
+    assert block.status == "unavailable" and block.error is not None
+    assert block.error.code == "no_coverage"
+    assert block.error.reason == "no ISO alpha-3 code for CP"
+
+
+async def test_bouvet_is_bvt_which_inform_does_not_score_not_norway() -> None:
+    router = install()
+    for name in ("inform_workflow_groups.json", "inform_workflow_2026mid.json"):
+        router.add(meta_of("risk", name)["url"], read_bytes("risk", name))
+    capture = "inform_mid2026_bvt_empty.json"
+    router.add(meta_of("risk", capture)["url"], read_bytes("risk", capture))
+    block = await risk.build_country(ctx_for(-54.42, 3.36, NOW))
+    assert [r.url.params.get("Iso3") for r in router.seen if "Scores" in r.url.path] == ["BVT"]
+    assert block.status == "unavailable" and block.error is not None
+    assert block.error.code == "no_coverage"
+    assert block.error.reason == "INFORM has no score for BVT"
+
+
 async def test_no_country_at_sea() -> None:
     install()
     # open sea: (0, -160) is 41 km from Jarvis Island (UM) at 1:10m

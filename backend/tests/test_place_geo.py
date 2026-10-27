@@ -57,14 +57,31 @@ def test_mid_pacific_is_41_km_from_jarvis_island() -> None:
 def test_overseas_departments_have_their_own_alpha_3() -> None:
     # Natural Earth files them under FRA: INFORM would score Reunion as France
     assert geo.countries(-20.88, 55.45)[1] == "RE"
-    assert [geo.iso3(c) for c in ("RE", "GP", "MQ", "GF", "YT", "BQ")] == [
+    assert [geo.iso3(c) for c in ("RE", "GP", "MQ", "GF", "YT", "BQ", "BV")] == [
         "REU",
         "GLP",
         "MTQ",
         "GUF",
         "MYT",
         "BES",
+        "BVT",
     ]
+
+
+def test_clipperton_and_bouvet_are_not_france_and_norway() -> None:
+    # new in the 1:10m table, filed by Natural Earth under FR and NO: a
+    # country-wide Meteoalarm France warning was counted 10,700 km away
+    assert geo.countries(10.29, -109.22) == (["CP"], "CP", "nearest_within_25km")
+    assert geo.countries(10.29, -108.50) == (["CP"], "CP", "nearest_within_100km")
+    assert geo.countries(-54.42, 3.42) == (["BV"], "BV", "containing")
+    # CP is reserved in ISO 3166-1 with no alpha-3: no INFORM key at all
+    assert geo.iso3("CP") is None
+    # neither island is left under its state as well
+    for code, (lat, lon) in (("FR", (10.30, -109.23)), ("NO", (-54.42, 3.41))):
+        assert not any(
+            s.code == code and s.south <= lat <= s.north and s.west <= lon <= s.east
+            for s in geo.shapes()
+        )
 
 
 # measured at the ROUNDED point on the full-precision Natural Earth 1:10m
@@ -146,7 +163,7 @@ ISLANDS = {
     "Pitcairn": (-25.07, -130.10, "PN"),
     "Wake": (19.29, 166.62, "UM"),
     "Aldabra": (-9.42, 46.35, "SC"),
-    "Clipperton": (10.29, -109.22, "FR"),
+    "Clipperton": (10.29, -109.22, "CP"),
     "Tristan da Cunha": (-37.07, -12.31, "SH"),
     "20 km east of Jarvis": (-0.37, -159.84, "UM"),
 }

@@ -6,8 +6,9 @@
   the one nearest country within OFFSHORE_KM (basis
   `nearest_within_100km`). The table is Natural Earth 1:10m simplified at
   0.02 deg (stored in hundredths), with the overseas departments under their
-  own codes (Reunion is RE). `app/data/countries.json` is a byte copy of the
-  frontend table.
+  own codes (Reunion is RE), Clipperton CP and Bouvet BV (Natural Earth
+  files them under FR and NO). `app/data/countries.json` is a byte copy of
+  the frontend table.
 - `at_sea` is "no country within 25 km", whatever OFFSHORE_KM found. Known
   limit, measured: an island the table omits reads as at sea (Ko Tao, 37 km
   from mapped land) -- with TH as its country, as the feed's Near me says.
@@ -307,8 +308,9 @@ def coast_km(lat: float, lon: float) -> float | None:
 
 
 def preload() -> None:
-    """Read the country, ISO and coastline tables now (about 150 ms, 33 MB
-    of RSS, 20 of them the 1:10m coastline)."""
+    """Read the country, ISO and coastline tables now (about 150 ms). The
+    1:10m coastline keeps 12.3 MB (1.9 at 1:50m) and peaks at 20.6 MB while
+    it loads (tracemalloc; macOS RSS grows about 24 MB)."""
     shapes()
     iso3_table()
     _segments()

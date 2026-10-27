@@ -23,17 +23,24 @@ Natural Earth files the French overseas departments under FR and the
 Caribbean Netherlands under NL. Meteoalarm's "France" is the metropolitan
 departments only, so an orange storm in Brittany read as "France" for a
 reader in Reunion, 9,000 km away. Those polygons get their own ISO codes
-(GF, GP, MQ, RE, YT, BQ).
+(GF, GP, MQ, RE, YT, BQ). So do the two islands 1:10m draws and 1:50m did
+not, filed the same way: Clipperton under FR (CP, the code ISO 3166-1
+reserves for it), 10,700 km from the departments Meteoalarm France covers,
+and Bouvet under NO (BV), in the South Atlantic.
 
 Holes are KEPT: without them South Africa's ring covered all of Lesotho.
 
 Output: {"src": ..., "c": {"FR": [polygon, ...]}}, a polygon a list of
 rings (the exterior first, then its holes), a ring a flat list of integers:
 lon and lat in hundredths of a degree (about 1 km), the first pair absolute
-and every following pair a delta from the previous one. Simplified at 0.01
-degrees.
+and every following pair a delta from the previous one. Simplified at
+TOLERANCE (0.02 degrees).
 
 Usage: python3 frontend/src/data/build_countries.py ne_10m_admin_0_countries.geojson
+
+Reproducible, checked byte for byte (2026-10-27): natural-earth-vector
+ca96624 (master since 2022-06-02; the geojson's git blob is 5ebc66e) with
+shapely 2.1.2 / GEOS 3.13.1 rebuilds the committed table exactly.
 """
 
 from __future__ import annotations
@@ -56,6 +63,8 @@ OVERSEAS = [
     ("FR", "RE", 55.1, -21.5, 55.9, -20.8),
     ("FR", "YT", 44.9, -13.1, 45.4, -12.5),
     ("NL", "BQ", -68.5, 11.9, -62.9, 17.7),
+    ("FR", "CP", -109.5, 10.0, -109.0, 10.6),
+    ("NO", "BV", 3.0, -54.7, 3.7, -54.2),
 ]
 
 

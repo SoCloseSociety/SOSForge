@@ -6,8 +6,9 @@ domain), next to the country table the page already ships:
   `frontend/src/data/countries.json` is built from. The INFORM index is
   keyed by alpha-3, every SOSForge source by alpha-2. The only hand-written
   rows are OVERSEAS_A3: the territories `build_countries.py` splits out of
-  FR and NL, which Natural Earth files under FRA and NLD. Without them
-  Reunion would be scored as mainland France.
+  FR, NL and NO, which Natural Earth files under FRA, NLD and NOR. Without
+  them Reunion would be scored as mainland France. Clipperton (CP) has no
+  alpha-3 at all: it gets none, and INFORM says it has no score for it.
 - `backend/app/data/coastline_10m.json`: the 1:10m OCEAN coastline, for the
   sea gate ("is this place on a coast"). The SAME scale as the country table:
   with the 1:50m coastline beside the 1:10m countries, every island 1:50m
@@ -35,8 +36,17 @@ from pathlib import Path
 
 DATA = Path(__file__).resolve().parent.parent / "backend" / "app" / "data"
 # ISO 3166-1 alpha-3 of the codes `frontend/src/data/build_countries.py`
-# (OVERSEAS) gives the overseas territories it splits out of FR and NL
-OVERSEAS_A3 = {"BQ": "BES", "GF": "GUF", "GP": "GLP", "MQ": "MTQ", "RE": "REU", "YT": "MYT"}
+# (OVERSEAS) gives the overseas territories it splits out of FR, NL and NO.
+# CP (Clipperton) is a reserved alpha-2 with no alpha-3: deliberately absent.
+OVERSEAS_A3 = {
+    "BQ": "BES",
+    "BV": "BVT",
+    "GF": "GUF",
+    "GP": "GLP",
+    "MQ": "MTQ",
+    "RE": "REU",
+    "YT": "MYT",
+}
 
 
 def encode(line: list[list[float]]) -> list[int]:
