@@ -1299,21 +1299,21 @@ clicked point (never the device position: "your location never leaves your
 device" stays true). Contract v1 (corrected) is the spec; this is the order
 of work and what each critical file gets.
 
-- [ ] Base: this lane starts from `feat/sosforge-round2-2026-10` (privacy.py,
+- [x] Base: this lane starts from `feat/sosforge-round2-2026-10` (privacy.py,
       climate.py, `geocode.AddressBudget` and lesson 30 live there, not on main).
-- [ ] `pyproject.toml`: `numpy==2.5.4`, `omfiles==1.2.0` (exact pins). Gate
+- [x] `pyproject.toml`: `numpy==2.5.4`, `omfiles==1.2.0` (exact pins). Gate
       before the first commit: `pip install .` in `python:3.12-slim`
       linux/amd64, `app/data/*.json` present in the installed package, one
       real `.om` read from the Open-Meteo bucket. Fails -> `air`, `pollen`,
       `sea.waves`, `sea.level` are removed from this work, never placeholders.
-- [ ] `core/config.py`: `enable_place`, `place_budget_seconds` (8),
+- [x] `core/config.py`: `enable_place`, `place_budget_seconds` (8),
       `place_max_upstream` (16), `place_rate_burst` (4), `place_rate_per_second`
       (0.0667), `place_cache_entries` (4096), `place_history_cache_mb` (64).
-- [ ] `core/privacy.py`: an httpx filter that rewrites every URL argument
+- [x] `core/privacy.py`: an httpx filter that rewrites every URL argument
       (`str` or `httpx.URL`) for a `place.fetch.HOSTS` host to `scheme://host`
       (NWS carries the point in the PATH: `/points/61.2180,-149.9000`).
       `lat`, `lon`, `radius_km` stay outside `SAFE`, so access logs blank them.
-- [ ] `main.py`: one route `GET /api/place` (strict query read from
+- [x] `main.py`: one route `GET /api/place` (strict query read from
       `request.query_params`: 400 `bad_point` / `bad_radius` / `bad_lang` /
       `unknown_param`, duplicates refused, -0.00 normalised; 404
       `place_disabled`; 429 `rate_limited` + Retry-After from its own
@@ -1322,14 +1322,120 @@ of work and what each critical file gets.
       `fetched_at`, 304 on If-None-Match, `Cache-Control: no-cache`), and
       `"place"` in FEATURES when enabled. The alerts block reads the store
       through a provider main.py passes in; the package never imports main.
-- [ ] `backend/app/place/`: block envelope + messages (5 languages), fetch
+- [x] `backend/app/place/`: block envelope + messages (5 languages), fetch
       layer (UA, HOSTS, global 16 / per-host caps, token buckets, queue bound
       -> `busy`, timeouts, retry-once, single flight, LRU + byte-bounded caches,
       60 s failure memory, URL-free reasons, a 4-thread executor), geo
       (country rule of `countries.ts` ported, NEAR_BORDER_KM 25, coast distance
       with a bbox prefilter, sea gate), `.om` range adapter (thread -> loop,
       If-Match, meta re-check), PNG decoder, METAR parser, and the 22 blocks.
-- [ ] Tests offline only, on verbatim fixtures copied with a MANIFEST per family.
-- [ ] Live: API on :8338 (PID recorded, stopped by PID), the 8 places, each
+- [x] Tests offline only, on verbatim fixtures copied with a MANIFEST per family.
+- [x] Live: API on :8338 (PID recorded, stopped by PID), the 8 places, each
       block's status and as_of recorded below; no coordinate or place-host URL
       path in any log line (grep recorded).
+
+### Place report -- review (2026-10-27)
+
+**The `.om` gate.** `pip install .` in `python:3.12-slim` linux/amd64 passed,
+the installed package holds `app/data/{countries,iso3,coastline_50m,guidance}.json`,
+and a real read from the bucket succeeded (cams_global pm2_5 at the Ko Samui
+cell: 7.3 ug/m3, run 2026-10-27 00Z) -- under Rosetta (a throwaway colima VM,
+deleted after). Under colima's default QEMU emulation the same read died with
+**SIGILL**: the omfiles 1.2.0 linux wheel uses AVX2 (5905 ymm instructions,
+no AVX-512, scanned with objdump), and an illegal instruction kills the whole
+process, not the block (lesson 3). So `om.decoder_ready()` reads
+`/proc/cpuinfo` first: without `avx2` the four `.om` blocks are
+`unavailable` with that reason and the decoder never runs. To check on the
+production VPS before deploying: `grep -c avx2 /proc/cpuinfo`.
+
+**Captures recorded live for this work** (verbatim, sidecar + MANIFEST): MET
+Oslo (Nordic gusts and precipitation probability), the EPA AQS breakpoint CSV,
+the EEA EAQI page (2024 bands), the INFORM workflow group listing, every
+Aqueduct `(cat, label)` pair (25), the GWIS world probe for today, today+7 and
+an unrendered date (2026-11-20: a real 82-byte answer with no colour), the
+IBTrACS v04 column documentation (wind averaging per agency), and the NCEI
+OpenAPI description (from the research lane's raw capture, URL not recorded).
+
+**Still out of `data` until their captures exist** (contract rule): MFWAM
+period / direction / partitions; SMOC currents; cams_global CO, AOD and
+clear-sky UV (the US AQI says "CO not included"); cams_europe alder, mugwort,
+olive; CoastWatch `analysis_error` / `sea_ice_fraction`; NDBC owner names
+(`owner` stays null). Not tested for lack of a real two-chunk cassette: the
+2294/2295 chunk straddle; the meta run-change branch (the re-read after a cold
+read and its absence after a warm one are tested).
+
+**Measured and changed on the way:**
+- a cold cams_global cell (7 variables x 5 ranges) read one variable at a time
+  missed the 8 s budget at all 8 places; all variables in parallel -> it fits
+  on most first views (Lima, Kathmandu, mid-Pacific complete on the first view);
+- two warm reports 2 s apart had different ETags: the live block's `as_of` is
+  `server_time`, and an event's `last_seen` moves on every poll. The ETag now
+  drops a live block's `as_of` and hashes alerts as id|revision|updated_at
+  (the `/api/events` doctrine); measured after: same ETag, 304;
+- GDO at the mid-Pacific CELL CENTRE answers dates with null soil values where
+  the exact point answered an empty series: both now read as "no soil series";
+- MET Norway: TLS setup is 1.3 to 2 s from this machine; under the startup
+  load some first reads hit the 5 s connect timeout. The reason now says
+  "no connection to api.met.no within 5 s"; the next report (failure memory
+  60 s) succeeded everywhere;
+- GWIS publishes no FWI pixel at Ko Samui (the island is outside ECMWF's land
+  mask: the tile is transparent there) nor at the Paris pixel: `masked`.
+
+**Live smoke, :8338, real sources, `SOS_DATA_DIR` in the scratchpad.** Cold =
+first report after a restart (IBTrACS index read from disk), warm = the same
+places a few minutes later. `U` unavailable, `NA` not applicable, else the
+block's own `as_of` (UTC, MM-DD HH:MM). Warm run:
+
+| block | Ko Samui | Tokyo | Paris | Lima | Reykjavik | Anchorage | Kathmandu | mid-Pacific |
+|---|---|---|---|---|---|---|---|---|
+| `weather_now` | 10-27 14:00 | 10-27 14:30 | 10-27 14:30 | 10-27 14:00 | 10-27 14:00 | 10-27 14:38 | 10-27 14:30 | U no_station |
+| `forecast_hourly` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 |
+| `forecast_daily` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 |
+| `wind` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 12:17 (NWS) | 10-27 13:17 | 10-27 13:17 |
+| `sea.waves` | 10-27 00:00 | 10-27 00:00 | NA inland 150 km | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA inland 648 km | 10-27 00:00 |
+| `sea.level` | 10-27 00:00 | 10-27 00:00 | NA inland | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA inland | 10-27 00:00 |
+| `sea.temperature` | 10-25 12:00 | 10-25 12:00 | NA inland | 10-25 12:00 | 10-25 12:00 | 10-25 12:00 | NA inland | 10-25 12:00 |
+| `sea.buoy` | U no_station | U no_station | NA inland | U no_station | U no_station | 10-27 14:22 (APMA2) | NA inland | U no_station |
+| `air` | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 |
+| `pollen` | U no_coverage | U no_coverage | 10-27 00:00 | U no_coverage | 10-27 00:00 | U no_coverage | U no_coverage | U no_coverage |
+| `drought` | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | NA at_sea |
+| `fire.hotspots` | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 |
+| `fire.danger` | U masked | 10-27 00:00 | U masked | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA at_sea |
+| `risk.water` | 08-10 14:44 (2023) | 2023 | 2023 | 2023 | U masked | 2023 | 2023 | NA at_sea |
+| `risk.country` | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | NA no_country |
+| `history.earthquakes` | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 |
+| `history.significant_earthquakes` | 10-22 14:33 | same | same | same | same | same | same | same |
+| `history.tsunamis` | 10-09 17:56 | same | same | same | same | same | same | same |
+| `history.eruptions` | 05-07 00:00 | same | same | same | same | same | same | same |
+| `history.volcanoes` | 03-31 00:00 | same | same | same | same | same | same | same |
+| `history.cyclones` | 10-25 00:00 | same | same | same | same | same | same | same |
+| `alerts_now` | live | live | live | live | live | live | live | live |
+| complete | true | true | true | true | true | true | true | true |
+| ok / unavailable / n.a. | 19/3/0 | 20/2/0 | 17/1/4 | 20/2/0 | 20/2/0 | 21/1/0 | 17/1/4 | 15/3/4 |
+
+Cold run (first view): complete at Lima, Kathmandu, mid-Pacific; elsewhere
+3 to 10 blocks `budget` (NCEI tsunamis on its one slot every time, as the
+contract expected), Ko Samui `fire.hotspots` `warming` (5.4 MB FIRMS files on
+the first read). Every `unavailable` and `not_applicable` above is a measured
+state of the upstream, not ours: no METAR within 50 km of the mid-Pacific
+point, no NDBC station within 100 km reporting in 3 h, CAMS Europe ends at
+30.05 N, the GWIS land mask, no Aqueduct sub-basin polygon at the Reykjavik
+point (1:50m coast), no country at sea.
+
+`place` objects (live): Reykjavik IS / IS / at_sea false / coast 0.0 km;
+Stockholm SE / 0.7 km; NYC US / 2.5 km; Lisbon PT / 2.1 km; Ko Tao null / []
+/ at_sea **true** / 36.7 km (the 1:50m limit, owner decision).
+
+Live HTTP: `/api/version` lists `place`; a warm Ko Samui report answered 200
+with `Cache-Control: no-cache` and an ETag, then 304 on If-None-Match, and a
+second 200 two seconds later carried a new `server_time` with the same ETag;
+five new places in a row from one address: the fifth got 429
+`rate_limited`, Retry-After 7.
+
+Log audit (4490 lines over the four runs): 59 `/api/place` access lines, all
+`lat=-&lon=-`; 2999 httpx lines to place hosts, all `scheme://host` only (this
+also shortens the live USGS feed's own httpx lines to the host: same host);
+no coordinate of a queried place, no "Task exception was never retrieved", no
+traceback. Gates: ruff check + format on app and tests, mypy app, pytest
+1135 passed (935 before). Server PIDs 54855, 76573, 84083, 92937 started and
+stopped by PID, each checked to be the :8338 listener with this worktree's cwd.
