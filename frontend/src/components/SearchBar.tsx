@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useStore } from "../store";
+import { NEAR_ZOOM } from "../scope";
 
 interface Place {
   name: string;
@@ -27,6 +28,7 @@ export function SearchBar() {
   const setQuery = useStore((s) => s.setQuery);
   const setFocus = useStore((s) => s.setFocus);
   const setWatch = useStore((s) => s.setWatch);
+  const setPlace = useStore((s) => s.setPlace);
   const t = useStore((s) => s.t);
 
   const [places, setPlaces] = useState<Place[] | null>(null);
@@ -73,14 +75,24 @@ export function SearchBar() {
       const span = Math.max(Math.abs(north - south), Math.abs(east - west));
       zoom = span > 20 ? 3 : span > 5 ? 5 : span > 1 ? 7 : 10;
     }
-    setFocus({ lat: place.lat, lon: place.lon, zoom, name: place.name });
-    // Going to a place is also the clearest way to say "this is the place I
-    // care about": arming the arrival countdown here costs the user nothing.
-    setWatch({
-      lat: place.lat,
-      lon: place.lon,
-      name: place.name.split(",")[0],
-    });
+    // The map frames the region the feed now covers (the Near me radius),
+    // closer only for a place smaller than that.
+    setFocus({ lat: place.lat, lon: place.lon, zoom: Math.min(zoom, NEAR_ZOOM), name: place.name });
+    const name = place.name.split(",")[0];
+    // With no watch yet, going to a place is the clearest way to say "this
+    // is the place I care about": the arrival countdown is armed there. An
+    // ARMED watch is not moved by a search: a reader in Hilo looking up
+    // Tokyo for the news lost the tsunami warning still in force at home,
+    // closed with the old place's notifications (review of PR #5, #30).
+    if (!useStore.getState().watch) setWatch({ lat: place.lat, lon: place.lon, name });
+    // ... and the feed follows it, like Near me does for the reader's own
+    // position. The TEXT filter goes: "koh samui" kept as a text match
+    // emptied the feed (no event is titled after the island) and the owner
+    // read it as "the search shows nothing", in production. Typing without
+    // picking a place still filters by text, instantly.
+    setPlace({ lat: place.lat, lon: place.lon, name });
+    setQuery("");
+    setPlaces(null);
     setOpen(false);
     inputRef.current?.blur();
   };
@@ -143,9 +155,11 @@ export function SearchBar() {
           {places.length === 0 ? (
             <li className="search-none">{t("search.none")}</li>
           ) : (
-            places.slice(0, 5).map((place) => (
+            // Nominatim can return two results at the same point ("Paris"
+            // the city and the commune): the position alone is not a key
+            places.slice(0, 5).map((place, index) => (
               <li
-                key={`${place.lat},${place.lon}`}
+                key={`${index}:${place.lat},${place.lon}`}
                 role="option"
                 aria-selected={false}
               >

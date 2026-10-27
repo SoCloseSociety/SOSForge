@@ -84,9 +84,14 @@ export function useNearMe(): void {
         (error) => {
           if (cancelled) return
           window.clearTimeout(guard)
-          // a timeout once we already have a position is not a reason to
-          // drop it: the last fix stays, the reader keeps their view
-          if (error.code === error.TIMEOUT && useStore.getState().locate === 'ok') return
+          // a timeout, or one "position unavailable" from the network
+          // provider, once we already have a position is not a reason to
+          // drop it: the last fix stays, the reader keeps their view. Dropped,
+          // the view flipped to World and the camera flew away, then back
+          // at the next fix (review of PR #5, #20).
+          const transient =
+            error.code === error.TIMEOUT || error.code === error.POSITION_UNAVAILABLE
+          if (transient && useStore.getState().locate === 'ok') return
           giveUp(failure(error))
         },
         { enableHighAccuracy: false, maximumAge: 600_000, timeout: LOCATE_TIMEOUT_MS },

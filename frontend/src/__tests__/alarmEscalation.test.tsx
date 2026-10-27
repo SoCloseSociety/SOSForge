@@ -8,18 +8,20 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStore } from '../store'
-import { resetClosedTags, useWatchAlarms } from '../useWatchAlarms'
+import { useWatchAlarms } from '../useWatchAlarms'
 import { makeEvent, resetStore } from './helpers'
 import type { SosEvent } from '../types'
 
 const shown: string[] = []
 const closed: string[] = []
+const options: { tag: string; renotify?: boolean }[] = []
 class FakeNotification {
   static permission = 'granted'
   tag: string
-  constructor(_title: string, options: { tag: string }) {
-    this.tag = options.tag
-    shown.push(options.tag)
+  constructor(_title: string, opts: { tag: string; renotify?: boolean }) {
+    this.tag = opts.tag
+    shown.push(opts.tag)
+    options.push(opts)
   }
   close() {
     closed.push(this.tag)
@@ -37,10 +39,10 @@ const flush = () =>
 
 beforeEach(() => {
   resetStore()
-  resetClosedTags()
   localStorage.clear()
   shown.length = 0
   closed.length = 0
+  options.length = 0
   vi.stubGlobal('Notification', FakeNotification)
   useStore.setState({ watch: TOKYO, received: true, snapshotRemaining: 0 })
 })
@@ -126,5 +128,53 @@ describe('what no longer concerns the place leaves the tray', () => {
     renderHook(() => useWatchAlarms([old], Date.now()))
     await flush()
     expect(closed).toHaveLength(0)
+  })
+})
+
+describe('review of PR #5: the alarm findings', () => {
+  it('an escalation alerts again: the same tag is re-shown with renotify (HIGH)', async () => {
+    const { rerender } = renderHook(({ events }) => useWatchAlarms(events, Date.now()), {
+      initialProps: { events: [quake('severe', 6.4)] },
+    })
+    await flush()
+    rerender({ events: [quake('extreme', 7.3)] })
+    await flush()
+    expect(shown).toEqual(['usgs:q1', 'usgs:q1'])
+    // without it, the browser swaps the tray text without a sound
+    expect(options[1]).toMatchObject({ tag: 'usgs:q1', renotify: true })
+  })
+
+  it('an EXTREME quake that gains its tsunami flag rings again', async () => {
+    const { rerender } = renderHook(({ events }) => useWatchAlarms(events, Date.now()), {
+      initialProps: { events: [quake('extreme', 7.1)] },
+    })
+    await flush()
+    expect(shown).toHaveLength(1)
+    rerender({ events: [{ ...quake('extreme', 7.1), tsunami: true }] })
+    await flush()
+    expect(shown).toHaveLength(2)
+    expect(useStore.getState().alarmed.get('usgs:q1')).toBe(4.5)
+  })
+
+  it('out of reach and back: closed, forgotten, and rung again', async () => {
+    const { rerender } = renderHook(({ events }) => useWatchAlarms(events, Date.now()), {
+      initialProps: { events: [quake('severe', 6.4)] },
+    })
+    await flush()
+    rerender({ events: [quake('severe', 6.4, 46.0)] }) // relocated out of reach
+    await flush()
+    expect(closed).toEqual(['usgs:q1'])
+    expect(useStore.getState().alarmed.has('usgs:q1')).toBe(false)
+    rerender({ events: [quake('severe', 6.4)] }) // and back
+    await flush()
+    expect(shown).toEqual(['usgs:q1', 'usgs:q1'])
+  })
+
+  it('an old-format id saved again as [id, null] is still remembered at the next load', async () => {
+    localStorage.setItem('sosforge.alarmed', JSON.stringify([['usgs:q9', null], ['usgs:q1', 3]]))
+    vi.resetModules()
+    const fresh = await import('../store')
+    expect(fresh.useStore.getState().alarmed.get('usgs:q9')).toBeNull()
+    expect(fresh.useStore.getState().alarmed.get('usgs:q1')).toBe(3)
   })
 })

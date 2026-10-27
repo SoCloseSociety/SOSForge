@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { useStore } from '../store'
 import { SOURCE_LABEL, formatAge } from '../format'
-import { degradedFeeds } from '../sourceHealth'
+import { degradedFeeds, failedFeeds, sourceLabel } from '../sourceHealth'
 import { useMediaQuery } from '../useMediaQuery'
 import type { SourceHealth } from '../types'
 
@@ -32,14 +32,15 @@ function SourceButton({
     <button
       type="button"
       className={`source source-${state}`}
+      data-source={source.name}
       aria-pressed={selected}
-      aria-label={`${SOURCE_LABEL[source.name] ?? source.name}, ${t(`footer.source.${state}`)}`}
+      aria-label={`${sourceLabel(source, SOURCE_LABEL)}, ${t(`footer.source.${state}`)}`}
       onClick={() => onSelect(source.name)}
     >
       <span className="source-mark" aria-hidden="true">
         {MARK[state]}
       </span>
-      <span className="source-name">{SOURCE_LABEL[source.name] ?? source.name}</span>
+      <span className="source-name">{sourceLabel(source, SOURCE_LABEL)}</span>
       <span className="count" aria-hidden="true">
         {source.ingested ?? source.events_seen}
       </span>
@@ -65,6 +66,7 @@ export function SourcesBar({ now }: { now: number }) {
   const sources = useStore((s) => s.sources)
   const clients = useStore((s) => s.clients)
   const received = useStore((s) => s.received)
+  const connected = useStore((s) => s.connected)
   const t = useStore((s) => s.t)
   const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)')
   const [selected, setSelected] = useState<string | null>(null)
@@ -146,6 +148,13 @@ export function SourcesBar({ now }: { now: number }) {
     const d = drag.current
     const el = strip.current
     if (!d || !el) return
+    // the button was released somewhere else (no pointerup reached the
+    // strip): the drag is over, and a hovering mouse must not scroll the row
+    // or swallow the next click (review of PR #5, #26)
+    if (event.buttons === 0) {
+      drag.current = null
+      return
+    }
     const dx = event.clientX - d.x
     if (!d.moved && Math.abs(dx) > 4) {
       d.moved = true
@@ -170,15 +179,19 @@ export function SourcesBar({ now }: { now: number }) {
       <div className="sources-row">
         <p className="sources-summary">
           <span
-            className={`source-mark ${!received ? '' : up === sources.length ? 'all-up' : 'some-down'}`}
+            className={`source-mark ${!received || !connected ? '' : up === sources.length ? 'all-up' : 'some-down'}`}
             aria-hidden="true"
           >
-            {!received ? '○' : up === sources.length ? '●' : '▲'}
+            {!received || !connected ? '○' : up === sources.length ? '●' : '▲'}
           </span>
-          {/* before the feed has spoken, the counts are unknown, not zero */}
+          {/* before the feed has spoken, the counts are unknown, not zero;
+              link down, they are the LAST KNOWN ones and say so (a mint
+              "19/19 online" from a dead link vouched for it: review, #12) */}
           {!received
             ? t('footer.summary.waiting')
-            : clients === null
+            : !connected
+              ? t('footer.summary.offline', { up, total: sources.length })
+              : clients === null
               ? t('footer.summary.noclients', { up, total: sources.length })
               : t('footer.summary', { up, total: sources.length, n: clients })}
         </p>
@@ -218,6 +231,7 @@ export function SourcesBar({ now }: { now: number }) {
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
+            onLostPointerCapture={onPointerUp}
           >
             {healthy.map((source) => (
               <SourceButton
@@ -240,7 +254,22 @@ export function SourcesBar({ now }: { now: number }) {
         </div>
       </div>
 
-      {detail ? <SourceDetail source={detail} now={now} onClose={() => setSelected(null)} /> : null}
+      {detail ? (
+        <SourceDetail
+          source={detail}
+          now={now}
+          onClose={() => {
+            // focus goes back to the source the detail belongs to, BEFORE the
+            // Hide button unmounts: it dropped a keyboard user on <body>
+            // (review of PR #5, #25)
+            strip.current
+              ?.closest('.sources-bar')
+              ?.querySelector<HTMLButtonElement>(`.source[data-source="${detail.name}"]`)
+              ?.focus()
+            setSelected(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -249,13 +278,13 @@ export function SourcesBar({ now }: { now: number }) {
 function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: number; onClose: () => void }) {
   const t = useStore((s) => s.t)
   const state = stateOf(source)
-  const failed = degradedFeeds(source)
+  const failed = failedFeeds(source)
   const age = (iso: string | null | undefined) =>
     iso ? formatAge(t, (now - Date.parse(iso)) / 1000) : t('footer.never')
   return (
-    <div className="source-detail" role="region" aria-label={SOURCE_LABEL[source.name] ?? source.name}>
+    <div className="source-detail" role="region" aria-label={sourceLabel(source, SOURCE_LABEL)}>
       <p className="source-detail-head">
-        <strong>{SOURCE_LABEL[source.name] ?? source.name}</strong>
+        <strong>{sourceLabel(source, SOURCE_LABEL)}</strong>
         <span className={`source-${state}`}>
           <span aria-hidden="true">{MARK[state]}</span> {t(`footer.source.${state}`)}
         </span>
@@ -266,10 +295,21 @@ function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: num
       <dl>
         <dt>{t('footer.lastpoll')}</dt>
         <dd>{age(source.last_ok)}</dd>
+        {/* Two different facts, never one: the last NEW event (first seen,
+            never handed over before) and the newest event's own time. A
+            "last event 40 s ago" under a source whose newest event is 29 h
+            old was a poll re-listing old news (lane Q, defect 7). When a
+            poll last returned anything is not an event time: not shown. */}
         {source.last_event_at !== undefined ? (
           <>
-            <dt>{t('footer.lastevent.label')}</dt>
-            <dd>{age(source.last_event_at)}</dd>
+            <dt>{t('footer.lastnew.label')}</dt>
+            <dd>{source.last_event_at ? age(source.last_event_at) : t('footer.lastnew.none')}</dd>
+          </>
+        ) : null}
+        {source.newest_event_time !== undefined ? (
+          <>
+            <dt>{t('footer.newest.label')}</dt>
+            <dd>{source.newest_event_time ? age(source.newest_event_time) : t('footer.newest.none')}</dd>
           </>
         ) : null}
         <dt>{t('footer.seen')}</dt>
@@ -279,7 +319,21 @@ function SourceDetail({ source, now, onClose }: { source: SourceHealth; now: num
         {failed && failed.length > 0 ? (
           <>
             <dt>{t('footer.failed.label')}</dt>
-            <dd>{failed.join(', ')}</dd>
+            <dd>
+              <ul className="source-failed">
+                {failed.map((f) => (
+                  <li key={f.feed}>
+                    {f.feed}
+                    {f.error ? (
+                      <>
+                        {' '}
+                        <code>{f.error}</code>
+                      </>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            </dd>
           </>
         ) : null}
         {source.last_error ? (

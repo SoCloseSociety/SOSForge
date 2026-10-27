@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { coarse, useStore } from '../store'
 import { ALARM_RULES, alarmText, type Alarm } from '../alarm'
 import { KIND_GLYPH, SEVERITY_META, kindLabel, severityLabel, type T } from '../format'
@@ -68,8 +68,10 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
   const watch = useStore((s) => s.watch)
   const setWatch = useStore((s) => s.setWatch)
   const soundOn = useStore((s) => s.soundOn)
-  // nothing is checked until the feed has spoken AND the snapshot is whole
+  // nothing is checked until the feed has spoken AND the snapshot is whole,
+  // and nothing is being checked while the link is down
   const loading = useStore((s) => s.snapshotRemaining > 0 || !s.received)
+  const offline = useStore((s) => s.received && !s.connected)
   const select = useStore((s) => s.select)
   const t = useStore((s) => s.t)
 
@@ -86,6 +88,8 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
   const [tested, setTested] = useState<'idle' | 'sent' | 'failed'>('idle')
   const [showRules, setShowRules] = useState(false)
   const appPublished = useAppPublished()
+  /** Only the latest "Use my location" may answer (see locate). */
+  const request = useRef(0)
 
   // A permission changed from the site settings must show up here without a
   // reload: re-read it whenever the tab comes back into view.
@@ -113,12 +117,15 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
       setError(t('watch.unavailable'))
       return
     }
-    const known = useStore.getState().here
-    if (known) {
+    // only a fix Near me is FOLLOWING right now stands for where the reader is
+    const { here: known, scope, locate: following } = useStore.getState()
+    if (known && scope === 'near' && following === 'ok') {
       setWatch({ lat: known.lat, lon: known.lon, name: t('watch.here') })
       return
     }
     setLocating(true)
+    const id = ++request.current
+    const before = useStore.getState().watch
     let settled = false
     const guard = window.setTimeout(() => {
       if (settled) return
@@ -128,10 +135,16 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
     }, WATCH_LOCATE_TIMEOUT_MS)
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        // late or not, a position is an answer: take it
+        // a newer request owns the answer
+        if (id !== request.current) return
+        const late = settled
         settled = true
         window.clearTimeout(guard)
         setLocating(false)
+        // Late, a position is still an answer -- unless the reader armed
+        // another watch since: a Firefox prompt answered minutes later
+        // replaced Lyon and its kinds with "My location" (review, #27).
+        if (late && useStore.getState().watch !== before) return
         setError(null)
         setWatch({
           lat: coarse(position.coords.latitude),
@@ -140,7 +153,7 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
         })
       },
       (failure) => {
-        if (settled) return
+        if (settled || id !== request.current) return
         settled = true
         window.clearTimeout(guard)
         setLocating(false)
@@ -360,6 +373,14 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
           </span>
           <span>{t('watch.checking')}</span>
         </p>
+      ) : alarms.length === 0 && offline ? (
+        // ... nor while the link is down: nothing arrives to be checked
+        <p className="state" role="status">
+          <span className="state-glyph" aria-hidden="true">
+            ○
+          </span>
+          <span>{t('watch.offline')}</span>
+        </p>
       ) : alarms.length === 0 ? (
         <p className="state state-ok">
           <span className="state-glyph" aria-hidden="true">
@@ -479,6 +500,9 @@ export function WatchPanel({ alarms }: { alarms: Alarm[] }) {
 export function WatchCompact({ alarms }: { alarms: Alarm[] }) {
   const watch = useStore((s) => s.watch)
   const loading = useStore((s) => s.snapshotRemaining > 0 || !s.received)
+  // the link is down: "nothing concerns this place" would vouch for a place
+  // no event can reach right now (review of PR #5, #12, #13)
+  const offline = useStore((s) => s.received && !s.connected)
   const t = useStore((s) => s.t)
   const [open, setOpen] = useState(false)
 
@@ -488,7 +512,9 @@ export function WatchCompact({ alarms }: { alarms: Alarm[] }) {
       ? { glyph: '●', text: t('watch.compact.alarms', { n: alarms.length }), tone: ' state-alert' }
       : loading
         ? { glyph: '○', text: t('watch.compact.checking'), tone: '' }
-        : { glyph: '✓', text: t('watch.compact.quiet'), tone: ' state-ok' }
+        : offline
+          ? { glyph: '○', text: t('watch.compact.offline'), tone: '' }
+          : { glyph: '✓', text: t('watch.compact.quiet'), tone: ' state-ok' }
 
   return (
     <div className="watch-compact">

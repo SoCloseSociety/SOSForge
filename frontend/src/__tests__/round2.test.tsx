@@ -31,11 +31,13 @@ describe('Near me: what counts as near, and what is counted elsewhere', () => {
     const near = makeEvent({ id: 'near', lat: 35.0, lon: 139.0, severity: 'minor' })
     const farMinor = makeEvent({ id: 'far-minor', lat: -33.9, lon: 18.4, severity: 'minor' })
     const farTsunami = makeEvent({ id: 'far-tsunami', lat: -20, lon: -70, severity: 'moderate', tsunami: true })
-    const unplacedSevere = makeEvent({ id: 'nowhere', lat: null, lon: null, severity: 'severe' })
-    const split = splitByScope([near, farMinor, farTsunami, unplacedSevere], TOKYO)
+    const unplacedSevere = makeEvent({ id: 'nowhere', lat: null, lon: null, severity: 'severe', country_code: 'CL' })
+    const split = splitByScope([near, farMinor, farTsunami, unplacedSevere], TOKYO, ['JP'])
     expect(split.near.map((e) => e.id)).toEqual(['near'])
-    // the far tsunami and the severe alert we cannot place never vanish
-    expect(split.severeElsewhere).toBe(2)
+    // the far tsunami never vanishes; the severe alert we cannot place is
+    // counted too, but apart: "elsewhere" would be a claim about where it is
+    expect(split.severeElsewhere).toBe(1)
+    expect(split.unlocated).toBe(1)
   })
 
   it('without a position, Near me shows the world', () => {
@@ -164,7 +166,7 @@ describe('Near me by default (owner: "le live sur la location de la personne")',
 
 describe('the scope bar', () => {
   it('in Near me, the count of severe events elsewhere is permanent, zero included, and opens World', () => {
-    useStore.setState({ scope: 'near', here: TOKYO, received: true })
+    useStore.setState({ scope: 'near', here: TOKYO, received: true, connected: true })
     const { rerender } = render(<ScopeBar severeElsewhere={0} />)
     expect(screen.getByRole('button', { name: /Nothing severe elsewhere/ })).toBeInTheDocument()
     rerender(<ScopeBar severeElsewhere={2} />)
@@ -260,11 +262,14 @@ describe('sources in a slider (owner: "met-les dans un slider")', () => {
   it('a source that is down or degraded is pinned OUTSIDE the scroll, always visible', () => {
     useStore.setState({
       received: true,
+      connected: true,
       clients: 3,
       sources: [
         source('emsc'),
         source('usgs'),
-        source('tsunami', { degraded: true, failed_feeds: ['PAAQ'] }),
+        // the server's shape (sources/base.py): one object per failing feed;
+        // a bare asyncio timeout reads "TimeoutError: " (str(exc) is empty)
+        source('tsunami', { degraded: true, failed_feeds: [{ feed: 'PAAQ', error: 'TimeoutError: ' }] }),
         source('noa', { connected: false, last_error: 'HTTP 503 from https://www.gein.noa.gr/' }),
       ],
     })
@@ -400,7 +405,8 @@ describe('"Use my location" names each failure (owner: "vérifie que use my loca
     geo(() => {
       throw new Error('must not ask')
     })
-    useStore.setState({ here: TOKYO })
+    // a fix Near me is following right now
+    useStore.setState({ scope: 'near', locate: 'ok', here: TOKYO })
     render(<WatchPanel alarms={[]} />)
     fireEvent.click(screen.getByRole('button', { name: /Use my location/ }))
     expect(useStore.getState().watch).toMatchObject({ lat: 35.68, lon: 139.69 })

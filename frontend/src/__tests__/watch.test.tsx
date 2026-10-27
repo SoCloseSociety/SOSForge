@@ -103,7 +103,7 @@ describe('confirmation: the honest states', () => {
 
   it('says a closed tab cannot alert, and points to the Android app', () => {
     stubNotification('granted')
-    useStore.setState({ watch: watched, received: true })
+    useStore.setState({ watch: watched, received: true, connected: true })
     render(<WatchPanel alarms={[]} />)
     expect(screen.getByText(/A closed tab cannot alert you/)).toBeInTheDocument()
     expect(screen.getByText(/Android app/)).toBeInTheDocument()

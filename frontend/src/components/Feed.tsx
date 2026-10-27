@@ -17,16 +17,26 @@ interface Props {
   /** current server timestamp, refreshed every second */
   now: number;
   emptyKey: string;
+  /** extra values for the empty message */
+  emptyParams?: Record<string, string | number>;
   /** snapshot events still on their way (chunked snapshot) */
   remaining?: number;
+  /** distance of each event to the scope's centre, when the feed shows the
+   * NEAREST events because nothing was within reach */
+  distances?: Map<string, number>;
+  /** a sentence above the rows, said once (the nearest-events fallback) */
+  intro?: string;
 }
 
-function Row({ event, now }: { event: SosEvent; now: number }) {
+function Row({ event, now, km }: { event: SosEvent; now: number; km?: number }) {
   const selected = useStore((s) => s.selected === event.id);
   const fresh = useStore((s) => s.fresh.has(event.id));
   const select = useStore((s) => s.select);
   const t = useStore((s) => s.t);
   const lang = useStore((s) => s.lang);
+  // the server names a source this client has no label for (a primitive:
+  // a stable selector, lesson 1)
+  const serverLabel = useStore((s) => s.sources.find((x) => x.name === event.source)?.label);
   const severity = SEVERITY_META[event.severity];
   const flag = flagEmoji(event.country_code);
   const chip = badge(event);
@@ -67,7 +77,20 @@ function Row({ event, now }: { event: SosEvent; now: number }) {
             {severityLabel(t, event.severity)}
           </span>
           <span className="tag">{kindLabel(t, event.kind)}</span>
-          <span>{SOURCE_LABEL[event.source] ?? event.source}</span>
+          {km !== undefined ? (
+            <span className="tag tag-distance">{t("feed.distance", { km: Math.round(km).toLocaleString() })}</span>
+          ) : null}
+          {/* No position: the source named a country (most Meteoalarm
+              warnings), or nothing at all. Said on the row, so a warning
+              listed under Near me never reads as being next door. */}
+          {event.lat === null || event.lon === null ? (
+            <span className="tag tag-distance">
+              {event.country_code
+                ? t("feed.countrywide", { country: countryName(lang, event.country_code) ?? event.country_code })
+                : t("feed.noarea")}
+            </span>
+          ) : null}
+          <span>{SOURCE_LABEL[event.source] ?? serverLabel ?? event.source}</span>
           {/* What to DO, in one word. A closed CAP vocabulary carried by
               essentially every NWS and Meteoalarm alert -- the only one of the
               new fields dense enough to earn a place in the list, and the only
@@ -156,10 +179,10 @@ const RESPONSE_GLYPH: Record<string, string> = {
   Assess: "📋",
 };
 
-export function Feed({ events, now, emptyKey, remaining = 0 }: Props) {
+export function Feed({ events, now, emptyKey, emptyParams, remaining = 0, distances, intro }: Props) {
   const t = useStore((s) => s.t);
   if (events.length === 0) {
-    return <div className="feed-empty">{t(emptyKey, { n: remaining })}</div>;
+    return <div className="feed-empty">{t(emptyKey, { n: remaining, ...emptyParams })}</div>;
   }
   return (
     // NO aria-live here, and no role="feed".
@@ -181,9 +204,14 @@ export function Feed({ events, now, emptyKey, remaining = 0 }: Props) {
           {t("feed.loading", { n: remaining })}
         </p>
       ) : null}
+      {intro ? (
+        <p className="feed-intro" role="status">
+          {intro}
+        </p>
+      ) : null}
       <div className="feed">
         {events.map((event) => (
-          <Row key={event.id} event={event} now={now} />
+          <Row key={event.id} event={event} now={now} km={distances?.get(event.id)} />
         ))}
       </div>
     </>

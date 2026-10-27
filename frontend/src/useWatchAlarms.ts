@@ -8,18 +8,14 @@ import type { SosEvent } from './types'
 
 const NONE: Alarm[] = []
 
-/** The rank an alarm is remembered at: the severity, the macOS agent's rule. */
-function rankOf(event: SosEvent): number {
-  return SEVERITY_RANK[event.severity]
-}
-
-/** Tags already taken off the tray, so a purge is not closed again on every
- * message. Cleared when the event rings again. */
-const closedTags = new Set<string>()
-
-/** Test seam. */
-export function resetClosedTags(): void {
-  closedTags.clear()
+/** The rank an alarm is remembered at: the severity, the macOS agent's
+ * rule, plus half a step for the tsunami flag. A quake that rang at EXTREME
+ * and then gains its tsunami flag (a BMKG update setting Potensi) stays
+ * EXTREME, and only the flag says "go to high ground": the server counts that
+ * change as an escalation (pipeline.py), so does this (review of PR #5).
+ * Half a step keeps every rank saved before it comparable. */
+export function rankOf(event: SosEvent): number {
+  return SEVERITY_RANK[event.severity] + (event.tsunami ? 0.5 : 0)
 }
 
 /** The watch ALARM, mounted once at the top of the app.
@@ -68,7 +64,6 @@ export function useWatchAlarms(events: SosEvent[], now: number): Alarm[] {
     // remembered BEFORE anything is shown: a notification that throws must
     // not leave the event free to ring again on the next second
     markAlarmed(fresh.map((alarm) => ({ id: alarm.event.id, rank: rankOf(alarm.event) })))
-    for (const alarm of fresh) closedTags.delete(alarm.event.id)
 
     if (soundOn) {
       // one sound for the batch, at the pitch of the worst: five beeps for
@@ -83,6 +78,9 @@ export function useWatchAlarms(events: SosEvent[], now: number): Alarm[] {
         body: alarmText(alarm),
         tag: alarm.event.id,
         url: eventUrl(alarm.event.id),
+        // an escalation replaces the notification already in the tray: it
+        // must alert again, not be swapped in silently
+        renotify: true,
       })
     }
   }, [alarms, watch, soundOn, t])
@@ -93,6 +91,9 @@ export function useWatchAlarms(events: SosEvent[], now: number): Alarm[] {
   // may be the one the reader has not seen yet. Judged only on a complete
   // picture -- before the snapshot is whole, "not in the list" means "not
   // received yet", and closing then would empty the tray at every reload.
+  // And it is FORGOTTEN with its notification: back in reach (a revision
+  // M6.0 -> M5.9 -> M6.0, a kind unticked and ticked again) it rings again,
+  // instead of staying silent with nothing left in the tray (review of PR #5).
   const complete = useStore((s) => s.received && s.snapshotRemaining === 0)
   useEffect(() => {
     if (!watch || !complete) return
@@ -101,11 +102,9 @@ export function useWatchAlarms(events: SosEvent[], now: number): Alarm[] {
         (alarm) => alarm.event.id,
       ),
     )
-    for (const id of useStore.getState().alarmed.keys()) {
-      if (reach.has(id) || closedTags.has(id)) continue
-      closedTags.add(id)
-      void closeNotification(id)
-    }
+    const gone = [...useStore.getState().alarmed.keys()].filter((id) => !reach.has(id))
+    for (const id of gone) void closeNotification(id)
+    useStore.getState().forgetAlarmed(gone)
   }, [events, watch, complete])
 
   return alarms
