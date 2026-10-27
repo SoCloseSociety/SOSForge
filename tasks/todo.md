@@ -815,12 +815,30 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 | C2 | lane C resumed | `backend/app/sources/**`, new `backend/app/climate.py` + its route, new `frontend/src/components/ClimatePanel.tsx` (I mount it) | sources found through ScanGithub + probed live; live climate indicators each with its own as-of date; new sources map onto EXISTING kinds (no contract change) |
 | N | lane B resumed | `tools/drill.py` (new, no production code), fixes in hub/scope/changelog only if a drill proves a defect | drill harness that injects real-shaped events into a local server, then proves every alert path: web alarm, macOS agent, websocket scope/purge/escalation, `/api/events` cursor |
 | A | lane A resumed | `android/**` | 0.1.2: offline map packs for the user's places + world low zooms, update check from `latest.json`, location flow verified, full notification E2E on the emulator with `tools/drill.py` |
+| P | fresh | `backend/app/main.py`, `pipeline.py`, `store/**`, `core/**`, `backend/Dockerfile`, `pyproject.toml`, `agent/**` | measured efficiency (CPU, RSS, fan-out at 1/100/1000 clients, startup replay, journal growth, loop lag, latency), fixes with before/after |
+| Q | fresh | new `tools/audit_live.py` + `make audit` only | live data audit, production vs branch: freshness lag, validity, cross-source precision, noise vs importance, missing major events; defects routed with record ids |
 
 ## Me
 
 - [ ] plan committed, lanes briefed
-- [ ] Fold: install 0.1.1 through the adb queue (owner go, 2026-10-27), report
-- [ ] reply to agentcockpit with what is needed from the owner
+- [x] Fold: 0.1.1 installed through the adb queue (owner go, 2026-10-27,
+      10:16:58 -> 10:17:01, 3 s): installed base.apk sha256 matches the drop,
+      versionCode 6. Notifications and location not granted: the owner's own
+      first-run funnel. Reported to agentcockpit.
+- [x] reply to agentcockpit with what is needed from the owner (merge #3 and
+      #4; optional Search Console, FIRMS key, Play Console, native review)
+- [x] production read (2026-10-27, read-only): 28/28 sources connected, no
+      last_error, a tick every second, snapshot 300 events / 312 KB raw. A
+      +3 s local-vs-server skew was the link (ssh RTT 6 to 21 s at that
+      moment), not the server: the VPS is NTP-synchronised, the Mac is
+      +0.13 s from time.apple.com.
+
+## Defects found by the drills, routed
+
+| Found by | Defect | Owner |
+|---|---|---|
+| N | Meteoalarm lifts never reach anyone: an Update carries a NEW identifier and `references` the old one (FR 143/161, IT 120/120, old id never still listed 0/419); `references` ignored, and Meteo-France's AllClear (level 1 green) dropped by select(). Lifted orange warnings stay until `expires` or the 6 h sweep | C2 |
+| N | ws quota refusal is a 403 handshake rejection, never close 1013: `close(1013)` runs before `accept()` in websocket_endpoint | P |
 - [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
 - [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
       pull + build, host vhost headers, publish the APK, verify live)
