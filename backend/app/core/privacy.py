@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import logging
 import re
-from urllib.parse import unquote_plus
+from collections.abc import Iterable
+from urllib.parse import unquote_plus, urlsplit
 
 # The parameters whose values say nothing about where anyone is, each with
 # the only shape its value may have to be kept. A value of another shape is
@@ -45,6 +46,16 @@ LOGGERS = ("uvicorn.access", "uvicorn.error")
 # The one outbound request that carries what a person typed: the place
 # search. httpx logs every request URL at INFO on its own logger.
 PRIVATE_HOSTS = ("https://nominatim.openstreetmap.org/",)
+# Hosts whose URLs are logged as `scheme://host` and nothing else: the place
+# report's upstreams (app/place/fetch.py registers them). Blanking the query
+# is not enough there, the point also travels in PATHS (NWS
+# `/points/61.2180,-149.9000`, `/gridpoints/AER/143,236`).
+HOST_ONLY: set[str] = set()
+
+
+def host_only(hosts: Iterable[str]) -> None:
+    """Registers hosts whose logged URLs keep only scheme and host."""
+    HOST_ONLY.update(h.lower() for h in hosts)
 
 
 def redact_query(path: str) -> str:
@@ -84,6 +95,10 @@ def _redact_arg(arg: object) -> object:
         return redact_query(arg)
     # httpx passes the request URL as an `httpx.URL`, not a string
     text = str(arg) if not isinstance(arg, (int, float)) else ""
+    if HOST_ONLY and text.startswith(("http://", "https://")):
+        parts = urlsplit(text)
+        if (parts.hostname or "").lower() in HOST_ONLY:
+            return f"{parts.scheme}://{parts.hostname}"
     for host in PRIVATE_HOSTS:
         if text.startswith(host):
             return host[:-1] + redact_query(text[len(host) - 1 :])
