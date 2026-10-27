@@ -824,3 +824,65 @@ itself (sha256, size, version read back with aapt/apksigner, never typed).
 - [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
 - [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
       pull + build, host vhost headers, publish the APK, verify live)
+
+## Lane P -- measured efficiency of the core (plan, critical files)
+
+Scope: `main.py`, `pipeline.py`, `store/**`, `dedupe.py` (measure only),
+`core/**`, `backend/Dockerfile`, `backend/pyproject.toml`, `agent/**`. Every
+item is measured first, on a live run of all 32 real sources (:8335) or on
+real journals, and re-measured after. Tools: `tools/ws_load.py` (N websocket
+clients, tick period / latency, server CPU and RSS from `ps`),
+`tools/bench_core.py` (hot paths in-process, full ring), `tools/bench_geocode.py`.
+
+Measured before (2026-10-27, M4 Pro, machine load ~13 from other lanes):
+
+- 1 / 100 / 1000 sockets: server CPU 1.3 / 1.4 / 14.8 %, tick period
+  1.0019 / 1.0015 / 1.0256 s (the heartbeat sleeps 1 s AFTER its work),
+  tick latency p99 6 / 9 / 518 ms, RSS ~0.45 MB per connected socket.
+- 1000 sockets opened at 100/s: snapshot p50 0.83 s, p95 4.68 s, while every
+  tick to the sockets already open stalls (max gap 1.46 s).
+- Full ring (5000): `stats()` 2.1 ms per call (each tick and each snapshot),
+  legacy snapshot 5.8 ms, chunked 17 ms, `/api/events` 12.9 ms p50.
+- Restart: `read_journal` drops every event whose `time` is over 24 h old,
+  while the pipeline's own horizon is 3 days and exempts ongoing alerts. On
+  the real 3 h journal of 2026-10-26 a restart restored **679 of 1347**
+  events: 362 of 499 alerts and 44 of 104 severe-or-above lost until their
+  source's next poll (Meteoalarm 227, GDACS 75, EONET 20...), and the quakes
+  between 24 h and 3 days old lost for good.
+- Journal: `raw` (the upstream payload, never read back from a restored
+  event) is 19.4 % of the live journal's bytes. Plan 1.8, never done.
+- Geocode: one address firing N searches makes every other visitor wait N
+  seconds (10 -> 9.96 s, 30 -> 29.98 s). The queue is unbounded.
+
+Changes, smallest first:
+
+- [x] `main.py`: the quota refusal closed before `accept()`, which a real
+      server sends as HTTP 403 (lane N's drill). Accept, close 1013 with a
+      reason; tested with a real uvicorn and a real client (e7a3d9a).
+- [x] `agent/`: the reconnect backoff never reset (`run_once` only leaves by
+      an exception). Reset after a session that delivered (a022416).
+- [ ] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
+      pipeline's horizon is the one rule (expired, too old and not ongoing).
+      Read line by line instead of `read_text()` (no whole-file copy at
+      startup). Test: an ongoing alert dated 30 days ago and a quake of 2
+      days ago, both journaled today, survive a restart; a quake of 4 days
+      does not.
+- [ ] `store/ring.py` journal lines without `raw`. Test: the line carries no
+      `raw`, the replayed event is equal on every public field.
+- [ ] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
+      whatever the fan-out costs; a stalled loop resumes from now instead of
+      firing a burst of catch-up ticks.
+- [ ] `main.py` + `store/ring.py`: the unscoped snapshot (web `chunks=1`,
+      agent legacy) serialized once per store version and shared, instead
+      of composed and serialized for every socket. The store gets a
+      `version` counter bumped on every mutation (insert, revision,
+      removal, promotion); `last_seen` refreshes do not bump it, so the
+      cache also expires after 1 s. Scoped sockets keep their own snapshot.
+      Gate: same bytes as the uncached path for the same store.
+- [ ] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
+      second) on cache misses, 429 + `Retry-After` beyond. The web debounces
+      at 450 ms and treats a failure as "no places", so a person typing is
+      never refused.
+- [ ] `Dockerfile`: dependency layer before the code (a code change no
+      longer reinstalls every dependency); prod footprint measured.
+- [ ] `pipeline.py`, `dedupe.py`: measured, no change unless a number says so.
