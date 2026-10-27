@@ -12,10 +12,15 @@ The two indices are ours, computed from the same series and listed in
   table is in whole ug/m3, so a value is rounded before it is banded.
 - US: the EPA AQI, from the breakpoint table EPA's AQS publishes
   (aqs.epa.gov/aqsweb/documents/codetables/aqi_breakpoints.csv, captured
-  2026-10-27; 2024 PM2.5 breakpoints): PM 24 h means, O3 8 h, NO2 and SO2
-  1 h, of the model series. Gases are converted from ug/m3 to ppb at 25 C
-  and 1 atm. CO is not read yet (its bucket cassette is not recorded), so
-  the US index is computed without it and says so.
+  2026-10-27; 2024 PM2.5 breakpoints): PM 24 h means, O3 8 h and 1 h, NO2
+  and SO2 1 h, of the model series. Gases are converted from ug/m3 to ppb
+  at 25 C and 1 atm. EVERY row of the table is kept, the 501-999 "beyond the
+  index" rows included: a pollutant above the 0-500 rows once fell out of
+  the index, and a PM2.5 of 400 ug/m3 with clean ozone read "good". Where
+  the table stops defining a value (1-h SO2 is capped at 200, 8-h ozone
+  stops at 0.200 ppm), the sub-index is that floor and `at_least` says so.
+  CO is not read yet (its bucket cassette is not recorded), so the US index
+  is computed without it and says so.
 
 Not read until their bucket cassettes are recorded: carbon monoxide,
 aerosol optical depth, clear-sky UV (cams_global), and alder, mugwort and
@@ -87,9 +92,12 @@ EAQI = {
 EAQI_SCALE = "EEA European Air Quality Index, 2024 revision of the bands (ETC HE Report 2024/17)"
 
 # ------------------------------------------------------------------ US EPA
-# (low breakpoint, high breakpoint, low AQI, high AQI, category), from the
-# AQS table: PM2.5 88101 "24 HOUR", PM10 81102 "24 HOUR", ozone 44201
-# "8-HR RUN AVG BEGIN HOUR" (ppm), NO2 42602 and SO2 42401 "1 HOUR" (ppb).
+# (low breakpoint, high breakpoint, low AQI, high AQI, category): EVERY
+# row the AQS table gives for PM2.5 88101 "24 HOUR", PM10 81102 "24 HOUR",
+# ozone 44201 "8-HR RUN AVG BEGIN HOUR" and "1 HOUR" (ppm), NO2 42602 and
+# SO2 42401 "1 HOUR" (ppb), its "NONE" rows aside (an averaging that does
+# not define the index there: 1-h ozone below 0.125 ppm). A row whose low
+# and high AQI are equal is a cap: 1-h SO2 above 304 ppb is "200 or more".
 EPA: dict[str, tuple[tuple[float, float, int, int, str], ...]] = {
     "pm2_5": (
         (0.0, 9.0, 0, 50, "good"),
@@ -98,6 +106,7 @@ EPA: dict[str, tuple[tuple[float, float, int, int, str], ...]] = {
         (55.5, 125.4, 151, 200, "unhealthy"),
         (125.5, 225.4, 201, 300, "very_unhealthy"),
         (225.5, 325.4, 301, 500, "hazardous"),
+        (325.5, 99999.9, 501, 999, "hazardous"),
     ),
     "pm10": (
         (0.0, 54.0, 0, 50, "good"),
@@ -106,6 +115,7 @@ EPA: dict[str, tuple[tuple[float, float, int, int, str], ...]] = {
         (255.0, 354.0, 151, 200, "unhealthy"),
         (355.0, 424.0, 201, 300, "very_unhealthy"),
         (425.0, 604.0, 301, 500, "hazardous"),
+        (605.0, 99999.9, 501, 999, "hazardous"),
     ),
     "ozone": (
         (0.0, 0.054, 0, 50, "good"),
@@ -114,6 +124,13 @@ EPA: dict[str, tuple[tuple[float, float, int, int, str], ...]] = {
         (0.086, 0.105, 151, 200, "unhealthy"),
         (0.106, 0.2, 201, 300, "very_unhealthy"),
     ),
+    "ozone_1h": (
+        (0.125, 0.164, 101, 150, "usg"),
+        (0.165, 0.204, 151, 200, "unhealthy"),
+        (0.205, 0.404, 201, 300, "very_unhealthy"),
+        (0.405, 0.604, 301, 500, "hazardous"),
+        (0.605, 99999.9, 501, 999, "hazardous"),
+    ),
     "nitrogen_dioxide": (
         (0.0, 53.0, 0, 50, "good"),
         (54.0, 100.0, 51, 100, "moderate"),
@@ -121,22 +138,31 @@ EPA: dict[str, tuple[tuple[float, float, int, int, str], ...]] = {
         (361.0, 649.0, 151, 200, "unhealthy"),
         (650.0, 1249.0, 201, 300, "very_unhealthy"),
         (1250.0, 2049.0, 301, 500, "hazardous"),
+        (2050.0, 99999.0, 501, 999, "hazardous"),
     ),
     "sulphur_dioxide": (
         (0.0, 35.0, 0, 50, "good"),
         (36.0, 75.0, 51, 100, "moderate"),
         (76.0, 185.0, 101, 150, "usg"),
         (186.0, 304.0, 151, 200, "unhealthy"),
+        (305.0, 99999.0, 200, 200, "unhealthy"),
     ),
 }
 EPA_SCALE = (
-    "US EPA AQI, 2024 PM2.5 breakpoints; PM 24 h mean, O3 8 h, NO2 and SO2 1 h, "
+    "US EPA AQI, 2024 PM2.5 breakpoints; PM 24 h mean, O3 8 h and 1 h, NO2 and SO2 1 h, "
     "of the model series; CO not included"
 )
 # molar masses (g/mol): ppb = ug/m3 * 24.45 / M at 25 C and 1 atm
 MOLAR = {"ozone": 48.00, "nitrogen_dioxide": 46.0055, "sulphur_dioxide": 64.066}
 # EPA truncation before the lookup
-TRUNCATE = {"pm2_5": 1, "pm10": 0, "ozone": 3, "nitrogen_dioxide": 0, "sulphur_dioxide": 0}
+TRUNCATE = {
+    "pm2_5": 1,
+    "pm10": 0,
+    "ozone": 3,
+    "ozone_1h": 3,
+    "nitrogen_dioxide": 0,
+    "sulphur_dioxide": 0,
+}
 
 
 def eaqi(values: dict[str, float | None]) -> dict[str, Any]:
@@ -161,12 +187,22 @@ def _truncate(value: float, digits: int) -> float:
     return math.floor(value * factor + 1e-9) / factor
 
 
-def epa_sub_index(pollutant: str, concentration: float) -> tuple[int, str] | None:
+def epa_sub_index(pollutant: str, concentration: float) -> tuple[int, str, bool] | None:
+    """(AQI, category, at_least): `at_least` when the table only gives a
+    floor there (a capped row, or above the averaging's last row). None
+    only where the averaging defines nothing (1-h ozone below 0.125 ppm)."""
+    rows = EPA[pollutant]
     c = _truncate(concentration, TRUNCATE[pollutant])
-    for low, high, i_low, i_high, category in EPA[pollutant]:
+    for low, high, i_low, i_high, category in rows:
         if low <= c <= high:
-            return round((i_high - i_low) / (high - low) * (c - low) + i_low), category
-    return None  # beyond the table this transcription carries
+            if i_low == i_high:
+                return i_low, category, True
+            return round((i_high - i_low) / (high - low) * (c - low) + i_low), category, False
+    top = rows[-1]
+    if c > top[1]:
+        # above every row: never dropped, the table's own ceiling as a floor
+        return top[3], top[4], True
+    return None
 
 
 def _mean(values: list[float | None], need: int) -> float | None:
@@ -185,25 +221,31 @@ def us_aqi(past: dict[str, list[float | None]], now_index: int) -> dict[str, Any
         "pm2_5": _mean(window("pm2_5", 24), 18),
         "pm10": _mean(window("pm10", 24), 18),
     }
-    for gas, hours, need in (
-        ("ozone", 8, 6),
-        ("nitrogen_dioxide", 1, 1),
-        ("sulphur_dioxide", 1, 1),
+    for name, gas, hours, need in (
+        ("ozone", "ozone", 8, 6),
+        ("ozone_1h", "ozone", 1, 1),
+        ("nitrogen_dioxide", "nitrogen_dioxide", 1, 1),
+        ("sulphur_dioxide", "sulphur_dioxide", 1, 1),
     ):
         mean = _mean(window(gas, hours), need)
         ppb = mean * 24.45 / MOLAR[gas] if mean is not None else None
-        concentrations[gas] = (ppb / 1000.0 if gas == "ozone" else ppb) if ppb is not None else None
-    best: tuple[int, str, str] | None = None
+        concentrations[name] = (
+            (ppb / 1000.0 if gas == "ozone" else ppb) if ppb is not None else None
+        )
+    # ozone: the larger of the 8-h and 1-h sub-indices (EPA: 1-h ozone is
+    # the more precautionary where it defines one, from 0.125 ppm)
+    best: tuple[int, str, bool, str] | None = None
     for pollutant, c in concentrations.items():
         if c is None:
             continue
         found = epa_sub_index(pollutant, c)
         if found and (best is None or found[0] > best[0]):
-            best = (found[0], found[1], pollutant)
+            best = (found[0], found[1], found[2], "ozone" if pollutant == "ozone_1h" else pollutant)
     return {
         "value": best[0] if best else None,
         "category": best[1] if best else None,
-        "dominant": best[2] if best else None,
+        "at_least": best[2] if best else False,
+        "dominant": best[3] if best else None,
         "scale": EPA_SCALE,
     }
 
@@ -227,7 +269,7 @@ async def build_air(ctx: Context) -> B.Block:
     series = await om.series(
         ctx, "cams_global", list(AIR_VARS), hour - timedelta(hours=23), hour + timedelta(hours=48)
     )
-    now_index = series.times.index(hour)
+    now_index = om.need_hour(series, hour)
     rows = _rows(series, AIR_VARS, 1)
     now_row = rows[now_index]
     if all(v is None for k, v in now_row.items() if k != "time"):
@@ -247,7 +289,7 @@ async def build_air(ctx: Context) -> B.Block:
         fetched_at=series.fetched_at,
         source=_source(SPEC_AIR.source.name, B.years_of(series.run)),
     )
-    return om.with_refresh_error(block, series, SPEC_AIR)
+    return om.with_refresh_error(block, series, SPEC_AIR, ctx.now)
 
 
 async def build_pollen(ctx: Context) -> B.Block:
@@ -260,7 +302,8 @@ async def build_pollen(ctx: Context) -> B.Block:
         )
     except om.NoCell as exc:
         return B.unavailable(SPEC_POLLEN, exc.code, exc.reason)
-    rows = _rows(series, POLLEN_VARS, 1)
+    now_index = om.need_hour(series, hour)
+    rows = _rows(series, POLLEN_VARS, 1)[now_index:]
     if all(v is None for k, v in rows[0].items() if k != "time"):
         return B.unavailable(SPEC_POLLEN, "masked", "CAMS Europe has no pollen value at this hour")
     data = {
@@ -275,4 +318,4 @@ async def build_pollen(ctx: Context) -> B.Block:
         fetched_at=series.fetched_at,
         source=_source(SPEC_POLLEN.source.name, B.years_of(series.run)),
     )
-    return om.with_refresh_error(block, series, SPEC_POLLEN)
+    return om.with_refresh_error(block, series, SPEC_POLLEN, ctx.now)

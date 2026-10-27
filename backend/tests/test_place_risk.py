@@ -5,6 +5,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from urllib.parse import quote
 
 import pytest
 
@@ -18,27 +19,36 @@ NOW = at("2026-10-27T11:00:00Z")
 
 
 def test_paris_drought_takes_each_indicator_last_element() -> None:
+    # the three series of the same point and window, each a capture of its own
     spi = read_json("risk", "gdo_hst_spi_paris.json")
     rdria = read_json("risk", "gdo_hst_rdria_paris.json")
-    smang = read_json("risk", "gdo_hst_smang_samui.json")  # no Paris soil capture
+    smang = read_json("risk", "gdo_hst_smang_paris.json")
+    for name in ("spi", "rdria", "smang"):
+        url = meta_of("risk", f"gdo_hst_{name}_paris.json")["url"]
+        assert "lon=2.352&lat=48.857" in url and "date_ini=2026-07-01" in url
     block = risk.drought_block(spi, smang, rdria, ctx_for(48.857, 2.352, NOW))
     out = block.public(NOW, "en")
     d = out["data"]
     assert d["spi_3"] == {"value": -1.92, "period_start": "2026-10-11", "class": "severely_dry"}
+    assert d["soil_moisture_anomaly"] == {"value": -2.74, "period_start": "2026-10-11"}
     assert d["agri_risk"] == {"class": 2, "label": "medium", "period_start": "2026-10-01"}
-    # the block's as_of is the OLDEST of its indicators' periods
+    # the block's as_of is the OLDEST of its indicators' periods (rdria's dekad)
     assert out["as_of"] == "2026-10-01T00:00:00Z" and out["as_of_kind"] == "period_start"
     assert out["source"]["attribution"].endswith(", 2026")
 
 
 def test_a_null_last_value_stays_null_never_an_older_dekad() -> None:
-    spi = read_json("risk", "gdo_hst_spi_samui.json")
-    rdria = {"dates": ["2026-09-21", "2026-10-01"], "rdria": [2, None]}
+    # Reykjavik, a window ending 2026-09-15: rdria [... 1, 1, null, null, null]
+    spi = read_json("risk", "gdo_hst_spi_reykjavik_to20260915.json")
+    smang = read_json("risk", "gdo_hst_smang_reykjavik_to20260915.json")
+    rdria = read_json("risk", "gdo_hst_rdria_reykjavik_to20260915.json")
+    assert rdria["rdria"][-4:] == [1, None, None, None]
     value, period, _ = risk.last_of(rdria, "rdria")
-    assert (value, period) == (None, "2026-10-01")
-    smang = read_json("risk", "gdo_hst_smang_samui.json")
-    block = risk.drought_block(spi, smang, rdria, ctx_for(9.512, 100.013, NOW))
-    assert block.data is not None and block.data["agri_risk"]["class"] is None
+    assert (value, period) == (None, "2026-09-11")
+    block = risk.drought_block(spi, smang, rdria, ctx_for(64.15, -21.95, NOW))
+    assert block.status == "ok" and block.data is not None
+    assert block.data["agri_risk"] == {"class": None, "label": None, "period_start": "2026-09-11"}
+    assert block.data["spi_3"]["value"] == -0.43
 
 
 def test_rdria_zero_is_no_risk_not_unknown() -> None:
@@ -57,12 +67,21 @@ def test_mid_pacific_is_at_sea_only_on_all_three_signals() -> None:
     block = risk.drought_block(spi, smang, rdria, ctx_for(0.0, -160.0, NOW))
     assert block.status == "not_applicable" and block.error is not None
     assert block.error.code == "at_sea"
-    # the same empty answers on a point our table calls land: each indicator stands alone
-    land = risk.drought_block(spi, smang, rdria, ctx_for(9.512, 100.013, NOW))
+
+
+def test_land_with_no_soil_series_keeps_every_other_indicator() -> None:
+    # Reykjavik's real soil series is null on every dekad, as at sea; our
+    # table says land, and its rdria is not all null: each indicator stands alone
+    spi = read_json("risk", "gdo_hst_spi_reykjavik_to20260915.json")
+    smang = read_json("risk", "gdo_hst_smang_reykjavik_to20260915.json")
+    rdria = read_json("risk", "gdo_hst_rdria_reykjavik_to20260915.json")
+    assert all(v is None for v in smang["smang"])
+    ctx = ctx_for(64.15, -21.95, NOW)
+    assert ctx.place.at_sea is False
+    land = risk.drought_block(spi, smang, rdria, ctx)
     assert land.status == "ok" and land.data is not None
-    assert (
-        land.data["spi_3"]["value"] == 3.03 and land.data["soil_moisture_anomaly"]["value"] is None
-    )
+    assert land.data["soil_moisture_anomaly"] == {"value": None, "period_start": "2026-09-11"}
+    assert land.data["spi_3"]["value"] == -0.43
 
 
 @pytest.mark.parametrize(
@@ -141,6 +160,56 @@ def test_legend_swatches_are_the_classes_table() -> None:
     ]
 
 
+def test_the_tile_is_centred_on_the_point_itself() -> None:
+    south, north, west, east, key = risk.tile_box(9.51, 100.01)
+    assert key == (9.51, 100.01)
+    # the centre pixel of the 9x9 tile is centred on the point: WMS samples it there
+    assert round((south + north) / 2, 6) == 9.51 and round((west + east) / 2, 6) == 100.01
+    assert round((north - south) / risk.TILE, 6) == risk.PIXEL_DEG
+    url = risk.GWIS_URL.format(
+        s=south, w=west, n=north, e=east, px=risk.TILE, py=risk.TILE, day="2026-10-27"
+    )
+    assert url == meta_of("risk", "gwis_fwi_ecmwf_samui_point_20261027_9x9.png")["url"]
+
+
+def _centre_class(
+    name: str, lat: float, lon: float
+) -> tuple[str, float | None, float | None] | None:
+    rows = png.decode(read_bytes("risk", name))
+    south, north, west, east, _ = risk.tile_box(lat, lon)
+    return risk.fwi_class(risk.pixel_at(rows, south, north, west, east, lat, lon))
+
+
+def test_ko_samui_has_a_class_at_its_own_point() -> None:
+    # the old 2 deg tile's pixel (5, 3) sampled 9.403, 99.903: open sea, 16.7 km away
+    cell = png.decode(read_bytes("risk", "gwis_fwi_ecmwf_samui_cell_20261027_9x9.png"))
+    assert (
+        "bbox=8.625,99.125,10.625,101.125"
+        in meta_of("risk", "gwis_fwi_ecmwf_samui_cell_20261027_9x9.png")["url"]
+    )
+    assert cell[5][3][3] == 0  # transparent: the island read as "masked"
+    assert _centre_class("gwis_fwi_ecmwf_samui_point_20261027_9x9.png", 9.51, 100.01) == (
+        "low",
+        None,
+        11.2,
+    )
+
+
+def test_lima_tomorrow_is_the_class_at_the_point() -> None:
+    cell = png.decode(read_bytes("risk", "gwis_fwi_ecmwf_lima_cell_20261028_9x9.png"))
+    old = risk.fwi_class(risk.pixel_at(cell, -13.125, -11.125, -78.125, -76.125, -12.05, -77.04))
+    assert old is not None and old[0] == "moderate"  # the pixel 12.4 km away
+    assert _centre_class("gwis_fwi_ecmwf_lima_point_20261028_9x9.png", -12.05, -77.04) == (
+        "high",
+        21.3,
+        38.0,
+    )
+
+
+def test_paris_point_is_transparent() -> None:
+    assert _centre_class("gwis_fwi_ecmwf_paris_point_20261027_9x9.png", 48.86, 2.35) is None
+
+
 def test_lima_tile_pixel_classes_and_the_transparent_sea() -> None:
     meta = meta_of("risk", "gwis_fwi_ecmwf_lima_20261027_9x9.png")
     assert "bbox=-13.046,-78.043,-11.046,-76.043" in meta["url"]
@@ -160,10 +229,10 @@ def test_world_probes_as_captured() -> None:
     assert not risk.has_colour(read_bytes("risk", "gwis_fwi_world_probe_2026-11-20.png"))
 
 
-def _gwis(today_probe: str, horizon_probe: str):  # type: ignore[no-untyped-def]
+def _gwis(today_probe: str, horizon_probe: str, tile_name: str):  # type: ignore[no-untyped-def]
     import httpx
 
-    tile = read_bytes("risk", "gwis_fwi_ecmwf_lima_20261027_9x9.png")
+    tile = read_bytes("risk", tile_name)
 
     def answer(request: httpx.Request) -> httpx.Response:
         url = str(request.url)
@@ -180,20 +249,31 @@ async def test_danger_ok_with_the_horizon_rendered() -> None:
     router = install()
     router.prefix(
         "https://maps.effis.emergency.copernicus.eu/gwis",
-        _gwis("gwis_fwi_world_probe_2026-10-27.png", "gwis_fwi_world_probe_2026-11-03.png"),
+        _gwis(
+            "gwis_fwi_world_probe_2026-10-27.png",
+            "gwis_fwi_world_probe_2026-11-03.png",
+            "gwis_fwi_ecmwf_samui_point_20261027_9x9.png",
+        ),
     )
-    block = await risk.build_danger(ctx_for(-12.046, -77.043, NOW))
+    block = await risk.build_danger(ctx_for(9.512, 100.013, NOW))
     assert block.status == "ok" and block.stale_rule is False
     assert block.data is not None and block.data["horizon_end"] == "2026-11-03"
     assert [d["date"] for d in block.data["days"]] == ["2026-10-27", "2026-10-28", "2026-10-29"]
+    assert block.data["days"][0]["class"] == "low"  # no longer "masked" at Ko Samui
     assert block.public(NOW, "en")["as_of"] == "2026-10-27T00:00:00Z"
+    tiles = [str(r.url) for r in router.seen if "width=9" in str(r.url)]
+    assert tiles and all("bbox=9.465,99.965,9.555,100.055" in u for u in tiles)
 
 
 async def test_danger_is_stale_when_the_horizon_does_not_render() -> None:
     router = install()
     router.prefix(
         "https://maps.effis.emergency.copernicus.eu/gwis",
-        _gwis("gwis_fwi_world_probe_2026-10-27.png", "gwis_fwi_world_probe_2026-11-20.png"),
+        _gwis(
+            "gwis_fwi_world_probe_2026-10-27.png",
+            "gwis_fwi_world_probe_2026-11-20.png",
+            "gwis_fwi_ecmwf_lima_point_20261028_9x9.png",
+        ),
     )
     block = await risk.build_danger(ctx_for(-12.046, -77.043, NOW))
     assert block.status == "ok" and block.stale_rule is True
@@ -205,7 +285,11 @@ async def test_danger_without_any_colour_today_is_stale_upstream() -> None:
     router = install()
     router.prefix(
         "https://maps.effis.emergency.copernicus.eu/gwis",
-        _gwis("gwis_fwi_world_probe_2026-11-20.png", "gwis_fwi_world_probe_2026-11-20.png"),
+        _gwis(
+            "gwis_fwi_world_probe_2026-11-20.png",
+            "gwis_fwi_world_probe_2026-11-20.png",
+            "gwis_fwi_ecmwf_lima_point_20261028_9x9.png",
+        ),
     )
     block = await risk.build_danger(ctx_for(-12.046, -77.043, NOW))
     assert block.status == "unavailable" and block.error is not None
@@ -216,10 +300,11 @@ async def test_danger_without_any_colour_today_is_stale_upstream() -> None:
 
 
 def test_aqueduct_labels_verbatim_with_their_own_scale() -> None:
-    payload = read_json("risk", "aqueduct40_annual_samui.json")
-    modified = parsedate_to_datetime(
-        meta_of("risk", "aqueduct40_annual_samui.json")["headers"]["last-modified"]
-    )
+    meta = meta_of("risk", "aqueduct40_annual_bws_samui.json")
+    sql = risk.AQUEDUCT_SQL.format(lon="100.01", lat="9.51")
+    assert meta["url"] == f"{risk.CARTO_URL}?q={quote(sql)}"  # the query this code sends
+    payload = read_json("risk", "aqueduct40_annual_bws_samui.json")
+    modified = parsedate_to_datetime(meta["headers"]["last-modified"])
     block = risk.water_block(
         payload["rows"], modified.astimezone(UTC), ctx_for(9.512, 100.013, NOW)
     )
@@ -239,8 +324,30 @@ def test_aqueduct_labels_verbatim_with_their_own_scale() -> None:
         "label": "Medium - High (0.6-0.8)",
         "scale": "medium_high",
     }
-    assert d["water_stress"] == {"raw": None, "cat": 3, "label": "High (40-80%)", "scale": "high"}
+    # bws_raw is requested: a value Aqueduct holds never reads as unknown
+    assert d["water_stress"] == {
+        "raw": 0.491120372,
+        "cat": 3,
+        "label": "High (40-80%)",
+        "scale": "high",
+    }
     assert "name_1" not in d  # double-encoded upstream: never returned
+    assert out["missing"] == []
+
+
+def test_aqueduct_water_stress_raw_above_one_at_lima() -> None:
+    payload = read_json("risk", "aqueduct40_annual_bws_lima.json")
+    block = risk.water_block(
+        payload["rows"], datetime(2023, 8, 10, tzinfo=UTC), ctx_for(-12.05, -77.04, NOW)
+    )
+    assert block.data is not None
+    # withdrawals over available supply: a ratio, above 1 in Lima's basin
+    assert block.data["water_stress"] == {
+        "raw": 1.678044515,
+        "cat": 4,
+        "label": "Extremely High (>80%)",
+        "scale": "extremely_high",
+    }
 
 
 def test_every_wri_label_has_a_scale_key() -> None:
@@ -318,3 +425,22 @@ async def test_no_country_at_sea() -> None:
     block = await risk.build_country(ctx_for(0.0, -160.0, NOW))
     assert block.status == "not_applicable" and block.error is not None
     assert block.error.code == "no_country"
+
+
+def test_aqueduct_licence_is_wri_own() -> None:
+    import html as html_lib
+    import re
+
+    def text(name: str) -> str:
+        page = (FIXTURES / "risk" / name).read_text(encoding="utf-8", errors="replace")
+        page = re.sub(r"<script.*?</script>|<style.*?</style>", "", page, flags=re.S)
+        return re.sub(r"\s+", " ", html_lib.unescape(re.sub(r"<[^>]+>", " ", page)))
+
+    # the Aqueduct 4.0 data page says "Creative Commons"; WRI's open data
+    # commitment names which one
+    assert "License Creative Commons" in text("wri_aqueduct40_data_page.html")
+    assert (
+        "adopted the Creative Commons Attribution 4.0 International License as our standard "
+        "license for publications and data" in text("wri_open_data_commitment.html")
+    )
+    assert risk.SRC_AQUEDUCT.licence == "CC BY 4.0"

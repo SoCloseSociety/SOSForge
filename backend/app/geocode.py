@@ -10,6 +10,7 @@ cache included.
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import logging
 import time
 
@@ -86,6 +87,24 @@ class AddressBudget:
 
 
 budget = AddressBudget()
+
+
+def address_key(address: str | None) -> str | None:
+    """Who a budget is kept for: an IPv4 address as is, an IPv6 one by its
+    /64 -- the prefix one subscriber is handed, so rotating source addresses
+    inside it no longer mints a fresh bucket per address. An IPv4-mapped
+    IPv6 address is its IPv4 one; anything unparsable is kept verbatim."""
+    if not address:
+        return address
+    try:
+        ip = ipaddress.ip_address(address)
+    except ValueError:
+        return address
+    if isinstance(ip, ipaddress.IPv6Address):
+        if ip.ipv4_mapped is not None:
+            return str(ip.ipv4_mapped)
+        return str(ipaddress.IPv6Network((ip, 64), strict=False))
+    return str(ip)
 
 
 async def search(query: str, limit: int = 5) -> list[dict]:

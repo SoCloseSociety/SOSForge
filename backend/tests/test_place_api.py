@@ -264,3 +264,149 @@ def test_etag_holds_across_polls_of_unchanged_alerts() -> None:
     b = compose.etag(body("2026-10-27T14:51:58Z", "2026-10-27T14:51:57Z", 0))
     c = compose.etag(body("2026-10-27T14:51:58Z", "2026-10-27T14:51:57Z", 1))
     assert a == b and a != c
+
+
+# ------------------------------------------- stale copies and warming blocks
+
+
+async def test_a_stale_global_copy_makes_the_report_incomplete_and_spends_nothing() -> None:
+    """Measured live: the first view after an idle spell showed VTSM 1400Z
+    as "now" with `complete: true` while AWC already had 1500Z."""
+    from app.place import weather
+    from tests.place_helpers import at, ctx_for, read_bytes
+
+    router = install()
+    gz = read_bytes("weather", "awc_metars_cache_global.csv.gz")
+    release = asyncio.Event()
+    calls = {"n": 0}
+
+    async def answer(request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] > 1:
+            await release.wait()  # the refresh stays in flight
+        return httpx.Response(200, content=gz)
+
+    router.handler(weather.METAR_URL, answer)  # type: ignore[arg-type]
+    now = at("2026-10-27T11:09:26Z")
+    builders = [(weather.SPEC_NOW, weather.build_now)]
+    blocks, complete = await compose.run(ctx_for(9.512, 100.013, now), builders, 5)
+    assert complete and blocks["weather_now"].status == "ok"
+    entry = weather._metar_cache.peek("global")
+    assert entry is not None
+    entry.fresh_until = 0.0  # the 5-minute TTL has run out
+    empty = ctx_for(9.512, 100.013, now, take=lambda: 7.0)  # this client's budget is empty
+    blocks, complete = await compose.run(empty, builders, 5)
+    # the previous copy, at once, and the report says "ask again"
+    assert blocks["weather_now"].status == "ok" and complete is False
+    assert empty.claimed is None  # the refresh is the product's: no token, no 429
+    body = compose.body(empty, blocks, complete)
+    assert body["retry_after_s"] == compose.RETRY_AFTER_S
+    release.set()
+    await asyncio.sleep(0.05)
+    blocks, complete = await compose.run(ctx_for(9.512, 100.013, now), builders, 5)
+    assert complete is True and calls["n"] == 2
+
+
+async def test_a_block_that_finished_warming_makes_the_report_incomplete(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    from app.place import cyclones
+    from tests.place_helpers import at, ctx_for
+
+    router = install()
+    release = asyncio.Event()
+
+    async def held(request: httpx.Request) -> httpx.Response:
+        await release.wait()
+        return httpx.Response(503)
+
+    router.handler(cyclones.URL, held)  # type: ignore[arg-type]
+    cyclones.configure(tmp_path)
+    ctx = ctx_for(9.512, 100.013, at("2026-10-27T15:05:00Z"))
+    blocks, complete = await compose.run(ctx, [(cyclones.SPEC, cyclones.build)], 2)
+    block = blocks["history.cyclones"]
+    assert block.status == "unavailable" and block.error is not None
+    assert block.error.code == "warming"
+    assert complete is False  # the panel comes back for it
+    release.set()
+    task = cyclones._state.task
+    if task is not None:
+        await task
+
+
+# ------------------------------------------------- the route's two headers
+
+
+def test_a_304_carries_the_server_clock_of_its_own_answer(client: TestClient) -> None:
+    import time
+
+    first = client.get("/api/place?lat=-0.001&lon=-160.004")
+    assert first.status_code == 200
+    assert first.headers["server-time"] == first.json()["server_time"]
+    time.sleep(1.1)  # whole seconds on the wire
+    again = client.get(
+        "/api/place?lat=-0.001&lon=-160.004", headers={"If-None-Match": first.headers["etag"]}
+    )
+    assert again.status_code == 304
+    # the body a client kept says the OLD time; the header says now
+    assert again.headers["server-time"] > first.json()["server_time"]
+
+
+def test_ipv6_addresses_are_kept_by_their_64() -> None:
+    from app.geocode import address_key
+
+    assert address_key("2001:db8:aa:bb:1:2:3:4") == "2001:db8:aa:bb::/64"
+    assert address_key("2001:db8:aa:bb:ffff::9") == "2001:db8:aa:bb::/64"
+    assert address_key("2001:db8:aa:bc::1") == "2001:db8:aa:bc::/64"
+    assert address_key("::ffff:203.0.113.7") == "203.0.113.7"
+    assert address_key("203.0.113.7") == "203.0.113.7"
+    assert address_key("testclient") == "testclient" and address_key(None) is None
+
+
+def test_rotating_inside_one_64_shares_one_place_budget() -> None:
+    install()
+    main.place_budget = AddressBudget(burst=1, per_second=1e-6)
+    one = TestClient(main.app, client=("2001:db8:aa:bb::1", 50000))
+    two = TestClient(main.app, client=("2001:db8:aa:bb:9:9:9:9", 50000))
+    other = TestClient(main.app, client=("2001:db8:aa:bc::1", 50000))
+    assert one.get("/api/place?lat=10&lon=10").status_code == 200
+    assert two.get("/api/place?lat=20&lon=20").status_code == 429  # same subscriber
+    assert other.get("/api/place?lat=30&lon=30").status_code == 200  # another /64
+
+
+# ------------------------------------------------ the decode pool, busy
+
+
+async def test_a_busy_decode_pool_never_holds_a_report_past_its_budget() -> None:
+    """Measured before: 4 busy decode threads held a fully cached report
+    2.96 s on a 0.5 s budget (place_of queued behind them)."""
+    import time
+
+    install()
+    q = P.Query(48.86, 2.35, 300.0, "en")
+    await P.report(q, lambda: ([], []), budget_s=2)  # every block cached or remembered
+    hogs = [asyncio.ensure_future(fetch.in_thread(time.sleep, 3)) for _ in range(4)]
+    await asyncio.sleep(0.05)
+    started = time.monotonic()
+    result = await P.report(q, lambda: ([], []), budget_s=0.5)
+    took = time.monotonic() - started
+    await asyncio.gather(*hogs)
+    assert result.body is not None and took < 2.0, took
+
+
+async def test_an_om_read_does_not_wait_for_the_decode_pool() -> None:
+    import time
+
+    from app.place import om
+    from tests.place_helpers import FIXTURES, at, ctx_for
+
+    router = install()
+    router.cassette(FIXTURES / "air" / "openmeteo_s3_cams_global_kosamui")
+    ctx = ctx_for(9.512, 100.013, at("2026-10-27T10:40:29Z"))
+    hour = ctx.now.replace(minute=0, second=0, microsecond=0)
+    hogs = [asyncio.ensure_future(fetch.in_thread(time.sleep, 3)) for _ in range(4)]
+    await asyncio.sleep(0.05)
+    started = time.monotonic()
+    series = await om.series(ctx, "cams_global", ["pm2_5"], hour, hour)
+    took = time.monotonic() - started
+    await asyncio.gather(*hogs)
+    assert round(series.values["pm2_5"][0] or -1, 1) == 6.8
+    assert took < 2.0, took  # the readers have their own threads

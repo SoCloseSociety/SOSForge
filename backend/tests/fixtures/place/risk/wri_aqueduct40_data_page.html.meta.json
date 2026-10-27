@@ -1,0 +1,16 @@
+{
+  "url": "https://www.wri.org/data/aqueduct-global-maps-40-data",
+  "fetched_at_utc": "2026-10-27T16:16:00Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 16:16:00 GMT",
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip",
+    "last-modified": "Tue, 27 Oct 2026 14:34:12 GMT",
+    "cache-control": "public, max-age=3600",
+    "expires": "Sun, 19 Nov 1978 05:00:00 GMT",
+    "age": "44"
+  },
+  "bytes": 100327,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

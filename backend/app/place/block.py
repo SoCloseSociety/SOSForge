@@ -203,7 +203,7 @@ def not_applicable(spec: Spec, code: str, reason: str, **params: Any) -> Block:
 #
 # Every sentinel a source uses for "no value" becomes None at parse time. A
 # real 0 stays 0: GDO rdria 0 is "No risk", INFORM 0.0 is a score, CAMS O3 0.0
-# at night is a model value, SMOC 0.0 m is the tide crossing mean sea level.
+# at night is a model value, SMOC 0.0 m is a level at the global mean sea level.
 
 SENTINEL_TEXT = frozenset({"", "MM", "NaN", "nan", "N/A", "No Data", "NoData", "-"})
 SENTINEL_NUMBERS = frozenset({-9999.0, -999.0, -327.68})

@@ -10,10 +10,15 @@
   The "24h" files measured a 27 h spread, so only rows acquired within the
   24 h before the newest acquisition count, and the window is exposed. 0
   means "none detected in that window": clouds hide fires.
-- `fire.danger`: GWIS ECMWF Fire Weather Index, read as the colour of one
-  pixel of a 9x9 WMS tile against the layer's legend. GWIS states no run
-  time: a stalled pipeline still renders "today", so the horizon is checked
-  too (today+7 must render; the measured horizon is +9 days).
+- `fire.danger`: GWIS ECMWF Fire Weather Index, read as the colour of the
+  centre pixel of a 9x9 WMS tile CENTRED ON THE REQUESTER'S POINT (0.01 deg
+  per pixel) against the layer's legend. WMS samples a pixel at its centre:
+  the 2 deg tile of a 0.25 deg cell this used to read put that centre up to
+  16.7 km away -- open sea for Ko Samui (called `masked` while GWIS renders
+  "low" on the island), the wrong class for Lima. The layer is
+  `queryable=0`: GetFeatureInfo is not offered. GWIS states no run time: a
+  stalled pipeline still renders "today", so the horizon is checked too
+  (today+7 must render; the measured horizon is +9 days).
 - `risk.water`: WRI Aqueduct 4.0 annual indicators of the river sub-basin,
   WRI's own labels kept verbatim (the scale differs by indicator: drr cat 3
   is "Medium - High (0.6-0.8)", rfr cat 3 is "High (6 in 1,000 to 1 in
@@ -144,7 +149,7 @@ def drought_block(
         return B.unavailable(SPEC_DROUGHT, "masked", "GDO publishes no indicator at this point")
     rd_class = int(rd_v) if rd_v is not None else None
     data = {
-        "cell": {"lat": geo.cell_centre(ctx.lat, 0.1), "lon": geo.cell_centre(ctx.lon, 0.1)},
+        "cell": dict(zip(("lat", "lon"), geo.cell_key(ctx.lat, ctx.lon, 0.1), strict=True)),
         "spi_3": {"value": spi_v, "period_start": spi_d, "class": spi_class(spi_v)},
         "soil_moisture_anomaly": {"value": sm_v, "period_start": sm_d},
         "agri_risk": {
@@ -315,6 +320,7 @@ async def build_hotspots(ctx: Context) -> B.Block:
             ctx.claim,
             swr=True,
             on_first_wait=ctx.waiting(SPEC_HOTSPOTS.id, "warming"),
+            on_stale=ctx.serving_stale(SPEC_HOTSPOTS.id),
         )
     for entry in entries.values():
         if entry.value is None:
@@ -339,7 +345,7 @@ GWIS_URL = (
     "&width={px}&height={py}&format=image/png&transparent=true&time={day}"
 )
 TILE = 9
-TILE_DEG = 2.0
+PIXEL_DEG = 0.01  # the report's own rounding: one pixel per rounded point
 # the legend of `ecmwf.fwi` (GetLegendGraphic, captured 2026-10-27): swatch
 # colour -> class, FWI range
 FWI_LEGEND: dict[tuple[int, int, int], tuple[str, float | None, float | None]] = {
@@ -355,9 +361,11 @@ _gwis_probe_cache = fetch.Cache("maps.effis.emergency.copernicus.eu probes", 64)
 
 
 def tile_box(lat: float, lon: float) -> tuple[float, float, float, float, tuple[float, float]]:
-    clat, clon = geo.cell_key(lat, lon, 0.25)
-    half = TILE_DEG / 2
-    return clat - half, clat + half, clon - half, clon + half, (clat, clon)
+    """(south, north, west, east, key) of a TILE x TILE tile whose centre
+    pixel is centred on the (rounded) point itself: an odd tile, PIXEL_DEG
+    per pixel, so the pixel WMS samples at its centre IS the point."""
+    half = TILE * PIXEL_DEG / 2
+    return lat - half, lat + half, lon - half, lon + half, (lat, lon)
 
 
 def pixel_at(
@@ -369,7 +377,7 @@ def pixel_at(
     lat: float,
     lon: float,
 ) -> png.Pixel:
-    """The pixel of the requester's own point inside a tile of that box."""
+    """The pixel holding (lat, lon) inside a tile of that box."""
     h, w = len(rows), len(rows[0])
     x = min(w - 1, max(0, int((lon - west) / (east - west) * w)))
     y = min(h - 1, max(0, int((north - lat) / (north - south) * h)))
@@ -465,7 +473,8 @@ async def build_danger(ctx: Context) -> B.Block:
 
 CARTO_URL = "https://wri-rw.carto.com/api/v2/sql"
 AQUEDUCT_SQL = (
-    "SELECT s.aq30_id, s.pfaf_id, s.bws_cat, s.bws_label, s.rfr_raw, s.rfr_cat, s.rfr_label, "
+    "SELECT s.aq30_id, s.pfaf_id, s.bws_raw, s.bws_cat, s.bws_label, "
+    "s.rfr_raw, s.rfr_cat, s.rfr_label, "
     "s.cfr_raw, s.cfr_cat, s.cfr_label, s.drr_raw, s.drr_cat, s.drr_label "
     "FROM water_risk_indicators_annual_aqueduct40 s "
     "JOIN y2018m12d06_rh_master_shape_v01 r ON s.aq30_id = r.aq30_id "
@@ -508,8 +517,7 @@ def water_block(rows: list[dict[str, Any]], modified: datetime, ctx: Context) ->
         label = None if label is None or label.strip() in B.SENTINEL_TEXT else label
         cat = B.number(row.get(f"{prefix}_cat"))
         data[name] = {
-            # bws_raw was not requested: no raw for water stress
-            "raw": B.number(row.get(f"{prefix}_raw")) if prefix != "bws" else None,
+            "raw": B.number(row.get(f"{prefix}_raw")),
             "cat": int(cat) if cat is not None else None,
             "label": label,
             "scale": water_scale(label),

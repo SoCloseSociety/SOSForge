@@ -6,6 +6,11 @@ websocket and `/api/events` use (`app/scope.py`), so the report and the
 live map cannot disagree about what is nearby. Unplaced events of the
 place's countries are COUNTED, never mixed into `events`: a country-wide
 warning with no position is not "within 300 km".
+
+`as_of` is the newest successful poll of ANY source, not the server's
+clock: with every source failing for two hours, the block used to read
+"live, as of now, not stale" over events frozen two hours earlier. Its
+`max_age_s` (300) then marks it stale like any other block.
 """
 
 from __future__ import annotations
@@ -39,8 +44,10 @@ AlertsProvider = Callable[[], tuple[list[Event], list[dict]]]
 
 def build(ctx: Context, provider: AlertsProvider) -> B.Block:
     events, health = provider()
-    if not any(h.get("last_ok") for h in health):
+    polled = [datetime.fromisoformat(h["last_ok"]) for h in health if h.get("last_ok")]
+    if not polled:
         return B.unavailable(SPEC, "warming", "no source has completed a cycle yet")
+    newest = max(polled).astimezone(UTC)
     radius = int(ctx.radius_km) if ctx.radius_km.is_integer() else ctx.radius_km
     codes = list(ctx.place.country_codes)
     scope = parse_scope(
@@ -55,10 +62,9 @@ def build(ctx: Context, provider: AlertsProvider) -> B.Block:
     unplaced = len(kept) - len(placed)
     placed.sort(key=lambda e: (SEVERITY_RANK[e.severity.value], e.time), reverse=True)
     down = sorted(h["name"] for h in health if not h.get("connected") or h.get("degraded"))
-    now = datetime.now(UTC)
     return B.ok(
         SPEC,
-        now,
+        newest,
         {
             "radius_km": radius,
             "total": len(placed),
@@ -66,5 +72,5 @@ def build(ctx: Context, provider: AlertsProvider) -> B.Block:
             "unplaced_in_country": unplaced,
             "sources_down": down,
         },
-        fetched_at=now,
+        fetched_at=newest,
     )

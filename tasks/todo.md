@@ -1380,6 +1380,8 @@ read and its absence after a warm one are tested).
   60 s) succeeded everywhere;
 - GWIS publishes no FWI pixel at Ko Samui (the island is outside ECMWF's land
   mask: the tile is transparent there) nor at the Paris pixel: `masked`.
+  **WRONG, corrected by the fixer pass below**: the pixel read was 16.7 km
+  away, in the sea; GWIS renders "low" on the island itself.
 
 **Live smoke, :8338, real sources, `SOS_DATA_DIR` in the scratchpad.** Cold =
 first report after a restart (IBTrACS index read from disk), warm = the same
@@ -1439,3 +1441,100 @@ no coordinate of a queried place, no "Task exception was never retrieved", no
 traceback. Gates: ruff check + format on app and tests, mypy app, pytest
 1135 passed (935 before). Server PIDs 54855, 76573, 84083, 92937 started and
 stopped by PID, each checked to be the :8338 listener with this worktree's cwd.
+
+## Place report -- fixer pass on the live-truth and backend-review findings (plan, critical file main.py)
+
+Twenty findings, each reproduced before it is touched (or shown not real with
+evidence); every new fixture is a verbatim capture with its sidecar and a
+MANIFEST entry. `main.py` gets two lines of the place route only (the IPv6
+/64 key of the place budget, a `Server-Time` header on the 200 AND the 304);
+nothing else in it moves.
+
+- [x] `fire.danger`: the pixel read is the requester's own point (a tile
+      centred on it, 0.01 deg per pixel), not a 2 deg tile's pixel up to 17 km away.
+- [x] `sea.level`: datum is the GLOBAL mean sea level (Open-Meteo's own docs);
+      the window mean is exposed so the local offset is visible.
+- [x] `sea.buoy`: owner names from NDBC `station_owners.txt`, credited in the block.
+- [x] stale-while-revalidate: a copy served while its refresh runs makes the
+      report `complete: false` (retry in 5 s), so does a `warming` block; a
+      background refresh never spends a client's token.
+- [x] `risk.water`: `bws_raw` requested and returned.
+- [x] US AQI: the full AQS table (501-999 rows, the 1-h SO2 cap, 1-h ozone),
+      never a pollutant dropped above the table.
+- [x] executor: `.om` reads that wait on the network get a pool of their own;
+      `place_of` never queues behind them.
+- [x] memory: MET / NWS grid caches hold the reduced payload and a byte bound
+      on a measured size; history sizes measured, the MB setting is the total.
+- [x] IBTrACS: first-ingest failures back off (minutes to hours), a parse
+      failure keeps the download; one disk load shared by concurrent reports.
+- [x] `om.series` stale fallback re-sliced to the asked window; `alerts_now`
+      as_of = newest source success; `round_point` wraps 180 and clamps 90.
+- [x] tests on invented or mismatched payloads replaced by real captures;
+      GVP licence and citation checked against GVP's own terms.
+- [x] gates, live smoke :8338 at the eight places (PID recorded, stopped by PID).
+
+### Fixer pass -- review (2026-10-27)
+
+Every finding was reproduced before it was touched; none turned out not real.
+New fixtures are verbatim captures (sidecar with URL, fetch time, status,
+headers, User-Agent; MANIFEST `additions` entries), most of them of the very
+URL the code now sends.
+
+| # | finding | reproduced | fix | test (verbatim fixtures) |
+|---|---|---|---|---|
+| 1 | `fire.danger` read 2-17 km from the point | live, 8 places x 3 days: Samui `masked` where the point is `low` (old pixel 9.403,99.903 = sea); Lima 10-28 `moderate` where the point is `high` | 9x9 tile centred ON the rounded point, 0.01 deg/px (`tile_box`); matched a 101 px reference at all 8 places x 3 days | Samui/Lima/Paris point tiles + the two old cell tiles |
+| 2 | `sea.level` "relative to mean sea level" | Open-Meteo docs: datum is the GLOBAL mean sea level; 49 h means +1.02 (Samui) to -0.40 (Reykjavik) | `datum: global_msl`, `window_mean_m` (derived); docstrings fixed | marine docs page; Lima cassette |
+| 3 | buoy owner never named | APMA2 `MA` = Marine Exchange of Alaska in `station_owners.txt` | owners file read (24 h, swr), `owner`, `owner_country`, and the owner in the block's own attribution | owners file; every owner code of the table resolves |
+| 4 | swr served a 31-min copy as complete | live: VTSM 1400Z shown while AWC had 1500Z | a copy served while its refresh runs -> `complete: false`, retry 5 s | AWC cache file; live: 16:24:43 `complete false`, 16:24:49 fresh `fetched_at`, `complete true` |
+| 5 | `warming` left `complete: true` | first IBTrACS ingest | a finished `warming` block -> `complete: false` | held IBTrACS download |
+| 6 | `bws_raw` never selected | Carto: Samui 0.491, Lima 1.678 | selected and returned | two new Carto captures (old Samui capture removed) |
+| 7 | US AQI dropped a pollutant above the table | offline: PM2.5 400 + PM10 700 -> "good" | every AQS row but NONE (501-999 rows, 1-h SO2 cap 200 `at_least`, 1-h ozone, the larger ozone index); above the last row = its ceiling, `at_least` | AQS CSV; 12 real CAMS cells (8 places + Bodele, Taklamakan, Delhi, Lahore) read live: identical before/after, none above the old table today |
+| 8 | `place_of` and `.om` readers on the 4 decode threads | 2.96 s on a 0.5 s budget | `place_of` on the loop (0.7-0.8 ms, tables preloaded at startup); `.om` readers in `om.READERS` (8) | both scenarios fail on the old wiring (2.96 s, 2.98 s), pass now |
+| 9 | MET / NWS caches unbounded in bytes | 259 KB / 330 KB parsed per entry | slim payloads (MET 197 KB, NWS grid 31 KB), `fetch.deep_size`, 64 MB / 16 MB bounds | blocks identical from full and slim at 4 MET captures + NWS |
+| 10 | first ingest retried the 333 MB every 60 s | code path | backoff 10 min doubling to 6 h; a complete download is KEPT and revalidated (304 = no download) | column documentation PDF as the unparsable body |
+| 11 | concurrent disk load started a download | code path | one shared disk-load task | slow load, two reports; live: two reports at startup, no NCEI request in the log |
+| 12 | history sizes 2.3-3x low, MB per cache | deep sizes measured | deep size per entry; the MB is the total (a third each) | Kathmandu USGS, Lima runups |
+| 13 | stale om series kept its old window | code path | `om.within` cuts to the asked window; `need_hour` fails with the refresh's reason | Paris cassette, refresh failing +20 h and +50 h |
+| 14 | `alerts_now` always "as of now" | code path | as_of = newest `last_ok`; no overwrite in `compose.body` | sources failing 2 h -> stale |
+| 15 | background refresh spent the client's token | code path | swr refresh and the IBTrACS daily check claim nothing | empty budget, no 429 |
+| 16 | invented / mismatched test payloads | the four tests named | Paris soil, Reykjavik trio (window to 09-15: rdria ends null after 1), USGS `limit=1` probe and the exact cell query | captured today |
+| 17 | GVP licence, NDBC attribution | GVP terms (web.archive.org 2026-07-09): VOTW "falls under (2)", never eligible for copyright; the live site answers 403 + JS challenge | licence "No known copyright restrictions: a work of US Government employees"; citation names the day the service was read (the version is only on the challenged page); NDBC: see 3. Aqueduct: WRI data page "Creative Commons" + open data commitment "CC BY 4.0" captured | terms, database page, the 403, the two WRI pages |
+| 18 | lon 180 / lat 90 cell centres | `longitude=180.05` | `cell_key` folds lon 180 -> -180, lat below 90; the echo keeps 180.0 (the panel matches its answer on it) | Taveuni |
+| 19 | 304 without a current clock | Android (feat/sosforge-android) has no OkHttp Cache and no `/api/place` call yet, but revalidates `/api/events` by hand | `Server-Time` on the 200 and the 304 | TestClient + real uvicorn/curl (lesson 31): 304 at 16:21:56 carried `server-time: 2026-10-27T16:21:56Z` |
+| 20 | IPv6 address = one bucket each | code path | the place budget keyed by `geocode.address_key` (/64; IPv4-mapped -> IPv4) | three clients, two in one /64 |
+
+**Live smoke, :8338, PID 65062 (cwd this worktree, started 17:17:53 local),
+stopped by PID.** Cold = first reports after the restart (index from disk);
+warm = 16:21Z. Warm run, `U` unavailable, `NA` not applicable:
+
+| | Ko Samui | Tokyo | Paris | Lima | Reykjavik | Anchorage | Kathmandu | mid-Pacific |
+|---|---|---|---|---|---|---|---|---|
+| complete | true | true | true | true | true | true | true | true |
+| ok / U / NA | 20/2/0 | 20/2/0 | 17/1/4 | 20/2/0 | 20/2/0 (2nd read) | 21/1/0 | 17/1/4 | 15/3/4 |
+| `fire.danger` days | low low low | low low low | U masked | moderate high high | low low low | low low low | low moderate low | NA at_sea |
+| = 101 px point reference | yes | yes | masked at the point | yes | yes | yes | yes | -- |
+| `sea.level` window mean | +1.02 | +0.29 | NA | +0.38 | -0.40 | +0.18 | NA | +0.71 |
+| `water_stress.raw` | 0.491 | 0.300 | 0.133 | 1.678 | U masked | 0.059 | 0.281 | NA |
+
+Anchorage buoy: APMA2, owner "Marine Exchange of Alaska" (US), attribution
+"Observations of station APMA2, owned by Marine Exchange of Alaska, relayed
+by NOAA's National Data Buoy Center". `alerts_now` as_of = the newest source
+poll (1-4 s before `server_time`), not stale. Cold: `complete: false` at all
+8 (budget on the bucket and NCEI, FIRMS `warming`), as before. Reykjavik's
+first warm read had `history.tsunamis` `timeout` ("no connection to
+www.ngdc.noaa.gov within 5 s"), the next one 10-09 17:56: NCEI's state.
+
+Log audit (1062 lines): 21 `/api/place` access lines, all `lat=-&lon=-`; no
+httpx line to a place host with a path or a query; no coordinate of the
+eight places; no traceback, no "never retrieved". Gates: ruff check + format
+(app, tests), mypy app, pytest 1174 passed (1135 before).
+
+**Left for others.** The panel (worktree wf_b765ef57-e77-9, `i18n.ts`
+`place.sea.msl`) still prints "relative to mean sea level, not chart datum"
+whatever `datum` says: it should read the datum ("relative to the global
+mean sea level, not the local mean nor chart datum") and can show the level
+about `window_mean_m`; it can show `at_least` ("200 or more") and the owner.
+`om._last_good` (4096 series, about 20 KB each) is bounded by count only, as
+the history caches were. The geocoder and websocket quotas still key IPv6 by
+the full address. GVP's version number cannot be read by this server; if the
+owner wants it named, it has to come from a page a browser fetches.

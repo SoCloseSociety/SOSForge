@@ -2,8 +2,8 @@
 
 This is the bucket, not Open-Meteo's free API (non-commercial only): the
 files Open-Meteo itself serves from, one per domain, variable and time
-chunk, read by byte range. `omfiles` decodes them in the place executor's
-threads, but every byte-range GET it asks for comes back to the event loop
+chunk, read by byte range. `omfiles` decodes them in threads of its own
+(`READERS`), but every byte-range GET it asks for comes back to the event loop
 through `asyncio.run_coroutine_threadsafe` and `fetch.py`: a sync client in a
 thread would bypass the User-Agent, the caps, the timeouts and the retry.
 
@@ -23,7 +23,12 @@ Traps, measured on 2026-10-27:
 - past `data_end_time` the file holds NaN, which becomes null;
 - the Linux wheel of omfiles 1.2.0 uses AVX2 instructions: under an
   emulator without AVX2 the read dies with SIGILL, which kills the whole
-  process, not the block. `decoder_ready()` checks the CPU first.
+  process, not the block. `decoder_ready()` checks the CPU first;
+- a read holds its thread while each range travels (about 2 s for a HEAD
+  and 4 ranges, up to 15 s per range when S3 is slow): it runs in a pool
+  of its own, never in the 4 decode threads every other block shares
+  (measured: 4 busy decode threads held a fully cached report 2.96 s past
+  a 0.5 s budget).
 """
 
 from __future__ import annotations
@@ -33,6 +38,7 @@ import math
 import platform
 import re
 from collections.abc import Coroutine
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from functools import lru_cache
@@ -55,6 +61,9 @@ _range_cache = fetch.Cache("openmeteo.s3.amazonaws.com ranges", 4096)
 _cell_cache = fetch.Cache("openmeteo.s3.amazonaws.com cells", 4096)
 _last_good = fetch.Cache("openmeteo.s3.amazonaws.com last good", 4096)
 _shapes: dict[str, tuple[int, int]] = {}
+# the bucket's own cap is 6 requests in flight: 8 readers keep it busy, and
+# a reader waiting on the network never takes a decode thread
+READERS = ThreadPoolExecutor(max_workers=8, thread_name_prefix="sos-place-om")
 
 
 class Replaced(fetch.FetchError):
@@ -210,7 +219,7 @@ def _read_shape(fs: _RangeFS, url: str) -> tuple[int, int]:
 
 async def _threaded(fs: _RangeFS, fn: Any, *args: Any) -> Any:
     try:
-        return await fetch.in_thread(fn, fs, *args)
+        return await asyncio.get_running_loop().run_in_executor(READERS, fn, fs, *args)
     except Exception as exc:
         if fs.failure is not None:
             raise fs.failure from None
@@ -298,12 +307,39 @@ async def series(
         last = _last_good.peek(key)
         if last is None or last.value is None:
             raise
-        stale: Series = last.value
+        # the last good series, cut to the window asked NOW: its old first
+        # hour must never pass for the current one
+        stale = within(last.value, start, end)
+        if stale is None:
+            raise
         return replace(stale, error=exc)
     entry = _last_good.get(key)
     entry.value = result
     entry.fresh_until = float("inf")
     return result
+
+
+def within(s: Series, start: datetime, end: datetime) -> Series | None:
+    """`s` cut to the steps from `start` (floored to the series' step, as a
+    read is) to `end`; None when none of its steps is in that window."""
+    step = (s.times[1] - s.times[0]).total_seconds() if len(s.times) > 1 else 3600.0
+    first = start.timestamp() // step * step
+    keep = [k for k, t in enumerate(s.times) if first <= t.timestamp() <= end.timestamp()]
+    if not keep:
+        return None
+    return replace(
+        s,
+        times=[s.times[k] for k in keep],
+        values={var: [vals[k] for k in keep] for var, vals in s.values.items()},
+    )
+
+
+def need_hour(s: Series, hour: datetime) -> int:
+    """The index of `hour`, which a fresh read always holds; a stale copy
+    that no longer reaches it fails with the refresh's own reason."""
+    if hour in s.times:
+        return s.times.index(hour)
+    raise s.error or fetch.FetchError("upstream_parse", f"{s.domain}: no step for this hour")
 
 
 async def _series(
@@ -445,16 +481,18 @@ async def _series_once(
     )
 
 
-def with_refresh_error(block: B.Block, series: Series, spec: B.Spec) -> B.Block:
+def with_refresh_error(
+    block: B.Block, series: Series, spec: B.Spec, now: datetime | None = None
+) -> B.Block:
     """The failed-refresh rule for a model block: the last good series keeps
     serving with its own run, and the refresh's error, until that run is
-    older than 2x `max_age_s`; then `unavailable` with the failure's code."""
+    older than 2x `max_age_s` at `now` (the report's clock); then
+    `unavailable` with the failure's code."""
     if series.error is None:
         return block
     assert spec.max_age_s is not None
-    if block.as_of is not None and (
-        datetime.now(block.as_of.tzinfo) - block.as_of > timedelta(seconds=2 * spec.max_age_s)
-    ):
+    clock = now or datetime.now(UTC)
+    if block.as_of is not None and (clock - block.as_of > timedelta(seconds=2 * spec.max_age_s)):
         return B.unavailable(spec, series.error.code, series.error.reason)
     block.error = B.Problem(series.error.code, series.error.reason)
     return block

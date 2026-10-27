@@ -9,7 +9,7 @@ import math
 import pytest
 
 from app.place import geo
-from tests.place_helpers import FIXTURES
+from tests.place_helpers import FIXTURES, at, ctx_for
 
 
 def _points() -> list[dict]:
@@ -105,3 +105,24 @@ def test_iso3_comes_from_the_natural_earth_table() -> None:
     assert geo.iso3("TH") == "THA"
     assert geo.iso3("US") == "USA"
     assert geo.iso3(None) is None
+
+
+def test_cells_at_the_antimeridian_and_the_pole_stay_valid_coordinates() -> None:
+    # Taveuni, Fiji, on the antimeridian: the click rounds to 180.0
+    assert geo.round_point(-16.85, 179.996) == (-16.85, 180.0)  # the echo the client matches
+    assert geo.cell_key(-16.85, 180.0, 0.1) == (-16.85, -179.95)
+    assert geo.cell_key(89.995, 0.0, 0.1)[0] == 89.95
+    assert geo.cell_key(90.0, 180.0, 0.1) == (89.95, -179.95)
+    assert geo.cell_key(-90.0, -180.0, 0.1) == (-89.95, -179.95)
+    for lat, lon in ((90.0, 180.0), (-90.0, -180.0), (0.0, 179.999)):
+        clat, clon = geo.cell_key(lat, lon, 0.1)
+        assert -90.0 < clat < 90.0 and -180.0 <= clon < 180.0
+
+
+def test_the_usgs_query_at_the_antimeridian_is_inside_fdsn_ranges() -> None:
+    from app.place import history
+
+    ctx = ctx_for(-16.85, 179.996, at("2026-10-27T11:00:00Z"))
+    clat, clon = history.cell_of(ctx)
+    url = history.USGS_QUERY.format(lat=clat, lon=clon, km=history.USGS_RADIUS_KM)
+    assert "longitude=-179.95&" in url

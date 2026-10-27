@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import sys
 import time
 from collections import OrderedDict
 from collections.abc import Awaitable, Callable, Hashable
@@ -393,6 +394,37 @@ class Cache:
 Loader = Callable[[Entry], Awaitable[Loaded]]
 
 
+def deep_size(value: Any) -> int:
+    """The bytes a parsed value holds: every object reachable from it,
+    each counted once (JSON keys a decoder shared are not counted twice). A
+    cache bounded by `len(response.content)` undercounted parsed JSON by 4x
+    (MET Norway: 61 KB on the wire, 259 KB in memory). Run it where the
+    value was decoded, in a thread: it walks every object."""
+    seen: set[int] = set()
+    stack = [value]
+    total = 0
+    while stack:
+        obj = stack.pop()
+        if id(obj) in seen:
+            continue
+        seen.add(id(obj))
+        total += sys.getsizeof(obj)  # a numpy array: its own buffer included
+        if isinstance(obj, (str, bytes, bytearray, int, float, bool, type(None))):
+            continue
+        if isinstance(obj, dict):
+            stack.extend(obj.keys())
+            stack.extend(obj.values())
+        elif isinstance(obj, (list, tuple, set, frozenset)):
+            stack.extend(obj)
+        elif hasattr(obj, "dtype") and hasattr(obj, "nbytes"):
+            continue
+        elif hasattr(obj, "__dict__") and not isinstance(obj, type):
+            stack.append(vars(obj))
+        elif hasattr(type(obj), "__slots__"):
+            stack.extend(getattr(obj, name) for name in type(obj).__slots__ if hasattr(obj, name))
+    return total
+
+
 async def obtain(
     cache: Cache,
     key: Hashable,
@@ -401,15 +433,22 @@ async def obtain(
     *,
     swr: bool = False,
     on_first_wait: Callable[[], None] | None = None,
+    on_stale: Callable[[], None] | None = None,
 ) -> Entry:
     """The entry for `key`, fetching it if needed.
 
     - fresh: returned as is;
     - a fetch in flight: joined (free: no rate token), or, with `swr` and a
-      previous copy, that copy is returned while the refresh runs;
+      previous copy, that copy is returned while the refresh runs, and
+      `on_stale` is told (the report then says `complete: false`, so the
+      client asks again once the refresh has landed: measured, a first view
+      after an idle spell showed a METAR 95 min old as "now" while AWC had
+      the next one);
     - a failure remembered (60 s): returned, with the last good copy if any;
     - otherwise a NEW fetch starts, which is the one thing that spends the
-      client's token (`claim`, which raises `Refused` when it is empty).
+      client's token (`claim`, which raises `Refused` when it is empty). The
+      refresh of a copy `swr` still serves is the product's, not the
+      client's: it spends nothing, and it happens once per TTL whoever asks.
 
     The fetch is a task of its own: a report that stops waiting (its budget
     ran out) leaves it running to its own timeout, filling the cache."""
@@ -418,10 +457,14 @@ async def obtain(
         return entry
     if entry.task is None and entry.remembered_failure():
         return entry
+    stale = swr and entry.value is not None
     if entry.task is None:
-        claim()
+        if not stale:
+            claim()
         entry.task = spawn(_fill(cache, entry, loader), f"place:{cache.name}")
-    if swr and entry.value is not None:
+    if stale:
+        if on_stale is not None:
+            on_stale()
         return entry
     if entry.value is None and on_first_wait is not None:
         on_first_wait()
@@ -481,9 +524,10 @@ def spawn(coro: Awaitable[T], name: str) -> asyncio.Task[T]:
     return task
 
 
-# Decoding (.om, FIRMS and METAR CSV, PNG, any payload over 1 MB) runs here:
+# Decoding (FIRMS and METAR CSV, PNG, any payload over 1 MB) runs here:
 # not `asyncio.to_thread`, whose default executor (up to 32 threads) is
-# shared with everything else in the process.
+# shared with everything else in the process. Nothing that waits on the
+# network runs here: the `.om` readers have their own pool (om.READERS).
 EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="sos-place")
 
 

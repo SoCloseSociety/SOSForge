@@ -15,7 +15,7 @@ from datetime import timedelta
 import httpx
 import pytest
 
-from app.place import air, om
+from app.place import air, compose, fetch, om
 from tests.place_helpers import FIXTURES, at, ctx_for, install, read_json
 
 KOSAMUI = FIXTURES / "air" / "openmeteo_s3_cams_global_kosamui"
@@ -80,6 +80,34 @@ async def test_pollen_replay_at_paris() -> None:
     assert now["birch_grains_m3"] == oracle["birch_pollen"]
     assert now["grass_grains_m3"] == oracle["grass_pollen"]
     assert now["ragweed_grains_m3"] == oracle["ragweed_pollen"]
+
+
+async def test_a_failed_refresh_serves_the_old_series_cut_to_the_hour_now(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    router = install()
+    router.cassette(PARIS)
+    first = await air.build_pollen(ctx_for(48.857, 2.352, RECORDED))
+    assert first.status == "ok" and first.data is not None
+
+    async def refresh_fails(*args: object, **kwargs: object) -> om.Series:
+        raise fetch.FetchError("busy", "no slot for openmeteo.s3.amazonaws.com within 15 s")
+
+    monkeypatch.setattr(om, "_series", refresh_fails)
+    later = ctx_for(48.857, 2.352, RECORDED + timedelta(hours=20))
+    block = await air.build_pollen(later)
+    assert block.status == "ok" and block.data is not None and block.error is not None
+    # "now" is the row of the hour now, never the old series' first hour
+    assert block.data["now"]["time"] == "2026-10-28T06:00:00Z"
+    assert block.data["now"] == first.data["hours"][20]
+    assert block.data["hours"][0] == first.data["hours"][20]
+    assert block.error.code == "busy"
+    # past the old window's end: the refresh's own reason, not a ValueError
+    gone = await compose._guard(
+        air.SPEC_POLLEN, air.build_pollen, ctx_for(48.857, 2.352, RECORDED + timedelta(hours=50))
+    )
+    assert gone is not None and gone.status == "unavailable" and gone.error is not None
+    assert gone.error.code == "busy"
 
 
 async def test_pollen_outside_the_europe_domain() -> None:
@@ -155,6 +183,7 @@ def test_epa_table_is_the_aqs_breakpoint_table() -> None:
         "pm2_5": ("88101", "24 HOUR"),
         "pm10": ("81102", "24 HOUR"),
         "ozone": ("44201", "8-HR RUN AVG BEGIN HOUR"),
+        "ozone_1h": ("44201", "1 HOUR"),
         "nitrogen_dioxide": ("42602", "1 HOUR"),
         "sulphur_dioxide": ("42401", "1 HOUR"),
     }
@@ -176,11 +205,11 @@ def test_epa_table_is_the_aqs_breakpoint_table() -> None:
                 names[r["AQI Category"]],
             )
             for r in rows
+            # EVERY row but "NONE" (this averaging defines nothing there):
+            # the 501-999 rows and the 1-h SO2 cap included
             if r["Parameter Code"] == code
             and r["Duration Description"] == duration
             and r["AQI Category"] != "NONE"
-            and int(r["High AQI"]) <= 500
-            and int(r["Low AQI"]) != int(r["High AQI"])
         ]
         assert list(air.EPA[pollutant]) == published, pollutant
 
@@ -228,6 +257,51 @@ def test_eaqi_at_its_breakpoints(value: float, band: str) -> None:
 def test_epa_sub_index_at_its_breakpoints(pollutant: str, value: float, index: int) -> None:
     found = air.epa_sub_index(pollutant, value)
     assert found is not None and found[0] == index
+
+
+def test_extreme_particles_are_hazardous_never_dropped() -> None:
+    # concentrations at and past the AQS table's own 501-999 rows: a
+    # pollutant above the 0-500 rows once fell out, and ozone made it "good"
+    assert air.epa_sub_index("pm2_5", 325.5) == (501, "hazardous", False)
+    assert air.epa_sub_index("pm10", 605.0) == (501, "hazardous", False)
+    hours = 24
+    past = {
+        "pm2_5": [400.0] * hours,
+        "pm10": [700.0] * hours,
+        "ozone": [60.0] * hours,
+        "nitrogen_dioxide": [20.0] * hours,
+        "sulphur_dioxide": [5.0] * hours,
+    }
+    us = air.us_aqi(past, hours - 1)
+    assert us["category"] == "hazardous" and us["value"] is not None and us["value"] > 500
+    assert us["dominant"] in ("pm2_5", "pm10") and us["at_least"] is False
+    eu = air.eaqi({k: v[-1] for k, v in past.items()})
+    assert eu["band"] == "extremely_poor"  # the two indices now agree
+
+
+def test_one_hour_so2_above_its_rows_is_a_floor_of_200() -> None:
+    # "UNHEALTHY",200,200,305.0,99999.0: 1-h SO2 defines no AQI above 200
+    assert air.epa_sub_index("sulphur_dioxide", 305.0) == (200, "unhealthy", True)
+    ug = 400.0 * 64.066 / 24.45  # 400 ppb
+    us = air.us_aqi({"sulphur_dioxide": [ug]}, 0)
+    assert (us["value"], us["category"], us["at_least"], us["dominant"]) == (
+        200,
+        "unhealthy",
+        True,
+        "sulphur_dioxide",
+    )
+
+
+def test_ozone_takes_the_one_hour_index_where_it_is_defined() -> None:
+    # 1-h ozone has no AQI below 0.125 ppm ("NONE"): normal hours are 8-h only
+    assert air.epa_sub_index("ozone_1h", 0.124) is None
+    # above 0.200 ppm the 8-h table stops: its 300 is only a floor
+    assert air.epa_sub_index("ozone", 0.25) == (300, "very_unhealthy", True)
+    ug = 0.45 * 1000 * 48.00 / 24.45  # 0.45 ppm every hour
+    us = air.us_aqi({"ozone": [ug] * 8}, 7)
+    assert us["dominant"] == "ozone" and us["category"] == "hazardous"
+    assert us["value"] == air.epa_sub_index("ozone_1h", 0.45)[0]  # type: ignore[index]
+    assert us["at_least"] is False
 
 
 def test_unknown_is_never_the_lowest_class() -> None:

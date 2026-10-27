@@ -87,7 +87,13 @@ def cell_centre(value: float, size: float) -> float:
 
 
 def cell_key(lat: float, lon: float, size: float) -> tuple[float, float]:
-    return cell_centre(lat, size), cell_centre(lon, size)
+    """The centre of the cell holding the point, always a valid coordinate:
+    lat 90.0 is in the last cell below the pole, lon 180.0 is lon -180.0.
+    The rounded point keeps its own 90.0 / 180.0 (the client matches its
+    answer on it); only what goes into an upstream query is folded here --
+    a click at 179.996 sent `longitude=180.05` to USGS (outside FDSN's
+    -180..180, so `upstream_http`)."""
+    return cell_centre(min(lat, 90.0 - 1e-9), size), cell_centre(wrap_lon(lon), size)
 
 
 # ----------------------------------------------------------------- countries
@@ -253,6 +259,13 @@ def coast_km(lat: float, lon: float) -> float | None:
         t = np.where(length == 0, 0.0, np.clip(-(x1 * dx + y1 * dy) / length, 0.0, 1.0))
     best = float(np.min(np.hypot(x1 + t * dx, y1 + t * dy)))
     return round(best, 1) if best <= COAST_SEARCH_KM else None
+
+
+def preload() -> None:
+    """Read the country, ISO and coastline tables now (about 40 ms)."""
+    shapes()
+    iso3_table()
+    _segments()
 
 
 def place_of(lat: float, lon: float) -> Place:

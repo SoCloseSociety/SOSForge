@@ -35,6 +35,14 @@
    "bytes": 1170,
    "sha256": "caffe05ea41dff6753482fe36e634fe6e6358100e423026bf743263d8ba35eeb"
   },
+  "ndbc_station_owners.txt": {
+   "bytes": 7731,
+   "sha256": "b5bd459a8b90e31474adb3439732fbd0d0f14b5fb0e6735a2a55647bc048e3e9"
+  },
+  "ndbc_station_owners.txt.meta.json": {
+   "bytes": 545,
+   "sha256": "e6e8e2eecf6e1a48a8d3f5e9ff26a575c8980939153896d9c2adff096af1ce8e"
+  },
   "ndbc_station_table.txt": {
    "bytes": 364703,
    "sha256": "982bf7b5b0b26e40b531dee255918e9aa647b256ae043017dddaea4080d105c2"
@@ -42,6 +50,14 @@
   "ndbc_station_table.txt.meta.json": {
    "bytes": 1161,
    "sha256": "d9f3aaa46ba4a099fbbb6f5061064c95f6f58c32fd3d71e52ca1b19ccf28074b"
+  },
+  "openmeteo_marine_docs.html": {
+   "bytes": 248961,
+   "sha256": "032d0a1ad11f1927a9aaac0aad0139673c5737ff86b5faa272de78e2421df38a"
+  },
+  "openmeteo_marine_docs.html.meta.json": {
+   "bytes": 469,
+   "sha256": "fcb7a0e1d077c0785bf2ac8cd9739e0bbf11c3dcf4ae4d7d4820548fe01a9b48"
   },
   "openmeteo_s3_meteofrance_currents_meta.json": {
    "bytes": 612,
@@ -115,5 +131,16 @@
    "bytes": 6031,
    "sha256": "61406391037c04305aeb01b31fc7ed74900b8f9c408472ed82d2d652340b1f6c"
   }
- }
+ },
+ "additions": [
+  {
+   "utc": "2026-10-27T15:59:56Z",
+   "source": "scratchpad/fix8/cap/sea",
+   "added": [
+    "ndbc_station_owners.txt",
+    "openmeteo_marine_docs.html"
+   ],
+   "removed": []
+  }
+ ]
 }

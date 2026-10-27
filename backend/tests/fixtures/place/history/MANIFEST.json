@@ -27,6 +27,30 @@
    "bytes": 856,
    "sha256": "fdc74a50b3c8bbb451b542b8f2602ef302ff03e8e97aaab38744ad634df340f6"
   },
+  "gvp_terms_of_use_wayback.html": {
+   "bytes": 17234,
+   "sha256": "2c141e3df08d4af66ec3f1eff4396e4a8654917e2edd546b71519915b6a75e1d"
+  },
+  "gvp_terms_of_use_wayback.html.meta.json": {
+   "bytes": 478,
+   "sha256": "4fd0fd12a39b4d9cef42706ff2c4eb7d3eda0e6584ef923370fefd452ecaaa90"
+  },
+  "gvp_votw_database_live_challenge.html": {
+   "bytes": 46412,
+   "sha256": "bb049440a6df5d1f67ead95b50faa715a4cf70632ee487f34259d8f41d59b21d"
+  },
+  "gvp_votw_database_live_challenge.html.meta.json": {
+   "bytes": 337,
+   "sha256": "d67219cd3ce18f895bda52545569d0a25a3a966cfd91ec5366a34f94494ef8cf"
+  },
+  "gvp_votw_database_wayback.html": {
+   "bytes": 39651,
+   "sha256": "22b4bf526bfc2fcb65a52849c795809b8f275b7317af9958c9935d2204b63b1b"
+  },
+  "gvp_votw_database_wayback.html.meta.json": {
+   "bytes": 466,
+   "sha256": "7ad1d9c489005aa85c59b17d726acca8062591dad2ed1feda1ffa1a9e0b5ed12"
+  },
   "ibtracs_ACTIVE.list.v04r01.csv": {
    "bytes": 146478,
    "sha256": "a1e7272327bfc8933271daf317a4ae3b1cc0e66c9a8dafa6ae4580f4c373e2e0"
@@ -147,6 +171,22 @@
    "bytes": 1194,
    "sha256": "1a6915b8b08b4f8216a4ce908dc201b7b0818126272300bf1d9aa0677116ebb3"
   },
+  "usgs_csv_cell_samui.csv": {
+   "bytes": 857,
+   "sha256": "4e29b57030377dcdda48c7ffe702c1f486372e6ac1ee605f86ea53a3422fad7b"
+  },
+  "usgs_csv_cell_samui.csv.meta.json": {
+   "bytes": 622,
+   "sha256": "403f3601e59b8a0b1e800f009acea10adb4e8177522695e78b070ca37e5fd82f"
+  },
+  "usgs_csv_newest_global.csv": {
+   "bytes": 342,
+   "sha256": "f0b1961ab041d3e7b9187a1126bd075b998d5a9d4e29e02cd6a748da4ef56abb"
+  },
+  "usgs_csv_newest_global.csv.meta.json": {
+   "bytes": 562,
+   "sha256": "1be29f381076812e1bd8282debfb5160f785f3efd10bc18a9c9c1cf6734cfc32"
+  },
   "usgs_top10_tokyo.geojson": {
    "bytes": 7853,
    "sha256": "64fec44e98825da86dc28ab7bdd20a97b048170dbf93e98867e4dd311eb7a15f"
@@ -155,5 +195,26 @@
    "bytes": 1220,
    "sha256": "0b3404c845eef8f52cfea1ed5f76638a1a7c47fbc4ac9d48444afb0c785fa717"
   }
- }
+ },
+ "additions": [
+  {
+   "utc": "2026-10-27T16:09:37Z",
+   "source": "scratchpad/fix8/cap/history",
+   "added": [
+    "usgs_csv_newest_global.csv",
+    "usgs_csv_cell_samui.csv"
+   ],
+   "removed": []
+  },
+  {
+   "utc": "2026-10-27T16:15:03Z",
+   "source": "scratchpad/fix8/cap/history",
+   "added": [
+    "gvp_terms_of_use_wayback.html",
+    "gvp_votw_database_wayback.html",
+    "gvp_votw_database_live_challenge.html"
+   ],
+   "removed": []
+  }
+ ]
 }

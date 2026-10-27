@@ -806,7 +806,8 @@ async def api_place(request: Request) -> Response:
         raise HTTPException(
             status_code=400, detail={"code": exc.code, "reason": exc.reason}
         ) from None
-    address = request.client.host if request.client else None
+    # an IPv6 client by its /64: one subscriber's prefix, one bucket
+    address = geocode.address_key(request.client.host if request.client else None)
     result = await place.report(
         query,
         place_alerts,
@@ -822,10 +823,17 @@ async def api_place(request: Request) -> Response:
             },
             headers={"Retry-After": str(max(1, math.ceil(result.retry_after)))},
         )
-    # `no-cache` + ETag: a 304 means nothing in the report changed. The web
-    # fetches with `cache: 'no-store'`, or a revalidated cached body would
-    # hand it the OLD server_time every age on screen is computed from.
-    headers = {"ETag": result.etag, "Cache-Control": "no-cache"}
+    # `no-cache` + ETag: a 304 means nothing in the report changed. The body
+    # it revalidates holds an OLD server_time, the clock every age on screen
+    # is computed from, so `Server-Time` (the same value as this answer's
+    # `server_time`) travels on the 200 AND the 304: a client that keeps its
+    # own copy and revalidates takes the clock from it. The web fetches with
+    # `cache: 'no-store'` and never sees a 304.
+    headers = {
+        "ETag": result.etag,
+        "Cache-Control": "no-cache",
+        "Server-Time": result.body["server_time"],
+    }
     if _matches_if_none_match(request.headers.get("if-none-match"), result.etag):
         return Response(status_code=304, headers=headers)
     return JSONResponse(result.body, headers=headers)

@@ -102,3 +102,50 @@ def test_countries_table_is_the_frontend_one_byte_for_byte() -> None:
     backend = root / "backend" / "app" / "data" / "countries.json"
     frontend = root / "frontend" / "src" / "data" / "countries.json"
     assert backend.read_bytes() == frontend.read_bytes()
+
+
+# ---------------------------------------------------------------- alerts_now
+
+
+def _health(name: str, last_ok_ago_s: float | None) -> dict:
+    from datetime import timedelta
+
+    from app.sources.base import SourceHealth
+
+    health = SourceHealth(name)
+    if last_ok_ago_s is not None:
+        health.ok()
+        assert health.last_ok is not None
+        health.last_ok -= timedelta(seconds=last_ok_ago_s)
+        health.fail(TimeoutError("no answer"))  # failing ever since
+    return health.snapshot()
+
+
+def test_alerts_as_of_is_the_newest_source_poll_not_the_server_clock() -> None:
+    from app.place import alerts, compose
+    from tests.place_helpers import ctx_for
+
+    now = datetime.now(UTC)
+    ctx = ctx_for(9.512, 100.013, now)
+    # every source stopped delivering two hours ago; the server still answers
+    frozen = [_health("usgs", 7200.0), _health("emsc", 7300.0), _health("gdacs", None)]
+    block = alerts.build(ctx, lambda: ([], frozen))
+    body = compose.body(ctx, {"alerts_now": block}, True)
+    out = body["blocks"]["alerts_now"]
+    assert out["status"] == "ok" and out["as_of_kind"] == "live"
+    assert out["as_of"] == frozen[0]["last_ok"][:19] + "Z"
+    assert out["stale"] is True  # older than its 300 s
+    assert out["data"]["sources_down"] == ["emsc", "gdacs", "usgs"]
+    live = [_health("usgs", 4.0), _health("emsc", 7300.0)]
+    fresh = compose.body(ctx, {"alerts_now": alerts.build(ctx, lambda: ([], live))}, True)
+    assert fresh["blocks"]["alerts_now"]["stale"] is False
+
+
+def test_alerts_warming_before_any_source_cycle() -> None:
+    from app.place import alerts
+    from tests.place_helpers import ctx_for
+
+    ctx = ctx_for(9.512, 100.013, datetime.now(UTC))
+    block = alerts.build(ctx, lambda: ([], [_health("usgs", None)]))
+    assert block.status == "unavailable" and block.error is not None
+    assert block.error.code == "warming"

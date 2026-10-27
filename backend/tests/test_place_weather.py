@@ -8,7 +8,7 @@ from datetime import timedelta
 
 import pytest
 
-from app.place import metar, weather
+from app.place import fetch, metar, weather
 from tests.place_helpers import at, ctx_for, install, meta_of, read_bytes, read_json
 
 CACHE_FETCHED = at("2026-10-27T11:09:26Z")
@@ -260,3 +260,50 @@ async def test_met_is_read_once_for_three_blocks() -> None:
     assert [b.status for b in blocks] == ["ok", "ok", "ok"]
     assert sum(1 for r in router.seen if str(r.url) == url) == 1
     assert router.seen[0].headers["user-agent"] == "SOSForge/1.0 (+https://sosforge.soclose.co)"
+
+
+# ------------------------------------------------------------ cache memory
+
+
+@pytest.mark.parametrize(
+    ("name", "lat", "lon"),
+    [
+        ("metno_complete_samui.json", 9.512, 100.013),
+        ("metno_complete_oslo.json", 59.91, 10.75),
+        ("metno_complete_anchorage.json", 61.218, -149.9),
+        ("metno_complete_midpacific.json", 0.0, -160.0),
+    ],
+)
+def test_slim_payload_builds_the_same_blocks(name: str, lat: float, lon: float) -> None:
+    full = read_json("weather", name)
+    slim, size = weather._parse_met(read_bytes("weather", name))
+    now = at(meta_of("weather", name)["fetched_utc"])
+    ctx = ctx_for(lat, lon, now)
+    for build in (weather.hourly_block, weather.daily_block):
+        assert build(slim, ctx).public(now, "en") == build(full, ctx).public(now, "en")
+    assert weather.met_wind(slim, ctx) == weather.met_wind(full, ctx)
+    # what the cache holds is what it counts: 197 KB where the full parse
+    # takes 259 to 286 KB (61 to 90 KB on the wire, which it used to count)
+    assert size == fetch.deep_size(slim) < fetch.deep_size(full) * 0.8
+    assert size > 2 * len(read_bytes("weather", name))
+
+
+def test_grid_cache_holds_the_wind_layers_only() -> None:
+    raw = read_bytes("weather", "nws_grid_anchorage.json")
+    props, size = weather._parse_grid(raw)
+    assert set(props) == {"updateTime", "windSpeed", "windDirection", "windGust"}
+    full = read_json("weather", "nws_grid_anchorage.json")["properties"]
+    now = at(meta_of("weather", "nws_grid_anchorage.json")["fetched_utc"])
+    assert weather.nws_hours(props, now) == weather.nws_hours(full, now)
+    assert size < fetch.deep_size(full) / 4
+
+
+def test_forecast_caches_are_bounded_in_bytes() -> None:
+    assert weather._met_cache.max_bytes == weather.MET_CACHE_BYTES
+    assert weather._grid_cache.max_bytes == weather.GRID_CACHE_BYTES
+    cache = fetch.Cache("test bytes", max_entries=4096, max_bytes=1000)
+    for key in range(5):
+        cache.sized(cache.get(key), 300)
+    # the oldest entries go first once the bytes are over the bound
+    assert list(cache.entries) == [2, 3, 4] and cache.bytes == 900
+    fetch.Cache.registry.remove(cache)

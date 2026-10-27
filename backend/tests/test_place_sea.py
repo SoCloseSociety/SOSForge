@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from app.place import sea
@@ -37,14 +39,26 @@ async def test_sea_level_replay_at_lima_with_model_extremes() -> None:
     block = await sea.build_level(ctx)
     assert block.status == "ok", block.error
     d = block.data
-    assert d is not None and d["datum"] == "model_msl"
+    # SMOC is referenced to the GLOBAL mean sea level: never "the local mean"
+    assert d is not None and d["datum"] == "global_msl"
     levels = [h["level_m"] for h in d["hours"]]
     assert levels[:24] == cas["decoded_values_for_replay_check"]
+    known = [v for v in levels if v is not None]
+    assert abs(d["window_mean_m"] - sum(known) / len(known)) < 0.01
+    assert "window_mean_m" in d["derived"]
     assert d["cell"]["distance_km"] < 1.0
     # 0.59 0.48 0.33 0.15 0.0 -0.08 (low) -0.06 ... 0.89 (high) ... 0.19 0.19 (low)
     first = d["extremes"][:3]
     assert [e["type"] for e in first] == ["low", "high", "low"]
     assert first[0]["level_m"] == -0.08 and first[1]["level_m"] == 0.89
+
+
+def test_the_datum_is_the_one_open_meteo_documents() -> None:
+    page = (FIXTURES / "sea" / "openmeteo_marine_docs.html").read_text(encoding="utf-8")
+    text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", page))
+    assert "sea_level_height_msl" in text
+    assert "The reference (datum) height is the global mean sea level" in text
+    assert "sea surface height, global mean steric variation" in text
 
 
 def test_extremes_need_ten_centimetres_of_range() -> None:
@@ -109,16 +123,18 @@ def test_sst_box_covers_the_cell_and_30_km() -> None:
 
 
 @pytest.fixture(scope="module")
-def ndbc() -> tuple[list[sea.Obs], dict[str, sea.StationInfo]]:
+def ndbc() -> tuple[list[sea.Obs], dict[str, sea.StationInfo], dict[str, sea.Owner]]:
     latest = (FIXTURES / "sea" / "ndbc_latest_obs.txt").read_text()
     table = (FIXTURES / "sea" / "ndbc_station_table.txt").read_text()
-    return sea.parse_latest(latest), sea.parse_station_table(table)
+    # served as ISO-8859-1 (its Content-Type says so)
+    owners = (FIXTURES / "sea" / "ndbc_station_owners.txt").read_text(encoding="iso-8859-1")
+    return sea.parse_latest(latest), sea.parse_station_table(table), sea.parse_owners(owners)
 
 
 def test_buoy_joins_ids_case_insensitively_and_names_the_station_type(ndbc) -> None:
-    obs, table = ndbc
+    obs, table, owners = ndbc
     now = at(meta_of("sea", "ndbc_latest_obs.txt")["fetched_utc"])
-    block = sea.buoy_block(obs, table, ctx_for(61.218, -149.900, now))
+    block = sea.buoy_block(obs, table, owners, ctx_for(61.218, -149.900, now))
     out = block.public(now, "en")
     assert out["status"] == "ok" and out["as_of"] == "2026-10-27T10:52:00Z"
     d = out["data"]
@@ -127,33 +143,59 @@ def test_buoy_joins_ids_case_insensitively_and_names_the_station_type(ndbc) -> N
         "name": "Anchorage Port, AK",
         "type": "Coastal Marine Station",
         "owner_code": "MA",
-        "owner": None,
+        # station_owners.txt: "MA |Marine Exchange of Alaska|US"
+        "owner": "Marine Exchange of Alaska",
+        "owner_country": "US",
         "distance_km": 2.1,
     }
+    # a partner station's owner is credited where the panel shows the source
+    assert "owned by Marine Exchange of Alaska" in out["source"]["attribution"]
+    assert out["missing"] == []
     # MM is null, never 0
     assert d["wave_height_m"] is None and d["water_temp_c"] is None and d["pressure_hpa"] is None
     assert (d["wind_ms"], d["wind_from_deg"], d["gust_ms"], d["air_temp_c"]) == (1.5, 30, 3.1, 2.2)
 
 
+def test_owner_unknown_without_the_owners_file_says_so(ndbc) -> None:
+    obs, table, _ = ndbc
+    now = at(meta_of("sea", "ndbc_latest_obs.txt")["fetched_utc"])
+    block = sea.buoy_block(obs, table, None, ctx_for(61.218, -149.900, now))
+    out = block.public(now, "en")
+    assert out["data"]["station"]["owner"] is None
+    assert "NDBC owner code MA" in out["source"]["attribution"]
+    assert out["missing"] == [{"field": "station.owner", "reason": "not_in_source"}]
+
+
+def test_every_owner_code_in_the_station_table_resolves_or_is_listed(ndbc) -> None:
+    _, table, owners = ndbc
+    codes = {info.owner_code for info in table.values() if info.owner_code}
+    resolved = {code for code in codes if code in owners}
+    # measured on the two captures of 2026-10-27: every code resolves
+    assert resolved == codes, sorted(codes - resolved)
+    assert owners["KO"] == sea.Owner("Korean Meteorological Administration", "KR")
+    assert owners["N"] == sea.Owner("NDBC", "US")  # padded fields, stripped
+
+
 def test_kma_period_is_dropped(ndbc) -> None:
-    obs, table = ndbc
+    obs, table, owners = ndbc
     now = at("2026-10-27T11:17:45Z")
-    block = sea.buoy_block(obs, table, ctx_for(33.08, 126.03, now))
+    block = sea.buoy_block(obs, table, owners, ctx_for(33.08, 126.03, now))
     d = block.data
     assert d is not None and d["station"]["id"] == "22107" and d["station"]["owner_code"] == "KO"
+    assert d["station"]["owner"] == "Korean Meteorological Administration"
     assert d["wave_height_m"] == 2.5 and d["dominant_period_s"] is None
 
 
 def test_tide_is_converted_from_feet(ndbc) -> None:
-    obs, table = ndbc
-    block = sea.buoy_block(obs, table, ctx_for(25.478, -80.989, at("2026-10-27T11:17:45Z")))
+    obs, table, owners = ndbc
+    block = sea.buoy_block(obs, table, owners, ctx_for(25.478, -80.989, at("2026-10-27T11:17:45Z")))
     d = block.data
     assert d is not None and d["station"]["id"] == "BDVF1"
     assert d["tide_m"] == round(0.52 * 0.3048, 2) and d["derived"] == ["tide_m"]
 
 
 def test_no_buoy_reporting_within_100_km(ndbc) -> None:
-    obs, table = ndbc
-    block = sea.buoy_block(obs, table, ctx_for(9.512, 100.013, at("2026-10-27T11:17:45Z")))
+    obs, table, owners = ndbc
+    block = sea.buoy_block(obs, table, owners, ctx_for(9.512, 100.013, at("2026-10-27T11:17:45Z")))
     assert block.status == "unavailable" and block.error is not None
     assert block.error.code == "no_station"

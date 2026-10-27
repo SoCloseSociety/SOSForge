@@ -27,6 +27,9 @@ class Context:
     # block id -> the code to report if the budget runs out while it waits
     # ("warming" for a global file's first fetch); default "budget"
     pending: dict[str, str] = field(default_factory=dict)
+    # blocks that answered from a previous copy while its refresh runs: the
+    # report is then not complete, and the client asks again
+    refreshing: set[str] = field(default_factory=set)
 
     def claim(self) -> None:
         """Called by the cache when it is about to start a NEW upstream fetch.
@@ -44,6 +47,12 @@ class Context:
     def waiting(self, block_id: str, code: str) -> Callable[[], None]:
         def mark() -> None:
             self.pending[block_id] = code
+
+        return mark
+
+    def serving_stale(self, block_id: str) -> Callable[[], None]:
+        def mark() -> None:
+            self.refreshing.add(block_id)
 
         return mark
 

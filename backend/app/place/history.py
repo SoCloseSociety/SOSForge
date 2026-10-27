@@ -9,7 +9,10 @@ Cells are 0.1 deg, queried around the cell centre with a radius (or a box)
 widened by the cell's half-diagonal, so every requester in the cell finds
 its own events; distances and bearings are then measured from the
 requester's own point. Rows are kept packed (Tokyo alone has 6247 USGS rows
-within 310 km) and the caches are bounded in bytes.
+within 310 km) and the caches are bounded in bytes: each entry counted by
+what it takes in memory (`fetch.deep_size`; the estimates it replaced were
+2.3 to 3 times low), and `SOS_PLACE_HISTORY_CACHE_MB` is the TOTAL of the
+three caches, a third each.
 
 Traps from the captures:
 
@@ -86,12 +89,21 @@ SRC_NCEI_VO = B.Source(
     "doi:10.7289/V5JW8BSH",
     "US Government work, public domain",
 )
+# GVP's terms of use (web.archive.org, 2026-07-09; volcano.si.edu answers
+# a non-browser client with a 403 JavaScript challenge): the Smithsonian's
+# non-commercial clause covers its content in general, but "the [Volcanoes
+# of the World] database compilation is a product of employees of the United
+# States, and falls under (2)": never eligible for copyright. The citation
+# GVP asks for names the database version and upload date, which only that
+# challenged page publishes, never the web service: the block names the day
+# it read the service instead of a version it cannot see.
 SRC_GVP = B.Source(
     "Smithsonian Global Volcanism Program, Volcanoes of the World",
     "https://volcano.si.edu/",
-    "Global Volcanism Program, Volcanoes of the World. Distributed by Smithsonian "
-    "Institution, compiled by Venzke, E.",
-    "Smithsonian GVP terms of use, citation required",
+    "Global Volcanism Program. [Database] Volcanoes of the World. Distributed by "
+    "Smithsonian Institution, compiled by Venzke, E.",
+    "No known copyright restrictions: a work of US Government employees (GVP terms of use); "
+    "citation required",
 )
 
 SPEC_EQ = B.Spec("history.earthquakes", "catalogue", "through", 2 * 86400.0, SRC_USGS)
@@ -100,12 +112,13 @@ SPEC_TS = B.Spec("history.tsunamis", "catalogue", "through", None, SRC_NCEI_TS)
 SPEC_ERUPT = B.Spec("history.eruptions", "catalogue", "through", None, SRC_NCEI_VO)
 SPEC_VOLC = B.Spec("history.volcanoes", "catalogue", "through", None, SRC_GVP)
 
-_history_bytes = 64 * 1024 * 1024
+# SOS_PLACE_HISTORY_CACHE_MB is the total of the three caches: a third each
+_history_bytes = 64 * 1024 * 1024 // 3
 
 
 def configure(cache_mb: float) -> None:
     global _history_bytes
-    _history_bytes = int(cache_mb * 1024 * 1024)
+    _history_bytes = int(cache_mb * 1024 * 1024) // 3
     for cache in (_usgs_cache, _ncei_cache, _gvp_cache):
         cache.max_bytes = _history_bytes
 
@@ -175,11 +188,6 @@ class Quakes:
     mag_type: list[str]
     net: list[str]
     through: datetime  # the newest event ComCat held when this cell was fetched
-
-    @property
-    def nbytes(self) -> int:
-        arrays = self.t.nbytes + self.lat.nbytes + self.lon.nbytes + self.mag.nbytes
-        return arrays + self.depth.nbytes + 80 * len(self.ids)
 
 
 def parse_time(text: str) -> datetime:
@@ -304,7 +312,8 @@ async def build_earthquakes(ctx: Context) -> B.Block:
         through = await _probe("usgs", USGS_NEWEST, _usgs_newest, ctx, 3600.0)
         response = await fetch.get(url, accept=(200, 204))
         quakes = await fetch.in_thread(parse_usgs, response.text, through)
-        return fetch.Loaded(quakes, 86400.0, size=quakes.nbytes)
+        size = await fetch.in_thread(fetch.deep_size, quakes)
+        return fetch.Loaded(quakes, 86400.0, size=size)
 
     entry = await fetch.obtain(_usgs_cache, (clat, clon), load, ctx.claim)
     return serve(SPEC_EQ, entry, lambda q: quake_block(q, ctx))
@@ -346,10 +355,6 @@ class Rows:
     through: datetime
     total: int
     complete: bool
-
-    @property
-    def nbytes(self) -> int:
-        return 400 * len(self.items)
 
 
 def entry_date(item: dict[str, Any]) -> dict[str, int | None]:
@@ -421,7 +426,8 @@ async def ncei_rows(
                     break
                 page += 1
         rows = Rows(items, through, total, complete)
-        return fetch.Loaded(rows, 7 * 86400.0, size=rows.nbytes)
+        size = await fetch.in_thread(fetch.deep_size, rows)
+        return fetch.Loaded(rows, 7 * 86400.0, size=size)
 
     return await fetch.obtain(_ncei_cache, key, load, ctx.claim)
 
@@ -648,10 +654,7 @@ def parse_continuing(payload: dict[str, Any]) -> Continuing:
 class Volcanoes:
     rows: list[dict[str, Any]]
     continuing: Continuing
-
-    @property
-    def nbytes(self) -> int:
-        return 300 * len(self.rows)
+    read_at: datetime  # when the web service answered: the citation's date
 
 
 def volcano_block(v: Volcanoes, ctx: Context) -> B.Block:
@@ -682,10 +685,13 @@ def volcano_block(v: Volcanoes, ctx: Context) -> B.Block:
                 "distance_km": round(d),
             }
         )
+    cited = B.years_of(v.continuing.through)
     source = B.Source(
         SRC_GVP.name,
         SRC_GVP.url,
-        f"{SRC_GVP.attribution} ({B.years_of(v.continuing.through)})",
+        f"Global Volcanism Program, {cited}. [Database] Volcanoes of the World (read from "
+        f"webservices.volcano.si.edu on {v.read_at:%Y-%m-%d}). Distributed by Smithsonian "
+        "Institution, compiled by Venzke, E. https://volcano.si.edu/",
         SRC_GVP.licence,
     )
     data = {"total": len(found), "volcanoes": rows, "derived": ["distance_km", "continuing"]}
@@ -711,8 +717,9 @@ async def build_volcanoes(ctx: Context) -> B.Block:
             if not isinstance(payload, dict) or "features" not in payload:
                 raise fetch.FetchError("upstream_parse", "webservices.volcano.si.edu: no features")
             rows.extend((f.get("properties") or {}) for f in payload["features"])
-        value = Volcanoes(rows, cont.value)
-        return fetch.Loaded(value, 7 * 86400.0, size=value.nbytes)
+        value = Volcanoes(rows, cont.value, datetime.now(UTC))
+        size = await fetch.in_thread(fetch.deep_size, value)
+        return fetch.Loaded(value, 7 * 86400.0, size=size)
 
     entry = await fetch.obtain(_gvp_cache, (clat, clon), load, ctx.claim)
     return serve(SPEC_VOLC, entry, lambda v: volcano_block(v, ctx), ttl_s=7 * 86400.0)

@@ -6,17 +6,24 @@ coastline is 50 km away or less. Otherwise they are `not_applicable` /
 shown for a coastal place is the model's or the buoy's, never the place's
 own: every block says how far its cell or station is.
 
-- `sea.waves` (Meteo-France MFWAM) and `sea.level` (Meteo-France SMOC, tide
-  plus surge relative to the MODEL mean sea level, not chart datum) come
+- `sea.waves` (Meteo-France MFWAM) and `sea.level` (Meteo-France SMOC) come
   from the Open-Meteo bucket (`om.py`). Land cells are NaN: the nearest
   cell holding a value within 30 km is used, measured from the requester.
+  SMOC's `sea_level_height_msl` is referenced to the GLOBAL mean sea level
+  and includes the sea surface height and steric terms (Open-Meteo marine
+  docs, captured 2026-10-27): each cell carries its own offset (the mean
+  dynamic topography), measured +1.03 m at Ko Samui and -0.39 m at
+  Reykjavik over 49 h. A "low tide at +0.37 m" there is not above the local
+  mean, so `datum` says `global_msl` and the window's mean is exposed.
 - `sea.temperature`: NOAA CoastWatch Geo-Polar Blended SST, one daily
   analysis stamped 12:00Z. Its `mask` is a BIT mask (dataset comment: "b0:
   1=grid cell is water, b1: 1=grid cell is land, b2: 1=grid cell is ice"),
   so 5 is water plus ice: read as bits, never compared to 1.
 - `sea.buoy`: NDBC's latest observation of every station. Ids are lowercase
   in `station_table.txt` and uppercase in `latest_obs.txt`; the table
-  carries an owner CODE, not a name; a "Coastal Marine Station" is not a
+  carries an owner CODE, whose name is in `station_owners.txt` (ISO-8859-1,
+  `CODE |Name|COUNTRY`, padded with spaces); a partner station's owner is
+  named in the block's own attribution. A "Coastal Marine Station" is not a
   buoy. The 8 KMA buoys (owner KO) report a dominant period of 0-1 s with
   1-2.5 m of significant height: that period is dropped.
 """
@@ -31,7 +38,7 @@ from typing import Any
 from app.place import block as B
 from app.place import fetch, om
 from app.place.context import Context
-from app.place.geo import cell_centre, haversine_km
+from app.place.geo import cell_key, haversine_km
 from app.place.weather import serve
 
 NEAR_KM = 5.0
@@ -65,7 +72,7 @@ SRC_SST = B.Source(
 SRC_BUOY = B.Source(
     "NOAA National Data Buoy Center",
     "https://www.ndbc.noaa.gov/",
-    "Observations relayed by NOAA's National Data Buoy Center; station owners named per station",
+    "Observations relayed by NOAA's National Data Buoy Center",
     "US Government work, public domain; partner stations per their owner",
 )
 
@@ -81,10 +88,12 @@ SST_URL = (
 )
 NDBC_LATEST = "https://www.ndbc.noaa.gov/data/latest_obs/latest_obs.txt"
 NDBC_STATIONS = "https://www.ndbc.noaa.gov/data/stations/station_table.txt"
+NDBC_OWNERS = "https://www.ndbc.noaa.gov/data/stations/station_owners.txt"
 
 _sst_cache = fetch.Cache("coastwatch.noaa.gov")
 _latest_cache = fetch.Cache("www.ndbc.noaa.gov latest", 1)
 _stations_cache = fetch.Cache("www.ndbc.noaa.gov stations", 1)
+_owners_cache = fetch.Cache("www.ndbc.noaa.gov owners", 1)
 
 
 def gate(spec: B.Spec, ctx: Context) -> B.Block | None:
@@ -138,7 +147,7 @@ async def build_waves(ctx: Context) -> B.Block:
     block = B.ok(
         SPEC_WAVES, s.run, data, fetched_at=s.fetched_at, source=_source_for(SPEC_WAVES, s.run)
     )
-    return om.with_refresh_error(block, s, SPEC_WAVES)
+    return om.with_refresh_error(block, s, SPEC_WAVES, ctx.now)
 
 
 def extremes(
@@ -195,19 +204,24 @@ async def build_level(ctx: Context) -> B.Block:
     except om.NoCell as exc:
         return B.unavailable(SPEC_LEVEL, exc.code, exc.reason)
     levels = [B.rounded(v, 2) for v in s.values["sea_level_height_msl"]]
-    if all(v is None for v in levels):
+    known = [v for v in s.values["sea_level_height_msl"] if v is not None]
+    if not known:
         return B.unavailable(SPEC_LEVEL, "masked", "SMOC has no sea level at this cell")
     data = {
         "cell": _cell(s),
-        "datum": "model_msl",
+        # referenced to the GLOBAL mean sea level: the cell's own mean sits
+        # above or below it (window_mean_m), so a level is never "about the
+        # local mean", nor about chart datum
+        "datum": "global_msl",
+        "window_mean_m": round(sum(known) / len(known), 2),
         "hours": [{"time": B.iso(t), "level_m": v} for t, v in zip(s.times, levels, strict=True)],
         "extremes": extremes(s.times, levels),
-        "derived": ["extremes"],
+        "derived": ["extremes", "window_mean_m"],
     }
     block = B.ok(
         SPEC_LEVEL, s.run, data, fetched_at=s.fetched_at, source=_source_for(SPEC_LEVEL, s.run)
     )
-    return om.with_refresh_error(block, s, SPEC_LEVEL)
+    return om.with_refresh_error(block, s, SPEC_LEVEL, ctx.now)
 
 
 # ------------------------------------------------------------------ SST
@@ -217,7 +231,7 @@ def sst_box(lat: float, lon: float) -> tuple[float, float, float, float, tuple[f
     """(south, north, west, east, cell key): the 0.05 deg cell of the point
     plus 30 km on every side, so any requester in the cell finds its own
     nearest water cell inside the box."""
-    clat, clon = cell_centre(lat, 0.05), cell_centre(lon, 0.05)
+    clat, clon = cell_key(lat, lon, 0.05)
     dlat = 0.025 + CELL_KM / 111.32
     dlon = 0.025 + CELL_KM / (111.32 * max(0.05, math.cos(math.radians(abs(clat) + 0.3))))
     south, north = max(-89.975, clat - dlat), min(89.975, clat + dlat)
@@ -312,6 +326,12 @@ class StationInfo:
     name: str | None
 
 
+@dataclass(frozen=True)
+class Owner:
+    name: str
+    country: str | None
+
+
 @dataclass
 class Obs:
     id: str
@@ -336,6 +356,21 @@ def parse_station_table(text: str) -> dict[str, StationInfo]:
         )
     if not out:
         raise fetch.FetchError("upstream_parse", "www.ndbc.noaa.gov station table with no row")
+    return out
+
+
+def parse_owners(text: str) -> dict[str, Owner]:
+    """`station_owners.txt`: `CODE |Name|COUNTRY`, each field padded."""
+    out = {}
+    for line in text.splitlines():
+        if not line.strip() or line.startswith("#"):
+            continue
+        parts = [part.strip() for part in line.split("|")]
+        if len(parts) != 3 or not parts[0] or not parts[1]:
+            continue
+        out[parts[0]] = Owner(parts[1], parts[2] or None)
+    if not out:
+        raise fetch.FetchError("upstream_parse", "www.ndbc.noaa.gov owners file with no row")
     return out
 
 
@@ -367,7 +402,12 @@ def parse_latest(text: str) -> list[Obs]:
     return out
 
 
-def buoy_block(obs: list[Obs], stations: dict[str, StationInfo], ctx: Context) -> B.Block:
+def buoy_block(
+    obs: list[Obs],
+    stations: dict[str, StationInfo],
+    owners: dict[str, Owner] | None,
+    ctx: Context,
+) -> B.Block:
     best: tuple[float, Obs] | None = None
     for o in obs:
         if ctx.now - o.time > BUOY_MAX_AGE:
@@ -385,6 +425,7 @@ def buoy_block(obs: list[Obs], stations: dict[str, StationInfo], ctx: Context) -
         )
     km, o = best
     info = stations.get(o.id, StationInfo(None, None, None))
+    owner = (owners or {}).get(info.owner_code or "")
     v = o.values
     period = v.get("DPD")
     if info.owner_code == "KO":
@@ -398,7 +439,8 @@ def buoy_block(obs: list[Obs], stations: dict[str, StationInfo], ctx: Context) -
             "name": info.name,
             "type": info.type,
             "owner_code": info.owner_code,
-            "owner": None,
+            "owner": owner.name if owner else None,
+            "owner_country": owner.country if owner else None,
             "distance_km": round(km, 1),
         },
         "wave_height_m": v.get("WVHT"),
@@ -413,7 +455,24 @@ def buoy_block(obs: list[Obs], stations: dict[str, StationInfo], ctx: Context) -
         "tide_m": round(tide * FT_TO_M, 2) if tide is not None else None,
         "derived": ["tide_m"] if tide is not None else [],
     }
-    return B.ok(SPEC_BUOY, o.time, data)
+    # the station's owner is credited in the block itself: the panel shows a
+    # block's attribution, and a partner station's data is its owner's
+    if owner is not None:
+        held = f"station {o.id}, owned by {owner.name}"
+    elif info.owner_code:
+        held = f"station {o.id}, NDBC owner code {info.owner_code}"
+    else:
+        held = f"station {o.id}"
+    source = B.Source(
+        SRC_BUOY.name,
+        SRC_BUOY.url,
+        f"Observations of {held}, relayed by NOAA's National Data Buoy Center",
+        SRC_BUOY.licence,
+    )
+    missing = []
+    if owner is None and info.owner_code:
+        missing.append({"field": "station.owner", "reason": "not_in_source"})
+    return B.ok(SPEC_BUOY, o.time, data, source=source, missing=missing)
 
 
 async def build_buoy(ctx: Context) -> B.Block:
@@ -430,12 +489,27 @@ async def build_buoy(ctx: Context) -> B.Block:
         table = await fetch.in_thread(parse_station_table, response.text)
         return fetch.Loaded(table, 24 * 3600.0, size=len(response.content))
 
+    async def load_owners(previous: fetch.Entry) -> fetch.Loaded:
+        response = await fetch.get(NDBC_OWNERS)
+        owners = parse_owners(response.text)  # 184 lines
+        return fetch.Loaded(owners, 24 * 3600.0, size=len(response.content))
+
     wait = ctx.waiting(SPEC_BUOY.id, "warming")
-    latest = await fetch.obtain(
-        _latest_cache, "global", load_latest, ctx.claim, swr=True, on_first_wait=wait
-    )
-    stations = await fetch.obtain(
-        _stations_cache, "global", load_stations, ctx.claim, swr=True, on_first_wait=wait
-    )
+    stale = ctx.serving_stale(SPEC_BUOY.id)
+
+    async def global_file(cache: fetch.Cache, loader: fetch.Loader) -> fetch.Entry:
+        return await fetch.obtain(
+            cache, "global", loader, ctx.claim, swr=True, on_first_wait=wait, on_stale=stale
+        )
+
+    latest = await global_file(_latest_cache, load_latest)
+    stations = await global_file(_stations_cache, load_stations)
+    owners = await global_file(_owners_cache, load_owners)
     table = stations.value or {}
-    return serve(SPEC_BUOY, latest, lambda rows: buoy_block(rows, table, ctx), ttl_s=600.0)
+    result = serve(
+        SPEC_BUOY, latest, lambda rows: buoy_block(rows, table, owners.value, ctx), ttl_s=600.0
+    )
+    if result.status == "ok" and owners.value is None and owners.error and result.error is None:
+        # the observation stands; only its owner's name could not be read
+        result.error = B.Problem(owners.error.code, f"owners file: {owners.error.reason}")
+    return result

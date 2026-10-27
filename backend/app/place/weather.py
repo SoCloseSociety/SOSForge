@@ -7,7 +7,11 @@
 - `forecast_*`: one MET Norway Locationforecast `complete` read per 0.01 deg
   point, revalidated with If-Modified-Since, fresh until MET's `Expires`.
   MET's first step can be the PAST hour (10:00Z in a body fetched at
-  10:36Z): dropped. The daily view is ours, from the 6-hour blocks.
+  10:36Z): dropped. The daily view is ours, from the 6-hour blocks. The
+  cache holds only the fields the blocks read (`slim_met`: 197 KB in memory
+  where the full parse takes 259 KB, measured on four captures), counted
+  by what it takes in memory and bounded at 64 MB (about 330 points): by
+  count alone, 4096 clicked points were about 1.1 GB.
 - `wind`: NWS gridpoint data for the US and its territories (`updateTime`,
   never `generatedAt`, which only says when the JSON was rendered), MET
   everywhere else and whenever NWS fails (`data.fallback` says so).
@@ -65,10 +69,15 @@ SPEC_HOURLY = B.Spec("forecast_hourly", "forecast", "issued", 12 * 3600.0, SRC_M
 SPEC_DAILY = B.Spec("forecast_daily", "forecast", "issued", 12 * 3600.0, SRC_MET)
 SPEC_WIND = B.Spec("wind", "forecast", "issued", 12 * 3600.0, SRC_MET)
 
+# the forecast caches are bounded in BYTES too (deep size of what they hold):
+# a count alone let 4096 clicked points reach a gigabyte
+MET_CACHE_BYTES = 64 * 1024 * 1024
+GRID_CACHE_BYTES = 16 * 1024 * 1024
+
 _metar_cache = fetch.Cache("aviationweather.gov", 1)
-_met_cache = fetch.Cache("api.met.no")
+_met_cache = fetch.Cache("api.met.no", max_bytes=MET_CACHE_BYTES)
 _points_cache = fetch.Cache("api.weather.gov points")
-_grid_cache = fetch.Cache("api.weather.gov gridpoints")
+_grid_cache = fetch.Cache("api.weather.gov gridpoints", max_bytes=GRID_CACHE_BYTES)
 
 
 def parse_time(text: str) -> datetime:
@@ -252,6 +261,7 @@ async def build_now(ctx: Context) -> B.Block:
         ctx.claim,
         swr=True,
         on_first_wait=ctx.waiting(SPEC_NOW.id, "warming"),
+        on_stale=ctx.serving_stale(SPEC_NOW.id),
     )
     return serve(SPEC_NOW, entry, lambda index: now_block(index, ctx), ttl_s=300.0)
 
@@ -288,6 +298,74 @@ def serve(
 
 # ---------------------------------------------------------------- MET Norway
 
+# Exactly the keys the blocks below read; `test_slim_payload_builds_the_same_blocks`
+# builds every block from the full and the slim payload of four captures.
+INSTANT_KEYS = (
+    "air_temperature",
+    "apparent_air_temperature",
+    "relative_humidity",
+    "dew_point_temperature",
+    "air_pressure_at_sea_level",
+    "cloud_area_fraction",
+    "fog_area_fraction",
+    "ultraviolet_index_clear_sky",
+    "wind_speed",
+    "wind_from_direction",
+    "wind_speed_of_gust",
+)
+PERIOD_KEYS = {
+    "next_1_hours": ("precipitation_amount", "probability_of_precipitation"),
+    "next_6_hours": ("air_temperature_max", "air_temperature_min", "precipitation_amount"),
+}
+
+
+def slim_met(payload: dict[str, Any]) -> dict[str, Any]:
+    """The payload reduced to what the blocks read, in the same shape (a
+    key absent upstream stays absent: "no gust in this model" is read from
+    the key, not the value)."""
+    props = payload["properties"]
+    steps = []
+    for step in props["timeseries"]:
+        data = step["data"]
+        details = data["instant"]["details"]
+        out: dict[str, Any] = {
+            "instant": {"details": {k: details[k] for k in INSTANT_KEYS if k in details}}
+        }
+        for period, keys in PERIOD_KEYS.items():
+            block = data.get(period)
+            if block is None:
+                continue
+            kept: dict[str, Any] = {}
+            if "summary" in block:
+                kept["summary"] = {"symbol_code": (block["summary"] or {}).get("symbol_code")}
+            if "details" in block:
+                d = block["details"] or {}
+                kept["details"] = {k: d[k] for k in keys if k in d}
+            out[period] = kept
+        steps.append({"time": step["time"], "data": out})
+    coords = (payload.get("geometry") or {}).get("coordinates")
+    return {
+        "geometry": {"coordinates": coords} if coords is not None else {},
+        "properties": {
+            "meta": {"updated_at": props["meta"]["updated_at"]},
+            "timeseries": steps,
+        },
+    }
+
+
+def _parse_met(content: bytes) -> tuple[dict[str, Any], int]:
+    import json
+
+    payload = json.loads(content)
+    try:
+        props = payload["properties"]
+        parse_time(props["meta"]["updated_at"])
+        props["timeseries"][0]["data"]["instant"]["details"]
+        slim = slim_met(payload)
+    except (KeyError, IndexError, TypeError, ValueError):
+        raise fetch.FetchError("upstream_parse", "api.met.no payload without timeseries") from None
+    return slim, fetch.deep_size(slim)
+
 
 async def met_entry(ctx: Context) -> fetch.Entry:
     key = (ctx.lat, ctx.lon)
@@ -302,16 +380,8 @@ async def met_entry(ctx: Context) -> fetch.Entry:
         hints = {"last-modified": response.headers.get("last-modified", "")}
         if response.status_code == 304:
             return fetch.Loaded(previous.value, ttl, size=previous.size, hints=hints)
-        payload = response.json()
-        try:
-            props = payload["properties"]
-            parse_time(props["meta"]["updated_at"])
-            props["timeseries"][0]["data"]["instant"]["details"]
-        except (KeyError, IndexError, TypeError, ValueError):
-            raise fetch.FetchError(
-                "upstream_parse", "api.met.no payload without timeseries"
-            ) from None
-        return fetch.Loaded(payload, ttl, size=len(response.content), hints=hints)
+        slim, size = await fetch.in_thread(_parse_met, response.content)
+        return fetch.Loaded(slim, ttl, size=size, hints=hints)
 
     return await fetch.obtain(_met_cache, key, load, ctx.claim)
 
@@ -527,6 +597,21 @@ def nws_layer(props: dict[str, Any], name: str, start: datetime) -> dict[datetim
     return out
 
 
+GRID_KEYS = ("updateTime", "windSpeed", "windDirection", "windGust")
+
+
+def _parse_grid(content: bytes) -> tuple[dict[str, Any], int]:
+    """The gridpoint properties the wind block reads (4 of about 60 layers:
+    330 KB in memory for the whole Anchorage capture)."""
+    import json
+
+    props = (json.loads(content) or {}).get("properties") or {}
+    if "updateTime" not in props or "windSpeed" not in props:
+        raise fetch.FetchError("upstream_parse", "api.weather.gov grid without wind")
+    slim = {k: props[k] for k in GRID_KEYS if k in props}
+    return slim, fetch.deep_size(slim)
+
+
 async def _nws(ctx: Context) -> tuple[dict[str, Any], datetime, datetime | None]:
     point_url = NWS_POINTS.format(lat=ctx.lat, lon=ctx.lon)
 
@@ -550,10 +635,8 @@ async def _nws(ctx: Context) -> tuple[dict[str, Any], datetime, datetime | None]
 
     async def load_grid(previous: fetch.Entry) -> fetch.Loaded:
         response = await fetch.get(grid_url, headers={"Accept": "application/geo+json"})
-        props = response.json().get("properties") or {}
-        if "updateTime" not in props or "windSpeed" not in props:
-            raise fetch.FetchError("upstream_parse", "api.weather.gov grid without wind")
-        return fetch.Loaded(props, _expires_ttl(response, 300.0, 3600.0))
+        props, size = await fetch.in_thread(_parse_grid, response.content)
+        return fetch.Loaded(props, _expires_ttl(response, 300.0, 3600.0), size=size)
 
     grid = await fetch.obtain(_grid_cache, point.value, load_grid, ctx.claim)
     if grid.value is None:

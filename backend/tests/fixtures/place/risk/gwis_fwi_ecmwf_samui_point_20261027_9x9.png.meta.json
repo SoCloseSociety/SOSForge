@@ -1,0 +1,14 @@
+{
+  "url": "https://maps.effis.emergency.copernicus.eu/gwis?service=WMS&version=1.3.0&request=GetMap&layers=ecmwf.fwi&styles=&crs=EPSG:4326&bbox=9.465,99.965,9.555,100.055&width=9&height=9&format=image/png&transparent=true&time=2026-10-27",
+  "fetched_at_utc": "2026-10-27T15:56:35Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 15:56:36 GMT",
+    "content-type": "image/png",
+    "content-length": "77",
+    "cache-control": "public, max-age=3600",
+    "expires": "Tue, 27 Oct 2026 16:48:20 GMT"
+  },
+  "bytes": 77,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

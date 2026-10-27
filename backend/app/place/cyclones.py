@@ -8,7 +8,12 @@ SEPARATE PROCESS (12.7 s of CPU must not compete with the websocket loop
 for the GIL), and reduced to a packed index of track points with a 1-degree
 grid of track SEGMENTS, written to `data_dir/ibtracs-index.bin` (temporary
 file, then rename). The header holds a format version and the file's
-Last-Modified; a mismatch rebuilds it. The CSV is then deleted.
+Last-Modified; a mismatch rebuilds it. The CSV is deleted once an index is
+built from it, and KEPT (with its Last-Modified) when the build fails, so
+the next attempt revalidates it (a 304 costs no download) instead of
+fetching 333 MB again. A failed first ingest backs off from 10 minutes to
+6 hours: on the 60 s failure memory a parse error used to restart the full
+download every minute (about 20 GB an hour from NCEI).
 
 Measured traps:
 
@@ -62,8 +67,11 @@ URL = (
 )
 FORMAT = 1
 INDEX_NAME = "ibtracs-index.bin"
+CSV_NAME = "ibtracs-ALL.csv"  # a complete download whose index is not built yet
 MIN_FREE = 1 << 30
 CHECK_EVERY = 86400.0
+RETRY_FIRST_S = 600.0  # a failed first ingest: 10 min, then doubling
+RETRY_MAX_S = 6 * 3600.0
 EPOCH = datetime(1800, 1, 1, tzinfo=UTC)
 NATURES = ("DS", "TS", "ET", "SS", "NR", "MX")
 # IBTrACS v04 column documentation (captured 2026-10-27): WMO_WIND averaging
@@ -284,6 +292,11 @@ class _State:
     error: fetch.FetchError | None = None
     checked: float = 0.0
     disk_loaded: bool = False
+    # the disk load, shared: a report arriving while another one loads the
+    # index waits for it instead of deciding "no index" and downloading
+    loading: asyncio.Task[None] | None = None
+    failures: int = 0  # consecutive failed ingests without an index
+    retry_at: float = 0.0  # monotonic; no new ingest before it
     read_at: datetime | None = None  # the last successful HEAD or download
 
 
@@ -303,73 +316,122 @@ def _executor() -> ProcessPoolExecutor:
     return _pool
 
 
+def _kept(data_dir: Path) -> tuple[Path, str | None]:
+    """The complete download kept after a failed build, and its
+    Last-Modified (None: nothing kept)."""
+    kept = data_dir / CSV_NAME
+    stamp = data_dir / (CSV_NAME + ".last-modified")
+    try:
+        modified = stamp.read_text(encoding="utf-8").strip() if kept.exists() else None
+    except OSError:
+        modified = None
+    return kept, modified or None
+
+
 async def _ingest() -> None:
     assert _state.data_dir is not None
     data_dir = _state.data_dir
     data_dir.mkdir(parents=True, exist_ok=True)
     current = _state.index
+    kept, kept_modified = _kept(data_dir)
+    stamp = data_dir / (CSV_NAME + ".last-modified")
     headers = {}
-    if current is not None and current.head.get("last_modified"):
+    if kept_modified:
+        # a kept download is newer than any index: revalidate IT
+        headers["If-Modified-Since"] = kept_modified
+    elif current is not None and current.head.get("last_modified"):
         headers["If-Modified-Since"] = current.head["last_modified"]
     if shutil.disk_usage(data_dir).free < MIN_FREE:
         raise fetch.FetchError("busy", "less than 1 GB free in the data directory for IBTrACS")
-    csv_path = data_dir / "ibtracs-ALL.csv.tmp"
+    tmp = data_dir / (CSV_NAME + ".tmp")
     try:
-        response = await fetch.upstream.download(URL, csv_path, headers=headers)
+        response = await fetch.upstream.download(URL, tmp, headers=headers)
         _state.read_at = datetime.now(UTC)
         if response.status_code == 304:
-            return
-        modified = response.headers.get("last-modified") or format_datetime(
-            datetime.now(UTC), usegmt=True
-        )
+            if not kept_modified:
+                return  # the index is the upstream's current file
+            modified = kept_modified  # unchanged upstream: build from the kept copy
+        else:
+            modified = response.headers.get("last-modified") or format_datetime(
+                datetime.now(UTC), usegmt=True
+            )
+            os.replace(tmp, kept)  # complete: kept until an index is built from it
+            stamp.write_text(modified, encoding="utf-8")
         loop = asyncio.get_running_loop()
         out = str(data_dir / INDEX_NAME)
-        await loop.run_in_executor(_executor(), build_index, str(csv_path), out, modified)
+        await loop.run_in_executor(_executor(), build_index, str(kept), out, modified)
         index = await fetch.in_thread(load_index, out)
         if index is None:
             raise fetch.FetchError("upstream_parse", "the IBTrACS index could not be read back")
         _state.index = index
+        kept.unlink(missing_ok=True)
+        stamp.unlink(missing_ok=True)
         log.info("IBTrACS index built: %s storms", index.head.get("storms"))
     finally:
-        csv_path.unlink(missing_ok=True)
+        tmp.unlink(missing_ok=True)  # a partial download is never kept
+
+
+def retry_delay(failures: int) -> float:
+    """Seconds before another first ingest after `failures` in a row."""
+    return min(RETRY_MAX_S, RETRY_FIRST_S * 2 ** max(0, failures - 1))
 
 
 async def _run_ingest() -> None:
     try:
         await _ingest()
         _state.error = None
-    except fetch.FetchError as exc:
-        _state.error = exc
+        _state.failures = 0
+        _state.retry_at = 0.0
     except Exception as exc:  # noqa: BLE001 -- a failed ingest is a block error, never a crash
-        _state.error = fetch.FetchError("upstream_parse", f"{type(exc).__name__} building IBTrACS")
-        log.warning("IBTrACS ingest: %s", type(exc).__name__)
+        if isinstance(exc, fetch.FetchError):
+            _state.error = exc
+        else:
+            _state.error = fetch.FetchError(
+                "upstream_parse", f"{type(exc).__name__} building IBTrACS"
+            )
+            log.warning("IBTrACS ingest: %s", type(exc).__name__)
+        if _state.index is None:
+            # no index to serve: back off, never the 60 s failure memory
+            _state.failures += 1
+            _state.retry_at = time.monotonic() + retry_delay(_state.failures)
     finally:
         _state.checked = time.monotonic()
         _state.task = None
 
 
+async def _load_disk() -> None:
+    assert _state.data_dir is not None
+    try:
+        path = _state.data_dir / INDEX_NAME
+        if path.exists():
+            index = await fetch.in_thread(load_index, str(path))
+            if index is not None:
+                _state.index = index
+                _state.checked = time.monotonic()
+                _state.read_at = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+    finally:
+        _state.disk_loaded = True
+        _state.loading = None
+
+
 async def ensure(ctx: Context) -> None:
-    """Loads the index from disk once, and starts the 24 h check or the
-    first ingest when due. Never waits for the ingest itself."""
+    """Loads the index from disk once (every concurrent caller waits for
+    that one load), and starts the 24 h check or the first ingest when due.
+    Never waits for the ingest itself."""
     if _state.data_dir is None:
         return
     if not _state.disk_loaded:
-        _state.disk_loaded = True
-        path = _state.data_dir / INDEX_NAME
-        if path.exists():
-            _state.index = await fetch.in_thread(load_index, str(path))
-            if _state.index is not None:
-                _state.checked = time.monotonic()
-                _state.read_at = datetime.fromtimestamp(path.stat().st_mtime, UTC)
+        if _state.loading is None:
+            _state.loading = fetch.spawn(_load_disk(), "place:ibtracs-disk")
+        await asyncio.shield(_state.loading)
     due = _state.index is None or time.monotonic() - _state.checked > CHECK_EVERY
     if _state.task is None and due:
-        if (
-            _state.index is None
-            and _state.error is not None
-            and (time.monotonic() - _state.checked < fetch.FAILURE_MEMORY_S)
-        ):
-            return  # a failure is remembered 60 s, never longer
-        ctx.claim()
+        if time.monotonic() < _state.retry_at:
+            return  # a failed first ingest is backing off
+        if _state.index is None:
+            # the first ingest is a new fetch this report starts; the daily
+            # check of an index already served is the product's, not the client's
+            ctx.claim()
         _state.task = fetch.spawn(_run_ingest(), "place:ibtracs")
 
 

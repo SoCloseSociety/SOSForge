@@ -8,8 +8,8 @@ import re
 
 import pytest
 
-from app.place import cyclones, history
-from tests.place_helpers import FIXTURES, at, ctx_for, install, read_json
+from app.place import cyclones, fetch, history
+from tests.place_helpers import FIXTURES, at, ctx_for, install, meta_of, read_json
 
 NOW = at("2026-10-27T11:00:00Z")
 THROUGH = at("2026-10-27T10:31:00Z")  # what a newest-event probe would have said
@@ -81,17 +81,43 @@ def test_radius_is_applied_locally() -> None:
 
 async def test_the_probe_value_travels_with_the_cell() -> None:
     router = install()
-    probe = "newest"
-    newest_csv = _csv("usgs_csv_all_samui.csv")  # its first row is the newest at Samui
-    router.add(history.USGS_NEWEST, newest_csv)
+    # the global newest-event probe (limit=1) and the cell query, each the
+    # verbatim answer to the very URL this code sends
+    newest = meta_of("history", "usgs_csv_newest_global.csv")
+    cell = meta_of("history", "usgs_csv_cell_samui.csv")
+    assert newest["url"] == history.USGS_NEWEST
     clat, clon = 9.55, 100.05
-    router.add(
-        history.USGS_QUERY.format(lat=clat, lon=clon, km=history.USGS_RADIUS_KM),
-        _csv("usgs_csv_all_samui.csv"),
-    )
+    assert cell["url"] == history.USGS_QUERY.format(lat=clat, lon=clon, km=history.USGS_RADIUS_KM)
+    router.add(newest["url"], _csv("usgs_csv_newest_global.csv"))
+    router.add(cell["url"], _csv("usgs_csv_cell_samui.csv"))
     block = await history.build_earthquakes(ctx_for(9.512, 100.013, NOW))
-    assert block.status == "ok" and probe
-    assert block.as_of == at("2006-10-07T21:12:26.370Z")
+    assert block.status == "ok" and block.data is not None
+    # "records through" is the newest event ComCat held (M5 south of Fiji),
+    # not the newest event of this cell (2006)
+    assert block.as_of == at("2026-10-27T15:31:42.073Z")
+    assert block.data["strongest"][0]["id"] == "usp000eunq"
+    # the entry is counted by what it holds in memory
+    entry = history._usgs_cache.peek((clat, clon))
+    assert entry is not None and entry.size == fetch.deep_size(entry.value) > 0
+
+
+def test_history_cache_setting_is_the_total_of_the_three() -> None:
+    try:
+        history.configure(96)
+        caches = (history._usgs_cache, history._ncei_cache, history._gvp_cache)
+        assert [c.max_bytes for c in caches] == [32 * 1024 * 1024] * 3
+    finally:
+        history.configure(64)
+
+
+def test_parsed_rows_cost_more_than_the_old_estimates() -> None:
+    # measured on the captures: the estimates (400 B per NCEI item, 80 B per
+    # USGS row's strings) were 2.3 to 3 times low
+    q = history.parse_usgs(_csv("usgs_csv_all_kathmandu.csv"), THROUGH)
+    arrays = q.t.nbytes + q.lat.nbytes + q.lon.nbytes + q.mag.nbytes + q.depth.nbytes
+    assert fetch.deep_size(q) > 2 * (arrays + 80 * len(q.ids))
+    rows = _rows("ncei_tsunamis_runups_lima.json")
+    assert fetch.deep_size(rows) > 2.5 * 400 * len(rows.items)
 
 
 # ---------------------------------------------------------------------- NCEI
@@ -208,7 +234,7 @@ def test_volcanoes_nearest_first_with_bce_and_unknown_years() -> None:
     ]
     cont = history.parse_continuing(read_json("history", "gvp_continuing_eruptions_global.json"))
     assert cont.through == at("2026-03-31T00:00:00Z") or cont.through.year == 2026
-    block = history.volcano_block(history.Volcanoes(rows, cont), ctx_for(35.676, 139.650, NOW))
+    block = history.volcano_block(history.Volcanoes(rows, cont, NOW), ctx_for(35.676, 139.650, NOW))
     out = block.public(NOW, "en")
     v = out["data"]["volcanoes"]
     assert v == sorted(v, key=lambda x: x["distance_km"])
@@ -218,6 +244,49 @@ def test_volcanoes_nearest_first_with_bce_and_unknown_years() -> None:
     assert all_years["Myokosan"] == -750  # BCE is negative
     assert not any(x["continuing"] for x in v)
     assert out["as_of"] == cont.through.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _page_text(name: str) -> str:
+    import html as html_lib
+
+    page = (FIXTURES / "history" / name).read_text(encoding="utf-8", errors="replace")
+    page = re.sub(r"<script.*?</script>|<style.*?</style>", "", page, flags=re.S)
+    return re.sub(r"\s+", " ", html_lib.unescape(re.sub(r"<[^>]+>", " ", page)))
+
+
+def test_gvp_licence_is_the_one_gvp_states_for_its_database() -> None:
+    terms = _page_text("gvp_terms_of_use_wayback.html")
+    # the general clause is non-commercial; the DATABASE is a US Government work
+    assert "personal, educational, and other non-commercial uses" in terms
+    assert (
+        "The database compilation is a product of employees of the United States, "
+        "and falls under (2)" in terms
+    )
+    assert "(2) the Content was never eligible for copyright protection" in terms
+    assert "US Government employees" in history.SRC_GVP.licence
+    # GVP asks for the version and upload date; only this page states them,
+    # and it answers a non-browser client with a 403 challenge
+    database = _page_text("gvp_votw_database_wayback.html")
+    assert "should include the database version number and upload date" in database
+    assert meta_of("history", "gvp_votw_database_live_challenge.html")["status"] == 403
+    assert "Request verification" in _page_text("gvp_votw_database_live_challenge.html")
+
+
+def test_gvp_citation_names_the_day_the_service_was_read() -> None:
+    cont = history.parse_continuing(read_json("history", "gvp_continuing_eruptions_global.json"))
+    rows = [
+        f["properties"]
+        for f in read_json("history", "gvp_holocene_volcanoes_tokyo.json")["features"]
+    ]
+    out = history.volcano_block(
+        history.Volcanoes(rows, cont, at("2026-10-27T16:00:00Z")), ctx_for(35.676, 139.650, NOW)
+    ).public(NOW, "en")
+    attribution = out["source"]["attribution"]
+    assert attribution.startswith(
+        "Global Volcanism Program, 2026. [Database] Volcanoes of the World"
+    )
+    assert "webservices.volcano.si.edu on 2026-10-27" in attribution
+    assert "compiled by Venzke, E." in attribution and "v. 5" not in attribution  # never a guess
 
 
 def test_continuing_needs_the_modifier() -> None:
@@ -230,7 +299,7 @@ def test_continuing_needs_the_modifier() -> None:
 def test_no_volcano_near_samui() -> None:
     cont = history.parse_continuing(read_json("history", "gvp_continuing_eruptions_global.json"))
     rows = read_json("history", "gvp_holocene_volcanoes_samui.json")["features"]
-    d = history.volcano_block(history.Volcanoes(rows, cont), ctx_for(9.512, 100.013, NOW)).data
+    d = history.volcano_block(history.Volcanoes(rows, cont, NOW), ctx_for(9.512, 100.013, NOW)).data
     assert d is not None and d["total"] == 0
 
 
@@ -335,3 +404,136 @@ def test_index_header_version_mismatch_is_rebuilt(tmp_path) -> None:  # type: ig
     with open(path, "wb") as f:
         np.savez(f, head=np.asarray(json.dumps({"format": cyclones.FORMAT + 1})))
     assert cyclones.load_index(str(path)) is None
+
+
+# ------------------------------------------------------- IBTrACS ingest state
+
+LAST_MODIFIED = "Sun, 25 Oct 2026 09:05:37 GMT"
+
+
+def _index_on_disk(folder) -> None:  # type: ignore[no-untyped-def]
+    csv_path = folder / "all.csv"
+    csv_path.write_bytes(
+        (FIXTURES / "history" / "ibtracs_ALL_range_header.csv").read_bytes()
+        + (FIXTURES / "history" / "ibtracs_ALL_range_GAY1989.csv").read_bytes()
+    )
+    cyclones.build_index(str(csv_path), str(folder / cyclones.INDEX_NAME), LAST_MODIFIED)
+    csv_path.unlink()
+
+
+@pytest.fixture
+def threads_for_the_build(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
+    # the index build runs in a spawned process in production; a thread here
+    from concurrent.futures import ThreadPoolExecutor
+
+    pool = ThreadPoolExecutor(1)
+    monkeypatch.setattr(cyclones, "_executor", lambda: pool)
+    yield
+    pool.shutdown(wait=True)
+
+
+async def test_a_failed_first_ingest_backs_off_and_keeps_the_download(
+    tmp_path, threads_for_the_build
+) -> None:  # type: ignore[no-untyped-def]
+    import httpx
+
+    router = install()
+    cyclones.configure(tmp_path)
+    # a real body that is not the CSV (the column documentation): it parses
+    # as a file whose columns were renamed, a KeyError after the transfer
+    body = (FIXTURES / "history" / "ibtracs_column_documentation.pdf").read_bytes()
+    gets: list[httpx.Request] = []
+
+    def answer(request: httpx.Request) -> httpx.Response:
+        gets.append(request)
+        if request.headers.get("if-modified-since") == LAST_MODIFIED:
+            return httpx.Response(304)
+        return httpx.Response(200, headers={"last-modified": LAST_MODIFIED}, content=body)
+
+    router.handler(cyclones.URL, answer)
+    ctx = ctx_for(9.512, 100.013, NOW)
+    await cyclones.ensure(ctx)
+    assert cyclones._state.task is not None
+    await cyclones._state.task
+    assert cyclones._state.error is not None and cyclones._state.error.code == "upstream_parse"
+    kept = tmp_path / cyclones.CSV_NAME
+    assert kept.read_bytes() == body  # the 333 MB are not thrown away
+    wait = cyclones._state.retry_at - __import__("time").monotonic()
+    assert wait > 9 * 60  # backing off, not the 60 s failure memory
+    # a report a minute later starts nothing
+    await cyclones.ensure(ctx)
+    assert cyclones._state.task is None and len(gets) == 1
+    block = await cyclones.build(ctx)
+    assert block.status == "unavailable" and block.error is not None
+    assert block.error.code == "upstream_parse"
+    # once due, the retry revalidates the kept copy: a 304, no second download
+    cyclones._state.retry_at = 0.0
+    await cyclones.ensure(ctx)
+    assert cyclones._state.task is not None
+    await cyclones._state.task
+    assert len(gets) == 2 and gets[1].headers["if-modified-since"] == LAST_MODIFIED
+    assert cyclones._state.failures == 2 and kept.exists()
+    assert cyclones.retry_delay(2) == 2 * cyclones.retry_delay(1)
+    assert cyclones.retry_delay(50) == cyclones.RETRY_MAX_S
+
+
+async def test_a_kept_download_builds_once_the_upstream_answers_304(
+    tmp_path, threads_for_the_build
+) -> None:  # type: ignore[no-untyped-def]
+    import httpx
+
+    router = install()
+    cyclones.configure(tmp_path)
+    # a complete download kept by an earlier failed build: the real rows
+    (tmp_path / cyclones.CSV_NAME).write_bytes(
+        (FIXTURES / "history" / "ibtracs_ALL_range_header.csv").read_bytes()
+        + (FIXTURES / "history" / "ibtracs_ALL_range_GAY1989.csv").read_bytes()
+    )
+    (tmp_path / (cyclones.CSV_NAME + ".last-modified")).write_text(LAST_MODIFIED)
+    router.handler(cyclones.URL, lambda request: httpx.Response(304))
+    await cyclones.ensure(ctx_for(9.512, 100.013, NOW))
+    assert cyclones._state.task is not None
+    await cyclones._state.task
+    assert cyclones._state.index is not None and cyclones._state.error is None
+    assert cyclones._state.index.head["last_modified"] == LAST_MODIFIED
+    assert not (tmp_path / cyclones.CSV_NAME).exists()  # deleted once built
+
+
+async def test_concurrent_reports_share_one_disk_load(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:  # type: ignore[no-untyped-def]
+    import asyncio
+    import time
+
+    router = install()
+    _index_on_disk(tmp_path)
+    cyclones.configure(tmp_path)
+    real = cyclones.load_index
+
+    def slow(path: str) -> cyclones.Index | None:
+        time.sleep(0.3)  # an executor under load
+        return real(path)
+
+    monkeypatch.setattr(cyclones, "load_index", slow)
+    ctx = ctx_for(9.512, 100.013, NOW)
+    await asyncio.gather(cyclones.ensure(ctx), cyclones.ensure(ctx))
+    assert cyclones._state.index is not None
+    # the second report waited for the load: no download was started
+    assert cyclones._state.task is None
+    assert not [r for r in router.seen if str(r.url) == cyclones.URL]
+
+
+async def test_the_daily_check_spends_no_client_token(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import httpx
+
+    router = install()
+    _index_on_disk(tmp_path)
+    cyclones.configure(tmp_path)
+    router.handler(cyclones.URL, lambda request: httpx.Response(304))
+    empty = ctx_for(9.512, 100.013, NOW, take=lambda: 7.0)  # this client's budget is empty
+    await cyclones.ensure(ctx_for(9.512, 100.013, NOW))
+    cyclones._state.checked -= cyclones.CHECK_EVERY + 1  # a day later
+    await cyclones.ensure(empty)  # no Refused: the check is the product's
+    assert cyclones._state.task is not None and empty.claimed is None
+    await cyclones._state.task
+    assert cyclones._state.error is None

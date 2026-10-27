@@ -4,9 +4,12 @@ The composer starts every block at once and waits `budget` seconds
 (`SOS_PLACE_BUDGET_SECONDS`, 8). What finished is returned; what did not
 comes back `unavailable` with code `budget` (or `warming` for a global file
 read for the first time), and the response says `complete: false` with
-`retry_after_s: 5`. The block tasks are NOT cancelled: their fetches keep
-running to their own timeouts and fill the cache, so the panel's refetch
-finds them. A dead or slow upstream therefore never holds another block.
+`retry_after_s: 5`. So does a block that FINISHED as `warming` (IBTrACS is
+read for minutes, not seconds) and one that answered from a previous copy
+while its refresh runs: either will read differently in a few seconds. The
+block tasks are NOT cancelled: their fetches keep running to their own
+timeouts and fill the cache, so the panel's refetch finds them. A dead or
+slow upstream therefore never holds another block.
 """
 
 from __future__ import annotations
@@ -86,6 +89,14 @@ async def run(
                 else f"not finished within the report's {budget_s:g} s budget"
             )
             result = B.unavailable(spec, code, reason)
+        elif (
+            result.status == "unavailable"
+            and result.error is not None
+            and result.error.code == "warming"
+        ) or spec.id in ctx.refreshing:
+            # a first read under way, or a previous copy whose refresh is in
+            # flight: this block will read differently in a few seconds
+            complete = False
         blocks[spec.id] = result
     return blocks, complete
 
@@ -95,8 +106,6 @@ def body(ctx: Context, blocks: dict[str, B.Block], complete: bool) -> dict[str, 
     counts = {"ok": 0, "unavailable": 0, "not_applicable": 0}
     for b in blocks.values():
         counts[b.status] += 1
-        if b.status == "ok" and (b.as_of_kind or b.spec.as_of_kind) == "live":
-            b.as_of = now  # a live read is as of the answer itself
     radius: float | int = int(ctx.radius_km) if ctx.radius_km.is_integer() else ctx.radius_km
     return {
         "api": 2,
@@ -113,7 +122,8 @@ def body(ctx: Context, blocks: dict[str, B.Block], complete: bool) -> dict[str, 
 def _identity(bid: str, blk: dict[str, Any]) -> dict[str, Any]:
     out = {k: v for k, v in blk.items() if k != "fetched_at"}
     if blk.get("as_of_kind") == "live":
-        # a live block is as of the answer itself: its as_of IS server_time
+        # a live block's as_of is its newest source poll, which moves every
+        # few seconds while nothing in it changes; its `stale` stays hashed
         out.pop("as_of", None)
     data = out.get("data")
     if bid == "alerts_now" and isinstance(data, dict):

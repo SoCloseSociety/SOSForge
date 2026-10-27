@@ -125,6 +125,7 @@ def configure(
     *, data_dir: Path, max_upstream: int, cache_entries: int, history_cache_mb: float
 ) -> None:
     fetch.configure(max_upstream)
+    geo.preload()  # 40 ms of tables once, at startup, never inside a report
     for cache in fetch.Cache.registry:
         if cache.scalable:
             cache.max_entries = cache_entries
@@ -141,7 +142,9 @@ async def report(
     now: datetime | None = None,
 ) -> Report:
     lat, lon = geo.round_point(query.lat, query.lon)
-    place = await fetch.in_thread(geo.place_of, lat, lon)
+    # on the loop: 0.7 to 0.8 ms per point (measured at 11 places), where the
+    # decode pool can be busy for seconds and nothing here bounds that wait
+    place = geo.place_of(lat, lon)
     ctx = Context(
         lat=lat,
         lon=lon,

@@ -1,0 +1,1504 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" prefix="og: https://ogp.me/ns#" class="html-data">
+  <head>
+        <script>
+      window.dataLayer = window.dataLayer ||[];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('consent','default',{
+        'ad_storage':'denied',
+        'analytics_storage':'denied',
+        'ad_user_data':'denied',
+        'ad_personalization':'denied',
+        'personalization_storage':'denied',
+        'functionality_storage':'granted',
+        'security_storage':'granted',
+        'wait_for_update': 500
+      });
+      gtag("set", "ads_data_redaction", true);
+    </script>
+            <script src="https://cmp.osano.com/AzyfddTRtqi1560Dk/2f1a8361-e0bc-41c3-b332-023fe627c0bb/osano.js"></script>
+        <meta charset="utf-8" />
+<meta name="description" content="This dataset provides users with Aqueduct™ 4.0, the latest iteration of WRI’s water risk framework designed to translate complex hydrological data into intuitive indicators of water-related risk." />
+<link rel="canonical" href="https://www.wri.org/data/aqueduct-global-maps-40-data" />
+<link rel="image_src" href="https://files.wri.org/d8/s3fs-public/2023-08/baseline-water-stress.png" />
+<meta name="wri_full_title" content="Aqueduct 4.0 Current and Future Global Maps Data" />
+<meta name="wri_published" content="August 16 2023" />
+<meta name="wri_topic" content="Freshwater" />
+<meta name="wri_topic_link" href="https://www.wri.org/freshwater" />
+<meta name="wri_type" content="Data" />
+<meta property="og:site_name" content="World Resources Institute" />
+<meta property="og:url" content="https://www.wri.org/data/aqueduct-global-maps-40-data" />
+<meta property="og:title" content="Aqueduct 4.0 Current and Future Global Maps Data" />
+<meta property="og:description" content="This dataset provides users with Aqueduct™ 4.0, the latest iteration of WRI’s water risk framework designed to translate complex hydrological data into intuitive indicators of water-related risk." />
+<meta property="og:image" content="https://files.wri.org/d8/s3fs-public/2023-08/baseline-water-stress.png" />
+<meta property="article:tag" content="data" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Aqueduct 4.0 Current and Future Global Maps Data" />
+<meta name="twitter:description" content="This dataset provides users with Aqueduct™ 4.0, the latest iteration of WRI’s water risk framework designed to translate complex hydrological data into intuitive indicators of water-related risk." />
+<meta name="twitter:image" content="https://files.wri.org/d8/s3fs-public/2023-08/baseline-water-stress.png" />
+<meta name="Generator" content="Drupal 10 (https://www.drupal.org)" />
+<meta name="MobileOptimized" content="width" />
+<meta name="HandheldFriendly" content="true" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script type="application/ld+json">{
+    "@context": "https://schema.org",
+    "@graph": [
+        {
+            "@type": "WebSite",
+            "@id": "https://www.wri.org/",
+            "name": "World Resources Institute",
+            "url": "https://www.wri.org/",
+            "publisher": {
+                "@type": "Organization",
+                "@id": "https://www.wri.org/",
+                "name": "World Resource Institute",
+                "url": "https://www.wri.org/",
+                "sameAs": [
+                    "http://www.facebook.com/pages/World-Resources-Institute/61863318139",
+                    "http://twitter.comworldresources",
+                    "http://www.youtube.com/WorldResourcesInst",
+                    "https://www.linkedin.com/company/world-resources-institute/"
+                ],
+                "logo": {
+                    "@type": "ImageObject",
+                    "representativeOfPage": "True",
+                    "url": "https://www.wri.org/profiles/contrib/wri_sites/themes/custom/ts_wrin/logo.png",
+                    "width": "150",
+                    "height": "53"
+                }
+            }
+        }
+    ]
+}</script>
+<link rel="icon" href="/sites/default/files/favicon.ico" type="image/vnd.microsoft.icon" />
+<script>window.a2a_config=window.a2a_config||{};a2a_config.callbacks=[];a2a_config.overlays=[];a2a_config.templates={};a2a_config.icon_color = "transparent,#000000";
+
+(function () {
+  // Ensure a2a_config exists before AddToAny runs.
+window.a2a_config = window.a2a_config || {};
+window.a2a_config.icon_color = "transparent,#000000";
+window.a2a_config.callbacks = window.a2a_config.callbacks || [];
+window.a2a_config.prioritize = ["copy_link","linkedin","facebook","bluesky","x","email","print"];
+window.a2a_config.num_services = 8;
+
+  function showCopiedMessage(buttonEl, message) {
+    if (!buttonEl) return;
+
+    // Remove any existing message for this button.
+    var existing = buttonEl.parentNode && buttonEl.parentNode.querySelector(".a2a-copy-toast");
+    if (existing) existing.remove();
+
+    var toast = document.createElement("span");
+    toast.className = "a2a-copy-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.textContent = message || "Link Copied";
+
+    // Put the message right after the icon.
+    buttonEl.insertAdjacentElement("afterend", toast);
+
+    // Auto-remove after a short delay.
+    window.setTimeout(function () {
+      toast.classList.add("is-hiding");
+      window.setTimeout(function () {
+        if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
+      }, 250);
+    }, 1400);
+  }
+
+  function fallbackCopy(text) {
+    // Old-school fallback for non-secure contexts / older browsers.
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.position = "absolute";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      return true;
+    } catch (e) {
+      return false;
+    } finally {
+      document.body.removeChild(ta);
+    }
+  }
+
+  window.a2a_config.callbacks.push({
+    share: function (data) {
+      // Only override the Copy Link service.
+      if (!data || data.serviceCode !== "copy_link") return;
+
+      var url = data.url || window.location.href;
+      var btn = data.node;
+
+      // Prevent AddToAny’s default modal / UI for copy_link.
+      // Returning { stop: true } cancels the share action. :contentReference[oaicite:3]{index=3}
+      var stop = { stop: true };
+
+      // Prefer modern Clipboard API when available (requires HTTPS / secure context).
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard
+          .writeText(url)
+          .then(function () {
+            showCopiedMessage(btn, "Link Copied");
+          })
+          .catch(function () {
+            // If permissions fail, try fallback.
+            var ok = fallbackCopy(url);
+            showCopiedMessage(btn, ok ? "Link Copied" : "Copy failed");
+          });
+
+        return stop;
+      }
+
+      // Non-secure context or older browser fallback.
+      var ok = fallbackCopy(url);
+      showCopiedMessage(btn, ok ? "Link Copied" : "Copy failed");
+      return stop;
+    },
+  });
+})();
+</script>
+<style>.addtoany_list a {
+  display: inline-flex;
+  border: 1px solid #e8e8e7 !important;
+  border-radius: 3px;
+  padding: 4px !important;
+  margin: 0 4px;
+}
+
+/* Ensure the icon itself is a positioning context */
+.addtoany_list {
+  position: relative;
+}
+.a2a_button_copy_link {
+  position: relative;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Toast positioned above the icon */
+.a2a-copy-toast {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 6px;
+
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+
+  opacity: 1;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
+/* Fade-out state */
+.a2a-copy-toast.is-hiding {
+  opacity: 0;
+}
+</style>
+
+    <title>Aqueduct 4.0 Current and Future Global Maps Data | World Resources Institute</title>
+    <link rel="stylesheet" media="all" href="/sites/default/files/css/css_-njF_5h_ycd77gdaFNT5b7H9m1RprQcCs_oMFntgZ3M.css?delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1kGFuwzAIhS8Uxeu0-yBiU4cWG8uQrdnp56rtpGntHxu_Bxg-TMkV6x7wHszHrtUn5IAMWXRBmdCMHLieKLr2EM1mruArGxh1JoNErVNEpwSf1I21PisqmlDsmdNImxBU9K0TYE0QhcvoBxFLQ85P-3lp42ehkdbHhUZweIPDO3xM8UyJRx5gjNrTGCj8RrcVqaYpyui6h2VUPuJCZpjJHu-qaXjaKaS-NZQZT3j5IyRG0XyTqvaCwt80Ce66OSS2qAPJHrRSVJnKmAvDkcWpzxGbX1kZl-v6TdvWYBGNZwtPtEfeFXXzuGJYOREsmDJNtptTue3iBl-da1ixLFvP1AfZTxDKGPdfsyDX6YuW45g53O95YCxUfU7kyDIQa85CL9OOQpdFLy_9O81__vX4J_o6iuYb9x9PagNj" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_vIc1DlC3POYksUHYdn3QoHlZVYIin6C3YrCmsm46l-c.css?delta=1&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1kGFuwzAIhS8Uxeu0-yBiU4cWG8uQrdnp56rtpGntHxu_Bxg-TMkV6x7wHszHrtUn5IAMWXRBmdCMHLieKLr2EM1mruArGxh1JoNErVNEpwSf1I21PisqmlDsmdNImxBU9K0TYE0QhcvoBxFLQ85P-3lp42ehkdbHhUZweIPDO3xM8UyJRx5gjNrTGCj8RrcVqaYpyui6h2VUPuJCZpjJHu-qaXjaKaS-NZQZT3j5IyRG0XyTqvaCwt80Ce66OSS2qAPJHrRSVJnKmAvDkcWpzxGbX1kZl-v6TdvWYBGNZwtPtEfeFXXzuGJYOREsmDJNtptTue3iBl-da1ixLFvP1AfZTxDKGPdfsyDX6YuW45g53O95YCxUfU7kyDIQa85CL9OOQpdFLy_9O81__vX4J_o6iuYb9x9PagNj" />
+<link rel="stylesheet" media="all" href="https://use.typekit.net/xrt8xkt.css" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_yEKtxqtdmntQoUqvMKLq9qlFsx-qyfE7hnqkvM0ZetU.css?delta=3&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1kGFuwzAIhS8Uxeu0-yBiU4cWG8uQrdnp56rtpGntHxu_Bxg-TMkV6x7wHszHrtUn5IAMWXRBmdCMHLieKLr2EM1mruArGxh1JoNErVNEpwSf1I21PisqmlDsmdNImxBU9K0TYE0QhcvoBxFLQ85P-3lp42ehkdbHhUZweIPDO3xM8UyJRx5gjNrTGCj8RrcVqaYpyui6h2VUPuJCZpjJHu-qaXjaKaS-NZQZT3j5IyRG0XyTqvaCwt80Ce66OSS2qAPJHrRSVJnKmAvDkcWpzxGbX1kZl-v6TdvWYBGNZwtPtEfeFXXzuGJYOREsmDJNtptTue3iBl-da1ixLFvP1AfZTxDKGPdfsyDX6YuW45g53O95YCxUfU7kyDIQa85CL9OOQpdFLy_9O81__vX4J_o6iuYb9x9PagNj" />
+<link rel="stylesheet" media="all" href="/sites/default/files/css/css_DIhOb2s0O4b3Ty55-ma1e_3HfhqHruq5QI1BYLFJM10.css?delta=4&amp;language=en&amp;theme=ts_wrin&amp;include=eJx1kGFuwzAIhS8Uxeu0-yBiU4cWG8uQrdnp56rtpGntHxu_Bxg-TMkV6x7wHszHrtUn5IAMWXRBmdCMHLieKLr2EM1mruArGxh1JoNErVNEpwSf1I21PisqmlDsmdNImxBU9K0TYE0QhcvoBxFLQ85P-3lp42ehkdbHhUZweIPDO3xM8UyJRx5gjNrTGCj8RrcVqaYpyui6h2VUPuJCZpjJHu-qaXjaKaS-NZQZT3j5IyRG0XyTqvaCwt80Ce66OSS2qAPJHrRSVJnKmAvDkcWpzxGbX1kZl-v6TdvWYBGNZwtPtEfeFXXzuGJYOREsmDJNtptTue3iBl-da1ixLFvP1AfZTxDKGPdfsyDX6YuW45g53O95YCxUfU7kyDIQa85CL9OOQpdFLy_9O81__vX4J_o6iuYb9x9PagNj" />
+
+    <script type="application/json" data-drupal-selector="drupal-settings-json">{"path":{"baseUrl":"\/","pathPrefix":"","currentPath":"node\/103419","currentPathIsAdmin":false,"isFront":false,"currentLanguage":"en"},"pluralDelimiter":"\u0003","suppressDeprecationErrors":true,"ajaxPageState":{"libraries":"eJyFU9Fy4yAM_CGfuV7vfzQyKEQNIAYpad2vPyVO2pkmmXuxlt1FWBJgSibY1oBXMO-GNJuQAzLkIguWCVXJgNsbRZMRourMDWzPCkqDSSFRHxTRKMGJhrK0R5uqJCz6SOkkvRA0tOMgwJYgFq6eDyLWjpwf5rPa_eRCbhseUAlefsPLH_j70_2msyg2AbW1cMtTPFBiVwBjlJH8h8MX2lpALU2xeJ41LJ75hiupYia9rZsk12SQo1Gx8CdNBVc5GiTWKN6ONUijKGWqfiaGHRejMUfsdu6Tcj2X3qUfOyxF4kHDA-7mO7e5W9xj2HMiWDBlutd-EnB6ndTQWI2jhjSOHcv8zUy6qlHdKjWF98Et7LEux5Fp-FxOUChjXL_Eitymd1p2XnW4xtnLK5LvaJ9NpWZzIkMuOiue6L8mk5zLc9uu0MciH0_165ye6uog2p18_tyRtvc98zbwyauHKLX6jXH4K1u9UNtUwzect3ARleRi9rituxwoDPLb7u9o4z5FasD-GsEGxsM_y7NosQ","theme":"ts_wrin","theme_token":null},"ajaxTrustedUrl":{"form_action_p_pvdeGsVG5zNF_XLGPTvYSKCf43t8qZYSwcfZl2uzM":true},"simple_popup_blocks":{"settings":[{"uid":"beforefilesmodal","type":0,"css_selector":"1","identifier":"block-beforefilesmodal","layout":"4","visit_counts":"0","overlay":"1","trigger_method":"1","trigger_selector":".files-overlay-trigger-webform","delay":0,"enable_escape":"1","trigger_width":null,"minimize":"1","close":"1","use_time_frequency":false,"time_frequency":"3600","show_minimized_button":"1","width":"600","cookie_expiry":0,"status":"1","escape":"1"},{"uid":"classyembed","type":0,"css_selector":"1","identifier":"block-classyembed","layout":"6","visit_counts":"0","overlay":false,"trigger_method":0,"trigger_selector":"#custom-css-id","delay":0,"enable_escape":"1","trigger_width":null,"minimize":"1","close":"1","use_time_frequency":false,"time_frequency":"3600","show_minimized_button":false,"width":"1200","cookie_expiry":"100","status":"1"},{"uid":"files_modal","type":"1","css_selector":0,"identifier":"files-modal","layout":"5","visit_counts":"0","overlay":"1","trigger_method":"1","trigger_selector":".files-overlay-trigger","delay":0,"minimize":"1","close":"1","width":"600","cookie_expiry":"100","status":"1","escape":"1"},{"uid":"wri_region_map_popup","type":"1","css_selector":0,"identifier":"wri-region-map-popup","layout":"7","visit_counts":"0","overlay":false,"trigger_method":"1","trigger_selector":".wri-region-map-popup-button","delay":0,"minimize":false,"close":false,"width":"500","cookie_expiry":0,"status":"1","escape":"1"}]},"webform":{"dialog":{"options":{"narrow":{"title":"Narrow","width":600},"normal":{"title":"Normal","width":800},"wide":{"title":"Wide","width":1000}},"entity_type":"node","entity_id":"103419"},"xss":{"allowedTags":["a","abbr","acronym","address","article","aside","b","bdi","bdo","big","blockquote","br","caption","cite","code","col","colgroup","command","dd","del","details","dfn","div","dl","dt","em","figcaption","figure","footer","h1","h2","h3","h4","h5","h6","header","hgroup","hr","i","img","ins","kbd","li","mark","menu","meter","nav","ol","output","p","pre","progress","q","rp","rt","ruby","s","samp","section","small","span","strong","sub","summary","sup","table","tbody","td","tfoot","th","thead","time","tr","tt","u","ul","var","wbr","label","fieldset","legend","font"]}},"wri_filter":{"filterCookieName":"STYXKEY_wri_filter","allFilters":{"53":{"id":"53","name":"climate"},"226":{"id":"226","name":"cities"},"222":{"id":"222","name":"energy"},"4422":{"id":"4422","name":"food"},"73":{"id":"73","name":"forests"},"56":{"id":"56","name":"freshwater"},"18861":{"id":"18861","name":"ocean"},"74":{"id":"74","name":"business"},"10510":{"id":"10510","name":"economics"},"9640":{"id":"9640","name":"finance"},"227":{"id":"227","name":"equity \u0026 governance"}},"pageIsFilterable":false,"currentFilterName":""},"wri_seo":{"node_type":"data","default_details":{"primary topic":"Freshwater"}},"ckeditorAccordion":{"accordionStyle":{"collapseAll":1,"keepRowsOpen":0,"animateAccordionOpenAndClose":1,"openTabsWithHash":1,"allowHtmlInTitles":0}},"wri_common":{"gtm_id":"GTM-WGH5WB9","analytics_url":"https:\/\/www.googletagmanager.com"},"simple_recaptcha_v3":{"sitekey":"6Lfe0pUaAAAAADa4jxZYcZ-H67EiunZ-DqLRlYgS","forms":{"webform_submission_simple_email_submit_node_103419_add_form":{"form_id":"webform_submission_simple_email_submit_node_103419_add_form","score":70,"error_message":null,"action":"webform_submission_simple_email_submit_node_103419_add_form"},"webform_submission_aqueduct_global_data_node_103419_add_form":{"form_id":"webform_submission_aqueduct_global_data_node_103419_add_form","score":"90","error_message":"There was an error during validation of your form submission, please try to reload the page and submit form again.","action":"aqueduct_global_data"}}},"statistics":{"data":{"nid":"103419"},"url":"\/core\/modules\/statistics\/statistics.php"},"user":{"uid":0,"permissionsHash":"b96204c9d505144fedf04ff3722cc9a90e078ebcb594d09570f6e919d4d6a196"}}</script>
+<script src="/sites/default/files/js/js_oa50UNqk9SoewqHxw0O2uwI5aiFh5UOOGpq2M2oJQiQ.js?scope=header&amp;delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7jJc4CRtibKD19t9k0kZpG_fEMb0aWMKRkAu0a4G78PKSZAw7AMReZoDhQJYvcToQmI5zUi0KTqHYt3LLDhRJvSQREGYmlhYfb91FLTrn2QrFLX3uciuCi4Q_20xuE0A2PEH6DeD44NTBWY9SQxtqh-CdxpvEyuIUj1GkdmUZscI6FMuD1EVbg5i40zTJquKtPDEXyC6ZClZr5RAZc1Cuc6d-SSc7lfa2SKuT3uW4G7SX-Hm77QESpdTv0Zj-y7WjmYjTC0_pdbqGS3Mqb7u8uC4VBto4WbWefIjVAP2C0Abh8AZoH1FY"></script>
+
+    
+  </head>
+  <body class="showing-main-menu aqueduct-40-current-and-future-global-maps-data path-node page-node-type-data">
+    <!-- Google Tag Manager (noscript) -->
+        <noscript>
+      <iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WGH5WB9" height="0" width="0" style="display:none;visibility:hidden"></iframe>
+    </noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <!-- Grid Layout Checker -->
+        <!-- END Grid Layout Checker -->
+
+    <a href="#main-content" class="visually-hidden focusable skip-link">
+      Skip to main content
+    </a>
+
+    <div id="accessibility-url">
+      <a href="/accessibility" class="visually-hidden focusable skip-link">
+		    Accessibility
+      </a>
+    </div>
+      
+        <main class="dialog-off-canvas-main-canvas" data-off-canvas-main-canvas>
+      
+  <div id="tray-nav-wrapper">
+  <div id="tray-nav-canvas">
+        <header>
+      <div class="container header-wrapper">
+                  
+  
+
+<div  class="region region-primary-nav">
+  <div id="block-ts-wrin-branding" class="block block-system block-system-branding-block">
+  
+    
+        <a href="/" rel="home" class="site-logo">
+      <img class="logo-white hidden" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+      <img class="logo-color" src="/sites/default/files/nav_logo_color_0.svg" alt="Home" />
+    </a>
+        <div class="site-name hidden">
+      <a href="/" title="Home" rel="home">World Resources Institute</a>
+    </div>
+        <div class="site-slogan visually-hidden">Making Big Ideas Happen</div>
+  </div>
+<nav role="navigation" aria-labelledby="block-ts-wrin-main-menu-menu" id="block-ts-wrin-main-menu" class="has-active-trail block block-menu navigation menu--main">
+            
+  <div class="visually-hidden" id="block-ts-wrin-main-menu-menu">Main navigation</div>
+  
+
+        <div class="menu-wrapper">
+
+              <ul class="menu">
+                    <li class="menu-item menu-item--collapsed">
+        <a href="/research" data-drupal-link-system-path="node/71">Research</a>
+              </li>
+                <li class="menu-item menu-item--expanded menu-item--active-trail">
+        <a href="/data" data-drupal-link-system-path="node/72">Data</a>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <a href="/data/data-lab" data-drupal-link-system-path="node/100307">Data Lab</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/data-applications" data-drupal-link-system-path="node/100309">Data Applications</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/product-studio" data-drupal-link-system-path="node/104205">Product Studio</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://datasets.wri.org/" target="_blank">Data Explorer</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/open-data-commitment" data-drupal-link-system-path="node/100209">Open Data Commitment</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/approach-responsible-artificial-intelligence" data-drupal-link-system-path="node/105621">Responsible AI Use</a>
+              </li>
+                <li class="menu-item">
+        <a href="/data/applied-ai-group" data-drupal-link-system-path="node/105640">Applied AI Group</a>
+              </li>
+                <li class="menu-item">
+        <a href="/resources/type/data-52" data-drupal-link-system-path="resources/type/data-52">Resource Library</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Reach an Expert</a>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Insights</a>
+              </li>
+        </ul>
+  
+
+</div><a href="#scroll" class="nav-arrow"><svg aria-hidden="true" data-title="Click to see more items" tabindex="-1" data-prefix="far" data-icon="chevron-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" class="svg-inline--fa fa-chevron-right fa-w-8 fa-3x"><path d="M24.707 38.101L4.908 57.899c-4.686 4.686-4.686 12.284 0 16.971L185.607 256 4.908 437.13c-4.686 4.686-4.686 12.284 0 16.971L24.707 473.9c4.686 4.686 12.284 4.686 16.971 0l209.414-209.414c4.686-4.686 4.686-12.284 0-16.971L41.678 38.101c-4.687-4.687-12.285-4.687-16.971 0z"/><title>Click to see more</title></svg></a>
+  </nav>
+
+</div>
+
+                <div class="header-right ">
+                      
+  
+
+<div  class="region region-secondary-nav">
+  <nav role="navigation" aria-labelledby="block-donate-menu" id="block-donate" class="block block-menu navigation menu--donate">
+            
+  <div class="visually-hidden" id="block-donate-menu">Donate</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <a href="https://giving.wri.org/campaign/694046/donate">Donate</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+</div>
+
+          
+          
+                      <button class="tray-toggle search-toggle" aria-label="Toggle Search Menu" title="Search Menu" data-tray="search-tray">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><!--!Font Awesome Free v7.3.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2026 Fonticons, Inc.--><path d="M480 272C480 317.9 465.1 360.3 440 394.7L566.6 521.4C579.1 533.9 579.1 554.2 566.6 566.7C554.1 579.2 533.8 579.2 521.3 566.7L394.7 440C360.3 465.1 317.9 480 272 480C157.1 480 64 386.9 64 272C64 157.1 157.1 64 272 64C386.9 64 480 157.1 480 272zM272 416C351.5 416 416 351.5 416 272C416 192.5 351.5 128 272 128C192.5 128 128 192.5 128 272C128 351.5 192.5 416 272 416z"/></svg>
+</button>
+          
+                      <button class="tray-toggle filter-toggle" aria-label="Toggle filter Menu" title="Filter Menu" data-tray="filter-tray">
+      <span class="filter-icon">
+        <svg width="22px" height="24px" viewBox="0 0 22 24" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+          <g id="block-styles" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+            <g id="assets" transform="translate(-194.000000, -186.000000)" stroke-width="2">
+              <g id="icon/gear-white-copy-2" transform="translate(195.018833, 187.000000)">
+                <path d="M9.99998346,14.1437469 C8.10683773,14.1437469 6.57210464,12.6090138 6.57210464,10.7158681 C6.57210464,8.82272233 8.10683773,7.28798924 9.99998346,7.28798924 C11.8931292,7.28798924 13.4278623,8.82272233 13.4278623,10.7158681 C13.4278623,12.6090138 11.8931292,14.1437469 9.99998346,14.1437469 Z M18.3523689,12.6590768 C18.499688,12.0242017 18.5741447,11.3727453 18.5741447,10.7158681 C18.5741447,10.0589908 18.499688,9.40737496 18.3523689,8.77265936 L19.8018036,7.28097404 C20.0203907,7.0558501 20.0626413,6.71338109 19.9062344,6.4418612 L19.2804472,5.35801375 L18.65466,4.27400686 C18.527111,4.05334712 18.293537,3.92356604 18.0475269,3.92356604 C17.9901298,3.92356604 17.9328922,3.93058123 17.8754952,3.94508993 L15.8567137,4.4546481 C14.895951,3.55558723 13.7462564,2.89121649 12.493566,2.51080166 L11.9261325,0.509558172 C11.8403558,0.208542581 11.5650094,5.15143483e-14 11.2515578,5.15143483e-14 L8.74824966,5.15143483e-14 C8.43495748,5.15143483e-14 8.15945169,0.208542581 8.073675,0.509558172 L7.50640091,2.51080166 C6.2537105,2.89121649 5.10385645,3.55558723 4.1432532,4.4546481 L2.1243123,3.94508993 C2.06707469,3.93058123 2.00967765,3.92356604 1.95291836,3.92356604 C1.70642995,3.92356604 1.47285589,4.05334712 1.34578522,4.27400686 L0.719998036,5.35801375 L0.0942108564,6.4418612 C-0.0628338243,6.71338109 -0.0204237887,7.0558501 0.198163274,7.28097404 L1.64743855,8.77265936 C1.50011948,9.40737496 1.42614107,10.0589908 1.42614107,10.7158681 C1.42614107,11.3727453 1.50011948,12.0242017 1.64743855,12.6590768 L0.198163274,14.1507621 C-0.0204237887,14.375886 -0.0628338243,14.7181956 0.0942108564,14.9898749 L0.719998036,16.0737224 L1.34578522,17.1577293 C1.47285589,17.378389 1.70642995,17.5081701 1.95291836,17.5081701 C2.00967765,17.5081701 2.06707469,17.5011549 2.1243123,17.4866462 L4.1432532,16.977088 C5.10385645,17.8761489 6.2537105,18.5405196 7.50640091,18.9209345 L8.073675,20.9221779 C8.15945169,21.2238313 8.43495748,21.4317361 8.74824966,21.4317361 L11.2515578,21.4317361 C11.5650094,21.4317361 11.8403558,21.2238313 11.9261325,20.9221779 L12.493566,18.9209345 C13.7462564,18.5405196 14.895951,17.8761489 15.8567137,16.977088 L17.8754952,17.4866462 C17.9328922,17.5011549 17.9901298,17.5081701 18.0475269,17.5081701 C18.293537,17.5081701 18.527111,17.378389 18.65466,17.1577293 L19.2804472,16.0737224 L19.9062344,14.9898749 C20.0626413,14.7181956 20.0203907,14.375886 19.8018036,14.1507621 L18.3523689,12.6590768 Z" id="icon/gear-black"></path>
+              </g>
+            </g>
+          </g>
+        </svg>
+      </span>
+</button>
+          
+                      
+<button class="menu-toggle" aria-label="Open mobile menu" title="Menu Toggle">
+  <div class="ts-menu-toggle-wrapper">
+    <span></span>
+  </div>
+</button>
+                  </div>
+      </div>
+    </header>
+    
+    <div class="mobile-menu-target">
+      <div class="ts-mobile-menu__wrapper">
+                  
+
+<div  class="region region-hamburger-nav container">
+  <div class="hamburger-header">
+    <a href="/" rel="home" class="site-logo">
+      <img class="logo-white" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+    </a>
+    <div class="donate-menu">
+              <ul class="menu">
+                    <li class="menu-item">
+        <a href="https://giving.wri.org/campaign/694046/donate">Donate</a>
+              </li>
+        </ul>
+  
+
+</div>
+    <button class="mega_menu_close" aria-label="Toggle Mega Menu" title="Close Mega Menu">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+        <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+      </svg>
+    </button>
+  </div>
+  <div class="hamburger-content">
+    
+<nav role="navigation" aria-labelledby="block-quicklinks-menu" id="block-quicklinks" class="block block-menu navigation menu--quick-links margin-bottom-md">
+            
+  <div class="visually-hidden" id="block-quicklinks-menu">Quick Links</div>
+  
+
+        
+        <div class="menu-wrapper">
+          <ul class="menu">
+                    <li class="menu-item">
+        <span>Quick Links</span>
+              </li>
+                <li class="menu-item">
+        <a href="/news" data-drupal-link-system-path="node/100179">News </a>
+              </li>
+                <li class="menu-item">
+        <a href="/resources" data-drupal-link-system-path="resources">Resource Library</a>
+              </li>
+                <li class="menu-item">
+        <a href="https://www.wri.org/about/experts-staff">Experts</a>
+              </li>
+                <li class="menu-item">
+        <a href="/events" data-drupal-link-system-path="events">Events</a>
+              </li>
+                <li class="menu-item">
+        <a href="/careers" data-drupal-link-system-path="node/105746">Careers</a>
+              </li>
+                <li class="menu-item">
+        <a href="/donate" class="button small" data-drupal-link-system-path="node/100250">Donate</a>
+              </li>
+          </ul>
+    </div>
+  
+
+
+  </nav><a href="#scroll" aria-hidden="true" tabindex="-1" class="nav-arrow"><svg aria-hidden="true" data-prefix="far" data-icon="chevron-right" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 512" class="svg-inline--fa fa-chevron-right fa-w-8 fa-3x"><path d="M24.707 38.101L4.908 57.899c-4.686 4.686-4.686 12.284 0 16.971L185.607 256 4.908 437.13c-4.686 4.686-4.686 12.284 0 16.971L24.707 473.9c4.686 4.686 12.284 4.686 16.971 0l209.414-209.414c4.686-4.686 4.686-12.284 0-16.971L41.678 38.101c-4.687-4.687-12.285-4.687-16.971 0z"/><title>Click to see more</title></svg></a>
+<nav role="navigation" aria-labelledby="block-mainnavigation-menu" id="block-mainnavigation" class="block block-menu navigation menu--main">
+            
+  <div class="visually-hidden" id="block-mainnavigation-menu">Main navigation</div>
+  
+
+        
+
+              <ul class="menu">
+                    <li class="menu-item menu-item--collapsed">
+        <a href="/research" data-drupal-link-system-path="node/71">Research</a>
+              </li>
+                <li class="menu-item menu-item--collapsed menu-item--active-trail">
+        <a href="/data" data-drupal-link-system-path="node/72">Data</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a>
+              </li>
+                <li class="menu-item menu-item--collapsed">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Insights</a>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenusecondary-2-menu" id="block-footermenusecondary-2" class="block block-menu navigation menu--footer-secondary">
+            
+  <div class="visually-hidden" id="block-footermenusecondary-2-menu">Footer menu - secondary</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-work" class="flexible-row-submenu" data-drupal-link-system-path="node/100023">Our Work</a></span>
+                                <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Regions</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/africa" data-drupal-link-system-path="node/100030">Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/asia" data-drupal-link-system-path="node/100062">Asia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/wri-europe" data-drupal-link-system-path="node/100060">Europe</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/latin-america" data-drupal-link-system-path="node/100032">Latin America</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/north-america" data-drupal-link-system-path="node/100065">North America</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Topics</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/cities" data-drupal-link-system-path="node/103166">Cities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/climate" data-drupal-link-system-path="node/100004">Climate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/economics" data-drupal-link-system-path="node/100025">Economics</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/energy" data-drupal-link-system-path="node/105106">Energy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/equitable-development" data-drupal-link-system-path="node/100027">Equity</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/finance" data-drupal-link-system-path="node/100026">Finance</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/food" data-drupal-link-system-path="node/100006">Food</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/forests" data-drupal-link-system-path="node/100007">Forests</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/freshwater" data-drupal-link-system-path="node/100009">Freshwater</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/ocean" data-drupal-link-system-path="node/100008">Ocean</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+<nav role="navigation" aria-labelledby="block-megamenu-menu" id="block-megamenu" class="block block-menu navigation menu--mega-menu">
+            
+  <div class="visually-hidden" id="block-megamenu-menu">Mega Menu</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-approach" data-drupal-link-system-path="node/100163">Our Approach</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/strategic-plan" data-drupal-link-system-path="node/103333">Strategic Plan</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/our-approach/managing-for-results" data-drupal-link-system-path="node/100303">Managing for Results</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/top-outcomes" data-drupal-link-system-path="node/100164">Top Outcomes</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/about" data-drupal-link-system-path="node/100080">About Us</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/mission-values" data-drupal-link-system-path="node/100258">Mission</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.wri.org/about/experts-staff">Staff</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/financials" data-drupal-link-system-path="node/100221">Financials </a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/history" data-drupal-link-system-path="node/102377">History</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/sustainability-wri" data-drupal-link-system-path="node/100257">Sustainability at WRI</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/board-directors" data-drupal-link-system-path="node/100147">Board of Directors</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri.ethicspoint.com/">Whistleblower and Ethics Reporting</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://secure.ethicspoint.com/domain/media/en/gui/72880/code.pdf">Code of Conduct</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/join-us" data-drupal-link-system-path="node/100251">Join Us</a></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/events" data-drupal-link-system-path="events">Events</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://careers.wri.org">Careers</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/procurement-opportunities" data-drupal-link-system-path="node/100304">Procurement Opportunities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/contact" data-drupal-link-system-path="node/100415">Contact the Institute</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-wrinsearch-2" class="block block-wri-search block-single-file-component-blockwri-search-menu">
+  
+    
+      <div class="search-tray tray-contents">
+      <form class="single-border" action="/search">
+    <div class="input-wrapper">
+      <label for="wrinsearch_2">What can we help you find?</label>
+      <input class="ghost" type="text" name="keys" id="wrinsearch_2">
+    </div>
+    <input class="button ghost form" type="submit" value="Search">
+  </form>
+
+  <button class="tray-nav__close" aria-label="Toggle Search Menu" title="Close Search Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+  
+              <ul class="search-menu-block">
+                    <li class="menu-item">
+        <a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a>
+              </li>
+                <li class="menu-item">
+        <a href="/join-us" data-drupal-link-system-path="node/100251">Join us</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Contact an Expert</a>
+              </li>
+                <li class="menu-item">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Explore WRI Perspectives</a>
+              </li>
+        </ul>
+  
+
+
+</div>
+
+  </div>
+
+  </div>
+  <div class="hamburger-slider">
+    <div class="hamburger-slider-contents">
+      <a href="#" class="back">Back</a>
+      <ul class="menu"></ul>
+    </div>
+  </div>
+</div>
+
+              </div>
+    </div>
+
+        <div id="tray-nav">
+              
+  
+
+<div  class="region region-wrin-custom">
+  <div id="block-wrinfilter" class="block block-wri-filter block-single-file-component-blockwri-filter">
+  
+    
+  
+<div class="filter-tray tray-contents content-side-padding">
+  <div class="header">
+    <h2 class="h2 white">Filter Your Site Experience by Topic</h2>
+    <p class="white">Applying the filters below will filter all articles, data, insights and projects by the topic area you select.</p>
+  </div>
+  <ul>
+    <li><a class="sitewide-content-filter all-topics active h4 white" href="/content-filter/remove">All Topics <span class="filter-remove italic-tiny white">Remove filter</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="climate" href="/content-filter/53">Climate <span class="filter-description italic-tiny black">filter site by Climate</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="cities" href="/content-filter/226">Cities <span class="filter-description italic-tiny black">filter site by Cities</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="energy" href="/content-filter/222">Energy <span class="filter-description italic-tiny black">filter site by Energy</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="food" href="/content-filter/4422">Food <span class="filter-description italic-tiny black">filter site by Food</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="forests" href="/content-filter/73">Forests <span class="filter-description italic-tiny black">filter site by Forests</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="freshwater" href="/content-filter/56">Freshwater <span class="filter-description italic-tiny black">filter site by Freshwater</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="ocean" href="/content-filter/18861">Ocean <span class="filter-description italic-tiny black">filter site by Ocean</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="business" href="/content-filter/74">Business <span class="filter-description italic-tiny black">filter site by Business</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="economics" href="/content-filter/10510">Economics <span class="filter-description italic-tiny black">filter site by Economics</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="finance" href="/content-filter/9640">Finance <span class="filter-description italic-tiny black">filter site by Finance</span></a></li>
+          <li><a class="sitewide-content-filter white h4" data-filter="equity &amp; governance" href="/content-filter/227">Equity &amp; Governance <span class="filter-description italic-tiny black">filter site by Equity &amp; Governance</span></a></li>
+      </ul>
+  <button class="tray-nav__close" aria-label="Toggle filter Menu" title="Close Filter Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+</div>
+</div>
+<div id="block-wrinsearch" class="block block-wri-search block-single-file-component-blockwri-search-menu">
+  
+    
+      <div class="search-tray tray-contents">
+      <h2 class="h2 white">Search WRI.org</h2>
+        <p class="tray-nav-description">Not sure where to find something? Search all of the site&#039;s content.</p>
+    <form class="single-border" action="/search">
+    <div class="input-wrapper">
+      <label for="wrinsearch">What can we help you find?</label>
+      <input class="ghost" type="text" name="keys" id="wrinsearch">
+    </div>
+    <input class="button ghost form" type="submit" value="Search">
+  </form>
+
+  <button class="tray-nav__close" aria-label="Toggle Search Menu" title="Close Search Menu">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff">
+      <path d="M23 20.168l-8.185-8.187 8.185-8.174-2.832-2.807-8.182 8.179-8.176-8.179-2.81 2.81 8.186 8.196-8.186 8.184 2.81 2.81 8.203-8.192 8.18 8.192z"/>
+    </svg>
+  </button>
+  
+              <ul class="search-menu-block">
+                    <li class="menu-item">
+        <a href="/support" data-drupal-link-system-path="node/105478">Ways to Give</a>
+              </li>
+                <li class="menu-item">
+        <a href="/join-us" data-drupal-link-system-path="node/100251">Join us</a>
+              </li>
+                <li class="menu-item">
+        <a href="/about/experts-staff" data-drupal-link-system-path="about/experts-staff">Contact an Expert</a>
+              </li>
+                <li class="menu-item">
+        <a href="/insights" data-drupal-link-system-path="node/106548">Explore WRI Perspectives</a>
+              </li>
+        </ul>
+  
+
+
+</div>
+
+  </div>
+
+</div>
+
+          </div>
+    
+          
+  
+
+<div  class="region region-admin">
+  <div data-drupal-messages-fallback class="hidden"></div>
+
+</div>
+
+    
+                  
+  
+
+<div  id="main-content" class="region region-content">
+  <div id="block-ts-wrin-content" class="block block-system block-system-main-block">
+  
+    
+      
+<article class="node node--type-data node--promoted node--view-mode-full">
+
+  
+    
+
+  
+  <div class="node__content">
+      <div class="layout layout--onecol">
+    <div  class="layout__region layout__region--content">
+      <div class="block block-ctools block-entity-viewnode">
+  
+    
+              <div id="publication__detail" class="publication__detail simple-display tall-hero">
+              <div class="landing-page__hero ">
+                                <div class="hero__text">
+              <div class="grid publication__type margin-top-lg">
+                
+  <div class="h4 white">Data Set</div>
+
+
+              </div>
+              <div class="grid hero__content--inner margin-top-lg">
+                <div class="hero__left">
+                  
+  <h1 class="h1">
+  Aqueduct 4.0 Current and Future Global Maps Data
+</h1>
+
+
+                  
+                                    <div class="margin-top-sm"></div>
+                                  </div>
+
+                              </div>
+            </div>
+                                      </div>
+                  
+
+      <div class="publication__main grid margin-top-md">
+
+                  <div class="detail__meta-inner meta-inner margin-bottom-md two-column">
+                        <div  class="layout__region layout__region--category">
+                    <div  class="category-wrapper">
+            <div  class="field-label-inline">Topic</div>
+  
+      <span class="topic-tag"><a href="/freshwater" hreflang="en">Freshwater</a></span>
+      
+  
+    </div>
+
+      <span  class="article-date category-wrapper">
+        
+            August 16, 2023
+      
+  
+    </span>
+
+
+            </div>
+            
+                        <div  class="layout__region layout__region--share">
+                            <span class="a2a_kit a2a_kit_size_24 addtoany_list" data-a2a-url="https://www.wri.org/data/aqueduct-global-maps-40-data" data-a2a-title="Aqueduct 4.0 Current and Future Global Maps Data"><span class="social-sharing-block"><a class="a2a_button_copy_link social-sharing-buttons__button"></a><a class="a2a_button_linkedin social-sharing-buttons__button" aria-label="Share to Linkedin"></a><a class="a2a_button_facebook social-sharing-buttons__button" aria-label="Share to Facebook"></a><a class="a2a_button_bluesky social-sharing-buttons__button"></a><a class="a2a_button_x social-sharing-buttons__button" aria-label="Share to X"></a><a class="a2a_button_email social-sharing-buttons__button"></a><a class="a2a_button_print social-sharing-buttons__button" aria-label="Print this page"></a></span></span>
+
+            </div>
+                                  </div>
+                                    <div class="detail__meta-secondary">
+                      <div  class="narrative-taxonomy">
+        
+            <p>This Data Set is part of <a href="/aqueduct">Aqueduct</a> within <a href="/freshwater">Freshwater</a>. Reach out to <a href="/profile/samantha-kuzma">Samantha Kuzma</a> for more information.</p>
+      
+  
+    </div>
+
+
+              </div>
+                              
+                  <div  class="layout__region layout__region--sidebar sidebar list-of-fields-sidebar">
+                                <div  class="narrative-taxonomy">
+        
+            <p>This Data Set is part of <a href="/aqueduct">Aqueduct</a> within <a href="/freshwater">Freshwater</a>. Reach out to <a href="/profile/samantha-kuzma">Samantha Kuzma</a> for more information.</p>
+      
+  
+    </div>
+
+
+                        <div class="desktop-social">      <div  class="field">
+            <div  class="field-label-above">Primary Contact</div>
+  
+            <ul >
+            <li><a href="/profile/samantha-kuzma" hreflang="en">Samantha Kuzma</a></li>
+      
+      </ul>
+  
+    </div>
+
+<div class="field field-name-field-license"><div class="field-label-above">License</div>Creative Commons</div>
+</div>
+
+                                  </div>
+        
+        
+                  <div  class="layout__region layout__region--main_content main-content margin-bottom-lg">
+            
+  <p><a class="button" href="#download-form"><strong>Jump to data download</strong></a><strong>&nbsp;</strong></p><p><strong>Please find the methodology and data calculation descriptions in the technical note, here:</strong><a href="https://doi.org/10.46830/writn.23.00061"><strong> Aqueduct 4.0: Updated Decision-Relevant Global Water Risk Indicators</strong></a></p><p>Water is essential to the progress of human societies. It is required for a healthy environment and a thriving economy. Food production, electricity generation, and manufacturing, among other things, all depend on it. However, many decision-makers lack the technical expertise to fully understand hydrological information.</p><p>In response to growing concerns from the private sector and other actors about water availability, water quality, climate change, and increasing demand, WRI applied the composite index approach as a robust communication tool to translate hydrological data into intuitive indicators of water-related risks.</p><p>This dataset provides users with Aqueduct™ 4.0, the latest iteration of WRI’s water risk framework designed to translate complex hydrological data into intuitive indicators of water-related risk. It consists of 13 baseline water risk indicators spanning quantity, quality, and reputational concerns. Aqueduct 4.0 adds new future projections of water supply, demand, stress, depletion, and variability based on CMIP6 climate projections for 3 milestone years: 2030, 2050, and 2080.</p><p>This database includes:</p><ul><li>13 indicators representing baseline annual water risks.</li><li>3 indicators representing baseline monthly water risks.</li><li>6 indicators representing future projections of annual water risks.</li></ul><figure role="group" class="caption caption-drupal-media  ">
+<article class="media media--type-image media--view-mode-full">
+  
+      
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">    <picture>
+                  <source srcset="https://files.wri.org/d8/s3fs-public/styles/1575_wide/s3/2023-08/baseline-water-stress.png?VersionId=2gVi1dGA6U7UsEITV0ptsNjgieIhhHCI&amp;itok=9xUJ1fSN 1x" media="(min-width: 1440px)" type="image/png" width="1575" height="784">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/1260_wide/s3/2023-08/baseline-water-stress.png?VersionId=fnvwxxk97me5RsCIQcPKbvPVqTqMQ7l0&amp;itok=F8kXLZE6 1x" media="(min-width: 1024px) and (max-width: 1440px)" type="image/png" width="1260" height="627">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/965_wide/s3/2023-08/baseline-water-stress.png?VersionId=ZodSY7OY36.htJ4jnPaMUkRjnSSxdHdk&amp;itok=SPH7yYe_ 1x" media="(min-width: 768px) and (max-width: 1023px)" type="image/png" width="965" height="480">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/760_wide/s3/2023-08/baseline-water-stress.png?VersionId=MLN9ksyU6kDlezsvO.rl3.B4iRWapBg3&amp;itok=lFXvDUeQ 1x" media="(min-width: 501px) and (max-width: 767px)" type="image/png" width="760" height="378">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/455_wide/s3/2023-08/baseline-water-stress.png?VersionId=U.9iy3bX8TDq7GoZALFyP3Hdydl0qMLW&amp;itok=oixz0c1W 1x" media="(min-width: 0px) and (max-width: 500px)" type="image/png" width="455" height="226">
+                  <img loading="lazy" width="455" height="226" src="https://files.wri.org/d8/s3fs-public/styles/455_wide/s3/2023-08/baseline-water-stress.png?VersionId=U.9iy3bX8TDq7GoZALFyP3Hdydl0qMLW&amp;itok=oixz0c1W" alt="Screenshot of Aqueduct platform showing baseline water stress.">
+
+  </picture>
+
+</div>
+      
+  </article>
+
+<figcaption>&nbsp;Aqueduct Platform showing baseline water stress.&nbsp;</figcaption>
+</figure>
+<figure role="group" class="caption caption-drupal-media  ">
+<article class="media media--type-image media--view-mode-full">
+  
+      
+            <div class="field field--name-field-media-image field--type-image field--label-hidden field__item">    <picture>
+                  <source srcset="https://files.wri.org/d8/s3fs-public/styles/1575_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=Q6nxq4mb8oXWCA2gTbGdUPLdVflesZr7&amp;itok=oPHZvaU3 1x" media="(min-width: 1440px)" type="image/png" width="1575" height="782">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/1260_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=6iieJYH1r_NYHmihQdbrpv1WK3Yc4Frw&amp;itok=8orATjzf 1x" media="(min-width: 1024px) and (max-width: 1440px)" type="image/png" width="1260" height="625">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/965_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=BObQXigLEWwHXs5u__1xRA1mExGw5eC2&amp;itok=IDX9TNkc 1x" media="(min-width: 768px) and (max-width: 1023px)" type="image/png" width="965" height="479">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/760_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=3T0hlYQbn3NjhvPnclDcOKNDA1M1_OzT&amp;itok=e_N9PjNl 1x" media="(min-width: 501px) and (max-width: 767px)" type="image/png" width="760" height="377">
+              <source srcset="https://files.wri.org/d8/s3fs-public/styles/455_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=oaYzFZO6HtIN6BSb_7xJ6cJhUbT7Uvc4&amp;itok=2Aso-Ruh 1x" media="(min-width: 0px) and (max-width: 500px)" type="image/png" width="455" height="226">
+                  <img loading="lazy" width="455" height="226" src="https://files.wri.org/d8/s3fs-public/styles/455_wide/s3/2023-08/water-stress-future-predictions.png?VersionId=oaYzFZO6HtIN6BSb_7xJ6cJhUbT7Uvc4&amp;itok=2Aso-Ruh" alt="Screenshot showing Aqueduct platform water stress future predictions.">
+
+  </picture>
+
+</div>
+      
+  </article>
+
+<figcaption>&nbsp;Aqueduct Platform showing future water stress predictions.</figcaption>
+</figure>
+<p>Key elements of Aqueduct, such as overall water risk, cannot be directly measured and therefore are not validated. Aqueduct remains primarily a prioritization tool and should be augmented by local and regional deep dives.</p>
+
+          </div>
+        
+      </div>
+    </div>
+  
+
+
+
+  </div>
+<div class="block-content--type-text-block block block-layout-builder block-inline-blocktext-block landing-page__content grid text-block">
+  <div class="layout__region--main_content main-content">
+  
+  
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><h3 id="download-form">Download the dataset and subscribe to updates from Aqueduct.</h3>
+</div>
+      
+    </div>
+</div>
+<div class="block block-webform block-webform-block grid">
+  <div class="webform-outer">
+    
+        
+          <form class="webform-submission-form webform-submission-add-form webform-submission-aqueduct-global-data-form webform-submission-aqueduct-global-data-add-form webform-submission-aqueduct-global-data-node-103419-form webform-submission-aqueduct-global-data-node-103419-add-form js-webform-details-toggle webform-details-toggle" data-recaptcha-id="webform_submission_aqueduct_global_data_node_103419_add_form" data-drupal-selector="webform-submission-aqueduct-global-data-node-103419-add-form" action="/data/aqueduct-global-maps-40-data" method="post" id="webform-submission-aqueduct-global-data-node-103419-add-form" accept-charset="UTF-8">
+  
+  <div class="js-webform-type-email webform-type-email js-form-item form-item js-form-type-email form-type-email js-form-item-email form-item-email">
+      <label for="edit-email" class="js-form-required form-required">Email</label>
+        <input data-drupal-selector="edit-email" type="email" id="edit-email" name="email" value="" size="60" maxlength="254" class="form-email required" required="required" aria-required="true" />
+
+        </div>
+<div data-drupal-selector="edit-flexbox" class="webform-flexbox js-webform-flexbox js-form-wrapper form-wrapper" id="edit-flexbox"><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-textfield webform-type-textfield js-form-item form-item js-form-type-textfield form-type-textfield js-form-item-first-name form-item-first-name">
+      <label for="edit-first-name" class="js-form-required form-required">First Name</label>
+        <input data-drupal-selector="edit-first-name" type="text" id="edit-first-name" name="first_name" value="" size="60" maxlength="255" class="form-text required" required="required" aria-required="true" />
+
+        </div>
+</div></div><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-textfield webform-type-textfield js-form-item form-item js-form-type-textfield form-type-textfield js-form-item-last-name form-item-last-name">
+      <label for="edit-last-name" class="js-form-required form-required">Last Name</label>
+        <input data-drupal-selector="edit-last-name" type="text" id="edit-last-name" name="last_name" value="" size="60" maxlength="255" class="form-text required" required="required" aria-required="true" />
+
+        </div>
+</div></div></div>
+<div data-drupal-selector="edit-flexbox-01" class="webform-flexbox js-webform-flexbox js-form-wrapper form-wrapper" id="edit-flexbox-01"><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-textfield webform-type-textfield js-form-item form-item js-form-type-textfield form-type-textfield js-form-item-organization form-item-organization">
+      <label for="edit-organization" class="js-form-required form-required">Organization</label>
+        <input data-drupal-selector="edit-organization" type="text" id="edit-organization" name="organization" value="" size="60" maxlength="255" class="form-text required" required="required" aria-required="true" />
+
+        </div>
+</div></div><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-textfield webform-type-textfield js-form-item form-item js-form-type-textfield form-type-textfield js-form-item-job-title form-item-job-title">
+      <label for="edit-job-title">Job Title</label>
+        <input data-drupal-selector="edit-job-title" type="text" id="edit-job-title" name="job_title" value="" size="60" maxlength="255" class="form-text" />
+
+        </div>
+</div></div></div>
+<div data-drupal-selector="edit-flexbox-02" class="webform-flexbox js-webform-flexbox js-form-wrapper form-wrapper" id="edit-flexbox-02"><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-select webform-type-select js-form-item form-item js-form-type-select form-type-select js-form-item-country form-item-country">
+      <label for="edit-country">Country</label>
+        <span class="select-wrapper"><select data-drupal-selector="edit-country" id="edit-country" name="country" class="form-select"><option value="" selected="selected">- None -</option><option value="Afghanistan">Afghanistan</option><option value="Albania">Albania</option><option value="Algeria">Algeria</option><option value="American Samoa">American Samoa</option><option value="Andorra">Andorra</option><option value="Angola">Angola</option><option value="Anguilla">Anguilla</option><option value="Antarctica">Antarctica</option><option value="Antigua &amp; Barbuda">Antigua & Barbuda</option><option value="Argentina">Argentina</option><option value="Armenia">Armenia</option><option value="Aruba">Aruba</option><option value="Ascension Island">Ascension Island</option><option value="Australia">Australia</option><option value="Austria">Austria</option><option value="Azerbaijan">Azerbaijan</option><option value="Bahamas">Bahamas</option><option value="Bahrain">Bahrain</option><option value="Bangladesh">Bangladesh</option><option value="Barbados">Barbados</option><option value="Belarus">Belarus</option><option value="Belgium">Belgium</option><option value="Belize">Belize</option><option value="Benin">Benin</option><option value="Bermuda">Bermuda</option><option value="Bhutan">Bhutan</option><option value="Bolivia">Bolivia</option><option value="Bosnia &amp; Herzegovina">Bosnia & Herzegovina</option><option value="Botswana">Botswana</option><option value="Bouvet Island">Bouvet Island</option><option value="Brazil">Brazil</option><option value="British Indian Ocean Territory">British Indian Ocean Territory</option><option value="British Virgin Islands">British Virgin Islands</option><option value="Brunei">Brunei</option><option value="Bulgaria">Bulgaria</option><option value="Burkina Faso">Burkina Faso</option><option value="Burundi">Burundi</option><option value="Cambodia">Cambodia</option><option value="Cameroon">Cameroon</option><option value="Canada">Canada</option><option value="Canary Islands">Canary Islands</option><option value="Cape Verde">Cape Verde</option><option value="Caribbean Netherlands">Caribbean Netherlands</option><option value="Cayman Islands">Cayman Islands</option><option value="Central African Republic">Central African Republic</option><option value="Ceuta &amp; Melilla">Ceuta & Melilla</option><option value="Chad">Chad</option><option value="Chile">Chile</option><option value="China">China</option><option value="Christmas Island">Christmas Island</option><option value="Clipperton Island">Clipperton Island</option><option value="Cocos (Keeling) Islands">Cocos (Keeling) Islands</option><option value="Colombia">Colombia</option><option value="Comoros">Comoros</option><option value="Congo - Brazzaville">Congo - Brazzaville</option><option value="Congo - Kinshasa">Congo - Kinshasa</option><option value="Cook Islands">Cook Islands</option><option value="Costa Rica">Costa Rica</option><option value="Croatia">Croatia</option><option value="Cuba">Cuba</option><option value="Curaçao">Curaçao</option><option value="Cyprus">Cyprus</option><option value="Czechia">Czechia</option><option value="Côte d’Ivoire">Côte d’Ivoire</option><option value="Denmark">Denmark</option><option value="Diego Garcia">Diego Garcia</option><option value="Djibouti">Djibouti</option><option value="Dominica">Dominica</option><option value="Dominican Republic">Dominican Republic</option><option value="Ecuador">Ecuador</option><option value="Egypt">Egypt</option><option value="El Salvador">El Salvador</option><option value="Equatorial Guinea">Equatorial Guinea</option><option value="Eritrea">Eritrea</option><option value="Estonia">Estonia</option><option value="Eswatini">Eswatini</option><option value="Ethiopia">Ethiopia</option><option value="Falkland Islands">Falkland Islands</option><option value="Faroe Islands">Faroe Islands</option><option value="Fiji">Fiji</option><option value="Finland">Finland</option><option value="France">France</option><option value="French Guiana">French Guiana</option><option value="French Polynesia">French Polynesia</option><option value="French Southern Territories">French Southern Territories</option><option value="Gabon">Gabon</option><option value="Gambia">Gambia</option><option value="Georgia">Georgia</option><option value="Germany">Germany</option><option value="Ghana">Ghana</option><option value="Gibraltar">Gibraltar</option><option value="Greece">Greece</option><option value="Greenland">Greenland</option><option value="Grenada">Grenada</option><option value="Guadeloupe">Guadeloupe</option><option value="Guam">Guam</option><option value="Guatemala">Guatemala</option><option value="Guernsey">Guernsey</option><option value="Guinea">Guinea</option><option value="Guinea-Bissau">Guinea-Bissau</option><option value="Guyana">Guyana</option><option value="Haiti">Haiti</option><option value="Heard &amp; McDonald Islands">Heard & McDonald Islands</option><option value="Honduras">Honduras</option><option value="Hong Kong SAR China">Hong Kong SAR China</option><option value="Hungary">Hungary</option><option value="Iceland">Iceland</option><option value="India">India</option><option value="Indonesia">Indonesia</option><option value="Iran">Iran</option><option value="Iraq">Iraq</option><option value="Ireland">Ireland</option><option value="Isle of Man">Isle of Man</option><option value="Israel">Israel</option><option value="Italy">Italy</option><option value="Jamaica">Jamaica</option><option value="Japan">Japan</option><option value="Jersey">Jersey</option><option value="Jordan">Jordan</option><option value="Kazakhstan">Kazakhstan</option><option value="Kenya">Kenya</option><option value="Kiribati">Kiribati</option><option value="Kosovo">Kosovo</option><option value="Kuwait">Kuwait</option><option value="Kyrgyzstan">Kyrgyzstan</option><option value="Laos">Laos</option><option value="Latvia">Latvia</option><option value="Lebanon">Lebanon</option><option value="Lesotho">Lesotho</option><option value="Liberia">Liberia</option><option value="Libya">Libya</option><option value="Liechtenstein">Liechtenstein</option><option value="Lithuania">Lithuania</option><option value="Luxembourg">Luxembourg</option><option value="Macao SAR China">Macao SAR China</option><option value="Madagascar">Madagascar</option><option value="Malawi">Malawi</option><option value="Malaysia">Malaysia</option><option value="Maldives">Maldives</option><option value="Mali">Mali</option><option value="Malta">Malta</option><option value="Marshall Islands">Marshall Islands</option><option value="Martinique">Martinique</option><option value="Mauritania">Mauritania</option><option value="Mauritius">Mauritius</option><option value="Mayotte">Mayotte</option><option value="Mexico">Mexico</option><option value="Micronesia">Micronesia</option><option value="Moldova">Moldova</option><option value="Monaco">Monaco</option><option value="Mongolia">Mongolia</option><option value="Montenegro">Montenegro</option><option value="Montserrat">Montserrat</option><option value="Morocco">Morocco</option><option value="Mozambique">Mozambique</option><option value="Myanmar (Burma)">Myanmar (Burma)</option><option value="Namibia">Namibia</option><option value="Nauru">Nauru</option><option value="Nepal">Nepal</option><option value="Netherlands">Netherlands</option><option value="Netherlands Antilles">Netherlands Antilles</option><option value="New Caledonia">New Caledonia</option><option value="New Zealand">New Zealand</option><option value="Nicaragua">Nicaragua</option><option value="Niger">Niger</option><option value="Nigeria">Nigeria</option><option value="Niue">Niue</option><option value="Norfolk Island">Norfolk Island</option><option value="Northern Mariana Islands">Northern Mariana Islands</option><option value="North Korea">North Korea</option><option value="North Macedonia">North Macedonia</option><option value="Norway">Norway</option><option value="Oman">Oman</option><option value="Outlying Oceania">Outlying Oceania</option><option value="Pakistan">Pakistan</option><option value="Palau">Palau</option><option value="Palestinian Territories">Palestinian Territories</option><option value="Panama">Panama</option><option value="Papua New Guinea">Papua New Guinea</option><option value="Paraguay">Paraguay</option><option value="Peru">Peru</option><option value="Philippines">Philippines</option><option value="Pitcairn Islands">Pitcairn Islands</option><option value="Poland">Poland</option><option value="Portugal">Portugal</option><option value="Puerto Rico">Puerto Rico</option><option value="Qatar">Qatar</option><option value="Romania">Romania</option><option value="Russia">Russia</option><option value="Rwanda">Rwanda</option><option value="Réunion">Réunion</option><option value="Samoa">Samoa</option><option value="San Marino">San Marino</option><option value="Sark">Sark</option><option value="Saudi Arabia">Saudi Arabia</option><option value="Senegal">Senegal</option><option value="Serbia">Serbia</option><option value="Seychelles">Seychelles</option><option value="Sierra Leone">Sierra Leone</option><option value="Singapore">Singapore</option><option value="Sint Maarten">Sint Maarten</option><option value="Slovakia">Slovakia</option><option value="Slovenia">Slovenia</option><option value="Solomon Islands">Solomon Islands</option><option value="Somalia">Somalia</option><option value="South Africa">South Africa</option><option value="South Georgia &amp; South Sandwich Islands">South Georgia & South Sandwich Islands</option><option value="South Korea">South Korea</option><option value="South Sudan">South Sudan</option><option value="Spain">Spain</option><option value="Sri Lanka">Sri Lanka</option><option value="St. Barthélemy">St. Barthélemy</option><option value="St. Helena">St. Helena</option><option value="St. Kitts &amp; Nevis">St. Kitts & Nevis</option><option value="St. Lucia">St. Lucia</option><option value="St. Martin">St. Martin</option><option value="St. Pierre &amp; Miquelon">St. Pierre & Miquelon</option><option value="St. Vincent &amp; Grenadines">St. Vincent & Grenadines</option><option value="Sudan">Sudan</option><option value="Suriname">Suriname</option><option value="Svalbard &amp; Jan Mayen">Svalbard & Jan Mayen</option><option value="Sweden">Sweden</option><option value="Switzerland">Switzerland</option><option value="Syria">Syria</option><option value="São Tomé &amp; Príncipe">São Tomé & Príncipe</option><option value="Taiwan">Taiwan</option><option value="Tajikistan">Tajikistan</option><option value="Tanzania">Tanzania</option><option value="Thailand">Thailand</option><option value="Timor-Leste">Timor-Leste</option><option value="Togo">Togo</option><option value="Tokelau">Tokelau</option><option value="Tonga">Tonga</option><option value="Trinidad &amp; Tobago">Trinidad & Tobago</option><option value="Tristan da Cunha">Tristan da Cunha</option><option value="Tunisia">Tunisia</option><option value="Turkmenistan">Turkmenistan</option><option value="Turks &amp; Caicos Islands">Turks & Caicos Islands</option><option value="Tuvalu">Tuvalu</option><option value="Türkiye">Türkiye</option><option value="U.S. Outlying Islands">U.S. Outlying Islands</option><option value="U.S. Virgin Islands">U.S. Virgin Islands</option><option value="Uganda">Uganda</option><option value="Ukraine">Ukraine</option><option value="United Arab Emirates">United Arab Emirates</option><option value="United Kingdom">United Kingdom</option><option value="United States">United States</option><option value="Uruguay">Uruguay</option><option value="Uzbekistan">Uzbekistan</option><option value="Vanuatu">Vanuatu</option><option value="Vatican City">Vatican City</option><option value="Venezuela">Venezuela</option><option value="Vietnam">Vietnam</option><option value="Wallis &amp; Futuna">Wallis & Futuna</option><option value="Western Sahara">Western Sahara</option><option value="Yemen">Yemen</option><option value="Zambia">Zambia</option><option value="Zimbabwe">Zimbabwe</option><option value="Åland Islands">Åland Islands</option></select></span>
+        </div>
+</div></div><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="js-webform-type-select webform-type-select js-form-item form-item js-form-type-select form-type-select js-form-item-sector form-item-sector">
+      <label for="edit-sector">Sector / Affiliation</label>
+        <span class="select-wrapper"><select data-drupal-selector="edit-sector" id="edit-sector" name="sector" class="form-select"><option value="" selected="selected">- None -</option><option value="Academic/Research Organization">Academic/Research Organization</option><option value="Business/Private Sector">Business/Private Sector</option><option value="Government/Public Sector">Government/Public Sector</option><option value="Indigenous or Community-Based Organization">Indigenous or Community-Based Organization</option><option value="Intergovernmental/Multilateral Organization">Intergovernmental/Multilateral Organization</option><option value="Journalist/Media Organization">Journalist/Media Organization</option><option value="NGO - International">NGO - International</option><option value="NGO - National or Local">NGO - National or Local</option><option value="Philanthropic Organization">Philanthropic Organization</option><option value="No Affiliation">No Affiliation</option><option value="Other">Other</option></select></span>
+        </div>
+</div></div></div>
+<div class="js-webform-type-textarea webform-type-textarea js-form-item form-item js-form-type-textarea form-type-textarea js-form-item-comment form-item-comment">
+      <label for="edit-comment" class="js-form-required form-required">How will you use Aqueduct data?</label>
+        <div class="form-textarea-wrapper">
+  <textarea data-drupal-selector="edit-comment" id="edit-comment" name="comment" rows="5" cols="60" class="form-textarea required resize-vertical" required="required" aria-required="true"></textarea>
+</div>
+
+        </div>
+<input data-drupal-selector="edit-simple-recaptcha-token" type="hidden" name="simple_recaptcha_token" value="" />
+<input data-drupal-selector="edit-simple-recaptcha-type" type="hidden" name="simple_recaptcha_type" value="v3" />
+<input data-drupal-selector="edit-simple-recaptcha-score" type="hidden" name="simple_recaptcha_score" value="90" />
+<input data-drupal-selector="edit-simple-recaptcha-message" type="hidden" name="simple_recaptcha_message" value="" />
+<input autocomplete="off" data-drupal-selector="form-x5runkmglsepoi95falmyg0bsbc6qi-llq6mnxmsbhi" type="hidden" name="form_build_id" value="form-x5ruNkMGlsEpoI95FalmyG0bSbc6QI_LlQ6MnXmSbhI" />
+<input data-drupal-selector="edit-webform-submission-aqueduct-global-data-node-103419-add-form" type="hidden" name="form_id" value="webform_submission_aqueduct_global_data_node_103419_add_form" />
+<div data-drupal-selector="edit-actions" class="form-actions js-form-wrapper form-wrapper" id="edit-actions"><div id="webform_submission_aqueduct_global_data_node_103419_add_form-captcha" class="recaptcha-v3 recaptcha-v3-wrapper js-form-wrapper form-wrapper" data-drupal-selector="edit-captcha"></div>
+<input class="webform-button--submit button button--primary js-form-submit form-submit" data-drupal-selector="edit-submit" type="submit" id="edit-submit" name="op" value="Submit" />
+
+</div>
+
+
+  
+</form>
+
+      </div>
+</div>
+<div class="block-content--type-text-block block block-layout-builder block-inline-blocktext-block landing-page__content grid text-block">
+  <div class="layout__region--main_content main-content">
+  
+  
+      
+            <div class="clearfix text-formatted field field--name-body field--type-text-with-summary field--label-hidden field__item"><p><em><sup>Or download the dataset directly <a href="https://files.wri.org/aqueduct/aqueduct-4-0-water-risk-data.zip">here</a>.</sup></em></p>
+</div>
+      
+    </div>
+</div>
+<div class="field-related-resources block block-layout-builder block-field-blocknodedatafield-related-resources">
+  
+      <h2>Related to this Resource</h2>
+    
+      
+      <div class="field field--name-field-related-resources field--type-entity-reference field--label-hidden field__items">
+              <div class="field__item">  <div  class="display-teaser teaser-item">
+      <div class="tags topic-tag margin-top-xs">
+      
+  <a href="/freshwater" hreflang="en">Freshwater</a>
+
+      
+    </div>
+      <div class="teaser__inner-wrapper">
+      <div class="left-section margin-bottom-xs">
+              <h3 class="teaser-title margin-top-xs">
+          
+    <a href="/data/aqueduct-40-country-rankings" hreflang="en">Aqueduct 4.0 Current and Future Country Rankings</a>
+
+
+        </h3>
+                          <span class="content-type-region bundle">
+          
+  Data
+
+        </span>
+                    <span class="date-region date">
+              
+            August 16, 2023
+      
+  
+
+
+        </span>
+            </div>
+      <div class="right-section margin-top-xs margin-bottom-xs">
+              </div>
+    </div>
+  </div>
+
+</div>
+          </div>
+  
+  </div>
+<div class="field-projects block block-layout-builder block-field-blocknodedatafield-projects">
+  
+    
+      <div class="card-listing grid margin-bottom-lg margin-top-lg">
+  
+      <h2 class="layout__region layout__region--header h3 top-border-thick margin-bottom-md">
+      Projects that include this Resource
+    </h2>
+    
+  <div class="layout__region layout__region--listing">
+    <div class="content-listing ">
+      <div class="item-list">
+                  <ul class="listing-items">
+                          <li class="field__item"><div class="project_detail">
+  <div  class="display-card ds-1col clearfix card">
+    
+          <div class="card-image">
+        
+                  
+    <img loading="lazy" src="https://files.wri.org/d8/s3fs-public/styles/463x330/s3/2021-03/Aqueduct-riverine-brazil.jpg?VersionId=VqPzdcGVXkLO8pl.1kuUx10YsUD3xZQr&amp;h=ddc58dd3&amp;itok=EFk4YFwJ" width="463" height="330" alt="Ariel shot of a river in Brazil" class="image-style-_63x330" />
+
+
+
+
+          
+              </div>
+      <div class="card-text">
+                                                          <h3 class="teaser-title margin-top-xs ">
+            
+    <a href="/aqueduct" hreflang="en">Aqueduct</a>
+
+
+          </h3>
+                          <div class="card-teaser-text">
+                  <div  class="secondary">
+        
+            
+            <div class="clearfix text-formatted field field--name-field-intro field--type-text-long field--label-hidden field__item"><p>A suite of four tools using cutting-edge data to identify and evaluate water risks around the world</p></div>
+      
+      
+  
+    </div>
+
+
+  <a href="https://aqueduct.wri.org/water-risk-atlas/" class="button small">Launch Platform<span class="visually-hidden">Launch Platform</span></a>
+
+    <a href="/aqueduct" class="button small white" hreflang="en">Visit Project</a>
+
+
+          </div>
+                                          <div class="subtext margin-top-xs top-border-tiny">
+            <span class="italic-xtra-tiny">Part of</span>     
+      <span class="small label"><a href="/freshwater" hreflang="en">Freshwater</a></span>
+      
+  
+
+
+          </div>
+              </div>
+      </div>
+</div>
+
+</li>
+                      </ul>
+              </div>
+    </div>
+  </div>
+
+</div>
+
+  </div>
+<div class="field-primary-contacts block block-layout-builder block-field-blocknodedatafield-primary-contacts">
+  
+    
+      <div class="persons grid margin-bottom-lg margin-top-lg">
+  
+      <h2 class="layout__region layout__region--header h3 top-border-thick margin-bottom-md">
+      Primary Contact
+    </h2>
+    
+  <div class="layout__region layout__region--listing">
+    <div class="content-listing ">
+      <div class="item-list">
+                  <ul class="listing-items">
+                          <li class="field__item">  <div class="person-teaser-item">
+    <div class="person-teaser__inner-wrapper">
+      <div class="left-section">
+                  
+    <img loading="lazy" src="https://files.wri.org/d8/s3fs-public/styles/100x100/s3/samantha-kuzma.jpg?VersionId=wSGeXebwBNLBMRpDiKNFbCe1tBlc2iJZ&amp;h=621deedf&amp;itok=J6rpptlZ" width="100" height="100" alt="Samantha Kuzma" class="image-style-_00x100" />
+
+
+
+
+              </div>
+      <div  class="display-teaser right-section">
+          
+                  <div class="card-headline">
+            
+    <a href="/profile/samantha-kuzma" class="person-title" hreflang="en">Samantha Kuzma</a>
+
+
+          </div>
+                          <div class="card small-text light">
+            
+  <p>Aqueduct Data Lead, Water Program</p>
+
+          </div>
+              </div>
+    </div>
+  </div>
+
+</li>
+                      </ul>
+              </div>
+    </div>
+  </div>
+
+</div>
+
+  </div>
+
+    </div>
+  </div>
+
+  </div>
+
+</article>
+
+  </div>
+
+</div>
+
+          
+    <footer>
+                <div class="region region-footer-top">
+    <div class="container">
+      <div class="footer-padding">
+        <div id="block-howyoucanhelpblock" class="block block-wri-block block-how-you-can-help">
+  
+    
+      <h3 class="h4 white">How You Can Help</h3><p>WRI relies on the generosity of donors like you to turn research into action. You can support our work by making a gift today or exploring other ways to give.</p>
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://giving.wri.org/give/406206/#!/donation/checkout?c_src=webite&amp;c_src2=footer-link" class="button small">Donate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/support" class="button small" data-drupal-link-system-path="node/105478">Ways to Give</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/people-and-planet" class="button small pnc-campaign-button">Join our Campaign</a></span>
+              </li>
+        </ul>
+  
+
+
+  </div>
+<div id="block-webform" class="block block-webform block-webform-block grid">
+  <div class="webform-outer">
+    
+          <h2>Stay Informed</h2>
+        
+          <form class="webform-submission-form webform-submission-add-form webform-submission-simple-email-submit-form webform-submission-simple-email-submit-add-form webform-submission-simple-email-submit-node-103419-form webform-submission-simple-email-submit-node-103419-add-form all-inputs-inline wri-stay-informed-footer pardot-form-gtm js-webform-details-toggle webform-details-toggle" data-drupal-selector="webform-submission-simple-email-submit-node-103419-add-form" data-recaptcha-id="webform_submission_simple_email_submit_node_103419_add_form" action="/data/aqueduct-global-maps-40-data" method="post" id="webform-submission-simple-email-submit-node-103419-add-form" accept-charset="UTF-8">
+  
+  <div data-drupal-selector="edit-flexbox" class="webform-flexbox js-webform-flexbox js-form-wrapper form-wrapper" id="edit-flexbox--2"><div class="webform-flex webform-flex--1"><div class="webform-flex--container"><div class="input-wrapper js-webform-type-email webform-type-email js-form-item form-item js-form-type-email form-type-email js-form-item-email form-item-email">
+      <label for="edit-email--2" class="js-form-required form-required">Email</label>
+        <input data-drupal-selector="edit-email" type="email" id="edit-email--2" name="email" value="" size="60" maxlength="254" class="form-email required" required="required" aria-required="true" />
+
+        </div>
+</div></div></div>
+<input data-drupal-selector="edit-url-action" type="hidden" name="url_action" value="/webform/sign_up_for_wri_digest" />
+<input autocomplete="off" data-drupal-selector="form-eeijaatlgvaiavzc0swiqbj7njlxtmqym6pufebtgss" type="hidden" name="form_build_id" value="form-eEiJaaTlGVaIAVzC0sWIQBJ7nJLxTMQym6PufEbtgss" />
+<input data-drupal-selector="edit-webform-submission-simple-email-submit-node-103419-add-form" type="hidden" name="form_id" value="webform_submission_simple_email_submit_node_103419_add_form" />
+<input data-drupal-selector="edit-simple-recaptcha-token" type="hidden" name="simple_recaptcha_token" value="" />
+<input data-drupal-selector="edit-simple-recaptcha-type" type="hidden" name="simple_recaptcha_type" value="v3" />
+<input data-drupal-selector="edit-simple-recaptcha-score" type="hidden" name="simple_recaptcha_score" value="70" />
+<input data-drupal-selector="edit-simple-recaptcha-message" type="hidden" name="simple_recaptcha_message" value="" />
+<div class="recaptcha-legal">This site is protected by reCAPTCHA and the Google
+        <a target="_blank" href="https://policies.google.com/privacy">Privacy Policy</a> and <a target="_blank" href="https://policies.google.com/terms">Terms of Service</a> apply.</div><div data-drupal-selector="edit-actions" class="form-actions js-form-wrapper form-wrapper" id="edit-actions--2"><div id="webform_submission_simple_email_submit_node_103419_add_form-captcha" class="recaptcha-v3 recaptcha-v3-wrapper js-form-wrapper form-wrapper" data-drupal-selector="edit-captcha"></div>
+<input class="webform-button--submit button button--primary js-form-submit form-submit" data-drupal-selector="edit-submit" type="submit" id="edit-submit--2" name="op" value="Submit" />
+
+</div>
+
+
+  
+</form>
+
+      </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+
+                    <div class="region-footer">
+          <div class="container">
+            <div class="footer-padding">
+              <div class="footer-logo margin-bottom-md">
+                <a href="/">
+                  <img class="logo-white" src="/sites/default/files/nav_logo_white_0.svg" alt="Home" />
+                </a>
+              </div>
+                              
+  
+
+<div  class="region region-footer-left">
+  <nav role="navigation" aria-labelledby="block-footermenumain-menu" id="block-footermenumain" class="block block-menu navigation menu--footer-main">
+            
+  <div class="visually-hidden" id="block-footermenumain-menu">Footer menu - main</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/research" data-drupal-link-system-path="node/71">Research</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/data" data-drupal-link-system-path="node/72">Data</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/initiatives" data-drupal-link-system-path="node/73">Initiatives</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/insights" title="WRI Insights" data-drupal-link-system-path="node/106548">Insights</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenusecondary-menu" id="block-footermenusecondary" class="block block-menu navigation menu--footer-secondary">
+            
+  <div class="visually-hidden" id="block-footermenusecondary-menu">Footer menu - secondary</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><a href="/our-work" class="flexible-row-submenu" data-drupal-link-system-path="node/100023">Our Work</a></span>
+                                <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Regions</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/africa" data-drupal-link-system-path="node/100030">Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/asia" data-drupal-link-system-path="node/100062">Asia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/wri-europe" data-drupal-link-system-path="node/100060">Europe</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/latin-america" data-drupal-link-system-path="node/100032">Latin America</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/north-america" data-drupal-link-system-path="node/100065">North America</a></span>
+              </li>
+        </ul>
+  
+              </li>
+                <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>Topics</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/cities" data-drupal-link-system-path="node/103166">Cities</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/climate" data-drupal-link-system-path="node/100004">Climate</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/economics" data-drupal-link-system-path="node/100025">Economics</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/energy" data-drupal-link-system-path="node/105106">Energy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/equitable-development" data-drupal-link-system-path="node/100027">Equity</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/finance" data-drupal-link-system-path="node/100026">Finance</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/food" data-drupal-link-system-path="node/100006">Food</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/forests" data-drupal-link-system-path="node/100007">Forests</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/freshwater" data-drupal-link-system-path="node/100009">Freshwater</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/ocean" data-drupal-link-system-path="node/100008">Ocean</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+
+</div>
+
+              
+                              
+  
+
+<div  class="region region-footer-right">
+  <nav role="navigation" aria-labelledby="block-footermenuoffices-menu" id="block-footermenuoffices" class="block block-menu navigation menu--footer-offices">
+            
+  <div class="visually-hidden" id="block-footermenuoffices-menu">Footer menu - Offices</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item menu-item--expanded">
+        <span class="menu-item-title"><span>International Websites</span></span>
+                                <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://africa.wri.org?utm_source=wri-org&amp;utm_medium=wri-org-footer-link" target="_blank">WRI Africa</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://brasil.wri.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Brasil</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.wri.org.cn?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI China</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://es.wri.org/wri-colombia?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link">WRI Colombia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri-india.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI India</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://id.wri.org?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Indonesia</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://es.wri.org/wri-mexico?utm_source=wri-org-website&amp;utm_medium=wri-org-website-footer-link" target="_blank">WRI Mexico</a></span>
+              </li>
+        </ul>
+  
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<nav role="navigation" aria-labelledby="block-footermenuadditional-menu" id="block-footermenuadditional" class="block block-menu navigation menu--footer-additional">
+            
+  <div class="visually-hidden" id="block-footermenuadditional-menu">Footer menu - Additional</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/contact" data-drupal-link-system-path="node/100415">Contact Us</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/events" data-drupal-link-system-path="events">Events</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/resources" data-drupal-link-system-path="resources">Resource Library</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/media-contacts" data-drupal-link-system-path="node/100406">For Media</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/financials" data-drupal-link-system-path="node/100221">Financials</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/careers" data-drupal-link-system-path="node/105746">Careers</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/internships" title="Internships at WRI" data-drupal-link-system-path="node/100297">Internships</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/privacy-policy" data-drupal-link-system-path="node/100305">Privacy  Policy</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="/about/legal-notices" data-drupal-link-system-path="node/104409">Legal Notices</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://wri.ethicspoint.com">Whistleblower and Ethics Reporting</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="" class="osano-cookie-preference-link" title="Manage privacy and cookie preferences">Cookie Preferences</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-addressblock" class="block block-wri-block block-address-block">
+  
+    
+      
+  </div>
+<nav role="navigation" aria-labelledby="block-socialmenu-menu" id="block-socialmenu" class="block block-menu navigation menu--social-menu">
+            
+  <div class="visually-hidden" id="block-socialmenu-menu">Social menu</div>
+  
+
+        
+              <ul class="menu">
+                    <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.facebook.com/worldresources/" class="facebook">Facebook</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.instagram.com/worldresources/" class="instagram">Instagram</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.linkedin.com/company/world-resources-institute/" class="linkedin">LinkedIn</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.threads.net/@worldresources" class="threads">Threads</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://bsky.app/profile/worldresources.bsky.social" class="bluesky">Bluesky</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://twitter.com/worldresources" class="twitter">Twitter</a></span>
+              </li>
+                <li class="menu-item">
+        <span class="menu-item-title"><a href="https://www.youtube.com/WorldResourcesInst" class="youtube">Youtube</a></span>
+              </li>
+        </ul>
+  
+
+
+  </nav>
+<div id="block-copyrightblock" class="block block-wri-block block-copyright-block">
+  
+    
+      <p>&copy; 2026 World Resources Institute</p>
+  </div>
+
+</div>
+
+                          </div>
+          </div>
+        </div>
+          </footer>
+
+    
+  </div>
+</div>
+
+  </main>
+
+      
+    <script src="/sites/default/files/js/js_rlj8qa0o4-H_igbLJLg0yVIxZauJOTw7By3ynnzzR6s.js?scope=footer&amp;delta=0&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7jJc4CRtibKD19t9k0kZpG_fEMb0aWMKRkAu0a4G78PKSZAw7AMReZoDhQJYvcToQmI5zUi0KTqHYt3LLDhRJvSQREGYmlhYfb91FLTrn2QrFLX3uciuCi4Q_20xuE0A2PEH6DeD44NTBWY9SQxtqh-CdxpvEyuIUj1GkdmUZscI6FMuD1EVbg5i40zTJquKtPDEXyC6ZClZr5RAZc1Cuc6d-SSc7lfa2SKuT3uW4G7SX-Hm77QESpdTv0Zj-y7WjmYjTC0_pdbqGS3Mqb7u8uC4VBto4WbWefIjVAP2C0Abh8AZoH1FY"></script>
+<script src="https://static.addtoany.com/menu/page.js" defer></script>
+<script src="/sites/default/files/js/js_NtBns6CQ-ZNIGRc1Fdri-p7VDScnLDtSlFb9ONkm0UA.js?scope=footer&amp;delta=2&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7jJc4CRtibKD19t9k0kZpG_fEMb0aWMKRkAu0a4G78PKSZAw7AMReZoDhQJYvcToQmI5zUi0KTqHYt3LLDhRJvSQREGYmlhYfb91FLTrn2QrFLX3uciuCi4Q_20xuE0A2PEH6DeD44NTBWY9SQxtqh-CdxpvEyuIUj1GkdmUZscI6FMuD1EVbg5i40zTJquKtPDEXyC6ZClZr5RAZc1Cuc6d-SSc7lfa2SKuT3uW4G7SX-Hm77QESpdTv0Zj-y7WjmYjTC0_pdbqGS3Mqb7u8uC4VBto4WbWefIjVAP2C0Abh8AZoH1FY"></script>
+<script src="/modules/contrib/ckeditor_accordion/js/accordion.frontend.min.js?tnirnp"></script>
+<script src="/sites/default/files/js/js_gxMYJT_MMOYzvoEprIj2KWH9fEauQSL6pCW7YtVQde8.js?scope=footer&amp;delta=4&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7jJc4CRtibKD19t9k0kZpG_fEMb0aWMKRkAu0a4G78PKSZAw7AMReZoDhQJYvcToQmI5zUi0KTqHYt3LLDhRJvSQREGYmlhYfb91FLTrn2QrFLX3uciuCi4Q_20xuE0A2PEH6DeD44NTBWY9SQxtqh-CdxpvEyuIUj1GkdmUZscI6FMuD1EVbg5i40zTJquKtPDEXyC6ZClZr5RAZc1Cuc6d-SSc7lfa2SKuT3uW4G7SX-Hm77QESpdTv0Zj-y7WjmYjTC0_pdbqGS3Mqb7u8uC4VBto4WbWefIjVAP2C0Abh8AZoH1FY"></script>
+<script src="https://www.google.com/recaptcha/api.js?render=6Lfe0pUaAAAAADa4jxZYcZ-H67EiunZ-DqLRlYgS" defer async></script>
+<script src="/sites/default/files/js/js_fbk_f9X48tmIXDmstjyR5QTjEkBcOTnz7wGcI0BsozE.js?scope=footer&amp;delta=6&amp;language=en&amp;theme=ts_wrin&amp;include=eJyFkFFuAyEMRC9E4SMHQl7jJc4CRtibKD19t9k0kZpG_fEMb0aWMKRkAu0a4G78PKSZAw7AMReZoDhQJYvcToQmI5zUi0KTqHYt3LLDhRJvSQREGYmlhYfb91FLTrn2QrFLX3uciuCi4Q_20xuE0A2PEH6DeD44NTBWY9SQxtqh-CdxpvEyuIUj1GkdmUZscI6FMuD1EVbg5i40zTJquKtPDEXyC6ZClZr5RAZc1Cuc6d-SSc7lfa2SKuT3uW4G7SX-Hm77QESpdTv0Zj-y7WjmYjTC0_pdbqGS3Mqb7u8uC4VBto4WbWefIjVAP2C0Abh8AZoH1FY"></script>
+
+  <script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a51300b36d675d52',t:'MTc5MzExNzc2MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
