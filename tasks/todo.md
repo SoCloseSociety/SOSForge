@@ -909,7 +909,19 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
 - [ ] follow-up, not urgent: scope.split() serializes each event then main.py
       serializes the chunk again: 4.14 -> 2.33 ms per chunked snapshot if
       passed through (lane N2's measurement, byte-identical output)
-- [ ] PR #5 fixes landed and re-verified, then owner go, merge, deploy
+- [x] lane C2 WMO tier 2 merged (70a599d): +5 placed alerts (3 Colombian
+      landslides, Syria flood, Chad heat), IDEAM re-issues collapsed
+- [x] lane H polish merged: the 31 web review findings fixed (table in
+      lane H's report), place search scopes the feed with nearest events,
+      climate panel, offline map button, honest footer freshness. Gates on
+      the merged tree: pytest 900, vitest 428 (39 files), tsc, build
+- [ ] final review of PR #5 (recheck of the 35 + fresh finders on core,
+      sources, climate, download/sw, deploy, new web code) -> fixes
+- [ ] then merge lane C2's WMO country flags (9603657: 58/58 WMO alerts
+      flagged, 0 in production; Greek pairs titled by hazard) and the
+      Meteoalarm colour floor (owner rule: an official orange is never shown
+      below moderate, red never below severe)
+- [ ] then owner go on PR #5, merge, deploy, APK published
 - [ ] remaining lanes (G, C2, P, Q, A, K) -> next PR + deploy, APK published
 
 ## Fold evidence (2026-10-27, read-only, under the adb lock)
