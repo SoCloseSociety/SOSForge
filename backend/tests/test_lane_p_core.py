@@ -51,7 +51,9 @@ class TestTheHeartbeatKeepsItsPeriod:
         class SlowHub:
             client_count = 1
 
-            async def broadcast(self, message: dict) -> None:
+            async def broadcast(self, message: dict | None, lite: dict | None = None) -> None:
+                if message is None:
+                    return  # a `sources` update for lite clients, not a tick
                 stamps.append(time.monotonic())
                 await asyncio.sleep(cost)  # a fan-out that takes 40 % of a period
 

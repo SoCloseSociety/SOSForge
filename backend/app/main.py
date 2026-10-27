@@ -219,17 +219,74 @@ def build_sources() -> list[Source]:
     return built
 
 
+def source_states() -> list[dict]:
+    """Every source's health, the shape the tick and the snapshot carry."""
+    return [{**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources]
+
+
 def tick_message() -> dict:
     """The freshness proof: server clock, store stats, every source's health."""
     return {
         "type": "tick",
         "server_time": utcnow().isoformat(),
         "stats": store.stats(),
-        "sources": [
-            {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
-        ],
+        "sources": source_states(),
         "clients": hub.client_count,
     }
+
+
+def lite_tick(full: dict) -> dict:
+    """The tick of a `/ws?tick=lite` client: what the freshness rule needs
+    and the counters on screen, every second. Without the health of every
+    source (`sources` messages carry it when it changes) and without
+    `stats.by_source` (the same numbers are each source's `ingested`).
+    The full tick is several KB a second to every socket, and OkHttp's
+    websocket negotiates no compression, so the app's background watch paid
+    it raw: about 4.7 MB an hour off Wi-Fi (lane A, emulator)."""
+    stats = {k: v for k, v in full["stats"].items() if k != "by_source"}
+    return {
+        "type": "tick",
+        "server_time": full["server_time"],
+        "stats": stats,
+        "clients": full["clients"],
+    }
+
+
+# A lite client's source list is refreshed at least this often, so last_ok,
+# last_event_at and the counters it shows are never older than that.
+SOURCES_REFRESH_SECONDS = 300.0
+
+
+def source_state_key(states: list[dict]) -> tuple:
+    """What, in the sources' health, is news for a lite client: up or down,
+    degraded, the error, which feeds fail. Not `last_ok` or the counters,
+    which move on every poll and would make the message as frequent as the
+    tick it replaces."""
+    return tuple(
+        (
+            s["name"],
+            s["connected"],
+            s.get("degraded"),
+            s.get("last_error"),
+            tuple(f.get("feed") for f in s.get("failed_feeds") or ()),
+        )
+        for s in states
+    )
+
+
+class SourcesWatch:
+    """Decides when the lite clients get a `sources` message."""
+
+    def __init__(self) -> None:
+        self.key: tuple | None = None
+        self.sent_at = float("-inf")
+
+    def due(self, states: list[dict], now: float) -> bool:
+        key = source_state_key(states)
+        if key != self.key or now - self.sent_at >= SOURCES_REFRESH_SECONDS:
+            self.key, self.sent_at = key, now
+            return True
+        return False
 
 
 def next_tick(deadline: float, now: float, period: float) -> float:
@@ -251,6 +308,7 @@ async def heartbeat() -> None:
     resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
     loop = asyncio.get_running_loop()
     deadline = loop.time()
+    watch = SourcesWatch()
     while True:
         deadline = next_tick(deadline, loop.time(), settings.heartbeat_seconds)
         await asyncio.sleep(deadline - loop.time())
@@ -261,7 +319,18 @@ async def heartbeat() -> None:
         try:
             if not hub.client_count:
                 continue
-            await hub.broadcast(tick_message())
+            tick = tick_message()
+            if watch.due(tick["sources"], loop.time()):
+                # before the tick of the same second, to lite clients only
+                await hub.broadcast(
+                    None,
+                    lite={
+                        "type": "sources",
+                        "server_time": tick["server_time"],
+                        "sources": tick["sources"],
+                    },
+                )
+            await hub.broadcast(tick, lite=lite_tick(tick))
         except Exception as exc:
             log.warning("heartbeat: %s", exc)
 
@@ -466,6 +535,7 @@ FEATURES = [
     "guidance",  # /api/guidance?lang=en|fr|es|ja|id
     "escalated",  # `update` messages may carry escalated: true, forwarded untouched
     "snapshot_chunked",  # /ws?chunks=1: snapshot + `more`, then snapshot_more chunks
+    "tick_lite",  # /ws?tick=lite: tick without sources; `sources` messages when they change
     "climate",  # /api/climate: live indicators, each with its dataset's own as_of
 ]
 
@@ -783,7 +853,7 @@ async def api_sources() -> dict:
 
 
 WS_QUERY_MAX = 2000
-WS_PARAMS = (*SCOPE_PARAMS, "chunks")
+WS_PARAMS = (*SCOPE_PARAMS, "chunks", "tick")
 # `chunks=1`: the snapshot a chunk-aware client opts into. Without it, the
 # snapshot is the rule every client had before v2 (latest `snapshot_size`
 # primaries, no pinning, no `more`): web builds from before chunking THROW on
@@ -853,8 +923,9 @@ def splice(head: dict, key: str, value_json: str, tail: dict) -> str:
     return f"{out}, {json.dumps(tail, default=str)[1:]}" if tail else f"{out}}}"
 
 
-def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
-    """The socket's scope and whether it takes a chunked snapshot. Strict on
+def ws_params(ws: WebSocket) -> tuple[Scope | None, bool, bool]:
+    """The socket's scope, whether it takes a chunked snapshot, and whether
+    it takes the lite tick. Strict on
     purpose: an unknown parameter is a typo (`zone=` for `zones=`), and a
     client that misspelled its zone and silently got the whole planet would
     take every alert it receives for a local one."""
@@ -873,7 +944,11 @@ def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
     chunks = params.get("chunks")
     if chunks is not None and chunks != "1":
         raise ScopeError("bad_chunks", f"chunks only takes 1 -- got {chunks!r}")
-    return parse_scope({k: params.get(k) for k in SCOPE_PARAMS}), chunks == "1"
+    tick = params.get("tick")
+    if tick is not None and tick != "lite":
+        raise ScopeError("bad_tick", f"tick only takes lite -- got {tick!r}")
+    scope = parse_scope({k: params.get(k) for k in SCOPE_PARAMS})
+    return scope, chunks == "1", tick == "lite"
 
 
 async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
@@ -972,7 +1047,7 @@ async def send_snapshot(ws: WebSocket, client: Client, scope: Scope | None, chun
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     try:
-        scope, chunked = ws_params(ws)
+        scope, chunked, lite = ws_params(ws)
     except ScopeError as refused:
         log.info("websocket refused: %s (%s)", refused.code, refused.reason)
         await refuse_ws(ws, refused)
@@ -991,7 +1066,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         return
 
     await ws.accept()
-    client = Client(uuid.uuid4().hex[:8], scope)
+    client = Client(uuid.uuid4().hex[:8], scope, lite=lite)
     await hub.register(client)
 
     try:

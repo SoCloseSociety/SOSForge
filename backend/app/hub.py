@@ -25,10 +25,13 @@ HELD_MAX = 20_000
 
 
 class Client:
-    __slots__ = ("queue", "id", "filters", "evicted", "scope", "_held")
+    __slots__ = ("queue", "id", "filters", "evicted", "scope", "_held", "lite")
 
-    def __init__(self, client_id: str, scope: Scope | None = None):
+    def __init__(self, client_id: str, scope: Scope | None = None, lite: bool = False):
         self.id = client_id
+        # `/ws?tick=lite`: this client takes the light tick and the `sources`
+        # messages instead of a tick carrying every source's health.
+        self.lite = lite
         self.queue: asyncio.Queue[str] = asyncio.Queue(maxsize=QUEUE_MAX)
         self.filters: dict[str, Any] = {}
         # set on eviction: without this signal, the send task stayed blocked
@@ -155,16 +158,29 @@ class Hub:
             self._clients.discard(client)
         log.info("client %s disconnected (%d active)", client.id, self.client_count)
 
-    async def broadcast(self, message: dict) -> None:
-        # The log serves the 15-minute poll; the fan-out below is the live
-        # feed. A defect in the first must never cost the second a message.
-        try:
-            self.changelog.record(message)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("changelog: %s", exc)
-        payload = json.dumps(message, default=str)
+    async def broadcast(self, message: dict | None, lite: dict | None = None) -> None:
+        """`message` to every client; with `lite`, the clients that asked for
+        the light tick get `lite` instead (serialized once, like `message`).
+        A `message` of None reaches only the lite clients: that is how the
+        `sources` updates travel, which the others read off every tick."""
+        if message is not None:
+            # The log serves the 15-minute poll; the fan-out below is the
+            # live feed. A defect in the first must never cost the second a
+            # message.
+            try:
+                self.changelog.record(message)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("changelog: %s", exc)
+        payload = json.dumps(message, default=str) if message is not None else None
+        lite_payload = json.dumps(lite, default=str) if lite is not None else None
         dropped: list[Client] = []
         for client in list(self._clients):
+            if lite_payload is not None and client.lite:
+                if not self._offer(client, lite_payload):
+                    dropped.append(client)
+                continue
+            if message is None or payload is None:
+                continue
             # A scoped client gets its own view of the message: the shared
             # payload when it passes whole, a narrowed one otherwise, nothing
             # at all when it is not concerned. Everything after this line --
@@ -173,15 +189,22 @@ class Hub:
             if narrowed is None:
                 continue
             out = payload if narrowed is message else json.dumps(narrowed, default=str)
-            try:
-                client.queue.put_nowait(out)
-                self.sent += 1
-            except asyncio.QueueFull:
-                log.warning("client %s too slow, evicted", client.id)
+            if not self._offer(client, out):
                 dropped.append(client)
         for client in dropped:
             client.evicted.set()
             await self.unregister(client)
+
+    def _offer(self, client: Client, payload: str) -> bool:
+        """The bounded queue, the same for every client and every message:
+        False means the client is too slow and must be evicted."""
+        try:
+            client.queue.put_nowait(payload)
+            self.sent += 1
+            return True
+        except asyncio.QueueFull:
+            log.warning("client %s too slow, evicted", client.id)
+            return False
 
 
 hub = Hub()
