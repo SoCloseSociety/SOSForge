@@ -69,7 +69,11 @@ export function useNearMe(): void {
     }
 
     const start = (asking: boolean) => {
-      setLocate(asking ? 'asking' : 'locating')
+      // Pressing Near me again with a good fix (to re-centre) keeps it: set
+      // back to "locating", a slow fresh fix then threw the good one away
+      // and flipped the view to World (final review of PR #5).
+      const { locate, here } = useStore.getState()
+      if (!(locate === 'ok' && here)) setLocate(asking ? 'asking' : 'locating')
       if (asking) saveScope({ asked: true })
       guard = window.setTimeout(() => {
         if (!cancelled && useStore.getState().locate !== 'ok') giveUp('timeout')

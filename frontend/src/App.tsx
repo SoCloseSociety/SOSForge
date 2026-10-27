@@ -1,7 +1,7 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { filterEvents, useStore } from "./store";
 import { emptyReason } from "./emptyReason";
-import { criticalEvents } from "./critical";
+import { criticalEvents, isCritical } from "./critical";
 import { byRelevance } from "./relevance";
 import { connectLive } from "./live";
 import { syncDeepLink } from "./deeplink";
@@ -63,6 +63,7 @@ function Kpis({ now }: { now: number }) {
   const loading = useStore((s) => s.snapshotRemaining > 0);
 
   const received = useStore((s) => s.received);
+  const connected = useStore((s) => s.connected);
 
   const lastQuake = useMemo(
     () => events.find((e) => e.kind === "earthquake"),
@@ -125,7 +126,8 @@ function Kpis({ now }: { now: number }) {
         <div className="value">
           {received ? `${online}/${sources.length}` : "--"}
         </div>
-        <div className="sub">{t("kpi.sources.sub")}</div>
+        {/* link down: the count is the last one known, and says so */}
+        <div className="sub">{received && !connected ? t("kpi.sources.offline") : t("kpi.sources.sub")}</div>
       </div>
     </div>
   );
@@ -284,7 +286,7 @@ export default function App() {
   const centerName = showing === "place" && place ? place.name : t("scope.near");
   // Its countries, found in the page (the position never leaves it): the
   // alerts that carry no position but name one of them belong in this feed.
-  const countries = useCountries(center);
+  const countries = useCountries(center, showing === "place" ? (place?.country ?? null) : null);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
@@ -293,9 +295,14 @@ export default function App() {
   const bucket = Math.floor(now / 10_000);
   // What is happening now first: an upcoming warning is not "the latest"
   // just because its onset is in the future (see relevance.ts).
+  const scoped = center !== null;
   const filtered = useMemo(
-    () => byRelevance(filterEvents(events, filters, bucket * 10_000), bucket * 10_000),
-    [events, filters, bucket],
+    () =>
+      byRelevance(
+        filterEvents(events, filters, bucket * 10_000, { keepOngoing: scoped }),
+        bucket * 10_000,
+      ),
+    [events, filters, bucket, scoped],
   );
   // Near me keeps what is within reach of the reader, and what names the
   // reader's country without a position; what is severe beyond it is
@@ -314,9 +321,13 @@ export default function App() {
   const windowMinutes = filters.windowMinutes;
   const { severeElsewhere, unlocated } = useMemo(() => {
     if (!center) return { severeElsewhere: 0, unlocated: 0 };
-    const cutoff = windowMinutes > 0 ? bucket * 10_000 - windowMinutes * 60_000 : null;
+    const at = bucket * 10_000;
+    const cutoff = windowMinutes > 0 ? at - windowMinutes * 60_000 : null;
+    // in force, or within the window, or named by the banner
     const inForce =
-      cutoff === null ? events : events.filter((e) => e.ongoing || Date.parse(e.time) >= cutoff);
+      cutoff === null
+        ? events
+        : events.filter((e) => e.ongoing || Date.parse(e.time) >= cutoff || isCritical(e, at));
     return splitByScope(inForce, center, countries);
   }, [events, windowMinutes, bucket, center, countries]);
 
@@ -336,11 +347,17 @@ export default function App() {
   const framed = useRef<{ scope: "near" | "world" | "place"; lat: number; lon: number } | null>(
     null,
   );
+  // Near me pressed again, already near: the reader asks to re-centre
+  const locateRequest = useStore((s) => s.locateRequest);
+  const recentred = useRef(locateRequest);
   useEffect(() => {
     const { setFocus } = useStore.getState();
     const previous = framed.current;
+    const recentre = recentred.current !== locateRequest;
+    recentred.current = locateRequest;
     if (showing === "near" && here) {
       if (
+        recentre ||
         !previous ||
         previous.scope !== "near" ||
         distanceKm(previous.lat, previous.lon, here.lat, here.lon) > 50
@@ -349,7 +366,7 @@ export default function App() {
         // A position that ARRIVES (the first fix, or a move) does not pull
         // the camera off an open event: a shared #e/<id> link to a quake in
         // Chile stays on Chile (review of PR #5, #6). Pressing Near me does.
-        const automatic = !previous || previous.scope === "near";
+        const automatic = !recentre && (!previous || previous.scope === "near");
         if (!(automatic && useStore.getState().selected)) {
           setFocus({ lat: here.lat, lon: here.lon, zoom: NEAR_ZOOM, name: "near" });
         }
@@ -375,23 +392,35 @@ export default function App() {
       const width = document.querySelector(".map-wrap")?.clientWidth ?? window.innerWidth;
       setFocus({ ...WORLD_VIEW, zoom: worldZoom(width), name: "world" });
     }
-  }, [showing, here, place]);
+  }, [showing, here, place, locateRequest]);
 
   // "Nothing near" is never said bare while alerts without a position could
-  // not be matched to the reader's country yet (the table still loading).
-  const unmatchedNote = unmatched > 0 ? ` ${t("scope.unmatched", { n: unmatched })}` : "";
+  // not be matched to the reader's country: the table still loading, or no
+  // country found here (open sea, an island the table does not draw).
+  const noCountry = countries !== null && countries.length === 0;
+  const unmatchedNote =
+    unmatched > 0 ? ` ${t(noCountry ? "scope.unmatched.none" : "scope.unmatched", { n: unmatched })}` : "";
+  // ... nor while the link is down: nothing can reach the place right now
+  // (final review of PR #5, like the watch line and the scope bar)
+  const offline = received && !connected;
   const emptyKey =
     center && remaining === 0 && visible.length === 0 && filtered.length > 0
-      ? unmatched > 0
-        ? "scope.empty.unmatched"
-        : "scope.empty"
+      ? offline
+        ? "scope.empty.offline"
+        : unmatched > 0
+          ? noCountry
+            ? "scope.empty.nocountry"
+            : "scope.empty.unmatched"
+          : "scope.empty"
       : emptyReason({ events, visible, filters, remaining, received });
   const nearestIntro =
     nearest.length === 0
       ? undefined
-      : (showing === "place"
-          ? t("scope.nearest", { place: centerName, km: NEAR_RADIUS_KM.toLocaleString() })
-          : t("scope.nearest.you", { km: NEAR_RADIUS_KM.toLocaleString() })) + unmatchedNote;
+      : offline
+        ? t("scope.nearest.offline")
+        : (showing === "place"
+            ? t("scope.nearest", { place: centerName, km: NEAR_RADIUS_KM.toLocaleString() })
+            : t("scope.nearest.you", { km: NEAR_RADIUS_KM.toLocaleString() })) + unmatchedNote;
   const nearestDistances = useMemo(
     () => new Map(nearest.map((n) => [n.event.id, n.km])),
     [nearest],
@@ -494,7 +523,9 @@ export default function App() {
                 something. The kind filters fold into one button beside it. */}
             <div className="tools-row">
               <SearchBar />
-              <FilterSheet events={events} resultCount={visible.length} phone={isPhone} />
+              {/* what the feed will show: the nearest events, when that is
+                  the fallback ("Show 0 events" over five rows otherwise) */}
+              <FilterSheet events={events} resultCount={feedEvents.length} phone={isPhone} />
             </div>
             <ActiveFilters phone={isPhone} />
             {/* The watch answers the same question for one place: one line

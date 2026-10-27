@@ -8,6 +8,8 @@ interface Place {
   lon: number;
   type: string | null;
   bbox: number[] | null;
+  /** ISO alpha-2, upper case (backend/app/geocode.py), or null */
+  country_code?: string | null;
 }
 
 /** Area search.
@@ -90,7 +92,10 @@ export function SearchBar() {
     // emptied the feed (no event is titled after the island) and the owner
     // read it as "the search shows nothing", in production. Typing without
     // picking a place still filters by text, instantly.
-    setPlace({ lat: place.lat, lon: place.lon, name });
+    // the geocoder's country is kept: "Indonesia", "Philippines" or
+    // Lampedusa are put at sea, where the in-page table finds no land
+    const country = place.country_code?.toUpperCase();
+    setPlace({ lat: place.lat, lon: place.lon, name, country: country && /^[A-Z]{2}$/.test(country) ? country : null });
     setQuery("");
     setPlaces(null);
     setOpen(false);

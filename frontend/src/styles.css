@@ -2376,6 +2376,12 @@ a {
   color: var(--red);
 }
 
+/* our own link is down: the last state is not vouched for */
+.source-stale,
+.source-stale .source-mark {
+  color: var(--t3);
+}
+
 /* A pinned source is not in the scroller either: it wraps and shrinks, so
    the state of a failing source is never cut at the screen edge ("GeoNet
    volcanoes 0" was 272 px in a 256 px footer at 280 px, 200 % text:
@@ -2473,9 +2479,13 @@ a {
   min-height: 32px;
   max-width: 100%;
   min-width: 0;
-  padding: 0 10px;
+  /* NOT a pill: this label wraps (five lines at 280 px and 200 % text), and
+     a 999 px radius around five lines is a circle whose border cuts the first
+     and last words (final review of PR #5). 16 px reads as a pill on one
+     line and stays clear of the text on five. */
+  padding: 6px 12px;
   border: 1px solid var(--line);
-  border-radius: var(--pill);
+  border-radius: 16px;
   background: transparent;
   color: var(--t2);
   font: inherit;

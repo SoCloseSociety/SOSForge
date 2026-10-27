@@ -11,9 +11,16 @@ const BANNER_WINDOW_MS = 6 * 3600 * 1000
  * alerts leave when the server lifts them (a purge), not by the clock.
  */
 export function criticalEvents(events: SosEvent[], now: number): SosEvent[] {
-  const cutoff = now - BANNER_WINDOW_MS
-  return events.filter(
-    (e) =>
-      (e.ongoing || Date.parse(e.time) > cutoff) && (e.tsunami || e.severity === 'extreme'),
+  return events.filter((e) => isCritical(e, now))
+}
+
+/** One event, the banner's rule. Also what the scope bar's counts must
+ * never leave out: a BMKG tsunami-potential quake is not `ongoing`, and
+ * under a 15 min window the bar said "Nothing severe elsewhere" beside the
+ * banner's "TSUNAMI ALERT" for six hours (final review of PR #5). */
+export function isCritical(e: SosEvent, now: number): boolean {
+  return (
+    (e.ongoing || Date.parse(e.time) > now - BANNER_WINDOW_MS) &&
+    (e.tsunami || e.severity === 'extreme')
   )
 }

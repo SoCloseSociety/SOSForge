@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../store'
 
@@ -13,20 +13,53 @@ import { useStore } from '../store'
  *    contract (lane G, public/sw.js), shown only while there is something
  *    to save. */
 
-const ClimatePanel = lazy(() => import('./ClimatePanel').then((m) => ({ default: m.ClimatePanel })))
-
-function focusables(root: HTMLElement): HTMLElement[] {
+/** What Tab can reach inside a dialog: not what sits in a collapsed detail
+ * (`hidden`, or a closed <details> body). Counted, the last "focusable" of the
+ * climate dialog was a link in a hidden list: Tab left the aria-modal dialog
+ * and Shift+Tab from the first control did nothing (final review of PR #5). */
+export function focusables(root: HTMLElement): HTMLElement[] {
   return [
     ...root.querySelectorAll<HTMLElement>(
-      'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+      'button:not([disabled]), a[href], input:not([disabled]), select, textarea, details > summary, [tabindex]:not([tabindex="-1"])',
     ),
-  ]
+  ].filter((el) => !el.closest('[hidden], [inert], [aria-hidden="true"]') && !inClosedDetails(el))
 }
 
+function inClosedDetails(el: HTMLElement): boolean {
+  const details = el.closest('details')
+  if (!details || details.open) return false
+  const summary = details.querySelector(':scope > summary')
+  return !summary || !summary.contains(el)
+}
+
+/** A failed chunk stays inside the dialog. Without it, a stale tab after a
+ * deploy, or a dropped request, put the root crash page in place of the
+ * live feed, the map and the alerts (final review of PR #5). */
+class ChunkBoundary extends Component<
+  { children: ReactNode; fallback: (error: Error) => ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null }
+
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+
+  render(): ReactNode {
+    return this.state.error ? this.props.fallback(this.state.error) : this.props.children
+  }
+}
+
+const loadPanel = () => import('./ClimatePanel').then((m) => ({ default: m.ClimatePanel }))
+
 /** The climate indicators, behind one button. */
-export function ClimateButton() {
+export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } = {}) {
   const t = useStore((s) => s.t)
   const [open, setOpen] = useState(false)
+  // React.lazy keeps a rejection forever: a retry needs a new one
+  const [attempt, setAttempt] = useState(0)
+  // `attempt` is in the deps on purpose: it is the reason to rebuild
+  const Panel = useMemo(() => lazy(load), [load, attempt])
   const trigger = useRef<HTMLButtonElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
 
@@ -96,9 +129,24 @@ export function ClimateButton() {
                     ✕
                   </button>
                 </div>
-                <Suspense fallback={<p className="climate-dialog-wait">{t('climate.loading')}</p>}>
-                  <ClimatePanel />
-                </Suspense>
+                <ChunkBoundary
+                  key={attempt}
+                  fallback={(error) => (
+                    <div className="climate-dialog-wait" role="alert">
+                      <p>{t('climate.failed')}</p>
+                      <p>
+                        <code>{error.message}</code>
+                      </p>
+                      <button type="button" className="btn btn-secondary" onClick={() => setAttempt((n) => n + 1)}>
+                        {t('climate.retry')}
+                      </button>
+                    </div>
+                  )}
+                >
+                  <Suspense fallback={<p className="climate-dialog-wait">{t('climate.loading')}</p>}>
+                    <Panel />
+                  </Suspense>
+                </ChunkBoundary>
               </div>
             </>,
             document.body,
@@ -133,21 +181,61 @@ function isStatus(data: unknown): data is BasemapStatus {
   )
 }
 
-/** The button's label: the size the worker measured, "about" because the
- * files it could not size (a few glyph ranges) are not in the sum; no size
- * at all when it could size none (offline). Mobile data is said. */
-export function saveLabel(t: (key: string, vars?: Record<string, string | number>) => string, status: BasemapStatus): string {
+/** Up to this share of files the worker could not size, the sum is "about"
+ * the transfer (today 4 small glyph files of 118). Beyond it the sum covers
+ * only the files that answered: "at least" -- on a flaky link 50 of 84 HEADs
+ * failed and "~6 MB" was offered for a 16 MB download (final review). */
+const UNSIZED_SHARE = 0.1
+
+type T = (key: string, vars?: Record<string, string | number>) => string
+
+/** The button's label: the size the worker measured; no size at all when it
+ * could size nothing (offline). Mobile data is said. */
+export function saveLabel(t: T, status: BasemapStatus): string {
   if (status.missingBytes <= 0 || status.unmeasuredFiles >= status.missingFiles) return t('offline.save.nosize')
   const mb = Math.max(1, Math.round(status.missingBytes / 1e6))
-  return t(status.unmetered === false ? 'offline.save.metered' : 'offline.save', { mb })
+  const floor = status.unmeasuredFiles > status.missingFiles * UNSIZED_SHARE
+  const metered = status.unmetered === false
+  const key = floor ? 'offline.save.atleast' : 'offline.save'
+  return t(metered ? `${key}.metered` : key, { mb })
 }
 
-/** "Save the world map for offline use (~16 MB)". */
+/** The worker is asked only once the page has what it came for: the live
+ * snapshot whole, then 20 s, like the automatic precache -- and never by
+ * itself on Save-Data or 2G, where the status alone sends about a hundred
+ * HEAD requests to the tile host (final review of PR #5). */
+export const STATUS_DELAY_MS = 20_000
+/** No word from a running save for this long: ask the worker how it stands.
+ * A worker killed mid-download (5 min per event, on a slow link) sends no
+ * "saved" and no "failed", and the last progress stayed on screen forever. */
+export const STALL_MS = 45_000
+
+function constrained(): boolean {
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } })
+    .connection
+  return !!connection && (connection.saveData === true || /(^|-)2g$/.test(connection.effectiveType ?? ''))
+}
+
+type Phase =
+  | { kind: 'idle' }
+  | { kind: 'saving'; done: number; total: number }
+  | { kind: 'saved' }
+  | { kind: 'failed'; failed: number }
+  | { kind: 'stopped'; done: number; total: number }
+
+/** "Save the world map for offline use (~16 MB)". ONE button from the first
+ * status to the end: it shows the progress itself, so a keyboard user who
+ * pressed it keeps the focus, and a status region that is always there says
+ * the milestones (inserted already filled, it was often not announced). */
 export function OfflineMapButton() {
   const t = useStore((s) => s.t)
+  const ready = useStore((s) => s.received && s.snapshotRemaining === 0)
   const [status, setStatus] = useState<BasemapStatus | null>(null)
-  const [progress, setProgress] = useState<{ done: number; failed: number; total: number } | null>(null)
-  const [outcome, setOutcome] = useState<{ saved: boolean; failed: number } | null>(null)
+  const [phase, setPhase] = useState<Phase>({ kind: 'idle' })
+  const [asked, setAsked] = useState(false)
+  const [manual] = useState(constrained)
+  const lastWord = useRef(0)
+  const askRef = useRef<() => void>(() => undefined)
 
   useEffect(() => {
     const worker = navigator.serviceWorker
@@ -156,76 +244,122 @@ export function OfflineMapButton() {
     const ask = () => {
       const controller = worker.controller
       if (!controller) return
+      setAsked(true)
       const channel = new MessageChannel()
       channel.port1.onmessage = (event) => {
         channel.port1.close() // one question, one answer
+        if (!alive) return
         // an error reply, or a shape we do not know: no button, no claim
-        if (alive) setStatus(isStatus(event.data) ? event.data : null)
+        const next = isStatus(event.data) ? event.data : null
+        setStatus(next)
+        // a save we were showing has stopped (the worker restarted): say so
+        setPhase((p) =>
+          p.kind === 'saving' && next && !next.saving && !next.saved
+            ? { kind: 'stopped', done: p.done, total: p.total }
+            : p,
+        )
       }
       controller.postMessage({ type: 'sosforge:basemap-status' }, [channel.port2])
     }
+    askRef.current = ask
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { type?: string; done?: number; failed?: number; total?: number } | null
       if (!alive || !data || typeof data.type !== 'string') return
+      lastWord.current = Date.now()
       if (data.type === 'sosforge:basemap-progress') {
-        setProgress({ done: data.done ?? 0, failed: data.failed ?? 0, total: data.total ?? 0 })
+        setPhase({ kind: 'saving', done: data.done ?? 0, total: data.total ?? 0 })
       } else if (data.type === 'sosforge:basemap-saved') {
-        setProgress(null)
-        setOutcome({ saved: true, failed: 0 })
-        ask()
+        setPhase({ kind: 'saved' })
       } else if (data.type === 'sosforge:basemap-failed') {
-        setProgress(null)
-        setOutcome({ saved: false, failed: data.failed ?? 0 })
+        setPhase({ kind: 'failed', failed: data.failed ?? 0 })
         ask()
       }
     }
-    ask()
     worker.addEventListener('message', onMessage)
-    // a first visit starts uncontrolled: the worker claims the page later
-    worker.addEventListener('controllerchange', ask)
     return () => {
       alive = false
       worker.removeEventListener('message', onMessage)
-      worker.removeEventListener('controllerchange', ask)
     }
   }, [])
 
+  // the first question waits for the live snapshot, then STATUS_DELAY_MS; a
+  // worker that takes control later (first visit) is asked then
+  useEffect(() => {
+    const worker = navigator.serviceWorker
+    if (!worker || !ready || manual) return
+    const timer = window.setTimeout(() => askRef.current(), STATUS_DELAY_MS)
+    const later = () => askRef.current()
+    worker.addEventListener('controllerchange', later)
+    return () => {
+      window.clearTimeout(timer)
+      worker.removeEventListener('controllerchange', later)
+    }
+  }, [ready, manual])
+
+  // a save that stops talking is asked how it stands
+  const saving = phase.kind === 'saving' || (phase.kind === 'idle' && !!status?.saving)
+  useEffect(() => {
+    if (!saving) return
+    const timer = window.setInterval(() => {
+      if (Date.now() - lastWord.current >= STALL_MS) askRef.current()
+    }, STALL_MS)
+    return () => window.clearInterval(timer)
+  }, [saving])
+
   const save = () => {
-    setOutcome(null)
+    if (phase.kind === 'saving' || phase.kind === 'saved') return
+    lastWord.current = Date.now()
+    setPhase({ kind: 'saving', done: 0, total: status?.missingFiles ?? 0 })
     navigator.serviceWorker?.controller?.postMessage({ type: 'sosforge:basemap-save' })
   }
 
-  if (outcome?.saved) {
-    return (
-      <span className="footer-tool-note" role="status">
-        {t('offline.saved')}
-      </span>
-    )
+  const controlled = !!navigator.serviceWorker?.controller
+  // Save-Data / 2G: nothing is asked by itself; the button asks first, then
+  // offers the measured size
+  if (manual && !asked) {
+    return controlled ? (
+      <button type="button" className="footer-tool" onClick={() => askRef.current()}>
+        <span aria-hidden="true">⤓</span> {t('offline.save.nosize')}
+      </button>
+    ) : null
   }
-  if (progress) {
-    return (
-      <span className="footer-tool-note" role="status">
-        {t('offline.progress', { done: progress.done, total: progress.total })}
-      </span>
-    )
-  }
-  if (!status || status.saved) return null
-  if (status.saving) {
-    return (
-      <span className="footer-tool-note" role="status">
-        {t('offline.saving')}
-      </span>
-    )
-  }
+  if (phase.kind !== 'saved' && (!status || status.saved)) return null
+
+  const label =
+    phase.kind === 'saving'
+      ? phase.done > 0
+        ? t('offline.progress', { done: phase.done, total: phase.total })
+        : t('offline.saving')
+      : phase.kind === 'saved'
+        ? t('offline.saved')
+        : status?.saving
+          ? t('offline.saving')
+          : status
+            ? saveLabel(t, status)
+            : ''
+  const busy = phase.kind === 'saving' || phase.kind === 'saved' || (phase.kind === 'idle' && !!status?.saving)
+  const said =
+    phase.kind === 'saving'
+      ? t('offline.saving')
+      : phase.kind === 'saved'
+        ? t('offline.saved')
+        : phase.kind === 'failed'
+          ? t('offline.failed', { failed: phase.failed })
+          : phase.kind === 'stopped'
+            ? t('offline.stopped', { done: phase.done, total: phase.total })
+            : ''
   return (
     <>
-      {outcome && !outcome.saved ? (
-        <span className="footer-tool-note" role="status">
-          {t('offline.failed', { failed: outcome.failed })}
+      <span className="sr-only" role="status">
+        {said}
+      </span>
+      {phase.kind === 'failed' || phase.kind === 'stopped' ? (
+        <span className="footer-tool-note" aria-hidden="true">
+          {said}
         </span>
       ) : null}
-      <button type="button" className="footer-tool" onClick={save}>
-        <span aria-hidden="true">⤓</span> {saveLabel(t, status)}
+      <button type="button" className="footer-tool" aria-disabled={busy} onClick={save}>
+        <span aria-hidden="true">⤓</span> {label}
       </button>
     </>
   )
