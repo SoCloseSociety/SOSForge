@@ -32,7 +32,11 @@ interface FakeEvent {
 
 const handlers = new Map<string, Handler>()
 const stores = new Map<string, Map<string, Response>>()
-let connection: { saveData?: boolean; effectiveType?: string } = {}
+let connection: { saveData?: boolean; effectiveType?: string; type?: string } = {}
+/** Host paths answered without a Content-Length. */
+const unmeasured = new Set<string>()
+/** The one open tab the worker can talk to. */
+const tab = { postMessage: vi.fn() }
 let network: ReturnType<typeof vi.fn>
 let calls: string[] = []
 
@@ -83,7 +87,10 @@ function answer(url: string): Response {
   } else if (url === `${HOST}/planet`) {
     res = Response.json({ tiles: [`${HOST}/planet/${BUILD}/{z}/{x}/{y}.pbf`] })
   } else if (u.origin === HOST) {
-    res = new Response(`bytes of ${u.pathname}`)
+    // Content-Length as the host sends it (the compressed size, here the
+    // body's), except for the files a test wants left unmeasured.
+    const body = `bytes of ${u.pathname}`
+    res = new Response(body, unmeasured.has(u.pathname) ? {} : { headers: { 'content-length': String(body.length) } })
   } else if (u.pathname === '/index.html') {
     res = new Response(
       '<script type="module" src="/assets/index-AAA.js"></script><link rel="stylesheet" href="/assets/index-BBB.css">',
@@ -111,10 +118,12 @@ async function load() {
   stores.clear()
   calls = []
   connection = {}
+  unmeasured.clear()
+  tab.postMessage.mockClear()
   vi.stubGlobal('self', {
     addEventListener: (type: string, fn: Handler) => handlers.set(type, fn),
     skipWaiting: vi.fn(),
-    clients: { claim: vi.fn(async () => {}) },
+    clients: { claim: vi.fn(async () => {}), matchAll: vi.fn(async () => [tab]) },
     location: { origin: ORIGIN },
     navigator: {
       get connection() {
@@ -264,43 +273,167 @@ describe('style and TileJSON', () => {
   })
 })
 
-describe('the offline world precache', () => {
-  async function runPrecache() {
-    vi.useFakeTimers()
-    let done: Promise<unknown> | undefined
-    handlers.get('message')!({
-      data: { type: 'sosforge:precache-basemap' },
-      respondWith: () => {},
-      waitUntil: (p) => {
-        done = p
-      },
-    })
-    await vi.advanceTimersByTimeAsync(20_000)
-    return await done
-  }
+/** The automatic run, as the map starting triggers it: through a request to
+ * the tile host, 20 s of (fake) idle time later. */
+async function autoRun() {
+  vi.useFakeTimers()
+  const { kept } = await fetchThrough(`${HOST}/styles/dark`)
+  await vi.advanceTimersByTimeAsync(20_000)
+  return await kept[0]
+}
 
-  it('fetches world zooms 0..3, the sprites and the label glyphs, once', async () => {
-    expect(await runPrecache()).toBe('fetched 112') // 85 tiles + 4 sprite files + 23 glyph ranges
+/** A page message; resolves with what the worker kept itself alive for, and
+ * collects what it replied on the port. */
+async function message(type: string) {
+  const replies: unknown[] = []
+  let kept: Promise<unknown> | undefined
+  handlers.get('message')!({
+    data: { type },
+    ports: [{ postMessage: (m: unknown) => replies.push(m) }],
+    respondWith: () => {},
+    waitUntil: (p: Promise<unknown>) => {
+      kept = p
+    },
+  } as unknown as FakeEvent)
+  return { result: await kept, replies }
+}
+
+const broadcasts = () => tab.postMessage.mock.calls.map((c) => c[0] as { type: string; [k: string]: unknown })
+
+describe('what the worker downloads on its own', () => {
+  it('is the small set only: world zooms 0..1, its glyphs, the sprites', async () => {
+    expect(await autoRun()).toBe('auto fetched 28') // 5 tiles + 4 sprite files + 19 glyph ranges
     const base = store('sosforge-tiles-base')!
-    for (let z = 0; z <= 3; z++) {
-      expect(base.has(`${HOST}/planet/${z}/${2 ** z - 1}/${2 ** z - 1}.pbf`)).toBe(true)
-    }
-    expect(base.has(`${HOST}/planet/4/0/0.pbf`)).toBe(false)
+    expect(base.has(`${HOST}/planet/1/1/1.pbf`)).toBe(true)
+    expect(base.has(`${HOST}/planet/2/0/0.pbf`)).toBe(false)
     expect(base.has(`${HOST}/sprites/ofm_f384/ofm@2x.png`)).toBe(true)
     // encoded exactly as the page's own request is
     expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/0-255.pbf`)).toBe(true)
-
-    calls = []
-    expect(await runPrecache()).toBe('fetched 0')
-    expect(calls.filter((c) => c.endsWith('.pbf') || c.endsWith('.png'))).toEqual([])
+    expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/512-767.pbf`)).toBe(false)
+    expect(broadcasts()).toEqual([]) // nothing to report: nobody asked
   })
 
-  it('does nothing at all when the reader asked to save data, or on 2G', async () => {
+  it('stays small when the connection type is cellular or not told at all', async () => {
+    connection = { type: 'cellular' }
+    expect(await autoRun()).toBe('auto fetched 28')
+    await load()
+    connection = {} // desktop Chrome, Safari, Firefox: no `type`, never assumed
+    expect(await autoRun()).toBe('auto fetched 28')
+  })
+
+  it('takes the whole world only on a connection that says it is unmetered', async () => {
+    connection = { type: 'wifi' }
+    expect(await autoRun()).toBe('world fetched 112') // 85 tiles + 4 sprites + 23 glyph ranges
+    await load()
+    connection = { type: 'wifi', saveData: true }
+    expect(await autoRun()).toBe('skipped')
+  })
+
+  it('does nothing at all on Save-Data or 2G', async () => {
     connection = { saveData: true }
-    expect(await runPrecache()).toBe('skipped')
+    expect(await autoRun()).toBe('skipped')
     connection = { effectiveType: 'slow-2g' }
-    expect(await runPrecache()).toBe('skipped')
-    expect(calls).toEqual([])
+    await load()
+    connection = { effectiveType: 'slow-2g' }
+    expect(await autoRun()).toBe('skipped')
+    expect(calls.filter((c) => c.includes('/planet/'))).toEqual([])
+  })
+})
+
+describe('the world map, on the reader\'s request', () => {
+  it('states the real size of what is missing before anything is downloaded', async () => {
+    await autoRun()
+    vi.useRealTimers()
+    calls = []
+    const { replies } = await message('sosforge:basemap-status')
+    const status = replies[0] as Record<string, unknown>
+    // the 84 files the world adds: 80 tiles at zooms 2..3 and 4 glyph ranges
+    const expected = [] as number[]
+    for (let z = 2; z <= 3; z++) for (let x = 0; x < 2 ** z; x++) for (let y = 0; y < 2 ** z; y++) {
+      expected.push(`bytes of /planet/${BUILD}/${z}/${x}/${y}.pbf`.length)
+    }
+    for (const r of ['512-767', '1792-2047', '3840-4095', '6144-6399']) {
+      expected.push(`bytes of /fonts/Noto%20Sans%20Regular/${r}.pbf`.length)
+    }
+    expect(status).toMatchObject({
+      type: 'sosforge:basemap-status',
+      saved: false,
+      saving: false,
+      files: 112,
+      missingFiles: 84,
+      missingBytes: expected.reduce((a, b) => a + b, 0),
+      unmeasuredFiles: 0,
+      unmetered: null,
+    })
+    // measured by HEAD: nothing was downloaded to find out
+    expect(store('sosforge-tiles-base')!.has(`${HOST}/planet/2/0/0.pbf`)).toBe(false)
+  })
+
+  it('counts the files the host does not size, and never guesses them', async () => {
+    // as the real host does (2026-10-27): glyph files carry no Content-Length
+    const glyphs = ['512-767', '1792-2047', '3840-4095', '6144-6399']
+    for (const r of glyphs) unmeasured.add(`/fonts/Noto%20Sans%20Regular/${r}.pbf`)
+    await autoRun()
+    vi.useRealTimers()
+    const { replies } = await message('sosforge:basemap-status')
+    let tiles = 0
+    for (let z = 2; z <= 3; z++) for (let x = 0; x < 2 ** z; x++) for (let y = 0; y < 2 ** z; y++) {
+      tiles += `bytes of /planet/${BUILD}/${z}/${x}/${y}.pbf`.length
+    }
+    expect(replies[0]).toMatchObject({ missingFiles: 84, missingBytes: tiles, unmeasuredFiles: 4 })
+  })
+
+  it('offline, measures nothing and says so', async () => {
+    await autoRun()
+    vi.useRealTimers()
+    network.mockImplementation(async () => {
+      throw new TypeError('offline')
+    })
+    const { replies } = await message('sosforge:basemap-status')
+    expect(replies[0]).toMatchObject({ missingFiles: 84, missingBytes: 0, unmeasuredFiles: 84 })
+  })
+
+  it('downloads it on request, whatever the connection, and tells every tab how far it got', async () => {
+    connection = { saveData: true } // the reader asked: their call, not the worker's
+    const { result } = await message('sosforge:basemap-save')
+    expect(result).toBe('world fetched 112')
+    const sent = broadcasts()
+    const progress = sent.filter((m) => m.type === 'sosforge:basemap-progress')
+    expect(progress).toHaveLength(112)
+    expect(progress.at(-1)).toMatchObject({ done: 112, failed: 0, total: 112 })
+    expect(sent.at(-1)).toMatchObject({ type: 'sosforge:basemap-saved', files: 112 })
+
+    const { replies } = await message('sosforge:basemap-status')
+    expect(replies[0]).toMatchObject({ saved: true, missingFiles: 0, missingBytes: 0, unmeasuredFiles: 0 })
+  })
+
+  it('reports a failed save, and a second request fetches only what is missing', async () => {
+    let refuse = true
+    network.mockImplementation(async (input: Request | string) => {
+      const url = abs(input)
+      calls.push(url)
+      // every zoom-3 tile fails (the zoom is the segment right after the build)
+      if (refuse && /\/planet\/[^/]+\/3\//.test(url)) throw new TypeError('network gone')
+      return answer(url)
+    })
+    await message('sosforge:basemap-save')
+    expect(broadcasts().at(-1)).toMatchObject({ type: 'sosforge:basemap-failed', failed: 64 })
+    refuse = false
+    tab.postMessage.mockClear()
+    calls = []
+    expect((await message('sosforge:basemap-save')).result).toBe('world fetched 64')
+    expect(broadcasts().at(-1)).toMatchObject({ type: 'sosforge:basemap-saved', files: 64 })
+  })
+
+  it('can be given back: forget leaves the small set only', async () => {
+    await message('sosforge:basemap-save')
+    const { replies } = await message('sosforge:basemap-forget')
+    expect(replies[0]).toMatchObject({ saved: false, missingFiles: 84 })
+    const base = store('sosforge-tiles-base')!
+    expect(base.has(`${HOST}/planet/3/0/0.pbf`)).toBe(false)
+    expect(base.has(`${HOST}/planet/1/0/0.pbf`)).toBe(true)
+    expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/512-767.pbf`)).toBe(false)
+    expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/0-255.pbf`)).toBe(true)
   })
 })
 
