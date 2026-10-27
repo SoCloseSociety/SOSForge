@@ -570,7 +570,13 @@ class IngvSource(JsonPollSource):
     feed only lists the new id. The old one stayed in the store as a second
     quake. An id that arrives with the origin time (within a second) and the
     position (within 10 km) of one this source already emitted withdraws the
-    old one.
+    old one -- but only once the page no longer lists the old id.
+
+    The catalogue also keeps TWO solutions of one quake under two ids, both
+    listed at the same time (Sefro 47459342/47459372: 0.2 s, 0.12 km; Eolie
+    47569802/47569772: 0.4 s, 1.7 km, 2026-10). Withdrawing on the match
+    alone made each one withdraw the other every cycle: the quake vanished
+    from INGV and came back as new every 60 s.
     """
 
     name = "ingv"
@@ -582,9 +588,11 @@ class IngvSource(JsonPollSource):
         self._emitted: dict[str, tuple[datetime, float | None, float | None]] = {}
 
     def supersede(self, events: list[Event]) -> None:
+        listed = {event.id for event in events}
         for event in events:
             for old_id, (origin, lat, lon) in list(self._emitted.items()):
-                if old_id == event.id or abs((origin - event.time).total_seconds()) > 1.0:
+                # still listed: a second solution, not a re-identification
+                if old_id in listed or abs((origin - event.time).total_seconds()) > 1.0:
                     continue
                 if (
                     None in (lat, lon, event.lat, event.lon)

@@ -357,24 +357,29 @@ class MeteoalarmSource(Source):
             timeout=25.0, headers=headers, follow_redirects=True
         ) as client:
             while True:
-                seen, alive = 0, 0
+                seen, alive, answered = 0, 0, 0
                 last_error: Exception | None = None
                 for country in self.countries:
                     try:
                         resp = await client.get(METEOALARM_API.format(country=country))
                         resp.raise_for_status()
                         alive += 1
+                        data = resp.json()
+                        # before the emits: a country back after failing
+                        # since startup lists its baseline, not new data
+                        self.health.feed_ok(country)
                         kept = 0
-                        for event in self.select(resp.json(), country):
+                        for event in self.select(data, country):
                             kept += 1
                             await emit(event)
                         await self.flush_retractions()
                         seen += kept
-                        self.health.feed_ok(country)
                         # mark health at EACH country: ten sequential GETs
                         # take over a minute, and the source looked dead for
-                        # its entire first cycle
-                        self.health.ok(kept)
+                        # its entire first cycle. `partial`: one country is
+                        # not the cycle, and only the cycle primes freshness
+                        self.health.ok(kept, partial=True)
+                        answered += 1
                     except Exception as exc:
                         last_error = exc
                         # Per country, and never cleared by the next one: a
@@ -383,7 +388,10 @@ class MeteoalarmSource(Source):
                         self.health.feed_failed(country, exc)
                         log.warning("meteoalarm %s: %s", country, exc)
                 # health is already marked country by country above; marking it
-                # here again added the same total a second time
+                # here again added the same total a second time (n=0 adds
+                # nothing: this call only closes the cycle)
+                if answered:
+                    self.health.ok()
                 if not alive:
                     log.warning("meteoalarm: no country reachable this cycle")
                     if last_error is not None:

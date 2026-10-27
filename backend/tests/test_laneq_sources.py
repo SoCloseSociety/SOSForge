@@ -87,6 +87,41 @@ def test_an_ingv_reidentified_event_withdraws_the_old_id():
     assert source.expirations == ["ingv:46940061"]
 
 
+TWO_SOLUTIONS = json.loads((FX / "ingv_two_solutions_2026-10-27.json").read_text(encoding="utf-8"))
+TWO_SOLUTION_PAGE = {
+    "features": TWO_SOLUTIONS["sefro_2026-10-07T00:40"]["features"]
+    + TWO_SOLUTIONS["eolie_2026-10-18T13:25"]["features"]
+}
+
+
+def test_two_ingv_solutions_listed_together_are_both_kept_every_cycle():
+    # PR #5 review: each withdrew the other from the second cycle on, and the
+    # quake came back as a new event every 60 s
+    source = IngvSource()
+    for _cycle in range(3):
+        events = source.parse_payload(TWO_SOLUTION_PAGE)
+        assert sorted(e.id for e in events) == [
+            "ingv:47459342",
+            "ingv:47459372",
+            "ingv:47569772",
+            "ingv:47569802",
+        ]
+        assert source.expirations == []
+
+
+def test_an_ingv_solution_the_page_stops_listing_is_withdrawn():
+    source = IngvSource()
+    source.parse_payload(TWO_SOLUTION_PAGE)
+    # the same page once the catalogue folds 47569772 into 47569802
+    page = {
+        "features": [
+            f for f in TWO_SOLUTION_PAGE["features"] if f["properties"]["eventId"] != 47569772
+        ]
+    }
+    source.parse_payload(page)
+    assert source.expirations == ["ingv:47569772"]
+
+
 def test_ingv_stamps_italy_only_on_an_italian_province():
     places = REAL["ingv_places"]
     assert ingv_country("7 km NE Lauria (PZ)") == "Italy"

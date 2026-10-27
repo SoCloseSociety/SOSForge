@@ -29,7 +29,11 @@ Traps verified against the real file (captured 2026-10-27):
   silent between two weekly releases.
 - A region has no stable identity across weeks: its id is its category and
   rounded centre. When a new map arrives, every region of the previous one
-  that is not in it is withdrawn.
+  that is not in it is withdrawn. "The previous one" is the map last
+  PUBLISHED, persisted in the source memory: held only in memory, a restart
+  between a release and the next poll left last week's regions on the map
+  next to the new ones until the 6 h silence sweep (between the maps valid
+  2026-10-13 and 2026-10-20, 7 of the 9 D4 regions changed id).
 """
 
 from __future__ import annotations
@@ -126,9 +130,16 @@ class UsdmSource(Source):
         self.url = url
         self._last_modified: str | None = None
         self._events: list[Event] = []
+        # ids of the map last published, by this process or the one before
+        self._published: set[str] = set()
 
     async def run(self, emit: Emit) -> None:
         headers = {"User-Agent": USER_AGENT, "Accept": "application/json"}
+        self._published |= {
+            event_id
+            for event_id in self.load_memory().get("published") or []
+            if isinstance(event_id, str) and event_id.startswith("usdm:")
+        }
         async with httpx.AsyncClient(
             timeout=180.0, headers=headers, follow_redirects=True
         ) as client:
@@ -145,9 +156,11 @@ class UsdmSource(Source):
                             raise ValueError("no Last-Modified: the map has no other date")
                         released = parsedate_to_datetime(stamp).astimezone(UTC)
                         fresh = parse_map(resp.json(), released)
-                        gone = {e.id for e in self._events} - {e.id for e in fresh}
-                        self.expirations.extend(sorted(gone))
+                        ids = {e.id for e in fresh}
+                        self.expirations.extend(sorted(self._published - ids))
                         self._events, self._last_modified = fresh, stamp
+                        self._published = ids
+                        self.save_memory({"published": sorted(ids), "released": stamp})
                     for event in self._events:
                         await emit(event.model_copy(deep=True))
                     await self.flush_retractions()

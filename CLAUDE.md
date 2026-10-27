@@ -226,7 +226,11 @@ off. Concretely:
   aggregators BEFORE counting a gap as missing coverage.
 - **US Drought Monitor**: a weekly MAP (5 MultiPolygons, `DM` 0-4), no date
   but `Last-Modified`, 17 MB uncompressed: `If-Modified-Since`, and never a
-  6 h wait to retry a failure.
+  6 h wait to retry a failure. Region ids are category + rounded centre and
+  change every week (7 of 9 D4 ids between the maps valid 2026-10-13 and
+  -20): last week's regions are withdrawn against the map last PUBLISHED,
+  kept in the source memory, or a restart between two releases leaves both
+  weeks on screen. Past maps: `data/json/usdm_YYYYMMDD.json` (the Tuesday).
 - **PHIVOLCS** revises a quake under a NEW bulletin name and drops the old
   row (`2026_1026_204121_B1` -> `2026_1026_2041_B2`); same-minute rows are
   mostly DIFFERENT quakes (500 km apart). Only the page says what is current:
@@ -236,7 +240,11 @@ off. Concretely:
   preferred `id`; an alias stored as its own quake is withdrawn (the day feed
   is read for `ids`, a merge lands after the hour feed has dropped it).
 - **INGV** re-identifies events (`eventid=46940061` -> 302 -> `47630362`, same
-  origin): same origin + position withdraws the old id. Italian places end in
+  origin): same origin + position withdraws the old id, ONLY once the page
+  stops listing it. The catalogue also lists TWO solutions of one quake at
+  once (47459342/47459372, 0.2 s and 0.12 km apart; four such pairs in
+  October 2026): withdrawn on the match alone, each removed the other every
+  cycle and the quake re-arrived as new every minute. Italian places end in
   a province code `(PZ)`; seas and abroad use brackets (`[Mare]`, `[Sea:
   Vanuatu]`): Italy only on a province code.
 - **Area centres** (NWS zones, CAP polygons, UK Meteoalarm, SIGMETs) go

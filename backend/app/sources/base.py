@@ -86,6 +86,13 @@ class SourceHealth:
     - `last_event_at`: when this source handed over an event it had NEVER
       handed over before -- new data, first seen. Null until the first such
       event after startup: everything in the first cycle is the baseline.
+      The baseline is per FEED: a feed that answers for the first time after
+      failing since startup lists its baseline too, not new data (PR #5:
+      Greece down in the first cycle, then all of Greece "new" when it came
+      back). A multi-feed source that marks health per feed calls
+      `ok(partial=True)` for each, so only the cycle's end primes it
+      (Meteoalarm's per-country `ok()` primed it after France, and the nine
+      other countries' standing warnings were stamped as news at startup).
     - `newest_event_time`: the event time (origin, issue) of the newest event
       the source has delivered -- how recent the source's own data is.
     - `last_delivery_at`: the last poll that returned anything at all, new or
@@ -108,6 +115,11 @@ class SourceHealth:
         self.last_delivery_at: datetime | None = None
         self._seen: dict[str, None] = {}
         self._primed = False
+        # feeds that have answered at least once since startup
+        self._answered: set[str] = set()
+        # True from a feed's first answer after a failure to the next `ok()`:
+        # what is observed meanwhile is that feed's baseline
+        self._baseline = False
         # feed name -> its last error, for the feeds failing RIGHT NOW
         self.failed_feeds: dict[str, str] = {}
 
@@ -118,7 +130,7 @@ class SourceHealth:
             self._seen[event_id] = None
             if len(self._seen) > self.MAX_SEEN:
                 del self._seen[next(iter(self._seen))]
-            if self._primed:
+            if self._primed and not self._baseline:
                 self.last_event_at = now
         # a time in the future is a source error, not freshness
         if (event_time - now).total_seconds() <= 120 and (
@@ -126,7 +138,9 @@ class SourceHealth:
         ):
             self.newest_event_time = event_time
 
-    def ok(self, n: int = 0) -> None:
+    def ok(self, n: int = 0, *, partial: bool = False) -> None:
+        """A cycle succeeded -- or, with `partial`, one feed of a cycle that
+        will call `ok()` again at its end."""
         self.connected = True
         self.last_ok = utcnow()
         self.events_seen += n
@@ -134,7 +148,9 @@ class SourceHealth:
             self.last_delivery_at = self.last_ok
         # the first successful cycle is the baseline: from now on, an id not
         # seen before is new data
-        self._primed = True
+        if not partial:
+            self._primed = True
+        self._baseline = False
         # A partial success does not erase a partial failure.
         self.last_error = self._failed_summary()
 
@@ -144,7 +160,12 @@ class SourceHealth:
         self.last_error = f"{type(exc).__name__}: {exc}"
 
     def feed_ok(self, feed: str) -> None:
-        """One feed of a multi-feed source answered."""
+        """One feed of a multi-feed source answered. Call it BEFORE emitting
+        that feed's events: a feed failing since startup that answers for the
+        first time lists its baseline, which must not read as new data."""
+        if feed in self.failed_feeds and feed not in self._answered:
+            self._baseline = True
+        self._answered.add(feed)
         self.failed_feeds.pop(feed, None)
 
     def feed_failed(self, feed: str, exc: BaseException) -> None:
