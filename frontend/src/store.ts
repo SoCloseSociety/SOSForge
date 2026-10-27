@@ -99,7 +99,16 @@ export interface Watch {
 }
 
 /** What the feed and the map show: around the reader, or the whole world. */
-export type Scope = "near" | "world";
+export type Scope = "near" | "world" | "place";
+
+/** A place the reader CHOSE (a search result): not their position. Its
+ * coordinates come from the geocoder, so keeping them is no privacy matter,
+ * and it survives a reload like the watch does. */
+export interface Place {
+  lat: number;
+  lon: number;
+  name: string;
+}
 
 /** Where the location request stands, said in place by the scope bar.
  * `idle`: never asked this visit; `asking`: the browser prompt is up;
@@ -163,6 +172,8 @@ interface State {
    * itself when there is no position (see `effectiveScope`) */
   scope: Scope;
   here: Here | null;
+  /** the chosen place the "place" scope centres on */
+  place: Place | null;
   locate: LocateState;
   /** bumped when the reader ASKS for Near me: an explicit ask may show the
    * browser prompt again, where an automatic one never shows it twice */
@@ -181,6 +192,9 @@ interface State {
   /** every kind back on */
   resetKinds: () => void;
   setScope: (scope: Scope) => void;
+  /** a place picked from the search: the feed scopes to it, like Near me;
+   * null goes back to Near me */
+  setPlace: (place: Place | null) => void;
   setHere: (here: Here | null) => void;
   setLocate: (state: LocateState) => void;
   /** the reader pressed "Near me": switch, and ask for the position now */
@@ -382,21 +396,33 @@ export function coarse(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-function loadScope(): { scope: Scope; asked: boolean } {
+function loadScope(): { scope: Scope; asked: boolean; place: Place | null } {
   try {
     const saved = JSON.parse(localStorage.getItem(SCOPE_KEY) ?? "null");
-    return { scope: saved?.scope === "world" ? "world" : "near", asked: saved?.asked === true };
+    const p = saved?.place;
+    const place: Place | null =
+      p && typeof p.lat === "number" && typeof p.lon === "number" &&
+      Math.abs(p.lat) <= 90 && Math.abs(p.lon) <= 180
+        ? { lat: p.lat, lon: p.lon, name: String(p.name ?? "") }
+        : null;
+    const scope: Scope =
+      saved?.scope === "world" ? "world" : saved?.scope === "place" && place ? "place" : "near";
+    return { scope, asked: saved?.asked === true, place };
   } catch {
-    return { scope: "near", asked: false };
+    return { scope: "near", asked: false, place: null };
   }
 }
 
-/** Saves the mode and whether the browser prompt has already been shown
- * once (so a dismissed prompt is not shown on every visit: no nagging). */
-export function saveScope(patch: { scope?: Scope; asked?: boolean }): void {
+/** Saves the mode, the chosen place and whether the browser prompt has
+ * already been shown once (so a dismissed prompt is not shown on every
+ * visit: no nagging). Never the reader's own position. */
+export function saveScope(patch: { scope?: Scope; asked?: boolean; place?: Place | null }): void {
   try {
     const next = { ...loadScope(), ...patch };
-    localStorage.setItem(SCOPE_KEY, JSON.stringify({ scope: next.scope, asked: next.asked }));
+    localStorage.setItem(
+      SCOPE_KEY,
+      JSON.stringify({ scope: next.scope, asked: next.asked, place: next.place }),
+    );
   } catch {
     /* private mode: the mode is not remembered, the default applies */
   }
@@ -445,6 +471,7 @@ export const useStore = create<State>((set, get) => ({
   snapshotRemaining: 0,
   scope: SAVED_SCOPE.scope,
   here: null,
+  place: SAVED_SCOPE.place,
   locate: "idle",
   locateRequest: 0,
 
@@ -491,6 +518,11 @@ export const useStore = create<State>((set, get) => ({
       saveFilters(next);
       return { filters: next };
     }),
+  setPlace: (place) => {
+    const scope: Scope = place ? "place" : "near";
+    saveScope({ scope, place });
+    set({ place, scope });
+  },
   setScope: (scope) => {
     saveScope({ scope });
     set({ scope });

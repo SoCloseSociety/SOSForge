@@ -30,9 +30,9 @@ const fr: Dict = {
   "app.sound.off": "Son coupé",
   "app.sound.title": "Alerte sonore sur les événements graves",
 
-  "kpi.quakes": "Séismes (1 h)",
+  "kpi.quakes": "Séismes (1\u00a0h)",
   "kpi.quakes.last": "dernier {age}",
-  "kpi.maxmag": "Magnitude max (1 h)",
+  "kpi.maxmag": "Magnitude max (1\u00a0h)",
   "kpi.maxmag.sub": "toutes zones",
   "kpi.tsunami": "Alertes tsunami",
   "kpi.tsunami.sub": "bulletins actifs",
@@ -267,6 +267,15 @@ const fr: Dict = {
   "footer.summary.waiting": "Sources : en attente du flux",
   "footer.summary.noclients": "{up}/{total} en ligne",
   "feed.waiting": "Connexion au flux en direct...",
+  "scope.place.clear": "Ne plus suivre {place}",
+  "scope.nearest": "Rien à moins de {km} km de {place} sur cette période. Les plus proches :",
+  "scope.nearest.you": "Rien à moins de {km} km de vous sur cette période. Les plus proches :",
+  "feed.distance": "à {km} km",
+  "feed.countrywide": "{country}, zone non précisée",
+  "feed.noarea": "Zone non précisée",
+  "scope.unlocated": "{n} grave(s) sans localisation",
+  "scope.unmatched": "{n} alerte(s) sans zone précise pas encore rapprochée(s) de votre pays : voir Monde.",
+  "scope.empty.unmatched": "Rien de localisé près de vous dans cette période, et {unmatched} alerte(s) sans zone précise pas encore rapprochée(s) de votre pays : voir Monde.",
 };
 
 const en: Dict = {
@@ -277,9 +286,9 @@ const en: Dict = {
   "app.sound.off": "Sound off",
   "app.sound.title": "Audio alert on severe events",
 
-  "kpi.quakes": "Earthquakes (1 h)",
+  "kpi.quakes": "Earthquakes (1\u00a0h)",
   "kpi.quakes.last": "latest {age}",
-  "kpi.maxmag": "Max magnitude (1 h)",
+  "kpi.maxmag": "Max magnitude (1\u00a0h)",
   "kpi.maxmag.sub": "worldwide",
   "kpi.tsunami": "Tsunami alerts",
   "kpi.tsunami.sub": "active bulletins",
@@ -513,6 +522,15 @@ const en: Dict = {
   "footer.summary.waiting": "Sources: waiting for the feed",
   "footer.summary.noclients": "{up}/{total} online",
   "feed.waiting": "Connecting to the live feed...",
+  "scope.place.clear": "Stop following {place}",
+  "scope.nearest": "Nothing within {km} km of {place} in this window. The nearest events:",
+  "scope.nearest.you": "Nothing within {km} km of you in this window. The nearest events:",
+  "feed.distance": "{km} km away",
+  "feed.countrywide": "{country}, no exact area",
+  "feed.noarea": "No exact area",
+  "scope.unlocated": "{n} severe without a location",
+  "scope.unmatched": "{n} alert(s) without an exact area not matched to your country yet: see World.",
+  "scope.empty.unmatched": "Nothing with a position near you in this window, and {unmatched} alert(s) without an exact area not matched to your country yet: see World.",
 };
 
 const es: Dict = {
@@ -523,9 +541,9 @@ const es: Dict = {
   "app.sound.off": "Sonido apagado",
   "app.sound.title": "Alerta sonora en eventos graves",
 
-  "kpi.quakes": "Sismos (1 h)",
+  "kpi.quakes": "Sismos (1\u00a0h)",
   "kpi.quakes.last": "último {age}",
-  "kpi.maxmag": "Magnitud máx. (1 h)",
+  "kpi.maxmag": "Magnitud máx. (1\u00a0h)",
   "kpi.maxmag.sub": "todo el mundo",
   "kpi.tsunami": "Alertas de tsunami",
   "kpi.tsunami.sub": "boletines activos",
@@ -758,6 +776,15 @@ const es: Dict = {
   "footer.summary.waiting": "Fuentes: esperando el flujo",
   "footer.summary.noclients": "{up}/{total} en línea",
   "feed.waiting": "Conectando al flujo en directo...",
+  "scope.place.clear": "Dejar de seguir {place}",
+  "scope.nearest": "Nada a menos de {km} km de {place} en este periodo. Los más cercanos:",
+  "scope.nearest.you": "Nada a menos de {km} km de usted en este periodo. Los más cercanos:",
+  "feed.distance": "a {km} km",
+  "feed.countrywide": "{country}, zona sin precisar",
+  "feed.noarea": "Zona sin precisar",
+  "scope.unlocated": "{n} grave(s) sin ubicación",
+  "scope.unmatched": "{n} alerta(s) sin zona precisa aún no asociada(s) a su país: vea Mundo.",
+  "scope.empty.unmatched": "Nada con ubicación cerca de usted en este periodo, y {unmatched} alerta(s) sin zona precisa aún no asociada(s) a su país: vea Mundo.",
 };
 
 const ja: Dict = {
@@ -1003,6 +1030,15 @@ const ja: Dict = {
   "footer.summary.waiting": "ソース：フィード待ち",
   "footer.summary.noclients": "{up}/{total} 稼働中",
   "feed.waiting": "ライブフィードに接続中...",
+  "scope.place.clear": "{place} の表示をやめる",
+  "scope.nearest": "この期間、{place} から {km} km 以内では何もありません。最も近いもの：",
+  "scope.nearest.you": "この期間、周辺 {km} km 以内では何もありません。最も近いもの：",
+  "feed.distance": "{km} km 先",
+  "feed.countrywide": "{country}（地域の特定なし）",
+  "feed.noarea": "地域の特定なし",
+  "scope.unlocated": "位置不明の重大 {n} 件",
+  "scope.unmatched": "地域の特定がない警報 {n} 件は、まだお住まいの国と照合できていません。世界を表示してください。",
+  "scope.empty.unmatched": "この期間、周辺に位置のわかるものはありません。地域の特定がない警報 {unmatched} 件は、まだお住まいの国と照合できていません。世界を表示してください。",
 };
 
 const id: Dict = {
@@ -1013,9 +1049,9 @@ const id: Dict = {
   "app.sound.off": "Suara mati",
   "app.sound.title": "Peringatan suara untuk kejadian berat",
 
-  "kpi.quakes": "Gempa (1 jam)",
+  "kpi.quakes": "Gempa (1\u00a0jam)",
   "kpi.quakes.last": "terakhir {age}",
-  "kpi.maxmag": "Magnitudo maks. (1 jam)",
+  "kpi.maxmag": "Magnitudo maks. (1\u00a0jam)",
   "kpi.maxmag.sub": "seluruh dunia",
   "kpi.tsunami": "Peringatan tsunami",
   "kpi.tsunami.sub": "buletin aktif",
@@ -1250,6 +1286,15 @@ const id: Dict = {
   "footer.summary.waiting": "Sumber: menunggu umpan",
   "footer.summary.noclients": "{up}/{total} daring",
   "feed.waiting": "Menghubungkan ke umpan langsung...",
+  "scope.place.clear": "Berhenti mengikuti {place}",
+  "scope.nearest": "Tidak ada dalam {km} km dari {place} pada periode ini. Yang terdekat:",
+  "scope.nearest.you": "Tidak ada dalam {km} km dari Anda pada periode ini. Yang terdekat:",
+  "feed.distance": "{km} km jauhnya",
+  "feed.countrywide": "{country}, tanpa area pasti",
+  "feed.noarea": "Tanpa area pasti",
+  "scope.unlocated": "{n} parah tanpa lokasi",
+  "scope.unmatched": "{n} peringatan tanpa area pasti belum dicocokkan dengan negara Anda: lihat Dunia.",
+  "scope.empty.unmatched": "Tidak ada yang berlokasi di dekat Anda pada periode ini, dan {unmatched} peringatan tanpa area pasti belum dicocokkan dengan negara Anda: lihat Dunia.",
 };
 
 const DICTS: Record<Lang, Dict> = { fr, en, es, ja, id };

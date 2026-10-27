@@ -1169,9 +1169,9 @@ a {
 }
 
 .tools-row .search {
-  /* 150: the search and the Filters button share one row down to a 320 px
-     phone (with 200 they took two) */
-  flex: 1 1 150px;
+  /* 120: the search and the Filters button share one row down to a 280 px
+     screen (with 200 they took two at 320, with 150 at 280) */
+  flex: 1 1 120px;
   min-width: 0;
 }
 
@@ -1345,8 +1345,9 @@ a {
 }
 
 .scope-reason {
-  /* beside the switch when it fits, under it when it does not */
-  flex: 1 1 14ch;
+  /* beside the switch when it fits, under it when it does not: 10ch keeps
+     it beside on a 320 px phone, where under it cost a 40 px line */
+  flex: 1 1 10ch;
   min-width: 0;
   margin: 0;
   font-size: var(--ts-meta);
@@ -1551,6 +1552,29 @@ a {
   padding: 28px 16px;
   color: var(--t3);
   text-align: center;
+}
+
+/* Nothing within reach of the place: said once, then the nearest rows,
+   each with its distance. */
+.feed-intro {
+  margin: 0;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: var(--ts-sub);
+  color: var(--t2);
+  overflow-wrap: anywhere;
+}
+
+.tag-distance {
+  border-color: var(--edge);
+  color: var(--t1);
+  /* "1,441 km away": km is a unit symbol, never "KM" */
+  text-transform: none;
+}
+
+/* the chosen place in the scope switch: its name may be long */
+.scope-place-name {
+  overflow-wrap: anywhere;
 }
 
 /* The snapshot is still arriving: said once, above the rows, in words. */
@@ -2506,36 +2530,33 @@ a {
 
   /* Five counters in a grid cost 200 px before the reader saw a single
      event. One scrolling row costs 70. */
+  /* Three counters that FIT, never a strip cut at the screen edge: the
+     third card ended mid-word at 320 and 390 px ("Aler", "Tsunami alerts").
+     As many per row as fit at 5.5 rem each -- three on a phone, one per row
+     at 200 % text, where the page scrolls anyway. Labels wrap inside their
+     card. Measured at 280, 320 and 390 px (tools/responsive.py). */
   .kpis {
-    display: flex;
-    grid-template-columns: none;
-    overflow-x: auto;
-    scrollbar-width: none;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 5.5rem), 1fr));
     gap: 0;
     padding: 0;
-    /* A strip that scrolls with no edge treatment reads as a strip that is
-       BROKEN -- the last counter looks chopped off rather than continued. */
-    -webkit-mask-image: linear-gradient(to right, #000 88%, transparent);
-    mask-image: linear-gradient(to right, #000 88%, transparent);
   }
 
-  .kpis::-webkit-scrollbar {
+  .kpi-secondary {
     display: none;
   }
 
-  /* On a phone the counters are one flat strip, not five cards: the card
-     padding and the gaps cost 37 px of the first screen (102 px against 65),
-     and in landscape that was the difference between one event above the
-     fold and none (tools/responsive.py). */
   .kpi {
-    flex: 0 0 auto;
-    min-width: 132px;
-    max-width: 200px;
-    padding: 6px 14px;
+    min-width: 0;
+    padding: 6px 12px;
     background: none;
     border: none;
     border-right: 1px solid var(--line);
     border-radius: 0;
+  }
+
+  .kpi:last-child,
+  .kpi:nth-last-child(3) {
+    border-right: none;
   }
 
   .kpi .value {
@@ -2574,8 +2595,11 @@ a {
   .map-column {
     order: 1;
     /* a third of the screen, but never so much that the feed starts below
-       the fold: on a 568 px tall phone the map yields 56 px to it */
-    height: max(140px, min(36dvh, calc(100dvh - 420px)));
+       the fold: on a 568 px tall phone the map yields 56 px to it. 440 px is
+       what sits above the feed on a 360 px phone; narrower, the header and
+       the scope bar wrap to a second row (520 px at 280, measured), so the
+       map yields that width deficit too. Unchanged from 360 px up. */
+    height: max(140px, min(36dvh, calc(100dvh - 440px - max(0px, 360px - 100vw))));
     min-height: 140px;
     border-bottom: 1px solid var(--line);
   }
@@ -2788,6 +2812,12 @@ a {
 
   .brand h1 {
     font-size: var(--ts-body);
+  }
+
+  /* "2 other alerts ongoing" waits for a wider screen: the feed lists them,
+     and the line pushed the first event off a 320x568 phone */
+  .banner-others {
+    display: none;
   }
 }
 

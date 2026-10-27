@@ -31,11 +31,13 @@ describe('Near me: what counts as near, and what is counted elsewhere', () => {
     const near = makeEvent({ id: 'near', lat: 35.0, lon: 139.0, severity: 'minor' })
     const farMinor = makeEvent({ id: 'far-minor', lat: -33.9, lon: 18.4, severity: 'minor' })
     const farTsunami = makeEvent({ id: 'far-tsunami', lat: -20, lon: -70, severity: 'moderate', tsunami: true })
-    const unplacedSevere = makeEvent({ id: 'nowhere', lat: null, lon: null, severity: 'severe' })
-    const split = splitByScope([near, farMinor, farTsunami, unplacedSevere], TOKYO)
+    const unplacedSevere = makeEvent({ id: 'nowhere', lat: null, lon: null, severity: 'severe', country_code: 'CL' })
+    const split = splitByScope([near, farMinor, farTsunami, unplacedSevere], TOKYO, ['JP'])
     expect(split.near.map((e) => e.id)).toEqual(['near'])
-    // the far tsunami and the severe alert we cannot place never vanish
-    expect(split.severeElsewhere).toBe(2)
+    // the far tsunami never vanishes; the severe alert we cannot place is
+    // counted too, but apart: "elsewhere" would be a claim about where it is
+    expect(split.severeElsewhere).toBe(1)
+    expect(split.unlocated).toBe(1)
   })
 
   it('without a position, Near me shows the world', () => {
