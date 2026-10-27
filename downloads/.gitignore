@@ -1,0 +1,5 @@
+# APKs, their checksums and latest.json are published here by
+# tools/publish_apk.py, never committed (see README.md).
+*
+!.gitignore
+!README.md

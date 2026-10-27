@@ -2,7 +2,7 @@
 # machine without stepping on the main dev server.
 PORT ?= 8300
 
-.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean agent-setup agent-test agent-check agent-run agent-install
+.PHONY: help install dev dev-api dev-web test lint fmt typecheck build up down logs smoke responsive clean agent-setup agent-test agent-check agent-run agent-install publish-apk
 
 VENV := backend/.venv
 PY := $(VENV)/bin/python
@@ -81,6 +81,14 @@ smoke: ## check the API is up and the sources respond
 
 clean:
 	rm -rf backend/data backend/.venv frontend/node_modules frontend/dist
+
+# Every field of downloads/latest.json is read back from the APK (aapt2,
+# apksigner, its bytes); nothing about a release is typed here but its notes.
+# Needs the Android SDK build-tools, so it runs on the Mac; downloads/README.md
+# says how the result reaches the server.
+publish-apk: ## put a signed APK up for download -- make publish-apk APK=path [NOTES_EN=".."] [NOTES_FR=".."]
+	@test -n "$(APK)" || { echo "usage: make publish-apk APK=path/to/sosforge.apk"; exit 2; }
+	python3 tools/publish_apk.py "$(APK)" --notes-en "$(NOTES_EN)" --notes-fr "$(NOTES_FR)"
 
 # ---------------------------------------------------------------- local agent
 
