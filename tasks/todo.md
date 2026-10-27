@@ -755,3 +755,72 @@ deflate simulator that matched them to the byte:
   got its snapshot still falls further behind every second and is evicted
   at the queue bound. Slimming the tick (sources only when they change) is
   a protocol change for lanes D and F, not done here.
+
+---
+
+# Round 2 (2026-10-27) -- live, offline map, SEO, app download, UI, sources
+
+## What the owner asked (2026-10-27)
+
+Do everything yourself and put it all live on https://sosforge.soclose.co;
+install the APK on his phone and check that the whole notification system
+works; check "use my location"; pre-download the OpenFreeMap map so it is not
+fetched every time; make the site fully indexable; let people download the
+Android APK from the public site; responsive on every format and screen; put
+the footer's source list in a slider; fold the kind filters into a button;
+use ScanGithub to fill what is missing (climate, live change, more hazards).
+
+## Blocker: the merge
+
+`gh pr merge 3` is refused twice by the permission classifier ("Merge Without
+Review"), even with the owner's go. Not worked around: no direct push to
+`main`, no deploy of an unmerged branch. The owner merges on GitHub, or adds
+a permission rule for `gh pr merge`. Every "live" item below waits on it.
+
+## Measured before deciding
+
+- OpenFreeMap tiles: `cache-control: max-age=315360000`, dated immutable paths
+  (`/planet/20261025_080012_pt/{z}/{x}/{y}.pbf`), Cloudflare HIT. The browser
+  already never re-downloads a tile it holds. Style 86400 s, TileJSON 3600 s.
+  So a VPS tile proxy buys nothing. What is missing is OFFLINE: the map must
+  still draw when the network drops in a disaster. -> service worker cache for
+  the tile host (capped, low zooms precached at idle) + offline packs in the app.
+- `frontend/public/` already has robots.txt, sitemap.xml, manifest, sw.js
+  (shell cached, `/api` and `/ws` never intercepted) and full OG/Twitter/JSON-LD.
+  SEO work is completing that, not starting it.
+
+## Contract: the APK download (lane G serves it, lane A reads it)
+
+`GET /download/latest.json`, `Cache-Control: no-cache`:
+
+```json
+{"app": "co.soclose.sosforge", "version": "0.1.1", "version_code": 6,
+ "url": "/download/sosforge-v0.1.1.apk", "size": 40000000,
+ "sha256": "<hex>", "cert_sha256": "610d345a...bdf8", "min_sdk": 26,
+ "released": "2026-10-27", "notes": {"en": "...", "fr": "..."}}
+```
+
+The APK is served as `application/vnd.android.package-archive` with
+`Content-Disposition: attachment`. APK binaries never enter git nor the docker
+image: they live in a host directory bind-mounted read-only into the web
+container, filled by a script that also writes `latest.json` from the APK
+itself (sha256, size, version read back with aapt/apksigner, never typed).
+
+## Lanes (one git worktree each, disjoint files)
+
+| Lane | Agent | Owns | Delivers |
+|---|---|---|---|
+| G | fresh | `frontend/index.html`, `frontend/public/**` (sw.js, robots, sitemap, manifest, new `/download/` static page), `deploy/nginx.conf`, `docker-compose.yml` (downloads mount), `tools/publish_apk.py`, `downloads/` (gitignored) | SEO completed and measured (Lighthouse SEO), APK download page + latest.json, offline tile cache in sw.js |
+| H | lane D resumed | `frontend/src/**` (components, App, styles.css, i18n), `tools/responsive.py` | sources slider (a down source never hides in the scroll), filters behind one button, "Get the app" entry, "use my location" verified, responsive at every format (320 px to 4K, landscape, foldables, 200 % text) |
+| C2 | lane C resumed | `backend/app/sources/**`, new `backend/app/climate.py` + its route, new `frontend/src/components/ClimatePanel.tsx` (I mount it) | sources found through ScanGithub + probed live; live climate indicators each with its own as-of date; new sources map onto EXISTING kinds (no contract change) |
+| N | lane B resumed | `tools/drill.py` (new, no production code), fixes in hub/scope/changelog only if a drill proves a defect | drill harness that injects real-shaped events into a local server, then proves every alert path: web alarm, macOS agent, websocket scope/purge/escalation, `/api/events` cursor |
+| A | lane A resumed | `android/**` | 0.1.2: offline map packs for the user's places + world low zooms, update check from `latest.json`, location flow verified, full notification E2E on the emulator with `tools/drill.py` |
+
+## Me
+
+- [ ] plan committed, lanes briefed
+- [ ] Fold: install 0.1.1 through the adb queue (owner go, 2026-10-27), report
+- [ ] reply to agentcockpit with what is needed from the owner
+- [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
+- [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
+      pull + build, host vhost headers, publish the APK, verify live)
