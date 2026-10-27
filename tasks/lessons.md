@@ -485,3 +485,27 @@ land mask") without ever rendering the point itself; GWIS draws "low" over
 - An `unavailable` reason is a claim about the upstream. Before writing why,
   fetch the upstream at the exact point (a finer render, a wider box) and
   record what it shows; a plausible cause is not a measured one.
+
+## 35. `ssh host bash -s < script` shares its stdin with every command in it
+
+**What happened.** The round-2 deploy script ran through `ssh helper-vps
+'bash -s' < deploy.sh`. After the build it ran `docker compose run --rm -T
+web nginx -t` to test the new config. That command read stdin, which was the
+rest of the script: bash then reached end of input and exited 0. The log
+showed "test is successful" and stopped; no swap, no checks, exit status 0.
+The old containers kept serving (the safe outcome by luck of the order), and
+a green exit code said "deployed".
+
+**Also, the same run.** Two other mistakes caught by reading the output, not
+the exit code: a measurement fixed to the 443 server only (the port-80
+server logs the request it redirects, query included); and a check cut with
+`cut -c1-160` that hid half of a CSP header and made it look broken.
+
+**The rules.**
+- In a script fed on stdin, every command that may read stdin gets
+  `</dev/null` (`docker compose run|exec`, `ssh`, `read`, anything
+  interactive). Or copy the script to the host and run it as a file.
+- A deploy script ends by printing a final marker (`== done ...`); the
+  caller checks the marker, never the exit status alone.
+- A host-level change covers every server block of the vhost, not the one
+  the request usually hits.
