@@ -1653,3 +1653,42 @@ about `window_mean_m`; it can show `at_least` ("200 or more") and the owner.
 the history caches were. The geocoder and websocket quotas still key IPv6 by
 the full address. GVP's version number cannot be read by this server; if the
 owner wants it named, it has to come from a page a browser fetches.
+
+## Place report -- integration on round 2 (2026-10-27, integrator)
+
+Branch `feat/sosforge-place-report`, on the round-2 head b1e5bc2 (stacked on
+PR #5). Both workflow branches merged (backend 1e4f054, frontend f450f54);
+conflicts in core/privacy.py imports, tasks/todo.md and frontend/src/i18n.ts
+(both sides kept, 587 keys per language, none duplicated).
+
+- [x] Country table drift: round 2 moved the page's table to 1:10m with holes
+      and the overseas departments; the place backend held the 1:50m copy.
+      Ported (holes, offshore rule `nearest_within_100km`), iso3.json rebuilt
+      from 1:10m plus the six overseas alpha-3. Measured: Maseru LS, Reunion RE
+      (INFORM now says it has no REU score instead of scoring mainland France),
+      Ko Tao TH at sea, the mid-Pacific test point 41 km from Jarvis (UM). The
+      shared points are asserted by pytest AND vitest.
+- [x] M1 (final live check): METAR reads merged across refreshes; "no station"
+      names the window held after a restart. Tests on two real reads 15 min
+      apart (51 stations dropped by the second, all still served).
+- [x] M2: drought asked at the rounded point. Live: Anchorage soil anomaly
+      -2.15 (was 0.25 from the cell centre).
+- [x] Mounted: one button over the map for a searched or clicked place only,
+      opening the report in the climate panel's dialog. Never in Near me
+      (behavioural test with a real fix through useNearMe; the `center`
+      mutant fails it). No /api/place before the button is pressed.
+- [x] tools/responsive.py gains --place and --near. The button's first spots
+      (a row under the scope bar, a pill in it) cost the fold on 3-4 landscape
+      viewports; over the map it costs none.
+- [x] Measured for the VPS: AVX2 present (EPYC Milan); IBTrACS index build
+      peak RSS 337 MB for 6.4 s (720 997 rows, 22.7 MB index), on a host with
+      617 MB available. Watch `free -m` during the first ingest at deploy.
+- [ ] Round-2 regression found by --near: Near me at a granted position (what
+      real visitors get) shows NO event above the fold on 280x653, 320x568,
+      360x640, 375x667 and 568x320, where production shows 1 to 4. Place mode
+      fails the same five. Fix in progress (workflow, on the round-2 branch so
+      PR #5 carries it).
+- [ ] Adversarial review of this branch's own commits, then PR.
+- [ ] Known limits: coast_km comes from the 1:50m coastline (Jarvis is 342 km
+      "from the coast"); the Chrome-overlap test of the responsive tool failed
+      once under load (passes alone and in two full runs).
