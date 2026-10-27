@@ -19,7 +19,8 @@ export const WORLD_VIEW = { lat: 20, lon: 10, zoom: 1.4 }
  * screen it drew the planet two and a half times side by side (measured at
  * 3840x2160), so a wider map gets a closer world, one copy across. */
 export function worldZoom(mapWidth: number): number {
-  return Math.max(WORLD_VIEW.zoom, Math.min(3, Math.log2(mapWidth / 600)))
+  // the world is 512 px wide at zoom 0 and doubles per level
+  return Math.max(WORLD_VIEW.zoom, Math.min(3, Math.log2(mapWidth / 512)))
 }
 
 /** Near me needs a position. Without one the reader sees the world, and the
