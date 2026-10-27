@@ -35,8 +35,11 @@ etre full op pour tout type de format et d'ecran"):
   * the stylesheet and the components agree on what a phone is.
 
 With --place "LAT,LON,NAME" the page starts on that place (the saved scope
-the app reads at start): the place report's row is measured with the rest,
-and the report must open inside the viewport like the Filters dialog.
+the app reads at start), and the place report must open inside the
+viewport like the Filters dialog. With --near "LAT,LON" geolocation is
+granted and the position set over DevTools, so the page shows Near me as a
+reader who said yes sees it. Without either, a headless page has no
+position and measures World: neither of the two views most readers get.
 
 Usage:  python3 tools/responsive.py [--url URL] [--json] [--shots DIR] [--only LABEL ...]
                                     [--place LAT,LON,NAME]
@@ -338,6 +341,7 @@ async def measure(
     label: str = "",
     lang: str = "fr",
     place: dict | None = None,
+    near: tuple[float, float] | None = None,
 ) -> dict:
     chrome = Chrome()
     try:
@@ -393,6 +397,13 @@ async def measure(
                 await call(
                     "Page.addScriptToEvaluateOnNewDocument",
                     {"source": place_seed(place)},
+                )
+            if near is not None:
+                # what the app's useNearMe asks: permission "granted", then a fix
+                await call("Browser.grantPermissions", {"permissions": ["geolocation"]})
+                await call(
+                    "Emulation.setGeolocationOverride",
+                    {"latitude": near[0], "longitude": near[1], "accuracy": 50},
                 )
             if scale != 1.0:
                 # the reader's own text size: rem scales with the root, the
@@ -477,6 +488,11 @@ def parse_place(text: str) -> dict:
     """`LAT,LON,NAME` (the name may hold commas) -> the app's saved place."""
     lat, lon, name = text.split(",", 2)
     return {"lat": float(lat), "lon": float(lon), "name": name.strip(), "country": None}
+
+
+def parse_near(text: str) -> tuple[float, float]:
+    lat, lon = (float(x) for x in text.split(","))
+    return lat, lon
 
 
 def place_seed(place: dict) -> str:
@@ -564,8 +580,10 @@ async def main() -> int:
     ap.add_argument("--parallel", type=int, default=3, help="Chromes at once")
     ap.add_argument("--lang", default="fr", help="language of the page (en, fr, es, ja, id)")
     ap.add_argument("--place", default=None, help='start on a place: "LAT,LON,NAME"')
+    ap.add_argument("--near", default=None, help='Near me at a granted position: "LAT,LON"')
     args = ap.parse_args()
     place = parse_place(args.place) if args.place else None
+    near = parse_near(args.near) if args.near else None
 
     chosen = [
         v for v in VIEWPORTS if not args.only or any(o.lower() in v[0].lower() for o in args.only)
@@ -575,7 +593,7 @@ async def main() -> int:
         batch = chosen[start : start + args.parallel]
         measured = await asyncio.gather(
             *[
-                measure(args.url, w, h, scale, args.shots, label, args.lang, place)
+                measure(args.url, w, h, scale, args.shots, label, args.lang, place, near)
                 for label, w, h, scale in batch
             ]
         )

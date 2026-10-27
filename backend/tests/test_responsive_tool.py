@@ -137,3 +137,9 @@ def test_place_mode_requires_the_report_to_open_inside_the_viewport(responsive):
     assert responsive.verdict("phone", 390, m, place=True) == [
         "the place report opens outside the viewport: {'ok': False, 'bottom': 900}"
     ]
+
+
+def test_near_mode_reads_a_position(responsive):
+    assert responsive.parse_near("48.85,2.35") == (48.85, 2.35)
+    with pytest.raises(ValueError):
+        responsive.parse_near("48.85")
