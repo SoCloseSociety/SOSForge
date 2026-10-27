@@ -936,7 +936,7 @@ run3) and `tools/audit_live.py`. Critical files: dedupe.py, pipeline.py,
 store/ring.py. Measured on real data before and after, like every dedup
 change (rule 5).
 
-1. [ ] **Re-listing churn** (dedupe.py). A re-polled row scans the window
+1. [x] **Re-listing churn** (dedupe.py). A re-polled row scans the window
    newest-first, meets ANOTHER agency's newer copy of the same quake before
    its own entry, matches it and appends itself again. Q's proof, my tree:
    after 399 cycles of two agencies re-listing one quake, 400 copies each
@@ -945,6 +945,10 @@ change (rule 5).
    in the window answers from its own entry, O(1), without appending. The
    store already keeps the first cluster of a stored id, so clusters can
    only change where the churn evicted the real match.
+   **After, Q's proof: the window never overflows in 1000 cycles and the
+   late twin joins usgs:us7000ttfe. Real journals (10-26 + 10-27, 1228
+   quakes, re-listed every 50 entries): visible twins 4 -> 0, multi-source
+   clusters 92 -> 96, window 486 -> 800 distinct ids of 800.**
 2. [ ] **Two quakes in one cluster** (dedupe.py). A second USGS quake 90 s
    after the first joins its cluster through EMSC's solution of the first.
    Rule: a cluster never takes two events from the same source (an agency

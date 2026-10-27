@@ -28,7 +28,7 @@ from fastapi.testclient import TestClient
 
 from app import main
 from app.dedupe import Deduper
-from app.models.event import Kind, Severity
+from app.models.event import Event, Kind, Severity
 from app.scope import compose
 
 
@@ -281,6 +281,42 @@ class TestTheDeduperWindowIsExact:
     def test_one_microsecond_more_is_not(self):
         first, second = self.pair(timedelta(seconds=90, microseconds=1))
         assert second != first
+
+    def test_re_listing_never_fills_the_window(self):
+        """Lane Q's mechanism: two agencies re-listing one quake every poll.
+        Each re-listed row used to meet the OTHER agency's newer copy first,
+        match it and be appended again: after 399 cycles an unrelated quake
+        had left the window, and its late twin was shown as a second quake."""
+
+        def quake(eid: str, source: str, dt: float, lat: float) -> Event:
+            event = make_event(eid, lat, 165.5556, kind=Kind.EARTHQUAKE)
+            event.id, event.source, event.magnitude = eid, source, 5.0
+            event.time = datetime(2026, 10, 27, 9, 20, 55, 730000, tzinfo=UTC) + timedelta(
+                seconds=dt
+            )
+            return event
+
+        deduper = Deduper()
+        deduper.assign(quake("usgs:us7000ttfe", "usgs", 0, 40.0))
+        for _ in range(500):
+            deduper.assign(quake("ingv:X", "ingv", 600, -13.9))
+            deduper.assign(quake("geofon:Y", "geofon", 601, -13.9))
+        ids = [e.id for e in deduper._recent]
+        assert len(ids) == len(set(ids)) == 3
+        late = quake("emsc:20261027_0000114", "emsc", 0, 40.0)
+        deduper.assign(late)
+        assert late.cluster_id == "usgs:us7000ttfe", "the late twin was shown as its own quake"
+
+    def test_a_re_listed_row_keeps_its_own_cluster(self):
+        deduper = Deduper()
+        first = make_event("first", *TOKYO, kind=Kind.EARTHQUAKE)
+        first.source = "emsc"
+        deduper.assign(first)
+        again = first.model_copy()
+        again.cluster_id = None
+        deduper.assign(again)
+        assert again.cluster_id == first.cluster_id == first.id
+        assert len(deduper._recent) == 1
 
     def test_forget_keeps_times_and_events_in_step(self):
         deduper = Deduper(window_seconds=90.0)

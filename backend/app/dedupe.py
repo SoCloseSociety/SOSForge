@@ -59,6 +59,8 @@ class Deduper:
         # (same maxlen, so both drop their oldest together).
         self._micros: deque[int] = deque(maxlen=history)
         self._window_us = int(round(window_seconds * 1_000_000))
+        # id -> its entry in the window. Each id is in the window at most once.
+        self._index: dict[str, Event] = {}
 
     def assign(self, event: Event) -> Event:
         """Sets `cluster_id` on the event. Idempotent."""
@@ -86,13 +88,25 @@ class Deduper:
             event.cluster_id = event.cluster_id or event.id
             return event
 
+        # An id already in the window answers from its OWN entry, first. The
+        # scan used to look for it among the others, newest first: a row
+        # re-listed on every poll met ANOTHER agency's newer copy of the same
+        # quake before its own, matched it and was appended again. Two
+        # agencies re-listing one quake added two entries per cycle; after
+        # 399 cycles the 800-entry window held nothing else, an unrelated
+        # quake had dropped out of it, and its late twin from a third agency
+        # was shown as a quake of its own (lane Q, usgs:us7000ttfe and
+        # emsc:20261027_0000114 both on the live map). The store keeps the
+        # first cluster of a stored id anyway, so only the churn goes.
+        own = self._index.get(event.id)
+        if own is not None:
+            event.cluster_id = own.cluster_id
+            return event
+
         at = _micros(event.time)
         # anything older than this cannot be within the window of `at`
         floor = at - 2 * self._window_us
         for other, other_at in zip(reversed(self._recent), reversed(self._micros), strict=True):
-            if other.id == event.id:
-                event.cluster_id = other.cluster_id
-                return event
             # NO early break here, and no ordering assumption at all. The deque
             # is ordered by ARRIVAL, not by event time: a catalog bulletin dated
             # twenty hours ago can arrive after a push dated one second ago.
@@ -124,8 +138,14 @@ class Deduper:
         return event
 
     def _append(self, event: Event, at: int) -> None:
+        if len(self._recent) == self._recent.maxlen:
+            # the deque is about to drop its oldest entry: so does the index
+            oldest = self._recent[0]
+            if self._index.get(oldest.id) is oldest:
+                del self._index[oldest.id]
         self._recent.append(event)
         self._micros.append(at)
+        self._index[event.id] = event
 
     def forget(self, event_ids: set[str]) -> int:
         """Drops events the store no longer has.
@@ -147,6 +167,7 @@ class Deduper:
         self._micros.clear()
         self._recent.extend(e for e, _ in survivors)
         self._micros.extend(at for _, at in survivors)
+        self._index = {e.id: e for e in self._recent}
         # Anything that had been adopted by a removed event is orphaned: it
         # becomes its own representative rather than pointing at a ghost.
         for event in self._recent:
