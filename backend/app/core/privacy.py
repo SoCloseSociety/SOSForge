@@ -18,26 +18,55 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from urllib.parse import unquote_plus
 
-# The parameters whose values say nothing about where anyone is, each with
-# the only shape its value may have to be kept. A value of another shape is
-# blanked like any other: `kinds=earthquake;zones=48.85,2.35,25` (a ';'
-# typed for '&') is a `kinds` that carries a home.
-_NUMBER = re.compile(r"^\d{1,6}(\.\d{1,3})?$")
-_WORDS = re.compile(r"^[A-Za-z_,]{0,200}$")
-SAFE: dict[str, re.Pattern[str]] = {
-    "chunks": re.compile(r"^\d{1,2}$"),
-    "tick": re.compile(r"^[a-z]{1,16}$"),
-    "hours": _NUMBER,
-    "limit": _NUMBER,
-    "min_magnitude": _NUMBER,
-    "kind": _WORDS,
-    "kinds": _WORDS,
-    "lang": _WORDS,
-    "min_severity": _WORDS,
-    "primary_only": _WORDS,
-    "since": re.compile(r"^[0-9a-f]{1,16}:\d{1,12}$"),
+from app.changelog import CURSOR
+from app.guidance import Lang
+from app.models.event import Kind, Severity
+
+# A parameter NAME is kept only if it is a plain lowercase word: a name is
+# as free as a value, and `/ws?48.8566,2.3522,25=` or an encoded
+# `zones%3D48.85%2C2.35%2C25=1` put a home in the name (recheck of PR #5).
+_NAME = re.compile(r"^[a-z_]{1,32}$")
+_KINDS = frozenset(k.value for k in Kind)
+_SEVERITIES = frozenset(s.value for s in Severity)
+_LANGS = frozenset(lang.value for lang in Lang)
+_BOOLS = frozenset({"true", "false", "1", "0", "yes", "no", "on", "off"})
+_INT = re.compile(r"^\d{1,4}$")
+_ONE_DECIMAL = re.compile(r"^-?\d{1,3}(\.\d)?$")
+
+
+def _bounded(pattern: re.Pattern[str], low: float, high: float) -> Callable[[str], bool]:
+    def check(value: str) -> bool:
+        return bool(pattern.match(value)) and low <= float(value) <= high
+
+    return check
+
+
+def _kinds(value: str) -> bool:
+    return bool(value) and all(part in _KINDS for part in value.split(","))
+
+
+# The parameters whose values say nothing about where anyone is, each kept
+# only inside its real vocabulary or range. Free text of the right
+# alphabet is not enough: `lang=Montmartre` and `min_severity=Rue_de_Rivoli`
+# are words, and a 3-decimal `hours=48.857&limit=2.352` is a position. The
+# numbers keep their API's own bounds, which no coordinate pair fits inside
+# beyond one decimal (about 11 km) and |value| <= 12.9 for one of the two.
+SAFE: dict[str, Callable[[str], bool]] = {
+    "chunks": lambda v: v == "1",
+    "tick": lambda v: v == "lite",
+    "lang": lambda v: v in _LANGS,
+    "min_severity": lambda v: v in _SEVERITIES,
+    "kind": lambda v: v in _KINDS,
+    "kinds": _kinds,
+    "primary_only": lambda v: v.lower() in _BOOLS,
+    "limit": _bounded(_INT, 1, 2000),
+    "hours": _bounded(_ONE_DECIMAL, 0, 720),
+    # negative on purpose: IMO publishes magnitudes below zero
+    "min_magnitude": _bounded(_ONE_DECIMAL, -9.9, 12.9),
+    "since": lambda v: bool(CURSOR.match(v)),
 }
 BLANK = "-"
 # The loggers uvicorn writes request paths to.
@@ -49,19 +78,24 @@ PRIVATE_HOSTS = ("https://nominatim.openstreetmap.org/",)
 
 def redact_query(path: str) -> str:
     """The path with every query value blanked to `-`, except a SAFE
-    parameter's value of the expected shape. A part with no '=' is kept
-    only if it is a bare SAFE name (or empty): `zones48.85,2.35,25`, a bare
-    `48.85,2.35,25` and an encoded `zones%3D48.85,...` are blanked whole."""
+    parameter's value inside its vocabulary. A part whose name is not a
+    plain lowercase word is blanked whole, name included; a part with no
+    '=' is kept only if it is a bare SAFE name (or empty)."""
     base, sep, query = path.partition("?")
     if not sep:
         return path
-    parts = []
+    parts: list[str] = []
     for part in query.split("&"):
+        if not part:
+            parts.append(part)
+            continue
         name, eq, value = part.partition("=")
         key = unquote_plus(name)
-        if not eq:
-            parts.append(part if not part or key in SAFE else BLANK)
-        elif key in SAFE and SAFE[key].match(unquote_plus(value)):
+        if not _NAME.match(key):
+            parts.append(BLANK)  # the name itself may be the place
+        elif not eq:
+            parts.append(part if key in SAFE else BLANK)
+        elif key in SAFE and SAFE[key](unquote_plus(value)):
             parts.append(part)
         else:
             parts.append(f"{name}={BLANK}")
