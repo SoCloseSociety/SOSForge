@@ -546,12 +546,15 @@ export default function App() {
             {isPhone ? null : <WindowSwitch />}
           </div>
           <ScopeBar severeElsewhere={severeElsewhere} unlocated={unlocated} />
-          {/* PLACE REPORT SLOT. Another lane builds <PlaceReport lat lon name />
-              (weather, sea, wind, air, risk and history for a place). It
-              mounts HERE, under the scope bar, when the feed is around a
-              point: {center && <PlaceReport lat={center.lat}
-              lon={center.lon} name={centerName} />}. Nothing is rendered
-              until it exists. */}
+          {/* PLACE REPORT SLOT. <PlaceReport lat lon name /> (weather, sea,
+              wind, air, risk and history for a place) mounts HERE, under the
+              scope bar, ONLY for a place the reader searched or clicked:
+              {showing === "place" && place && <PlaceReport lat={place.lat}
+              lon={place.lon} name={place.name} />}. NEVER with `center`:
+              in Near me `center` is the DEVICE position, and /api/place
+              sends its point to about fifteen third parties, which breaks
+              "your location never leaves your device". Nothing is rendered
+              until it is wired. */}
           <Feed
             events={feedEvents}
             now={now}

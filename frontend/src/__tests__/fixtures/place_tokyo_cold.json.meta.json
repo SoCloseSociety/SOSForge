@@ -1,0 +1,14 @@
+{
+ "url": "/api/place?lat=35.68&lon=139.69&lang=en",
+ "status": 200,
+ "headers": {
+  "etag": "\"16abd98fc99cec0af694\"",
+  "cache-control": "no-cache",
+  "content-type": "application/json"
+ },
+ "fetched_utc": "2026-10-27T15:49:53Z",
+ "bytes": 50820,
+ "sha256": "a3f9157d556d3a6f17a96a27ad531c9eb8fe0a4bd4306809de0e3298f7153f7f",
+ "captured_by": "GET from the SOSForge backend of branch worktree-wf_b765ef57-e77-8 at 2b096d7, driven in process by FastAPI TestClient (lifespan on: the live sources filled the store), every upstream real and reached through the backend fetch layer; body saved byte for byte. The IBTrACS index was read from disk (built from the ALL file that morning).",
+ "note": "the fifth new place from one address under the default client budget: answered 200, partial (complete false), because the four reports before it took long enough to refill a token"
+}
