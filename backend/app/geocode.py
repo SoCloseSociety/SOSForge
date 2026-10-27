@@ -130,7 +130,10 @@ async def search(query: str, limit: int = 5) -> list[dict]:
     except Exception as exc:
         # a failed search must never break the page: the local text filter
         # keeps working regardless
-        log.warning("geocoding unavailable: %s", exc)
+        # Never `str(exc)`: an HTTPStatusError quotes the full request URL,
+        # and that URL holds what the person searched for.
+        status = getattr(getattr(exc, "response", None), "status_code", None)
+        log.warning("geocoding unavailable: %s %s", type(exc).__name__, status or "")
         return []
 
     results = []

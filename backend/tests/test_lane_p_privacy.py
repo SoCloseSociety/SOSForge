@@ -46,7 +46,26 @@ class TestRedactQuery:
                 "/api/events?zone=48.8,2.3,50&min_severity=severe",
                 "/api/events?zone=-&min_severity=severe",
             ),
-            ("/api/events?lat&&lon=", "/api/events?lat&&lon=-"),  # malformed stays readable
+            ("/api/events?lat&&lon=", "/api/events?-&&lon=-"),  # malformed stays readable
+            # the final review's cases (PR #5): refused by the API, logged all the same
+            ("/ws?zones48.8566,2.3522,25", "/ws?-"),
+            ("/ws?48.8566,2.3522,25", "/ws?-"),
+            ("/ws?kinds=earthquake;zones=48.8566,2.3522,25", "/ws?kinds=-"),
+            ("/ws?zones%3D48.85,2.35,25", "/ws?-"),
+            # a safe name keeps only a value of its own shape
+            (
+                "/ws?chunks=1&tick=lite&kinds=earthquake,tsunami",
+                "/ws?chunks=1&tick=lite&kinds=earthquake,tsunami",
+            ),
+            (
+                "/api/events?limit=500&min_magnitude=4.5&since=ab12cd34:17",
+                "/api/events?limit=500&min_magnitude=4.5&since=ab12cd34:17",
+            ),
+            (
+                "/api/events?limit=48.8566,2.3522&min_severity=48.85",
+                "/api/events?limit=-&min_severity=-",
+            ),
+            ("/ws?chunks", "/ws?chunks"),  # a bare safe name is a flag, kept
             ("/api/events?%6Cat=48.8", "/api/events?%6Cat=-"),  # an encoded name is still `lat`
         ],
     )
@@ -114,3 +133,77 @@ def test_the_real_server_logs_no_place(logged_server):
     assert '"WebSocket /ws?zones=-&unplaced=-" [accepted]' in text, text
     for secret in (*PARIS, "Montmartre", "unplaced=FR"):
         assert secret not in text, f"{secret!r} reached the log"
+
+
+# ------------------------------------------------- the app's own log lines
+#
+# Final review of PR #5: the uvicorn lines were clean, but the place still
+# reached the log through three other doors.
+
+
+class Capture(logging.Handler):
+    def __init__(self) -> None:
+        super().__init__(level=logging.DEBUG)
+        self.lines: list[str] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.lines.append(f"{record.name}: {record.getMessage()}")
+
+
+@pytest.fixture
+def root_log() -> Iterator[Capture]:
+    """Everything any logger writes, as the root handler would print it."""
+    capture = Capture()
+    root = logging.getLogger()
+    old_level = root.level
+    root.addHandler(capture)
+    root.setLevel(logging.DEBUG)
+    logging.getLogger("httpx").setLevel(logging.NOTSET)
+    privacy.install()
+    try:
+        yield capture
+    finally:
+        root.removeHandler(capture)
+        root.setLevel(old_level)
+
+
+SEARCH = "12 rue de Rivoli, Paris"
+
+
+def nominatim(status: int):
+    import httpx
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if status != 200:
+            return httpx.Response(status)
+        return httpx.Response(200, json=[{"display_name": SEARCH, "lat": "48.86", "lon": "2.34"}])
+
+    return httpx.MockTransport(handler)
+
+
+@pytest.mark.parametrize("status", [200, 503])
+async def test_a_geocode_search_leaves_no_place_in_the_log(root_log, monkeypatch, status):
+    """httpx logs every request URL at INFO, and an HTTPStatusError quotes
+    it: both held the searched address next to the access line's client."""
+    from app import geocode
+
+    monkeypatch.setattr(geocode, "_transport", nominatim(status))
+    monkeypatch.setattr(geocode, "_MIN_INTERVAL", 0.0)
+    geocode._cache.clear()
+    await geocode.search(SEARCH)
+    text = "\n".join(root_log.lines)
+    assert "nominatim.openstreetmap.org/search?q=-" in text, text  # the line is still there
+    for secret in ("Rivoli", "rue", "Paris"):
+        assert secret not in text, f"{secret!r} reached the log: {text}"
+
+
+def test_a_refused_socket_logs_its_code_not_the_rejected_zone(root_log, v2):
+    from fastapi.testclient import TestClient
+
+    client = TestClient(v2.main.app)
+    for query in ("zones=48.8566,2.3522", "kinds=earthquake;zones=48.8566,2.3522,25"):
+        with client.websocket_connect(f"/ws?{query}") as ws:
+            assert ws.receive_json()["type"] == "error"
+    text = "\n".join(root_log.lines)
+    assert "websocket refused: bad_zones" in text and "websocket refused: bad_kinds" in text
+    assert "48.8566" not in text and "2.3522" not in text, text

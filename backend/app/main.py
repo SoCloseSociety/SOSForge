@@ -1049,7 +1049,9 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     try:
         scope, chunked, lite = ws_params(ws)
     except ScopeError as refused:
-        log.info("websocket refused: %s (%s)", refused.code, refused.reason)
+        # The code only: the reason quotes the rejected text, and a rejected
+        # zone is still somebody's home (it goes to the client, not the log).
+        log.info("websocket refused: %s", refused.code)
         await refuse_ws(ws, refused)
         return
 
