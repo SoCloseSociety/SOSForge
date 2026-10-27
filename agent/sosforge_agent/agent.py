@@ -15,7 +15,7 @@ import contextlib
 import json
 import logging
 import time
-from collections import deque
+from collections import OrderedDict, deque
 from collections.abc import Callable
 from datetime import datetime
 
@@ -49,6 +49,22 @@ SILENCE_TIMEOUT_S = 15.0
 # server's breaking window (`breaking_seconds`, 900 s by default): live, the
 # server decides; across an outage, this is the same rule applied here.
 ESCALATION_WINDOW_S = 900.0
+
+# What a purge reason means to the person who was told about the event. The
+# reasons are the server's (`pipeline.retract`, the sweep, a scoped socket):
+# `stale` is the sweep's word for an alert that ran its course.
+WITHDRAWN = {
+    "cancelled": ("Cancelled", "The source cancelled this alert."),
+    "lifted": ("Lifted", "The alert has been lifted."),
+    "expired": ("Ended", "This alert is over."),
+    "stale": ("Ended", "This alert is over."),
+    "out_of_scope": ("No longer near you", "It no longer concerns your area."),
+}
+WITHDRAWN_OTHER = ("Withdrawn", "The source withdrew this alert.")
+# Ids notified and not yet followed up, bounded: a laptop left on for a year
+# must not grow without limit. Far above what the hourly ceiling can fill
+# in the lifetime of any alert.
+NOTIFIED_MAX = 1000
 
 
 def _rank(event: dict) -> int:
@@ -103,7 +119,11 @@ def format_event(event: dict, decision: Decision) -> tuple[str, str]:
         head = f"{icon} {kind.replace('_', ' ').title()} -- {severity}"
 
     where = str(event.get("place") or "unknown location")
-    if decision.distance_km is not None:
+    if decision.area and decision.distance_km is not None and decision.distance_km < 1:
+        where = f"{where} -- you are inside the warning area"
+    elif decision.area and decision.distance_km is not None:
+        where = f"{where} -- its area is {decision.distance_km:.0f} km from you"
+    elif decision.distance_km is not None:
         where = f"{where} -- {decision.distance_km:.0f} km from you"
 
     detail = [where]
@@ -131,11 +151,22 @@ class Agent:
         # warning of 2026-10-25 (moderate -> severe -> extreme in 131 s, one
         # EventID) could never ring past its first, moderate, verdict.
         self._judged: dict[str, int] = {}
+        # What was SAID, by id: the title of the notification delivered. A
+        # cancelled early warning used to be dropped in silence, and the
+        # "take cover" it had rung stood on the screen with no follow-up
+        # (lane N's drill, 2026-10-27). An id leaves this map the moment its
+        # follow-up is posted, so it is said once.
+        self._notified: OrderedDict[str, str] = OrderedDict()
+        self.followed_up = 0
         # Only the FIRST snapshot is history. The server sends one on every
         # reconnect, and treating each as history swallowed whatever landed
         # during the drop -- a nearby M6.6 inside a 30 s outage was never said.
         self._history_loaded = False
         self.connected = False
+        # Whether the current connection delivered at least one frame: what
+        # tells a working session that dropped from a server that never
+        # answered, and so whether the backoff starts over.
+        self.delivered = False
         self.notified = 0
         self.considered = 0
 
@@ -159,6 +190,9 @@ class Agent:
             log.info("reconnected -- catching up on %d events", len(events))
             notified = False
             for event in events:
+                if str(event.get("id")) in self._notified and self._no_longer_applies(event):
+                    notified = True
+                    continue
                 known = self._judged.get(str(event.get("id")))
                 if known is not None and _rank(event) > known:
                     age = _age_seconds(event, message.get("server_time"))
@@ -169,14 +203,30 @@ class Agent:
             return notified
 
         if kind == "purge":
-            for event_id in message.get("ids") or []:
-                self._judged.pop(str(event_id), None)
-            return False
+            word, body = WITHDRAWN.get(str(message.get("reason") or ""), WITHDRAWN_OTHER)
+            notified = False
+            for raw_id in message.get("ids") or []:
+                event_id = str(raw_id)
+                self._judged.pop(event_id, None)
+                said = self._notified.pop(event_id, None)
+                if said is not None:
+                    notified = self._follow_up(f"{word} -- {said}", body) or notified
+            return notified
 
         if kind not in ("event", "update"):
             return False
 
         event = message.get("event") or {}
+        # A revision of something we SAID that no longer concerns this
+        # machine: relocated out of reach, or revised below the threshold.
+        # The socket is unscoped, so no `out_of_scope` purge will ever come
+        # for it; this is the same news, read off the revision itself.
+        if (
+            kind == "update"
+            and str(event.get("id")) in self._notified
+            and self._no_longer_applies(event)
+        ):
+            return True
         known = self._judged.get(str(event.get("id")))
         # An update only rings when the server calls it an escalation: it
         # alone knows whether the rise is inside its breaking window, so a
@@ -186,6 +236,40 @@ class Agent:
             self._remember(event)
             return False
         return self._consider(event)
+
+    def _decide(self, event: dict) -> Decision:
+        return should_notify(
+            event,
+            self.config.lat,
+            self.config.lon,
+            min_severity=self.config.min_severity,
+            max_distance_km=self.config.max_distance_km,
+            home_country=self.config.country_code if self.config.zone_alerts else None,
+        )
+
+    def _no_longer_applies(self, event: dict) -> bool:
+        """For a notified event: posts the follow-up and returns True when
+        this version would not have been notified at all."""
+        decision = self._decide(event)
+        if decision.notify:
+            return False
+        event_id = str(event.get("id"))
+        said = self._notified.pop(event_id)
+        self._remember(event)
+        rank_ok = _rank(event) >= SEVERITY_RANK.get(self.config.min_severity, 2)
+        word = "No longer near you" if rank_ok else "Downgraded"
+        return self._follow_up(f"{word} -- {said}", f"Revised: {decision.reason}.")
+
+    def _follow_up(self, title: str, body: str) -> bool:
+        """The correction to a notification already delivered. Never with
+        the alarm sound, and not held by the hourly ceiling: it can only
+        follow a notification that ceiling already let through, so it can
+        never outnumber them. `osascript` gives no handle on a delivered
+        notification, so it cannot be withdrawn; it is answered instead."""
+        self.notifier(title, body, urgent=False)
+        self.followed_up += 1
+        log.info("FOLLOW-UP %s -- %s", title, body)
+        return True
 
     def _remember(self, event: dict) -> None:
         event_id = str(event.get("id"))
@@ -198,14 +282,7 @@ class Agent:
             return False
 
         self.considered += 1
-        decision = should_notify(
-            event,
-            self.config.lat,
-            self.config.lon,
-            min_severity=self.config.min_severity,
-            max_distance_km=self.config.max_distance_km,
-            home_country=self.config.country_code if self.config.zone_alerts else None,
-        )
+        decision = self._decide(event)
         self._remember(event)
 
         if not decision.notify:
@@ -220,6 +297,10 @@ class Agent:
         urgent = str(event.get("severity")) in ("severe", "extreme") and self.config.sound
         self.notifier(title, body, urgent=urgent)
         self.notified += 1
+        self._notified[event_id] = title
+        self._notified.move_to_end(event_id)
+        while len(self._notified) > NOTIFIED_MAX:
+            self._notified.popitem(last=False)
         log.info("NOTIFIED %s -- %s (%s)", title, body, decision.reason)
         return True
 
@@ -231,6 +312,7 @@ class Agent:
             try:
                 while True:
                     raw = await asyncio.wait_for(socket.recv(), timeout=SILENCE_TIMEOUT_S)
+                    self.delivered = True
                     try:
                         self.handle(json.loads(raw))
                     except (ValueError, TypeError) as exc:
@@ -243,9 +325,10 @@ class Agent:
     async def run_forever(self) -> None:
         delay = 1.0
         while True:
+            self.delivered = False
+            reason: object = "closed"
             try:
                 await self.run_once()
-                delay = 1.0
             except asyncio.CancelledError:
                 raise
             except Exception as exc:  # noqa: BLE001 -- ANY failure means retry
@@ -253,7 +336,15 @@ class Agent:
                 # There is no failure mode where giving up is better than
                 # reconnecting, and an agent that exits is one that protects
                 # nobody until someone notices.
-                log.warning("disconnected (%s), retrying in %.0f s", exc, delay)
+                reason = exc
+            # `run_once` only ever leaves by an exception, so a reset placed
+            # after it never ran: a backoff grown to 60 s during one bad night
+            # stayed at 60 s for the life of the process. A session that
+            # delivered frames was a working connection, and its drop starts
+            # the backoff over.
+            if self.delivered:
+                delay = 1.0
+            log.warning("disconnected (%s), retrying in %.0f s", reason, delay)
             await asyncio.sleep(delay)
             # Capped backoff: a laptop waking with no network must not spin,
             # and one whose network just came back must not wait ten minutes

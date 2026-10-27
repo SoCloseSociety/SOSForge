@@ -918,3 +918,205 @@ posted since. Four channels exist (extreme 4, severe 3, digest 2, status 2).
 | "quand je fais une recherche rien ne s'affiche" (koh samui) | H: the picked place left `filters.query` set, so the feed text-matched "koh samui" against titles and emptied; fix = picking a place clears the text filter and scopes the feed to that place, nearest events shown when nothing is near |
 | "notre système devrait tout donner! météo, mers, vent, air, risque, tout l'historique" | place report workflow: sources measured live at 8 places with licences checked -> contract + critique -> backend `app/place/` + `/api/place` and `PlaceReport.tsx` in worktrees -> live truth check against each upstream, reviews, fixes |
 | adversarial review before PR #5 goes live (ultracode) | review workflow: 5 lenses, 3 skeptics per serious finding |
+
+- [ ] Fold: install 0.1.1 through the adb queue (owner go, 2026-10-27), report
+- [ ] reply to agentcockpit with what is needed from the owner
+- [ ] integrate lanes on `feat/sosforge-round2-2026-10`, gates, PR #5
+- [ ] after the merge: deploy (ping agentcockpit, image tags, journal backup,
+      pull + build, host vhost headers, publish the APK, verify live)
+
+## Lane P -- measured efficiency of the core (plan, critical files)
+
+Scope: `main.py`, `pipeline.py`, `store/**`, `dedupe.py` (measure only),
+`core/**`, `backend/Dockerfile`, `backend/pyproject.toml`, `agent/**`. Every
+item is measured first, on a live run of all 32 real sources (:8335) or on
+real journals, and re-measured after. Tools: `tools/ws_load.py` (N websocket
+clients, tick period / latency, server CPU and RSS from `ps`),
+`tools/bench_core.py` (hot paths in-process, full ring), `tools/bench_geocode.py`.
+
+Measured before (2026-10-27, M4 Pro, machine load ~13 from other lanes):
+
+- 1 / 100 / 1000 sockets: server CPU 1.3 / 1.4 / 14.8 %, tick period
+  1.0019 / 1.0015 / 1.0256 s (the heartbeat sleeps 1 s AFTER its work),
+  tick latency p99 6 / 9 / 518 ms, RSS 0.15-0.45 MB per connected socket
+  (the higher figure while 1000 sockets opened at 400/s).
+- 1000 sockets opened at 400/s: snapshot p50 0.83 s, p95 4.68 s, while every
+  tick to the sockets already open stalls (max gap 1.46 s).
+- Full ring (5000): `stats()` 2.1 ms per call (each tick and each snapshot),
+  legacy snapshot 5.8 ms, chunked 17 ms, `/api/events` 12.9 ms p50.
+- Restart: `read_journal` drops every event whose `time` is over 24 h old,
+  while the pipeline's own horizon is 3 days and exempts ongoing alerts. On
+  the real 3 h journal of 2026-10-26 a restart restored **679 of 1347**
+  events: 362 of 499 alerts and 44 of 104 severe-or-above lost until their
+  source's next poll (Meteoalarm 227, GDACS 75, EONET 20...), and the quakes
+  between 24 h and 3 days old lost for good.
+- Journal: `raw` (the upstream payload, never read back from a restored
+  event) is 19.4 % of the live journal's bytes. Plan 1.8, never done.
+- Geocode: one address firing N searches makes every other visitor wait N
+  seconds (10 -> 9.96 s, 30 -> 29.98 s). The queue is unbounded.
+
+Changes, smallest first:
+
+- [x] `main.py`: the quota refusal closed before `accept()`, which a real
+      server sends as HTTP 403 (lane N's drill). Accept, close 1013 with a
+      reason; tested with a real uvicorn and a real client (e7a3d9a).
+- [x] `agent/`: the reconnect backoff never reset (`run_once` only leaves by
+      an exception). Reset after a session that delivered (a022416).
+- [x] `agent/`: lane N's drills, real agent, notifier recorded (f36ba98).
+      A cancelled / lifted / ended / relocated alert it had rung got no
+      follow-up; now one, once, without sound. An area alert was judged by
+      its centre; now by its bbox, the clamp of `Zone.touches`. Drill rows:
+      eew-cancelled tokyo M6.1, M6.6 -> + "Cancelled"; relocated-out tokyo
+      M5.9 -> + "No longer near you"; relocated-out paris silent -> UK
+      amber, then "No longer near you".
+- [x] `store/ring.py` `read_journal`: no cutoff on `event.time`; the
+      pipeline's horizon is the one rule (expired, too old and not ongoing).
+      Read line by line instead of `read_text()` (no whole-file copy at
+      startup). Test: an ongoing alert dated 30 days ago and a quake of 2
+      days ago, both journaled today, survive a restart; a quake of 4 days
+      does not. **After: 1348 of 1348 restored (was 679), alerts 500 (137),
+      severe+ 104 (60); second journal 1196 (622).**
+- [x] `store/ring.py` journal lines without `raw`. Test: the line carries no
+      `raw`, the replayed event is equal on every public field.
+- [x] `main.py` heartbeat on a monotonic deadline, so the period is 1 s
+      whatever the fan-out costs; a stalled loop resumes from now instead of
+      firing a burst of catch-up ticks. **After: mean period 1.0000004 s
+      (was 1.0019) with one socket, 0.99994 s (was 1.025) with 1000.**
+- [x] `main.py` + `store/ring.py`: the unscoped snapshot (web `chunks=1`,
+      agent legacy) serialized once per store version and shared, instead
+      of composed and serialized for every socket. The store gets a
+      `version` counter bumped on every mutation (insert, revision,
+      removal, promotion); `last_seen` refreshes do not bump it, so the
+      cache also expires after 1 s. Scoped sockets keep their own snapshot.
+      Gate: same bytes as the uncached path for the same store. Built in
+      its own coroutine too: as locals of the endpoint it stayed referenced
+      for the whole connection (339 -> 87 KB held per socket in-process).
+      **After, 1000 web sockets opened at 100/s: 1000/1000 connected (was
+      908, 92 handshake timeouts), snapshot p95 0.029 s (was 8.45 s), CPU
+      7.8 % (23.4 %), RSS 108 MB (189). At 300/s: 1000/1000 (770), the
+      watcher's tick period max 1.017 s (1.86 s).**
+- [x] `main.py` legacy `/api/events` returns its JSONResponse: FastAPI's
+      `jsonable_encoder` re-walked 300 JSON-native dicts, 6.9 ms of 14.
+      Same bytes (tested). **After, live: p50/p95 6.5/10.2 ms (was
+      15.1/35.9), limit=2000 17.9/34.5 ms (66.0/233).**
+- [x] `geocode.py` + `main.py`: per-address token bucket (burst 3, 1 per
+      second) on cache misses, 429 + `Retry-After` beyond. The web debounces
+      at 450 ms and treats a failure as "no places", so a person typing is
+      never refused. **After: a burst of 10 or 30 from one
+      address costs another visitor 2.95 s (was 9.96 / 29.98 s); the burst
+      gets 3 answers and 429 for the rest.**
+- [ ] `Dockerfile`: NOT changed. Measured: `pip install .` adds 22 MB to
+      python:3.12-slim (~125 MB); removable parts are watchfiles 1.0 MB and
+      pyyaml 0.66 MB (uvicorn[standard], dev reload / YAML logging only)
+      and a second 1 MB copy of `app` in site-packages. About 2 % of the
+      image, and Docker does not run on this Mac, so an unbuilt Dockerfile
+      is not worth that. For whoever can build: install the dependencies
+      from pyproject (tomllib) BEFORE `COPY app`, and drop `pip install .`
+      (uvicorn runs /srv/app), so a code change stops reinstalling 22 MB.
+- [x] `dedupe.py`: the number said so. cProfile of the startup replay on the
+      real journals: `Deduper.assign` is 0.83 s of 1.23 s, of which 0.37 s
+      is 1.38 million `datetime.timestamp()` calls -- every located quake,
+      re-polls included, scans the 800-entry window converting each
+      entry's time twice. Live, a 400-726 event poll (GEOFON, PHIVOLCS)
+      blocks the loop for roughly 65-115 ms, which matches the 170 ms tick
+      stalls measured over 15 min. Change: each entry's time cached as
+      integer microseconds in a parallel deque (exact, no float rounding),
+      same scan, same order, same tests. Gate: the cluster of EVERY event
+      identical between the old and the new deduper on the real journals.
+      **After: 6678 assigns on 6707 real entries, 0 clusters different,
+      same window; 136.6 -> 21.5 us per assign (x6.3).**
+- [x] `pipeline.py`: measured, no change. After the deduper fix the replay
+      is 0.60 s for 5714 real entries (was 1.23 s, cProfile), dominated by
+      journal validation; `emit` itself is 0.28 s.
+
+### Lane P, second batch: lane Q's live-data findings in the core (plan)
+
+Q's proofs: `scratchpad/laneq/` (prove_dedupe_churn.py, saved reads run2,
+run3) and `tools/audit_live.py`. Critical files: dedupe.py, pipeline.py,
+store/ring.py. Measured on real data before and after, like every dedup
+change (rule 5).
+
+1. [x] **Re-listing churn** (dedupe.py). A re-polled row scans the window
+   newest-first, meets ANOTHER agency's newer copy of the same quake before
+   its own entry, matches it and appends itself again. Q's proof, my tree:
+   after 399 cycles of two agencies re-listing one quake, 400 copies each
+   fill the 800-entry window and an unrelated quake drops out; its late
+   EMSC twin then forms its own cluster (shown twice). Fix: an id already
+   in the window answers from its own entry, O(1), without appending. The
+   store already keeps the first cluster of a stored id, so clusters can
+   only change where the churn evicted the real match.
+   **After, Q's proof: the window never overflows in 1000 cycles and the
+   late twin joins usgs:us7000ttfe. Real journals (10-26 + 10-27, 1228
+   quakes, re-listed every 50 entries): visible twins 4 -> 0, multi-source
+   clusters 92 -> 96, window 486 -> 800 distinct ids of 800.**
+2. [ ] **Two quakes in one cluster** (dedupe.py). NOT SHIPPED, measured. A second USGS quake 90 s
+   after the first joins its cluster through EMSC's solution of the first.
+   Rule: a cluster never takes two events from the same source (an agency
+   does not publish one quake twice). Measure first, on the real journals:
+   same-source clusters (with their time and magnitude gaps, to tell two
+   quakes from an agency duplicate) and cross-source merges lost.
+   **Measured, the rule is wrong as stated.** Built and replayed: same-source
+   clusters 28 -> 0 and 14 -> 0 on Q's two production reads, but visible
+   twins 1 -> 21 and 2 -> 15 (after item 1). PHIVOLCS publishes ONE quake
+   under several bulletin ids (`2026_1026_1509_B2F` and `B3F`, same M3.5,
+   2 km), INGV shows the same, and refusing them a shared cluster then splits
+   identical EMSC/INGV solutions (0 s, 0 km) through the chain. Reverted
+   before commit. A per-source rule (USGS / EMSC / GEOFON ids are one per
+   quake, PHIVOLCS bulletins are not) needs each source's id semantics
+   checked against its payload first: lane C2 knows them.
+3. [ ] **Cyclones served 2-3 times** (dedupe only clusters quakes). Plan
+   only here: grouping storms by name + basin + distance, with the
+   agency face chosen by authority, needs item 4's re-election, or the
+   first poller after a restart becomes the face. Measure the duplicates.
+   **Measured (Q's run3): 4 of 6 named storms served by two sources --
+   Arnab gdacs extreme + eonet severe, Champi gdacs extreme + eonet
+   moderate, Olana nhc minor + eonet moderate, Vance nhc + eonet.**
+4. [ ] **The first estimate stays the face.** Re-electing the cluster's
+   representative (reviewed > automatic > early warning) changes which id
+   is `primary` under every client's feet: the web, the app and the agent
+   hide non-primaries. A protocol-visible change (lanes N, H, A); plan and
+   numbers, not shipped by this lane alone. **Measured (run3): 17 of 214
+   multi-member clusters show an early warning or a preliminary solution
+   while a reviewed one exists (e.g. jma_eew:20261027092519 M5.0 over USGS
+   and EMSC M4.8, geofon:gfz2026vacc M5.1 over USGS and EMSC M4.7).**
+   Mechanism when it is decided: the store re-points the cluster to the
+   better member (rank: reviewed > automatic > early warning, then source
+   authority), broadcasts the new face as `update primary: true` and the old
+   one as `purge reason=superseded`, which every client already handles.
+5. [ ] **Journal-replay residue.** The replay already goes through the
+   current pipeline (expiry, horizon, min magnitude, removals). What it
+   cannot re-apply is a NORMALIZER rule changed since the line was written
+   (depth cap, preliminary flag): the line holds the normalized event, and
+   `raw` is not a parser input. Not built: the proof (36 of 37 defects on
+   restored events) is on production journals this lane cannot read. Two
+   options for the owner, with their cost: (a) journal lines carry a hash
+   of the source module that normalized them and the replay drops lines
+   from an older normalizer (correct at once, loses the history of
+   sources whose feed no longer lists the event); (b) the replay
+   re-derives what is derivable from the normalized fields (quake
+   severity from magnitude + depth through the current `severity_for_quake`,
+   EEW `preliminary`) and keeps the rest.
+6. [ ] **Major events kept 14 days** (owner call by default). Needs the
+   horizon to exempt them, the replay to read 14 days of journal for them,
+   `journal_keep_days` >= 14, and the ring not to evict them. Measure how
+   many events that keeps before building it. **Measured on Q's reference
+   read: 3 quakes in 7 days meet M6.5+ or PAGER orange/red (Nagqu M7.0
+   orange 10-22, Vanuatu M6.9 10-24, Bonin M6.5 10-25), so 3-6 over 14
+   days.** Smallest build: a separate `major.jsonl` journal (a few lines a
+   week) replayed whatever its age up to 14 days, a horizon exemption for
+   those events only, and the ring re-appending a major event it evicts.
+   Not built in this lane: it changes what the feed calls current, and
+   the UI must show them as past (lane H).
+
+**Q's audit, same minute (2026-10-27 10:47:29Z), base code vs this lane,
+both started from one copy of the real journal, 32 live sources:** restored
+592 vs 954 events; dedupe summary clean on both (0 split, 0 extra
+primaries, 0 over-merged; multi-source groups 46 vs 48 -- the churn needs
+hours of polling to show, its proof is Q's script above). Two more defects
+on the new side, both on events the base had dropped at restart and both
+normalizer rules (item 5, lane C2): gdacs:EQ1573942 under-graded and
+phivolcs:2026_1026_1025_B1 superseded but never retracted. Also new only:
+ingv:47788232 stamped IT at the Vanuatu position (C2). Read with care: the
+new side's sources show `ingested=0`, "newest 88 m" because restored events
+keep their real `received_at` and re-polls are no-ops; the base re-ingested
+them as new at restart (lesson 4).

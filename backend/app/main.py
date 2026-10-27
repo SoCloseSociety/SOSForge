@@ -6,6 +6,8 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
+import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -22,7 +24,9 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app import geocode
 from app.changelog import NEW, UNKNOWN, ChangeLog, Touched
+from app.core import privacy
 from app.core.config import settings
 from app.dedupe import Deduper
 from app.geocode import search as geocode_search
@@ -77,6 +81,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
 )
 log = logging.getLogger("sosforge")
+# people's places (zones, lat/lon, searched names) never reach the log
+privacy.install()
 
 store = EventStore(
     maxlen=settings.ring_size, data_dir=settings.data_dir, persist=settings.persist_jsonl
@@ -225,11 +231,28 @@ def tick_message() -> dict:
     }
 
 
+def next_tick(deadline: float, now: float, period: float) -> float:
+    """When the next tick is due, on a fixed grid.
+
+    The heartbeat used to sleep a full period AFTER building and fanning out
+    each tick, so every tick came late by what the previous one cost:
+    measured 1.0019 s with one socket and 1.0256 s with a thousand, 92 ticks
+    short an hour at that load. On a grid the period is the period whatever
+    the fan-out costs. A loop stalled past a whole period resumes from now:
+    a burst of catch-up ticks would say nothing a single one does not.
+    """
+    deadline += period
+    return deadline if deadline > now else now
+
+
 async def heartbeat() -> None:
     """One tick per second: proves to the client that the feed is alive and
     resyncs the clocks (the UI shows an "N s ago" age computed on server time)."""
+    loop = asyncio.get_running_loop()
+    deadline = loop.time()
     while True:
-        await asyncio.sleep(settings.heartbeat_seconds)
+        deadline = next_tick(deadline, loop.time(), settings.heartbeat_seconds)
+        await asyncio.sleep(deadline - loop.time())
         # A single uncaught exception here killed the task for good: no more
         # ticks, so every client declared itself disconnected after 15 s and
         # looped on reconnection -- while /healthz answered "ok". That is the
@@ -308,6 +331,7 @@ async def felt_reports() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global sources
+    privacy.install()  # again, in case the server reconfigured logging after import
     sources = build_sources()
 
     # 1. fill the map before opening the floodgates: first the local journal
@@ -567,11 +591,18 @@ async def api_events(
             since=after,
             primary_only=primary_only,
         )
-        return {
-            "count": len(legacy),
-            "server_time": utcnow().isoformat(),
-            "events": [e.public() for e in legacy],
-        }
+        # A JSONResponse built here, not a dict: FastAPI would walk every
+        # field of the 300 events through `jsonable_encoder` first -- 6.9 ms
+        # of a 14 ms request, measured on the live journal -- to give back
+        # the very same values, since `public()` is already JSON-native. The
+        # bytes are identical (tests/test_lane_p_core.py).
+        return JSONResponse(
+            {
+                "count": len(legacy),
+                "server_time": utcnow().isoformat(),
+                "events": [e.public() for e in legacy],
+            }
+        )
 
     if since and not ChangeLog.well_formed(since):
         raise _refuse(ScopeError("bad_since", "since is a cursor returned by this endpoint"))
@@ -700,9 +731,20 @@ async def api_event(event_id: str) -> dict:
 
 
 @app.get("/api/geocode")
-async def api_geocode(q: str = Query(min_length=2, max_length=120)) -> dict:
+async def api_geocode(request: Request, q: str = Query(min_length=2, max_length=120)) -> dict:
     """Area search by name. Proxied to hold the rate Nominatim imposes
-    (1 req/s), which browser calls would violate."""
+    (1 req/s), which browser calls would violate. A search that would reach
+    Nominatim also spends the caller's own budget (`geocode.AddressBudget`),
+    so one address cannot make every other visitor wait behind its burst; a
+    cached answer costs nothing and is never refused."""
+    if not geocode.cached(q):
+        wait = geocode.budget.take(request.client.host if request.client else None)
+        if wait:
+            raise HTTPException(
+                status_code=429,
+                detail="too many searches from this address, try again shortly",
+                headers={"Retry-After": str(max(1, math.ceil(wait)))},
+            )
     return {"query": q, "results": await geocode_search(q)}
 
 
@@ -743,6 +785,61 @@ WS_PARAMS = (*SCOPE_PARAMS, "chunks")
 # badly still fits.
 SNAPSHOT_CHUNK_EVENTS = 40
 SNAPSHOT_CHUNK_BYTES = 32_000
+# How long a shared snapshot may be reused while the store has not changed.
+# The store's version is what keeps it exact; this only bounds how stale
+# `last_seen` (refreshed in place on every re-mention, without a version
+# bump) can be in a snapshot.
+SNAPSHOT_CACHE_SECONDS = 1.0
+
+Chunks = list[tuple[str, int]]  # (events serialized as a JSON array, how many)
+# chunked -> (the store it was built from, its version then, when, chunks)
+_shared_snapshots: dict[bool, tuple[EventStore, int, float, Chunks]] = {}
+
+
+def serialize_chunks(publics: list[dict], chunked: bool) -> Chunks:
+    parts = split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
+    return [(json.dumps(part, default=str), len(part)) for part in parts]
+
+
+def shared_snapshot(chunked: bool) -> Chunks:
+    """The snapshot of an unscoped socket (the web, the agent), serialized
+    once per store version and shared by every socket that opens meanwhile.
+
+    It was composed and serialized for every socket: 6 ms with a full ring,
+    17 ms chunked, all of it on the event loop that owes every open tab a
+    tick each second. A thousand people opening the site after a large
+    quake -- the one moment this product exists for -- paid it a thousand
+    times over for identical bytes. Exact, not approximate: the store bumps
+    its version on every insert, revision, removal and promotion, so a
+    cached snapshot is only served while it is still what composing would
+    give.
+    """
+    now = time.monotonic()
+    hit = _shared_snapshots.get(chunked)
+    if (
+        hit is not None
+        and hit[0] is store
+        and hit[1] == store.version
+        and now - hit[2] < SNAPSHOT_CACHE_SECONDS
+    ):
+        return hit[3]
+    events, _ = compose(
+        store.recent(limit=settings.ring_size, primary_only=True),
+        settings.snapshot_size,
+        None,
+        pin=chunked,
+    )
+    chunks = serialize_chunks([e.public() for e in events], chunked)
+    _shared_snapshots[chunked] = (store, store.version, now, chunks)
+    return chunks
+
+
+def splice(head: dict, key: str, value_json: str, tail: dict) -> str:
+    """`json.dumps({**head, key: value, **tail})` with `value` already
+    serialized. Byte for byte the same text: `json.dumps` of a dict is its
+    members' serializations joined with the default separators."""
+    out = f"{json.dumps(head, default=str)[:-1]}, {json.dumps(key)}: {value_json}"
+    return f"{out}, {json.dumps(tail, default=str)[1:]}" if tail else f"{out}}}"
 
 
 def ws_params(ws: WebSocket) -> tuple[Scope | None, bool]:
@@ -789,6 +886,78 @@ async def refuse_ws(ws: WebSocket, exc: ScopeError) -> None:
         pass
 
 
+async def refuse_busy(ws: WebSocket) -> None:
+    """Accept, then close 1013 ("try again later") with a reason. No `error`
+    message: the quota is not the client's mistake, and a pre-v2 client
+    would throw on a frame type it does not know."""
+    try:
+        await ws.accept()
+        await ws.close(code=1013, reason="too_many_connections")
+    except (WebSocketDisconnect, RuntimeError):
+        pass
+
+
+async def send_snapshot(ws: WebSocket, client: Client, scope: Scope | None, chunked: bool) -> None:
+    """The opening snapshot, then its chunks, before the pump starts.
+
+    Its own coroutine on purpose: everything it builds (the events' public
+    dicts, the serialized chunks) dies when it returns. Built as locals of
+    the endpoint, it lived as long as the connection -- the endpoint's frame
+    stays alive until the socket closes -- and every open tab kept its 300
+    public dicts, about 0.45 MB measured per socket, for hours.
+    """
+    # Composed (or taken from the shared cache) with no await in between,
+    # and after the client is registered: every broadcast from here on
+    # reaches this client, and for a scoped one it is narrowed against a
+    # held set that already contains the snapshot, so a revision or a
+    # withdrawal of a snapshot event cannot slip past it.
+    tail: dict = {}
+    if scope is None:
+        chunks = shared_snapshot(chunked)
+    else:
+        snapshot, placed = compose(
+            store.recent(limit=settings.ring_size, primary_only=True),
+            settings.snapshot_size,
+            scope,
+            pin=chunked,
+        )
+        # every chunked id too: a chunk still in flight is already held
+        for event in snapshot:
+            client.hold(event.id)
+        chunks = serialize_chunks([e.public() for e in snapshot], chunked)
+    remaining = sum(count for _, count in chunks) - chunks[0][1]
+    tail["stats"] = store.stats()
+    tail["sources"] = [
+        {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
+    ]
+    if chunked:
+        tail["more"] = remaining
+    if scope is not None:
+        tail["scope"] = scope.public()
+        tail["unplaced"] = placed.public()
+    await ws.send_text(
+        splice(
+            {"type": "snapshot", "server_time": utcnow().isoformat()},
+            "events",
+            chunks[0][0],
+            tail,
+        )
+    )
+    # The rest of the snapshot, before the pump starts: no queued delta can
+    # overtake a chunk, so a revision always lands on top of the version it
+    # revises.
+    for chunk_json, count in chunks[1:]:
+        remaining -= count
+        await ws.send_text(
+            splice(
+                {"type": "snapshot_more"},
+                "events",
+                chunk_json,
+                {"remaining": remaining, "server_time": utcnow().isoformat()},
+            )
+        )
+
+
 @app.websocket("/ws")
 async def websocket_endpoint(ws: WebSocket) -> None:
     try:
@@ -798,13 +967,16 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         await refuse_ws(ws, refused)
         return
 
-    # Refuse BEFORE accepting: an accepted connection has already cost a
-    # snapshot, and refusing after would be the expensive half of the work we
-    # are declining to do.
+    # Decided before any snapshot work: the snapshot is the expensive half of
+    # what we are declining to do. But the handshake IS accepted first. A
+    # close before accept never reaches the wire as a close code: the ASGI
+    # server answers it with an HTTP 403, which tells a client nothing about
+    # backing off, so web and app retried as hard as on any other failure
+    # while the contract promised them 1013 (lane N's drills, 2026-10-27).
     address = ws.client.host if ws.client else None
     if not ws_quota.acquire(address):
         log.warning("websocket refused: %s is already at the per-address cap", address)
-        await ws.close(code=1013)  # 1013 = try again later
+        await refuse_busy(ws)
         return
 
     await ws.accept()
@@ -812,56 +984,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
     await hub.register(client)
 
     try:
-        # Composed and remembered with no await in between, and after the
-        # client is registered: every broadcast from here on is narrowed
-        # against a held set that already contains the snapshot, so a
-        # revision or a withdrawal of a snapshot event cannot slip past it.
-        snapshot, placed = compose(
-            store.recent(limit=settings.ring_size, primary_only=True),
-            settings.snapshot_size,
-            scope,
-            pin=chunked,
-        )
-        if scope is not None:
-            # every chunked id too: a chunk still in flight is already held
-            for event in snapshot:
-                client.hold(event.id)
-        publics = [e.public() for e in snapshot]
-        chunks = (
-            split(publics, SNAPSHOT_CHUNK_EVENTS, SNAPSHOT_CHUNK_BYTES) if chunked else [publics]
-        )
-        remaining = len(publics) - len(chunks[0])
-        message: dict = {
-            "type": "snapshot",
-            "server_time": utcnow().isoformat(),
-            "events": chunks[0],
-            "stats": store.stats(),
-            "sources": [
-                {**s.health.snapshot(), "ingested": store.counters.get(s.name, 0)} for s in sources
-            ],
-        }
-        if chunked:
-            message["more"] = remaining
-        if scope is not None:
-            message["scope"] = scope.public()
-            message["unplaced"] = placed.public()
-        await ws.send_text(json.dumps(message, default=str))
-        # The rest of the snapshot, before the pump below starts: no queued
-        # delta can overtake a chunk, so a revision always lands on top of
-        # the version it revises.
-        for chunk in chunks[1:]:
-            remaining -= len(chunk)
-            await ws.send_text(
-                json.dumps(
-                    {
-                        "type": "snapshot_more",
-                        "events": chunk,
-                        "remaining": remaining,
-                        "server_time": utcnow().isoformat(),
-                    },
-                    default=str,
-                )
-            )
+        await send_snapshot(ws, client, scope, chunked)
 
         async def pump() -> None:
             getter = asyncio.ensure_future(client.queue.get())
