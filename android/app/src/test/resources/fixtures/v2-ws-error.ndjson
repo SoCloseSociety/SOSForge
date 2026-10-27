@@ -1,0 +1,2 @@
+{"type": "error", "code": "bad_zones", "reason": "latitude out of range: 95", "server_time": "2026-10-26T20:13:09.960269+00:00"}
+{"_closed": 1008, "_reason": "bad_zones"}
