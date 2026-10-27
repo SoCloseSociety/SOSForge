@@ -30,6 +30,14 @@ services:
       # them, only tools/publish_apk.py on the host writes them. Never baked
       # into the image -- a 39 MB binary per release has no place in git.
       - ./downloads:/srv/downloads:ro
+    # The json-file driver keeps everything forever by default. The access
+    # log no longer holds places (deploy/nginx.conf, sos_private), but an
+    # unbounded log on a small VPS is a disk that fills; 3 x 10 MB is weeks.
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
     restart: unless-stopped
 
 volumes:

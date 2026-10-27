@@ -923,7 +923,18 @@ pass / 6 fail across v1, zoned fg/bg, drop, poll and agent clients; web drill
       downgrade check local only), C2 3 (ENSO synopsis, NSIDC caveat), P 3
       (httpx and ScopeError logs carry places). Sources findings: skeptics
       re-running after the rate limit.
-- [ ] fixes landed and re-verified
+- [x] lane P merged (128127f): opt-in `tick=lite` (42.6 -> 1.37 MB/h raw on
+      the app's background URL), privacy findings closed (httpx Nominatim
+      URLs, ScopeError reasons, stricter redact_query). pytest 920.
+- [x] lane G review fixes merged: all 11 fixed with tests that fail on the
+      old code (language shells no-cache, `sos_private` nginx log + log cap,
+      Wi-Fi recheck per file, publish_apk checks what the server serves,
+      byte-capped tile cache). vitest 435, pytest 935.
+- [ ] deploy step to add: the HOST vhost access log keeps full query
+      strings: a redacted log_format for sosforge.soclose.co (conf.d,
+      nginx -t, reload); deploy order web image -> make publish-apk -> the
+      two rsync steps (versioned files --ignore-existing, then latest.json)
+- [ ] fixes landed and re-verified (H 18, C2 3 sources)
 - [ ] then merge lane C2's WMO country flags (9603657: 58/58 WMO alerts
       flagged, 0 in production; Greek pairs titled by hazard) and the
       Meteoalarm colour floor (owner rule: an official orange is never shown
@@ -1229,3 +1240,52 @@ them as new at restart (lesson 4).
       2 -> 53 (+5: Colombia landslide 3, Syria flood 1, Chad heat 1, all
       placed with a box). BOM excluded (5 more, 0 placed, licence). Live at
       11:27: prod 63 WMO vs branch 58. Not shipped: numbers sent first.
+
+## Lane P: the lighter tick, opt-in (plan, critical files main.py + hub.py)
+
+Lane A measured on the emulator: the app's background watch costs ~4.7 MB
+an hour off Wi-Fi. The tick is sent every second with the health of every
+source in it, and OkHttp's websocket offers no permessage-deflate, so it
+travels uncompressed.
+
+Contract (additive; no parameter = every message byte for byte as today):
+
+- `/ws?...&tick=lite` (any other value: `bad_tick`, error + 1008).
+- A lite client's tick, every second, unchanged in rhythm (the 15 s
+  watchdog): `{type: tick, server_time, stats, clients}`, `stats` without
+  `by_source` (the same counters travel per source as `ingested`).
+- `{type: sources, server_time, sources: [...]}`, the full list in the
+  tick's own shape, to lite clients only: whenever a source's STATE changes
+  (connected, degraded, last_error, failing feeds), and as a refresh every
+  300 s so `last_ok` / `last_event_at` / counters are never older than
+  that. The snapshot already carries the full list on connect.
+- A lite client must read a tick without `sources` as "unchanged", not as
+  "no sources" (the 0.1.2 decoder would empty the list: it must not opt in).
+- `/api/version` features gains `tick_lite`.
+
+Implementation: `Client.lite`; `Hub.broadcast(message, lite=None)` sends
+`lite` (serialized once) to lite clients instead of `message`, and a
+`message` of None reaches nobody else. The heartbeat builds both ticks from
+one `stats()`. Measured before/after: bytes and messages per hour on a real
+zoned socket, all real sources, with a client that offers no
+permessage-deflate (OkHttp's behaviour), and the negotiation checked.
+
+**Lighter tick, measured (da80ea2).** 15 min on :8335, all 32 real sources,
+the app's background URL (two zones, unplaced=JP,FR, min_severity=moderate,
+chunks=1), two sockets side by side from a client that offers NO
+permessage-deflate: the server answered with no Sec-WebSocket-Extensions,
+so every frame went raw, as OkHttp gets it.
+
+| socket | ticks | sources msgs | bytes / hour | with TLS+TCP (est.) |
+|---|---|---|---|---|
+| full tick | 900 x 11.8 KB | -- | 42.6 MB | 42.8 MB |
+| tick=lite | 900 x 270 B | 9 x ~11 KB (3 refreshes, 6 changes) | 1.37 MB | 1.64 MB |
+
+x31 less. The snapshot (12.9 KB, once per connection) is the same for both.
+The full tick is larger than lane A's 4.7 MB/h figure suggests (11.8 KB raw
+today): the source list grows with every `last_error` it carries.
+
+**Privacy, final review of PR #5 (49c4ada):** the httpx logger now goes
+through the same filter (Nominatim URLs redacted), the geocode warning logs
+no URL, a refused socket logs its code only, and redact_query blanks bare
+parts and safe names holding a value of the wrong shape.

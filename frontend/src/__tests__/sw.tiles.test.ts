@@ -35,6 +35,8 @@ const stores = new Map<string, Map<string, Response>>()
 let connection: { saveData?: boolean; effectiveType?: string; type?: string } = {}
 /** Host paths answered without a Content-Length. */
 const unmeasured = new Set<string>()
+/** When set, tiles at zoom 4 and deeper are this many bytes. */
+let deepTileBytes = 0
 /** The one open tab the worker can talk to. */
 const tab = { postMessage: vi.fn() }
 let network: ReturnType<typeof vi.fn>
@@ -86,6 +88,9 @@ function answer(url: string): Response {
     })
   } else if (url === `${HOST}/planet`) {
     res = Response.json({ tiles: [`${HOST}/planet/${BUILD}/{z}/{x}/{y}.pbf`] })
+  } else if (deepTileBytes && /^\/planet\/[^/]+\/([4-9]|1\d)\//.test(u.pathname)) {
+    // a browsed tile at the size real ones have once stored
+    res = new Response(new Uint8Array(deepTileBytes), { headers: { 'content-length': String(deepTileBytes) } })
   } else if (u.origin === HOST) {
     // Content-Length as the host sends it (the compressed size, here the
     // body's), except for the files a test wants left unmeasured.
@@ -119,6 +124,7 @@ async function load() {
   calls = []
   connection = {}
   unmeasured.clear()
+  deepTileBytes = 0
   tab.postMessage.mockClear()
   vi.stubGlobal('self', {
     addEventListener: (type: string, fn: Handler) => handlers.set(type, fn),
@@ -236,18 +242,31 @@ describe('tiles', () => {
     expect(calls.filter((c) => c.includes('/planet/') && c.endsWith('.pbf'))).toEqual([])
   })
 
-  it('caps the browsed tiles, oldest first, and never trims the world', async () => {
-    const browsed = 403
-    for (let i = 0; i < browsed; i++) {
+  it('caps the browsed tiles by the bytes they take, oldest first, never the world', async () => {
+    // 0.8 MB each, about a z4 tile once stored: 400 of them would be 320 MB
+    deepTileBytes = 800_000
+    for (let i = 0; i < 60; i++) {
       const { kept } = await fetchThrough(tile(8, i, 0))
       await Promise.all(kept)
     }
     await fetchThrough(tile(1, 0, 0))
     const deep = store('sosforge-tiles-t1')!
-    expect(deep.size).toBe(400)
-    expect(deep.has(`${HOST}/planet/8/0/0.pbf`)).toBe(false)
-    expect(deep.has(`${HOST}/planet/8/402/0.pbf`)).toBe(true)
+    let total = 0
+    for (const r of deep.values()) total += (await r.clone().arrayBuffer()).byteLength
+    expect(total).toBeLessThanOrEqual(40e6)
+    expect(deep.size).toBe(50) // 50 x 0.8 MB = the 40 MB budget
+    expect(deep.has(`${HOST}/planet/8/9/0.pbf`)).toBe(false) // the 10 oldest are out
+    expect(deep.has(`${HOST}/planet/8/10/0.pbf`)).toBe(true)
+    expect(deep.has(`${HOST}/planet/8/59/0.pbf`)).toBe(true)
     expect(store('sosforge-tiles-base')!.has(`${HOST}/planet/1/0/0.pbf`)).toBe(true)
+  })
+
+  it('keeps small browsed tiles that fit the budget, whatever their number', async () => {
+    for (let i = 0; i < 450; i++) {
+      const { kept } = await fetchThrough(tile(8, i, 0))
+      await Promise.all(kept)
+    }
+    expect(store('sosforge-tiles-t1')!.size).toBe(450)
   })
 })
 
@@ -327,6 +346,49 @@ describe('what the worker downloads on its own', () => {
     await load()
     connection = { type: 'wifi', saveData: true }
     expect(await autoRun()).toBe('skipped')
+  })
+
+  /** Switches the connection after `after` fetches of world tiles above the
+   * small set (zooms 2..3), and counts those fetches. */
+  function leaveWifiAfter(after: number, to: typeof connection) {
+    let worldTiles = 0
+    network.mockImplementation(async (input: Request | string) => {
+      const url = abs(input)
+      calls.push(url)
+      if (/\/planet\/[^/]+\/[23]\//.test(url) && ++worldTiles === after) connection = to
+      return answer(url)
+    })
+    return () => worldTiles
+  }
+
+  for (const [left, to] of [
+    ['for mobile data', { type: 'cellular' }],
+    ['for a link that no longer says', {}],
+    ['into Save-Data', { type: 'wifi', saveData: true }],
+  ] as const) {
+    it(`stops the world the moment the phone leaves the Wi-Fi ${left}, small set complete`, async () => {
+      connection = { type: 'wifi' }
+      const fetched = leaveWifiAfter(5, to)
+      expect(await autoRun()).toBe('world stopped after 33') // 28 small + 5 world tiles
+      expect(fetched()).toBe(5)
+      const base = store('sosforge-tiles-base')!
+      for (const key of [
+        `${HOST}/planet/1/1/1.pbf`,
+        `${HOST}/sprites/ofm_f384/ofm@2x.png`,
+        `${HOST}/fonts/Noto%20Sans%20Regular/11520-11775.pbf`,
+      ]) {
+        expect(base.has(key), key).toBe(true)
+      }
+      expect(broadcasts()).toEqual([]) // nothing was asked, nothing is announced
+    })
+  }
+
+  it('lets the reader finish over mobile data what the Wi-Fi run left', async () => {
+    connection = { type: 'wifi' }
+    leaveWifiAfter(5, { type: 'cellular' })
+    await autoRun()
+    vi.useRealTimers()
+    expect((await message('sosforge:basemap-save')).result).toBe('world fetched 79')
   })
 
   it('does nothing at all on Save-Data or 2G', async () => {
@@ -427,6 +489,10 @@ describe('the world map, on the reader\'s request', () => {
 
   it('can be given back: forget leaves the small set only', async () => {
     await message('sosforge:basemap-save')
+    connection = { saveData: true } // no automatic run in the way
+    const { kept } = await fetchThrough(tile(7, 3, 3)) // one browsed tile
+    await Promise.all(kept)
+    expect(store('sosforge-tiles-t1')!.size).toBe(1)
     const { replies } = await message('sosforge:basemap-forget')
     expect(replies[0]).toMatchObject({ saved: false, missingFiles: 84 })
     const base = store('sosforge-tiles-base')!
@@ -434,6 +500,7 @@ describe('the world map, on the reader\'s request', () => {
     expect(base.has(`${HOST}/planet/1/0/0.pbf`)).toBe(true)
     expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/512-767.pbf`)).toBe(false)
     expect(base.has(`${HOST}/fonts/Noto%20Sans%20Regular/0-255.pbf`)).toBe(true)
+    expect(store('sosforge-tiles-t1')?.size ?? 0).toBe(0) // the browsed tiles too
   })
 })
 
@@ -454,6 +521,14 @@ describe('what the worker must leave alone', () => {
       expect((await fetchThrough(`${ORIGIN}${path}`, 'navigate')).response).toBe('passthrough')
     }
     expect((await fetchThrough(`${ORIGIN}/download/`, 'navigate')).response).not.toBe('passthrough')
+  })
+
+  it('asks the server, not the HTTP cache, for every shell', async () => {
+    for (const path of ['/', '/fr/', '/ja/', '/download/']) {
+      network.mockClear()
+      await fetchThrough(`${ORIGIN}${path}`, 'navigate')
+      expect(network.mock.calls[0][1], path).toMatchObject({ cache: 'no-cache' })
+    }
   })
 
   it('does not keep a navigation that is not a page', async () => {
@@ -501,6 +576,24 @@ describe('install', () => {
     }
     expect(runtime.has(`${ORIGIN}/assets/plex-latin-400-FFF.woff`)).toBe(false)
     expect(store('sosforge-shell')!.has(`${ORIGIN}/plate-boundaries.json`)).toBe(true)
+  })
+
+  it('reads the shell it just installed, not an older version\'s', async () => {
+    // A returning visitor: the previous version's shell cache exists, and was
+    // created first -- caches.match() searches oldest first.
+    const old = await cacheApi().open('sosforge-shell-v2')
+    await old.put(
+      '/index.html',
+      new Response('<script type="module" src="/assets/index-OLD.js"></script>', {
+        headers: { 'content-type': 'text/html' },
+      }),
+    )
+    vi.stubGlobal('caches', realShellCaches())
+    await runInstall()
+    const runtime = store('sosforge-runtime')!
+    expect(runtime.has(`${ORIGIN}/assets/index-AAA.js`)).toBe(true)
+    expect(runtime.has(`${ORIGIN}/assets/MapView-CCC.js`)).toBe(true)
+    expect(calls).not.toContain(`${ORIGIN}/assets/index-OLD.js`)
   })
 
   it('still installs, and takes over, when the bundles cannot be fetched', async () => {
