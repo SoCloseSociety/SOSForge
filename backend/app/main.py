@@ -463,7 +463,8 @@ async def lifespan(app: FastAPI):
     # a cancel that lands in the loop step where connect_tcp's winning
     # attempt cancels its own task group: the source polls on, and a gather
     # with no timeout never returned (CI hung 5 h 25 min on 2026-10-28).
-    # Cancel again whatever still runs, bounded, so a shutdown always ends.
+    # Cancel again whatever still runs, bounded: the lifespan returns within
+    # 5 s, and a task still running then is named in the log.
     pending = set(tasks)
     for _ in range(SHUTDOWN_CANCEL_ROUNDS):
         for task in pending:
