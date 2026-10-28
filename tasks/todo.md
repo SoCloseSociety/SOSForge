@@ -1954,3 +1954,112 @@ they are).
 - [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
       (warning) for a counter of every bulletin; the phone's short label is now
       「津波情報」, JMA's umbrella term (2026-10-27, integrator).
+
+## Place report -- INFORM drops close requests (plan, 2026-10-28, branch fix-inform-spacing)
+
+Production, 2026-10-28 04:48Z: the F5 in front of drmkc.jrc.ec.europa.eu
+answers a request and then closes the connection without a response for the
+requests that follow it too closely; a cold report fires WorkflowGroups,
+GetByWorkflowGroup and Countries/Scores back to back, the immediate fresh
+retry is dropped too, and `risk.country` reads "the source cannot be
+reached" for the first countries asked after a start. No critical file is
+touched (main.py, core/config.py, docker-compose.yml, deploy/nginx.conf
+unchanged: the keeper starts from `place.start`, which the lifespan already
+calls).
+
+- [x] Reproduce from the Mac (a few spaced requests, SOSForge UA) and with
+      the 8111e5a code path itself.
+- [x] `place/fetch.py`, generally: `Host.spacing` (quiet seconds between the
+      END of one request to the host and the START of the next, every
+      attempt included; a spaced host takes one request at a time) and
+      `Host.retry_pause` (the quiet after a failed attempt, at least
+      `spacing`). The retry waits that quiet only when it still leaves a
+      usable attempt inside the host timeout; the first attempt leaves room
+      for pause + retry. Hosts without them behave exactly as before.
+- [x] INFORM's policy: spacing and pause chosen from the measurement, and the
+      pause sized so that a dropped first attempt + pause + answer fits the
+      8 s report budget (unchanged).
+- [x] `place/risk.py`: the release (WorkflowGroups + the newest published
+      group) read at startup and refreshed every 12 h in the background
+      (`keep_inform_release`, spawned by `place.start`), through a forced
+      `fetch.refresh` that keeps serving the current copy, so a report for
+      a new country costs one INFORM request. No special case in the report
+      path: build_country reads the same cache entries.
+- [x] Tests with a fake F5 (drops a request closer than N s to the previous
+      one's end): a cold report after the warm-up gets risk.country ok
+      inside the real 8 s budget; two reports at once keep the interval; the
+      retry waits the pause; a pause that does not fit the host timeout is
+      not taken; other hosts (and their retries) are not slowed. Each fix
+      test fails on 8111e5a.
+
+### Review -- INFORM spacing (2026-10-28, fix-inform-spacing)
+
+**Measured from the Mac** (SOSForge UA, about 45 requests to INFORM in 30
+min, spaced except inside the repro runs):
+
+- one shared httpx client (keep-alive + cookie jar, as `fetch.py` uses): the
+  second read 0 s after the first answer -> `ReadError` (0.40 s), and the
+  third (a new connection carrying the cookies) -> `ReadError` too;
+- same session 1.0 s after the answer: dropped; 2.0 s, 3.0 s (reused
+  connection) and 8.0 s (new connection): answered;
+- new connection WITH the cookies 0 s after: dropped; 1.0 s after: answered;
+- new client, no cookie: answered back to back (3 of 3), and at 2 s and 5 s.
+  From the Mac the front end keys on the session; from the VPS (production
+  note) even new connections back to back were dropped. The VPS threshold
+  somewhere between 0 and 10 s could not be measured from here (no ssh).
+- **the 8111e5a code path itself**, cold, Thailand + Italy + Mauritius at
+  once: WorkflowGroups 200, GetByWorkflowGroup `ReadError`, its immediate
+  fresh retry `ReadError` -> all three `upstream_unreachable: ReadError from
+  drmkc.jrc.ec.europa.eu` (the production symptom, reproduced).
+- **the fixed code**, cold, the same three: 5 requests 3.0 s apart, none
+  dropped, all three ok -- but Thailand at 8.37 s, past the budget: hence
+  the warm-up.
+- **the fixed code**, warm-up then the three at once 4 s later: one request
+  per country (0.45 to 0.47 s each); Thailand ok 0.46 s after its report
+  started, Italy 3.92 s, Mauritius 7.36 s (all inside 8 s), none dropped.
+- **a real drop, forced** (spacing 0 in the measurement script only, the
+  pause kept): GetByWorkflowGroup dropped (0.40 s), fresh retry 5.0 s later
+  200; Scores THA dropped (1.25 s), fresh retry 5.0 s later 200: 1.25 + 5.0
+  + 1.30 = 7.55 s, inside the budget. The immediate retry of 8111e5a was
+  dropped; the paused one passed 2 of 2.
+- answers: 0.4 to 1.5 s, and one Scores (ITA, curl) took 8.3 s.
+
+**Changed:**
+
+- `place/fetch.py`: `Host.spacing` (quiet between the END of a request to
+  the host and the START of the next, every attempt counted) and
+  `Host.retry_pause` (the quiet after a failed attempt). A spaced host takes
+  one request at a time (`__post_init__` refuses otherwise); the quiet is
+  waited inside the slot wait (bounded by the host timeout, `busy` after
+  it), and before a retry only when at least `MIN_ATTEMPT_S` (1 s, the old
+  literal) still follows it. The first attempt leaves room for pause + retry
+  (`(remaining - pause) * 2/3`, unchanged for every unspaced host).
+  `fetch.refresh()`: a forced background read that keeps serving the copy.
+- INFORM: `Host(20.0, concurrency=1, per_minute=20, retries=1,
+  fresh_retry=True, spacing=3.0, retry_pause=5.0)`. Timeout 15 -> 20 s so
+  the first attempt keeps its 10 s (the 8.3 s answer) and the retry its 5 s.
+- `place/risk.py`: `keep_inform_release()` (spawned by `place.start`, so no
+  critical file is touched) reads the release at startup and every 12 h
+  through `fetch.refresh`; copies live 24 h, so a refresh lands while the
+  last one serves. After a failure: 1 min, doubling to 30 min, with an INFO
+  line (host-only reason). `build_country` reads the same entries through
+  the same `_release()` loop: no special case.
+- Tests (`test_place_inform_spacing.py`, a fake F5 that drops a request
+  closer than N s to the previous end): the warm report pays one request
+  inside the real 8 s budget (real policy); the policy arithmetic against
+  the measurements; two cold reports at once keep the interval and none is
+  dropped; a drop is retried after the pause; a pause leaving no usable
+  attempt is not taken; other hosts and their retries are not slowed; a
+  failed refresh keeps the copy. All 7 fail on 8111e5a (6 on what they
+  observe, the refresh one on the missing function) and pass after.
+  Italy's Scores captured verbatim (sidecar + manifest). The Bouvet test
+  switches the quiet off (it is about the country code; 6 s with it).
+- Gates: ruff, ruff format, mypy app, pytest 1289 passed.
+
+**Left:** the VPS threshold is unknown (3 s comes from the Mac); if
+production still shows drops, `spacing` is one number. A third or fourth new
+country asked in the same seconds still goes past the budget (`budget`,
+`complete: false`, the panel asks again 5 s later and finds it cached). The
+lifespan test in `test_audit5_security.py` runs the real lifespan, so the
+keeper now sends one real WorkflowGroups GET per suite run, next to the
+source and METAR reads that test already makes.

@@ -281,6 +281,17 @@ off. Concretely:
   lower bound), and its daily files stopped at 2026-10-17; CPC's weekly Nino
   file glues a negative anomaly to the SST (`20.6-0.1`); the ENSO status is
   only in the discussion HTML, with entities.
+- **INFORM** (`drmkc.jrc.ec.europa.eu`, place report `risk.country`): the F5
+  in front closes the connection WITHOUT a response for a request that
+  follows the previous one too closely (2026-10-28). From the Mac: the same
+  session (kept-alive connection, or its cookies) 0 or 1.0 s after the
+  previous answer is dropped, 2 s answered; from the VPS even new
+  connections back to back are dropped, 9 of 10 answered 10 s apart. An
+  immediate retry is dropped too. So its requests are spaced (`fetch.Host`
+  `spacing` 3 s, `retry_pause` 5 s, one at a time) and the release
+  (WorkflowGroups + the published group) is read in the background, so a
+  report for a new country pays ONE request. Answers take 0.4 to 1.5 s, and
+  once 8.3 s.
 
 ## Pattern matching on natural language
 

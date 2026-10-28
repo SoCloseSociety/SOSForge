@@ -539,7 +539,8 @@ async def test_the_cache_file_is_read_every_3_minutes_without_a_visitor(monkeypa
     router.handler(weather.METAR_URL, answer)
     monkeypatch.setattr(weather, "METAR_TTL_S", 0.05)
     monkeypatch.setattr(fetch, "FAILURE_MEMORY_S", 0.05)
-    (task,) = place.start(enabled=True)
+    tasks = place.start(enabled=True)
+    assert [t.get_name() for t in tasks] == ["place:metar-refresh", "place:inform-release"]
     try:
         async with asyncio.timeout(10):
             while len(agents) < 3:
@@ -547,8 +548,9 @@ async def test_the_cache_file_is_read_every_3_minutes_without_a_visitor(monkeypa
             while (entry := weather._metar_cache.peek("global")) is None or entry.task:
                 await asyncio.sleep(0.05)
     finally:
-        task.cancel()
-        await asyncio.gather(task, return_exceptions=True)
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
     # the failure was retried, then the expired copy read again and merged
     assert agents == [fetch.USER_AGENT] * 3
     index = entry.value

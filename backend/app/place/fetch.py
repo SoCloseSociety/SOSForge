@@ -14,6 +14,10 @@ SOSForge polite and the event loop free:
   `busy` instead of piling up;
 - one timeout per host (connect 5 s everywhere), and a retry only where a
   failure was seen to be transient AND the retry still fits that timeout;
+- a quiet time between two requests to a host whose front end drops the
+  ones that follow too closely (`Host.spacing`, `Host.retry_pause`): one
+  request at a time, each starting only once the quiet after the previous
+  one has passed, a retry included;
 - error reasons built from the status and the host, never from `str(exc)`:
   an httpx `HTTPStatusError` quotes the full URL, and a place report's URLs
   carry the place (NWS puts it in the PATH);
@@ -46,6 +50,7 @@ USER_AGENT = "SOSForge/1.0 (+https://sosforge.soclose.co)"
 CONNECT_TIMEOUT = 5.0
 QUEUE_MAX = 16
 FAILURE_MEMORY_S = 60.0
+MIN_ATTEMPT_S = 1.0  # a retry is never started with less time than this left
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,18 @@ class Host:
     per_minute: float | None = None  # token bucket rate; None = not rate limited here
     retries: int = 0
     fresh_retry: bool = False  # the retry opens a new connection
+    # Quiet seconds between the END of one request to this host and the
+    # START of the next, every attempt counted (a retry, a dropped request).
+    # Kept by `get`; `download` serves NCEI alone, which is not spaced.
+    spacing: float = 0.0
+    # The quiet after a FAILED attempt (at least `spacing`): the retry waits
+    # it, and so does the next request, whoever sends it.
+    retry_pause: float = 0.0
+
+    def __post_init__(self) -> None:
+        if (self.spacing or self.retry_pause) and self.concurrency != 1:
+            # a quiet time between requests means one request at a time
+            raise ValueError("a spaced host takes one request at a time (concurrency=1)")
 
 
 HOSTS: dict[str, Host] = {
@@ -70,7 +87,25 @@ HOSTS: dict[str, Host] = {
     "firms.modaps.eosdis.nasa.gov": Host(45.0, retries=1),  # 5.4 MB files, a reset seen
     "maps.effis.emergency.copernicus.eu": Host(10.0, per_minute=60.0),
     "wri-rw.carto.com": Host(10.0, per_minute=30.0),
-    "drmkc.jrc.ec.europa.eu": Host(15.0, per_minute=20.0, retries=1, fresh_retry=True),
+    # INFORM's F5 front end closes the connection without a response for a
+    # request that follows another too closely (2026-10-28). From the VPS:
+    # back to back dropped, 9 of 10 answered 10 s apart. From the dev Mac:
+    # the same session 0 or 1.0 s after the previous answer dropped, 2.0,
+    # 3.0 and 8.0 s answered. A cold report's three back-to-back reads and
+    # their immediate retries were all dropped. The pause is sized for the
+    # report: a drop (0.13 s from the VPS, 1.24 s at worst from the Mac) +
+    # 5 s + an answer (1.2 to 1.5 s measured) fits its 8 s budget. The
+    # timeout is the former 15 s plus that pause, so the first attempt keeps
+    # its 10 s (one Scores answer took 8.3 s) and the retry its 5 s.
+    "drmkc.jrc.ec.europa.eu": Host(
+        20.0,
+        concurrency=1,
+        per_minute=20.0,
+        retries=1,
+        fresh_retry=True,
+        spacing=3.0,
+        retry_pause=5.0,
+    ),
     "earthquake.usgs.gov": Host(20.0, per_minute=60.0),
     "www.ngdc.noaa.gov": Host(30.0, concurrency=1, per_minute=20.0),
     "webservices.volcano.si.edu": Host(15.0, per_minute=60.0),
@@ -126,6 +161,13 @@ class _HostState:
     sem: asyncio.Semaphore
     bucket: _Bucket | None
     waiting: int = 0
+    # loop time before which a spaced host takes no new attempt
+    quiet_until: float = 0.0
+
+    async def quiet(self) -> None:
+        delay = self.quiet_until - asyncio.get_running_loop().time()
+        if delay > 0:
+            await asyncio.sleep(delay)
 
 
 class Upstream:
@@ -183,6 +225,9 @@ class Upstream:
             async with asyncio.timeout(policy.timeout):
                 await state.sem.acquire()
                 try:
+                    # a spaced host (one request at a time): the quiet after
+                    # the previous request is part of the wait for a slot
+                    await state.quiet()
                     if state.bucket is not None:
                         await state.bucket.take()
                     await self._global.acquire()
@@ -194,7 +239,7 @@ class Upstream:
         finally:
             state.waiting -= 1
         try:
-            return await self._attempts(url, host, policy, headers or {}, method, accept)
+            return await self._attempts(url, host, policy, state, headers or {}, method, accept)
         finally:
             self._global.release()
             state.sem.release()
@@ -204,6 +249,7 @@ class Upstream:
         url: str,
         host: str,
         policy: Host,
+        state: _HostState,
         headers: dict[str, str],
         method: str,
         accept: tuple[int, ...],
@@ -211,18 +257,29 @@ class Upstream:
         loop = asyncio.get_running_loop()
         deadline = loop.time() + policy.timeout
         attempts = 1 + policy.retries
+        pause = max(policy.spacing, policy.retry_pause)
         last: FetchError | None = None
         for attempt in range(attempts):
+            if last is not None:
+                # the quiet the failed attempt left (`retry_pause` on a spaced
+                # host, none elsewhere), waited only when a usable attempt
+                # still follows it inside the host timeout
+                wait = max(0.0, state.quiet_until - loop.time())
+                if deadline - loop.time() - wait < MIN_ATTEMPT_S:
+                    raise last
+                if wait:
+                    await asyncio.sleep(wait)
             remaining = deadline - loop.time()
-            if remaining < 1.0 and last is not None:
-                raise last
-            # With a retry allowed, the first attempt leaves a third of the
-            # timeout for it: a stall that eats the whole budget would make
-            # "retry once" a promise that can never be kept.
-            limit = remaining * (2 / 3) if attempt < attempts - 1 else remaining
+            # With a retry allowed, the first attempt leaves a third of what
+            # the pause leaves for it: a stall that eats the whole budget
+            # would make "retry once" a promise that can never be kept.
+            room = remaining - pause
+            limit = room * (2 / 3) if attempt < attempts - 1 and room > 0 else remaining
             fresh = attempt > 0 and policy.fresh_retry
+            failed = True
             try:
                 response = await self._send(url, method, headers, limit, fresh)
+                failed = False
             except httpx.ConnectTimeout:
                 # TCP + TLS: 1.3 to 2 s to api.met.no from the dev machine
                 last = FetchError(
@@ -235,6 +292,10 @@ class Upstream:
             except httpx.TransportError as exc:
                 last = FetchError("upstream_unreachable", f"{type(exc).__name__} from {host}")
                 continue
+            finally:
+                # every attempt, answered or dropped, starts the host's quiet
+                gap = pause if failed else policy.spacing
+                state.quiet_until = max(state.quiet_until, loop.time() + gap)
             if response.status_code in accept or response.status_code == 304:
                 if response.status_code == 203:
                     # MET Norway: a deprecated product. Used, and said, without the URL.
@@ -471,6 +532,20 @@ async def obtain(
     task = entry.task
     if task is not None:
         await asyncio.shield(task)
+    return entry
+
+
+async def refresh(cache: Cache, key: Hashable, loader: Loader) -> Entry:
+    """A new read of `key` now, even while its copy is still fresh (a fetch
+    already in flight is joined instead). The product's own background read:
+    it spends no client's token. Readers keep the current copy until the
+    new one lands, and a failure leaves that copy in place: the caller tells
+    a failed refresh by `entry.error`."""
+    entry = cache.get(key)
+    if entry.task is None:
+        entry.task = spawn(_fill(cache, entry, loader), f"place:{cache.name}")
+    task = entry.task
+    await asyncio.shield(task)
     return entry
 
 

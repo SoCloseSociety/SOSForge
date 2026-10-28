@@ -314,6 +314,14 @@
   "wri_open_data_commitment.html.meta.json": {
    "bytes": 511,
    "sha256": "5aafa3430d503fa32b171ce48224f6fcf73d538a687fd3b8a27da5aaef7419ca"
+  },
+  "inform_mid2026_ita.json": {
+   "bytes": 1560,
+   "sha256": "2cf89eeb300654fdb045a5be7e67976b6b53419bae5ed532833411bddd36e4f5"
+  },
+  "inform_mid2026_ita.json.meta.json": {
+   "bytes": 1513,
+   "sha256": "7e533d3007e0091ed225c351230dbd1d1b6ccff17f349963bf5eef109359f7dc"
   }
  },
  "additions": [
@@ -367,6 +375,15 @@
    "added": [
     "inform_mid2026_bvt_empty.json",
     "inform_mid2026_bvt_empty.json.meta.json"
+   ],
+   "removed": []
+  },
+  {
+   "utc": "2026-10-28T05:18:28Z",
+   "source": "scratchpad/followups/inform/capture-ita (SOSForge User-Agent), body byte for byte",
+   "added": [
+    "inform_mid2026_ita.json",
+    "inform_mid2026_ita.json.meta.json"
    ],
    "removed": []
   }

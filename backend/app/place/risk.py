@@ -29,16 +29,21 @@
   100)"). `as_of` is the response's Last-Modified, read at run time.
 - `risk.country`: the INFORM Risk index of the country, always labelled as a
   national score. The release is the latest global workflow group of the
-  INFORM listing, never a name written here.
+  INFORM listing, never a name written here, read in the background at
+  startup and every 12 h (`keep_inform_release`): INFORM's front end drops
+  close requests, they are spaced, and a warm report pays one request.
 """
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
+import logging
 import math
 import re
 from collections import defaultdict
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from email.utils import parsedate_to_datetime
@@ -50,6 +55,8 @@ from app.place import block as B
 from app.place import fetch, geo, png
 from app.place.context import Context
 from app.place.weather import serve
+
+log = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------ sources
 
@@ -582,6 +589,9 @@ INFORM_HAZARDS = {
 }
 _GLOBAL_GROUP = re.compile(r"^INFORM(\d{4})(Mid|_Mid|_2nd)?$")
 _inform_cache = fetch.Cache("drmkc.jrc.ec.europa.eu")
+INFORM_TTL_S = 86400.0
+INFORM_REFRESH_S = 12 * 3600.0  # the release, read again while its copy serves
+INFORM_RETRY_S = (60.0, 1800.0)  # after a failed release read: first, then at most
 
 
 def latest_groups(names: list[str]) -> list[str]:
@@ -617,20 +627,77 @@ def country_block(
     return B.ok(SPEC_COUNTRY, published, data)
 
 
-async def _inform_entry(key: Any, url: str, ttl: float, ctx: Context) -> fetch.Entry:
+def _inform_loader(url: str) -> fetch.Loader:
     async def load(previous: fetch.Entry) -> fetch.Loaded:
         response = await fetch.get(url)
-        return fetch.Loaded(response.json(), ttl)
+        return fetch.Loaded(response.json(), INFORM_TTL_S)
 
-    entry = await fetch.obtain(_inform_cache, key, load, ctx.claim)
+    return load
+
+
+async def _inform_entry(key: Any, url: str, ctx: Context) -> fetch.Entry:
+    entry = await fetch.obtain(_inform_cache, key, _inform_loader(url), ctx.claim)
     if entry.value is None:
         assert entry.error is not None
         raise entry.error
     return entry
 
 
-async def _inform_json(key: Any, url: str, ttl: float, ctx: Context) -> Any:
-    return (await _inform_entry(key, url, ttl, ctx)).value
+Read = Callable[[Any, str], Awaitable[fetch.Entry]]
+
+
+async def _release(read: Read) -> dict[str, Any] | None:
+    """The workflow of the newest PUBLISHED global release, or None."""
+    groups = (await read("groups", INFORM_GROUPS)).value
+    for name in latest_groups(list(groups) if isinstance(groups, list) else []):
+        found = (await read(("group", name), INFORM_GROUP.format(name=name))).value
+        if isinstance(found, list) and found and found[0].get("FlagGnaPublished"):
+            workflow: dict[str, Any] = found[0]
+            return workflow
+    return None
+
+
+async def _refreshed(key: Any, url: str) -> fetch.Entry:
+    entry = await fetch.refresh(_inform_cache, key, _inform_loader(url))
+    if entry.error is not None:
+        raise entry.error  # the refresh failed: the older copy it kept does not count
+    return entry
+
+
+async def refresh_inform_release() -> bool:
+    """One forced read of the release (WorkflowGroups, then the groups down
+    to the newest published one). True when it all came back."""
+    try:
+        found = await _release(_refreshed) is not None
+    except fetch.FetchError as exc:
+        log.info("place INFORM release not read: %s", exc.reason)  # host only, never the URL
+        return False
+    if not found:
+        log.info("place INFORM release not read: no published global release listed")
+    return found
+
+
+async def keep_inform_release() -> None:
+    """The release read at startup and again every 12 h, whether a report
+    asks or not. INFORM's front end drops a request that follows another too
+    closely, so its requests are spaced (fetch.HOSTS): a report that had to
+    read the release first paid three spaced requests, more than its 8 s
+    budget; with the release warm, a new country costs one. Copies live
+    24 h, so a refresh lands while the last one still serves. The product's
+    own reads: no client's token. After a failure: 1 min, doubling to 30."""
+    retry = INFORM_RETRY_S[0]
+    while True:
+        try:
+            ok = await refresh_inform_release()
+        except Exception as exc:  # noqa: BLE001 -- the reports still read on demand
+            log.warning("place INFORM release refresh: %s", type(exc).__name__)
+            ok = False
+        if ok:
+            retry = INFORM_RETRY_S[0]
+            await asyncio.sleep(INFORM_REFRESH_S)
+        else:
+            await asyncio.sleep(retry)
+            retry = min(2 * retry, INFORM_RETRY_S[1])
 
 
 async def build_country(ctx: Context) -> B.Block:
@@ -640,19 +707,17 @@ async def build_country(ctx: Context) -> B.Block:
     iso3 = geo.iso3(code)
     if not iso3:
         return B.unavailable(SPEC_COUNTRY, "no_coverage", f"no ISO alpha-3 code for {code}")
-    groups = await _inform_json("groups", INFORM_GROUPS, 86400.0, ctx)
-    workflow = None
-    for name in latest_groups(list(groups) if isinstance(groups, list) else []):
-        found = await _inform_json(("group", name), INFORM_GROUP.format(name=name), 86400.0, ctx)
-        if isinstance(found, list) and found and found[0].get("FlagGnaPublished"):
-            workflow = found[0]
-            break
+
+    async def read(key: Any, url: str) -> fetch.Entry:
+        return await _inform_entry(key, url, ctx)
+
+    # warm (keep_inform_release): cached, so a new country costs one request
+    workflow = await _release(read)
     if workflow is None:
         return B.unavailable(SPEC_COUNTRY, "upstream_parse", "no published INFORM Risk release")
     entry = await _inform_entry(
         ("scores", workflow["WorkflowId"], iso3),
         INFORM_SCORES.format(wf=workflow["WorkflowId"], iso3=iso3),
-        86400.0,
         ctx,
     )
     if not isinstance(entry.value, list):

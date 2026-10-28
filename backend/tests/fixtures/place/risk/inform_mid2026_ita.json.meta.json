@@ -1,0 +1,27 @@
+{
+  "url": "https://drmkc.jrc.ec.europa.eu/inform-index/API/InformAPI/Countries/Scores/?WorkflowId=515&Iso3=ITA&IndicatorId=INFORM,HA,HA.NAT,HA.NAT.EQ,HA.NAT.FL,HA.NAT.CFL,HA.NAT.TC,HA.NAT.DR,HA.NAT.TS,HA.NAT.EPI,VU,CC",
+  "fetched_at_utc": "2026-10-28T05:18:28Z",
+  "status": 200,
+  "headers": {
+    "cache-control": "no-cache",
+    "pragma": "no-cache",
+    "content-type": "application/json; charset=utf-8",
+    "expires": "-1",
+    "access-control-allow-origin": "*",
+    "access-control-allow-headers": "Content-Type",
+    "x-content-security-policy": "default-src 'self'",
+    "x-content-type-options": "nosniff",
+    "x-xss-protection": "1; mode=block",
+    "content-security-policy": "upgrade-insecure-requests; worker-src data: blob: https: 'unsafe-inline' 'unsafe-eval'; default-src https: wss: data: 'unsafe-inline' 'unsafe-eval'",
+    "x-frame-options": "SAMEORIGIN",
+    "referrer-policy": "strict-origin-when-cross-origin",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+    "date": "Wed, 28 Oct 2026 05:18:29 GMT",
+    "content-length": "1560",
+    "strict-transport-security": "max-age=31536000; includeSubDomains; preload"
+  },
+  "bytes": 1560,
+  "sha256": "2cf89eeb300654fdb045a5be7e67976b6b53419bae5ed532833411bddd36e4f5",
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)",
+  "note": "captured with curl -D (--compressed: body as delivered after content decoding); Set-Cookie headers left out; the answer took 8.3 s"
+}
