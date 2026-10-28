@@ -34,7 +34,27 @@ etre full op pour tout type de format et d'ecran"):
     has room;
   * the stylesheet and the components agree on what a phone is.
 
+With --place "LAT,LON,NAME" the page starts on that place (the saved scope
+the app reads at start), and the place report must open inside the
+viewport like the Filters dialog. Its button, laid over the map, must not
+cover the place the map flew to: where that place landed on screen is read
+from the map (MapView's `data-focus-at`, written once the camera stops),
+not assumed to be the map's centre. The button waits for /api/version, so
+a slow answer brings it in AFTER the map has flown there: --version-late S
+holds the page's first GET /api/version until the map has flown to the
+place and stopped, then S seconds more. Behind a late answer the button
+covered the place at 568x320 and 200 % text, while the timely run was
+clean. The hold follows the map, not a clock: a plain 4 s hold raced the
+map's load, and covered the place in fr and ja but not in en, whose map
+happened to load after the answer. With --near "LAT,LON" geolocation is
+granted and the position set over DevTools, so the page shows Near me as a
+reader who said yes sees it. Without either, a headless page has no
+position and measures World: neither of the two views most readers get.
+
 Usage:  python3 tools/responsive.py [--url URL] [--json] [--shots DIR] [--only LABEL ...]
+                                    [--parallel N] [--lang LANG]
+                                    [--place LAT,LON,NAME] [--near LAT,LON]
+                                    [--version-late S]
 Exit code 1 if any viewport fails, so `make responsive` can gate on it.
 """
 
@@ -82,6 +102,9 @@ VIEWPORTS = [
     ("Pixel 7", 412, 915, 1.0),
     ("iPhone 15 Pro Max", 430, 932, 1.0),
     ("landscape 568", 568, 320, 1.0),
+    # the smallest map of all (99 px) under a one-line button 50 px tall:
+    # where a place report's button that came late covered the place
+    ("landscape 568, 200 % text", 568, 320, 2.0),
     ("landscape 667", 667, 375, 1.0),
     ("landscape 844", 844, 390, 1.0),
     ("landscape 932", 932, 430, 1.0),
@@ -201,6 +224,27 @@ MEASURE = r"""
   const canvas = document.querySelector('.maplibregl-canvas');
   out.canvas = canvas ? [canvas.clientWidth, canvas.clientHeight] : null;
   out.rootFont = getComputedStyle(doc).fontSize;
+  // Where the point the map flew to landed (MapView `data-focus-at`, map
+  // pixels, written once the camera stops), and whether the place report's
+  // button covers it: over a 139 px map at 200 % text it did.
+  out.focus = null;
+  const mapEl = document.querySelector('.map-wrap > .map');
+  const at = mapEl && mapEl.dataset.focusAt;
+  if (at) {
+    const [x, y] = at.split(',').map(Number);
+    const mr = mapEl.getBoundingClientRect();
+    const px = mr.left + x, py = mr.top + y;
+    const btn = document.querySelector('.map-report-open');
+    const b = btn ? btn.getBoundingClientRect() : null;
+    out.focus = {
+      x: Math.round(px), y: Math.round(py),
+      inMap: px >= mr.left && px <= mr.right && py >= mr.top && py <= mr.bottom,
+      button: b ? { left: Math.round(b.left), top: Math.round(b.top),
+                    right: Math.round(b.right), bottom: Math.round(b.bottom) } : null,
+      iconOnly: !!btn && btn.classList.contains('icon-only'),
+      covered: !!b && px >= b.left && px <= b.right && py >= b.top && py <= b.bottom,
+    };
+  }
   return out;
 })
 """
@@ -225,6 +269,15 @@ REACH = r"""
     const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true });
     document.querySelector('.filter-dialog')?.dispatchEvent(escape);
     await pause();
+  }
+  const placeOpen = document.querySelector('.map-report-open');
+  if (placeOpen) {
+    placeOpen.scrollIntoView({ block: 'center' });
+    placeOpen.click(); await pause(); await pause();
+    out.place = inside(document.querySelector('.climate-dialog'));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await pause();
+    window.scrollTo(0, 0);
   }
   const row = document.querySelector('.item');
   if (row) {
@@ -323,6 +376,9 @@ async def measure(
     shots: str | None = None,
     label: str = "",
     lang: str = "fr",
+    place: dict | None = None,
+    near: tuple[float, float] | None = None,
+    version_late: float | None = None,
 ) -> dict:
     chrome = Chrome()
     try:
@@ -374,6 +430,23 @@ async def measure(
                 },
             )
             await call("Page.enable")
+            if place is not None:
+                await call(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": place_seed(place)},
+                )
+            if version_late is not None:
+                await call(
+                    "Page.addScriptToEvaluateOnNewDocument",
+                    {"source": version_hold(version_late)},
+                )
+            if near is not None:
+                # what the app's useNearMe asks: permission "granted", then a fix
+                await call("Browser.grantPermissions", {"permissions": ["geolocation"]})
+                await call(
+                    "Emulation.setGeolocationOverride",
+                    {"latitude": near[0], "longitude": near[1], "accuracy": 50},
+                )
             if scale != 1.0:
                 # the reader's own text size: rem scales with the root, the
                 # way a browser's "very large" or a 200 % zoom of text does
@@ -421,6 +494,31 @@ async def measure(
                 else:
                     streak = 0
             await asyncio.sleep(1.0)
+            place_wait = None
+            if place is not None:
+                # The camera flies to the place once the map is ready, and the
+                # button appears once /api/version answered: measured before
+                # either, the check would judge a world view or no button.
+                # MapLibre's `load` waits for the basemap's first tiles: how
+                # long this took is reported, and what was still missing.
+                # And both must STAY: a button that arrives after the flight
+                # sends the camera off again, and the point it had written
+                # is stale until that flight stops. Two equal readings.
+                waited = 0.0
+                state: dict = {}
+                previous = None
+                while waited < 90:
+                    probe = await call(
+                        "Runtime.evaluate", {"expression": PLACE_SETTLED, "returnByValue": True}
+                    )
+                    state = probe["result"]["result"]["value"]
+                    if state["button"] and state["focusAt"] and state == previous:
+                        break
+                    previous = state
+                    await asyncio.sleep(0.5)
+                    waited += 0.5
+                place_wait = {"s": waited, **state}
+                await asyncio.sleep(0.5)
             # Measure, and if the feed came back empty after we HAD seen
             # events, the page hit one of those reconnection holes between the
             # check and the measurement: wait it out and measure again rather
@@ -436,6 +534,7 @@ async def measure(
                 await asyncio.sleep(2.5)
             measured["gotData"] = ready and measured["items"] > 0
             measured["touch"] = touch
+            measured["placeWait"] = place_wait
             if shots:
                 import base64
 
@@ -453,7 +552,68 @@ async def measure(
         chrome.close()
 
 
-def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
+# What place mode waits for: the button (and its box) and where the map
+# says the place landed.
+PLACE_SETTLED = r"""
+(() => {
+  const btn = document.querySelector('.map-report-open');
+  const b = btn ? btn.getBoundingClientRect() : null;
+  return {
+    button: b ? [b.left, b.top, b.right, b.bottom].map(Math.round) : null,
+    focusAt: document.querySelector('.map-wrap > .map')?.dataset.focusAt || null,
+  };
+})()
+"""
+
+
+def version_hold(seconds: float, cap: float = 30.0) -> str:
+    """Runs before the page's own scripts: the page's FIRST `GET /api/version`
+    is sent only once the map says where the place landed (MapView's
+    `data-focus-at`, written when its flight stops; at most `cap` seconds),
+    then `seconds` more. Every later request, and every other URL, goes out
+    at once. The place report's button waits for that answer
+    (useApiFeature), so it arrives after the flight to the place."""
+    return (
+        "(() => {"
+        " const send = window.fetch.bind(window); let held = false;"
+        " const flown = () => new Promise((go) => {"
+        " const start = Date.now();"
+        " const look = () => document.querySelector('.map-wrap > .map')?.dataset.focusAt"
+        f" || Date.now() - start > {round(cap * 1000)} ? go() : setTimeout(look, 100);"
+        " look();"
+        " });"
+        " window.fetch = (input, init) => {"
+        " const raw = typeof input === 'string' || input instanceof URL ? input : input.url;"
+        " const url = new URL(raw, location.href);"
+        " if (held || url.pathname !== '/api/version') return send(input, init);"
+        " held = true;"
+        " return flown()"
+        f" .then(() => new Promise((go) => setTimeout(go, {round(seconds * 1000)})))"
+        " .then(() => send(input, init));"
+        " };"
+        "})()"
+    )
+
+
+def parse_place(text: str) -> dict:
+    """`LAT,LON,NAME` (the name may hold commas) -> the app's saved place."""
+    lat, lon, name = text.split(",", 2)
+    return {"lat": float(lat), "lon": float(lon), "name": name.strip(), "country": None}
+
+
+def parse_near(text: str) -> tuple[float, float]:
+    lat, lon = (float(x) for x in text.split(","))
+    return lat, lon
+
+
+def place_seed(place: dict) -> str:
+    """Runs before the page's own scripts: the saved scope the store reads
+    at start (`sosforge.scope`), so the page opens on that place."""
+    saved = json.dumps({"scope": "place", "asked": True, "place": place})
+    return f"localStorage.setItem('sosforge.scope', {json.dumps(saved)})"
+
+
+def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = False) -> list[str]:
     """The invariants. Each one is a bug this product actually shipped."""
     failures = []
     if not m.get("gotData"):
@@ -493,8 +653,26 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
     mapbox = m["regions"].get("map")
     if not mapbox or mapbox["h"] < 40 or mapbox["w"] < 40:
         failures.append(f"the map is {mapbox} : not usable")
+    if place and m.get("canvas"):
+        # Judged on a real map only: without WebGL there is no camera, and
+        # "the map is not usable" has already been said.
+        focus = m.get("focus")
+        if not focus:
+            waited = m.get("placeWait") or {}
+            after = f" after {waited['s']} s, {waited}" if waited else ""
+            failures.append(f"the map never said where the place landed (no data-focus-at){after}")
+        elif not focus["inMap"]:
+            failures.append(f"the place landed off the map, at {focus['x']},{focus['y']}")
+        elif focus["covered"]:
+            failures.append(
+                f"the place report's button {focus['button']} covers the place "
+                f"the map flew to, at {focus['x']},{focus['y']}"
+            )
     reach = m.get("reach") or {}
-    for key, what in (("filters", "the Filters dialog"), ("panel", "an event's panel")):
+    panels = [("filters", "the Filters dialog"), ("panel", "an event's panel")]
+    if place:
+        panels.append(("place", "the place report"))
+    for key, what in panels:
         got = reach.get(key)
         if not got:
             failures.append(f"{what} did not open")
@@ -519,7 +697,8 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0) -> list[str]:
     return failures
 
 
-async def main() -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Every flag, here and in the docstring's Usage line (tested)."""
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="http://localhost:5380/")
     ap.add_argument("--json", action="store_true")
@@ -527,7 +706,23 @@ async def main() -> int:
     ap.add_argument("--only", nargs="*", default=None, help="labels (substrings) to run")
     ap.add_argument("--parallel", type=int, default=3, help="Chromes at once")
     ap.add_argument("--lang", default="fr", help="language of the page (en, fr, es, ja, id)")
-    args = ap.parse_args()
+    ap.add_argument("--place", default=None, help='start on a place: "LAT,LON,NAME"')
+    ap.add_argument("--near", default=None, help='Near me at a granted position: "LAT,LON"')
+    ap.add_argument(
+        "--version-late",
+        type=float,
+        default=None,
+        metavar="S",
+        help="hold the page's first GET /api/version until the map has flown to the place,"
+        " then S seconds (the place button comes late)",
+    )
+    return ap
+
+
+async def main() -> int:
+    args = build_parser().parse_args()
+    place = parse_place(args.place) if args.place else None
+    near = parse_near(args.near) if args.near else None
 
     chosen = [
         v for v in VIEWPORTS if not args.only or any(o.lower() in v[0].lower() for o in args.only)
@@ -537,12 +732,23 @@ async def main() -> int:
         batch = chosen[start : start + args.parallel]
         measured = await asyncio.gather(
             *[
-                measure(args.url, w, h, scale, args.shots, label, args.lang)
+                measure(
+                    args.url,
+                    w,
+                    h,
+                    scale,
+                    args.shots,
+                    label,
+                    args.lang,
+                    place,
+                    near,
+                    args.version_late,
+                )
                 for label, w, h, scale in batch
             ]
         )
         for (label, w, h, scale), m in zip(batch, measured, strict=True):
-            bad = verdict(label, w, m, scale)
+            bad = verdict(label, w, m, scale, place is not None)
             results.append(
                 {
                     "label": label,
@@ -557,11 +763,19 @@ async def main() -> int:
                 failed += 1
             if not args.json:
                 mark = "??  " if not m.get("gotData") else ("FAIL" if bad else "ok  ")
+                focus = m.get("focus") if place else None
+                where = ""
+                if focus:
+                    button = focus["button"] or {}
+                    where = (
+                        f", place at y {focus['y']}, button bottom {button.get('bottom', '--')}"
+                        f"{' (icon only)' if focus['iconOnly'] else ''}"
+                    )
                 print(
                     f"  {mark}  {label:28s} {w:>4}x{h:<4}  "
                     f"{m['itemsAboveFold']} event(s) above the fold, map "
                     f"{(m['regions'].get('map') or {}).get('h', 0)} px"
-                    f"{', touch' if m.get('touch') else ''}",
+                    f"{', touch' if m.get('touch') else ''}{where}",
                     flush=True,
                 )
                 for line in bad:

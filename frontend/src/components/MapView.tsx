@@ -154,6 +154,27 @@ function coveredRight(mapEl: HTMLElement | null): number {
   return Math.max(0, Math.round(Math.min(covered, map.width / 2)))
 }
 
+/** How much of the map's top the place report's button covers (App.tsx
+ * `.map-report`, laid over the map's top-left), as camera padding for a
+ * flight to the place: the place then lands below the button instead of
+ * under it. The mirror of `coveredRight`, capped at half the map the same
+ * way. On a 320x568 phone at 200 % text the button ran from y 12 to 99
+ * of a 139 px map and the place sat at y 70, under it (measured). Zero
+ * without the button (Near me, the world) or when it is not over the map. */
+function coveredTop(mapEl: HTMLElement | null): number {
+  const button = mapEl?.closest('.body')?.querySelector<HTMLElement>('.map-report')
+  if (!mapEl || !button) return 0
+  const map = mapEl.getBoundingClientRect()
+  const over = button.getBoundingClientRect()
+  if (!over.height || over.bottom <= map.top || over.top >= map.bottom) return 0
+  if (over.right <= map.left || over.left >= map.right) return 0
+  const covered = over.bottom - map.top + 12
+  return Math.max(0, Math.round(Math.min(covered, map.height / 2)))
+}
+
+/** Where the camera was asked to go (a place, the reader, a search). */
+type Focus = NonNullable<ReturnType<typeof useStore.getState>['focus']>
+
 export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const t = useStore((s) => s.t)
   const container = useRef<HTMLDivElement>(null)
@@ -173,6 +194,12 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   const [ready, setReady] = useState(false)
   const reduceMotion = useMediaQuery(REDUCED_MOTION)
   const [failed, setFailed] = useState(false)
+  /** A focus flight was asked for: `data-focus-at` is written from then on. */
+  const flown = useRef(false)
+  /** The flight to a place the camera is still on, and the top padding it
+   * was given: until the reader or another flight moves the camera, a change
+   * in what the place report's button covers pads it again. */
+  const onFocus = useRef<{ focus: Focus; top: number } | null>(null)
   const latest = useRef({ events, now })
   latest.current = { events, now }
 
@@ -223,6 +250,26 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
       }
     })
     instance.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+
+    // Where the point the camera last flew to (a place, the reader, a
+    // search) sits on screen, in map pixels, once the camera has stopped:
+    // what tools/responsive.py reads to check that no overlay covers it.
+    // Absent while the camera moves and before the first flight.
+    const mapEl = container.current
+    instance.on('movestart', (event?: { originalEvent?: unknown }) => {
+      delete mapEl.dataset.focusAt
+      // A DOM event behind the move is the reader's own (a drag, a wheel, a
+      // pinch, the zoom buttons, the keyboard): the camera is theirs now, and
+      // the place flight is never padded again. Our own flights carry none,
+      // and neither does MapLibre's resize (it passes its observer entries).
+      if (event?.originalEvent) onFocus.current = null
+    })
+    instance.on('moveend', () => {
+      const focus = useStore.getState().focus
+      if (!flown.current || !focus || instance.isMoving()) return
+      const at = instance.project([focus.lon, focus.lat])
+      mapEl.dataset.focusAt = `${Math.round(at.x)},${Math.round(at.y)}`
+    })
 
     // MapLibre opens its compact attribution EXPANDED the first time it fills
     // it -- which can be well after `load`, once the tiles' attribution has
@@ -478,10 +525,11 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     zoom: number,
     speed: number,
     right = 0,
+    top = 0,
   ) => {
     // Always an explicit padding: MapLibre KEEPS the last one, so a flight
     // made while the panel was open would offset every later one.
-    const padding = { top: 0, bottom: 0, left: 0, right }
+    const padding = { top, bottom: 0, left: 0, right }
     if (reduceMotion) instance.jumpTo({ center, zoom, padding })
     else instance.flyTo({ center, zoom, speed, curve: 1.5, essential: true, padding })
   }
@@ -491,10 +539,65 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
   useEffect(() => {
     const instance = map.current
     if (!instance || !ready || !focus) return
-    moveCamera(instance, [focus.lon, focus.lat], focus.zoom, 1.6)
+    flown.current = true
+    const top = coveredTop(container.current)
+    onFocus.current = { focus, top }
+    moveCamera(instance, [focus.lon, focus.lat], focus.zoom, 1.6, 0, top)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- moveCamera is
     // rebuilt on every render; `reduceMotion` is what actually changes it
   }, [focus, ready, reduceMotion])
+
+  // --- ... and padded again when the button arrives or changes size later.
+  //
+  // The button waits for /api/version (App.tsx useApiFeature), and a check
+  // that got no answer is asked again 5 s later: it can appear after the
+  // flight has started, and the padding above was then 0. Measured in a real
+  // Chrome at 568x320 and 200 % text, the answer held 4 s: the button came
+  // at 4.8 s, y 12 to 62 of a 99 px map, over the place, which stayed at
+  // y 50. Its size also changes later: the web font, the text size, the
+  // language, the icon-only switch.
+  //
+  // Its mount is seen on `.body`'s own children only (App mounts it there):
+  // with `subtree` every feed row would wake this up. The map's own size is
+  // not watched: on a landscape phone its height follows the URL bar
+  // (`30dvh`), and the half-map cap with it, so every scroll would have
+  // moved the camera. A padding kept from before a turn still clears a
+  // button that kept its size: it is one line tall (useIconOnly), at most
+  // y 62 at 200 % text, and the place lands at (height + padding) / 2, at
+  // least y 74 on the smallest map (99 px, padding 49.5 or more).
+  useEffect(() => {
+    const instance = map.current
+    const mapEl = container.current
+    const body = mapEl?.closest('.body')
+    if (!instance || !ready || !mapEl || !body) return
+    const repad = () => {
+      const flight = onFocus.current
+      if (!flight) return
+      const top = coveredTop(mapEl)
+      if (top === flight.top) return
+      flight.top = top
+      moveCamera(instance, [flight.focus.lon, flight.focus.lat], flight.focus.zoom, 1.6, 0, top)
+    }
+    const sizes = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(repad)
+    let watched: Element | null = null
+    const track = () => {
+      const button = body.querySelector<HTMLElement>('.map-report')
+      if (button !== watched) {
+        if (watched) sizes?.unobserve(watched)
+        if (button) sizes?.observe(button)
+        watched = button
+      }
+      repad()
+    }
+    const mounts = typeof MutationObserver === 'undefined' ? null : new MutationObserver(track)
+    mounts?.observe(body, { childList: true })
+    track()
+    return () => {
+      mounts?.disconnect()
+      sizes?.disconnect()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see moveCamera
+  }, [ready, reduceMotion])
 
   // --- selection: center on it and open the card
   const selected = useStore((s) => s.selected)
@@ -532,6 +635,8 @@ export function MapView({ events, now }: { events: SosEvent[]; now: number }) {
     // administrative zone (NWS, GDACS) only makes sense at regional scale --
     // pulling it in to 300 m would show nothing but a field.
     const pointLike = event.source !== 'nws' && event.source !== 'gdacs'
+    // the camera is on the event now: the place flight is never re-padded
+    onFocus.current = null
     moveCamera(
       instance,
       [event.lon, event.lat],

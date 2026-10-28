@@ -1,10 +1,24 @@
-import { Component, Suspense, lazy, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
+import {
+  Component,
+  Suspense,
+  lazy,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 import { useStore } from '../store'
 
 /* Two tools in the footer's credit line, where they cost the first screen
  * nothing: on a phone the live feed keeps the fold (tools/responsive.py),
- * on a wide screen the footer is always in view.
+ * on a wide screen the footer is always in view. The place report's button
+ * (laid over the map, App.tsx `.map-report`) shares their dialog.
  *
  *  - the climate indicators (lane C2's panel), in a dialog, loaded only
  *    when opened: the panel and its CSS stay out of the first paint, and
@@ -51,10 +65,89 @@ class ChunkBoundary extends Component<
 }
 
 const loadPanel = () => import('./ClimatePanel').then((m) => ({ default: m.ClimatePanel }))
+const loadPlace = () => import('./PlaceReport').then((m) => ({ default: m.PlaceReport }))
 
-/** The climate indicators, behind one button. */
-export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } = {}) {
+/** The words one panel's button and dialog say, as i18n keys. */
+interface PanelWords {
+  title: string
+  close: string
+  loading: string
+  failed: string
+}
+
+/** Would `label` take more than one line? Then the button shows its icon
+ * alone. Measured, never guessed: the label's width changes with the
+ * language, the web font and the reader's text size. On a 320x568 phone at
+ * 200 % text the place report's label took two lines in en, fr and ja, and
+ * its opaque button (y 12 to 99 of a 139 px map) covered the place the map
+ * had flown to, at y 70 (tools/responsive.py --place, 2026-10-27).
+ *
+ * Measured with the label SHOWN, before paint: new room (a phone turned, a
+ * window resized, the text size or the web font changing) or new words
+ * show it again for one layout pass, then it is judged again. */
+function useIconOnly(
+  enabled: boolean,
+  icon: RefObject<HTMLElement | null>,
+  label: RefObject<HTMLElement | null>,
+  text: string,
+): boolean {
+  const [iconOnly, setIconOnly] = useState(false)
+  const [room, setRoom] = useState(0)
+  useEffect(() => {
+    if (!enabled) return
+    const remeasure = () => setRoom((n) => n + 1)
+    window.addEventListener('resize', remeasure)
+    const fonts = typeof document.fonts?.addEventListener === 'function' ? document.fonts : null
+    fonts?.addEventListener('loadingdone', remeasure)
+    // the icon is one glyph on one line whatever the label does: its size
+    // changes with the text size only, never with this hook's own decision
+    const watcher = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(remeasure)
+    if (icon.current) watcher?.observe(icon.current)
+    return () => {
+      window.removeEventListener('resize', remeasure)
+      fonts?.removeEventListener('loadingdone', remeasure)
+      watcher?.disconnect()
+    }
+  }, [enabled, icon])
+  useLayoutEffect(() => setIconOnly(false), [room, text])
+  useLayoutEffect(() => {
+    const el = label.current
+    if (!enabled || iconOnly || !el) return
+    // `normal` (NaN) is never judged: the label stays
+    const line = parseFloat(getComputedStyle(el).lineHeight)
+    if (line > 0 && el.getBoundingClientRect().height > line * 1.5) setIconOnly(true)
+  }, [enabled, label, iconOnly, room, text])
+  return iconOnly
+}
+
+/** A panel behind one button, loaded only when opened, in a dialog over
+ * everything (a bottom sheet on a phone): the panel and its CSS stay out of
+ * the first paint, and nothing is fetched for a reader who never looks. */
+function PanelButton<P extends object>({
+  load,
+  panel,
+  words,
+  icon,
+  label,
+  name,
+  className,
+  oneLine = false,
+}: {
+  load: () => Promise<{ default: ComponentType<P> }>
+  panel: P
+  words: PanelWords
+  icon: string
+  label: string
+  /** the accessible name, when the visible label is a short form of it */
+  name?: string
+  className: string
+  /** never wrap the label: the icon alone where it would (`useIconOnly`) */
+  oneLine?: boolean
+}) {
   const t = useStore((s) => s.t)
+  const iconRef = useRef<HTMLSpanElement>(null)
+  const labelRef = useRef<HTMLSpanElement>(null)
+  const iconOnly = useIconOnly(oneLine, iconRef, labelRef, label)
   const [open, setOpen] = useState(false)
   // React.lazy keeps a rejection forever: a retry needs a new one
   const [attempt, setAttempt] = useState(0)
@@ -99,12 +192,21 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
       <button
         type="button"
         ref={trigger}
-        className="footer-tool"
+        className={iconOnly ? `${className} icon-only` : className}
+        aria-label={name}
+        // the words the icon stands for, for a pointer (the name says them
+        // to a screen reader already)
+        title={iconOnly ? (name ?? label) : undefined}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => setOpen(true)}
       >
-        <span aria-hidden="true">◔</span> {t('climate.title')}
+        <span aria-hidden="true" ref={iconRef}>
+          {icon}
+        </span>{' '}
+        <span ref={labelRef} hidden={iconOnly}>
+          {label}
+        </span>
       </button>
       {open
         ? createPortal(
@@ -115,7 +217,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                 className="climate-dialog"
                 role="dialog"
                 aria-modal="true"
-                aria-label={t('climate.title')}
+                aria-label={t(words.title)}
                 tabIndex={-1}
                 onKeyDown={onKeyDown}
               >
@@ -123,7 +225,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                   <button
                     type="button"
                     className="btn btn-quiet btn-icon"
-                    aria-label={t('climate.close')}
+                    aria-label={t(words.close)}
                     onClick={() => setOpen(false)}
                   >
                     ✕
@@ -137,7 +239,7 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                     // raw text (an unbreakable asset URL that ran past a 280 px
                     // card) waits behind "Show more" (recheck of PR #5).
                     <div className="climate-dialog-wait climate-failed" role="alert">
-                      <p>{t('climate.failed.reload')}</p>
+                      <p>{t(words.failed)}</p>
                       <p className="climate-failed-actions">
                         <button type="button" className="btn btn-secondary" onClick={() => location.reload()}>
                           {t('climate.reload')}
@@ -153,8 +255,8 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
                     </div>
                   )}
                 >
-                  <Suspense fallback={<p className="climate-dialog-wait">{t('climate.loading')}</p>}>
-                    <Panel />
+                  <Suspense fallback={<p className="climate-dialog-wait">{t(words.loading)}</p>}>
+                    <Panel {...panel} />
                   </Suspense>
                 </ChunkBoundary>
               </div>
@@ -163,6 +265,74 @@ export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } 
           )
         : null}
     </>
+  )
+}
+
+const CLIMATE_WORDS: PanelWords = {
+  title: 'climate.title',
+  close: 'climate.close',
+  loading: 'climate.loading',
+  failed: 'climate.failed.reload',
+}
+const NO_PROPS = {}
+
+/** The climate indicators, behind one button. */
+export function ClimateButton({ load = loadPanel }: { load?: typeof loadPanel } = {}) {
+  const t = useStore((s) => s.t)
+  return (
+    <PanelButton
+      load={load}
+      panel={NO_PROPS}
+      words={CLIMATE_WORDS}
+      icon="◔"
+      label={t('climate.title')}
+      className="footer-tool"
+    />
+  )
+}
+
+const PLACE_WORDS: PanelWords = {
+  title: 'place.title',
+  close: 'place.close',
+  loading: 'place.loading',
+  failed: 'place.failed.reload',
+}
+
+/** The place report (weather, sea, wind, air, risks, history) of a place
+ * the reader SEARCHED or CLICKED, behind one button laid over the map.
+ * Never give it the device position: /api/place sends its point to about
+ * fifteen third parties, and "your location never leaves your device" is a
+ * promise. Inline, the report took about two phone screens and pushed
+ * every live event below the fold; over the map it takes no row at all,
+ * and it is fetched only when opened. Where its label would wrap it shows
+ * the icon alone (its name still says the whole description), and the map
+ * pads its flight to the place by what the button covers (MapView
+ * `coveredTop`), and pads it again when the button arrives or changes size
+ * after that flight started: the place is never under it. */
+export function PlaceReportButton({
+  lat,
+  lon,
+  name,
+  load = loadPlace,
+}: {
+  lat: number
+  lon: number
+  name: string
+  load?: typeof loadPlace
+}) {
+  const t = useStore((s) => s.t)
+  const panel = useMemo(() => ({ lat, lon, name }), [lat, lon, name])
+  return (
+    <PanelButton
+      load={load}
+      panel={panel}
+      words={PLACE_WORDS}
+      icon="☁"
+      label={t('place.open.short')}
+      name={t('place.open', { place: name })}
+      className="map-report-open"
+      oneLine
+    />
   )
 }
 

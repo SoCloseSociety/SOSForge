@@ -1,0 +1,14 @@
+{
+  "url": "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_Europe_24h.csv",
+  "fetched_at_utc": "2026-10-27T10:51:29Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 10:51:28 GMT",
+    "content-type": "text/csv",
+    "content-length": "50188",
+    "last-modified": "Tue, 27 Oct 2026 10:43:48 GMT",
+    "etag": "\"441ffd26b942c2bdd1e11f3823dadb84\""
+  },
+  "bytes": 50188,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

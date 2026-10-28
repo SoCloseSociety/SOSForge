@@ -24,7 +24,7 @@ import { ActiveFilters, FilterSheet, WindowSwitch } from "./components/FilterShe
 import { ScopeBar } from "./components/ScopeBar";
 import { SourcesBar } from "./components/SourcesBar";
 import { GetAppBanner, GetAppLink } from "./components/GetApp";
-import { ClimateButton, OfflineMapButton } from "./components/FooterTools";
+import { ClimateButton, OfflineMapButton, PlaceReportButton } from "./components/FooterTools";
 import {
   NEAR_RADIUS_KM,
   NEAR_ZOOM,
@@ -37,6 +37,7 @@ import {
 import { distanceKm } from "./arrival";
 import { useNearMe } from "./useNearMe";
 import { useCountries } from "./useCountries";
+import { useApiFeature } from "./useApiFeature";
 import { LANGS } from "./i18n";
 import { applyTheme, currentTheme, type Theme } from "./theme";
 import { SEVERITY_META, formatAge, formatClock, kindLabel } from "./format";
@@ -291,6 +292,9 @@ export default function App() {
   // Its countries, found in the page (the position never leaves it): the
   // alerts that carry no position but name one of them belong in this feed.
   const countries = useCountries(center, showing === "place" ? (place?.country ?? null) : null);
+  // The place report only where the API serves it (/api/version lists
+  // "place"): switched off, it answered every opening with a 404.
+  const placeServed = useApiFeature("place", showing === "place" && place !== null);
 
   // The window slides with time, so the list must be recomputed... but not
   // 60 times a minute: we recompute it in 10 s buckets, which is plenty for
@@ -528,6 +532,19 @@ export default function App() {
       <Banner events={events} now={now} />
 
       <div className="body">
+        {/* The place report, ONLY for a place the reader searched or
+            clicked. NEVER with `center`: in Near me `center` is the DEVICE
+            position, and /api/place sends its point to about fifteen third
+            parties, which breaks "your location never leaves your device".
+            Laid over the map, which is centred on that place: any row of
+            its own pushed the first event below the fold on landscape
+            phones (tools/responsive.py --place). First in the DOM, so Tab
+            reaches it before the feed. Only once /api/version lists it. */}
+        {showing === "place" && place && placeServed ? (
+          <div className="map-report">
+            <PlaceReportButton lat={place.lat} lon={place.lon} name={place.name} />
+          </div>
+        ) : null}
         {/* `panel-scoped`: a state class, read only by the short-screen
             block of styles.css (the landscape grid of Near me and a place) */}
         <section className={showing === "world" ? "panel" : "panel panel-scoped"}>
@@ -553,12 +570,6 @@ export default function App() {
             {isPhone ? null : <WindowSwitch />}
           </div>
           <ScopeBar severeElsewhere={severeElsewhere} unlocated={unlocated} />
-          {/* PLACE REPORT SLOT. Another lane builds <PlaceReport lat lon name />
-              (weather, sea, wind, air, risk and history for a place). It
-              mounts HERE, under the scope bar, when the feed is around a
-              point: {center && <PlaceReport lat={center.lat}
-              lon={center.lon} name={centerName} />}. Nothing is rendered
-              until it exists. */}
           <Feed
             events={feedEvents}
             now={now}

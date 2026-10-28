@@ -1,0 +1,19 @@
+{
+ "note": "Points and the countries the page's rule (frontend/src/countries.ts: NEAR_BORDER_KM 25, else the nearest country within OFFSHORE_KM 100) must give them on the 1:10m table. Asserted by both suites (backend/tests/test_place_geo.py, frontend/src/__tests__/countryPoints.test.ts). at_sea is the place report's own flag: no country within 25 km. Coordinates as the place report rounds them (2 decimals).",
+ "points": [
+  {"name": "Reykjavik", "lat": 64.15, "lon": -21.94, "codes": ["IS"], "country_code": "IS", "at_sea": false},
+  {"name": "Stockholm", "lat": 59.33, "lon": 18.07, "codes": ["SE"], "country_code": "SE", "at_sea": false},
+  {"name": "New York", "lat": 40.71, "lon": -74.01, "codes": ["US"], "country_code": "US", "at_sea": false},
+  {"name": "Lisbon", "lat": 38.72, "lon": -9.14, "codes": ["PT"], "country_code": "PT", "at_sea": false},
+  {"name": "Strasbourg", "lat": 48.58, "lon": 7.75, "codes": ["DE", "FR"], "country_code": "FR", "at_sea": false},
+  {"name": "Ko Samui", "lat": 9.51, "lon": 100.01, "codes": ["TH"], "country_code": "TH", "at_sea": false},
+  {"name": "Ko Tao", "lat": 10.09, "lon": 99.84, "codes": ["TH"], "country_code": "TH", "at_sea": true},
+  {"name": "Maseru", "lat": -29.31, "lon": 27.48, "codes": ["LS", "ZA"], "country_code": "LS", "at_sea": false},
+  {"name": "Saint-Denis, Reunion", "lat": -20.88, "lon": 55.45, "codes": ["RE"], "country_code": "RE", "at_sea": false},
+  {"name": "mid-Pacific", "lat": 0.0, "lon": -160.0, "codes": ["UM"], "country_code": "UM", "at_sea": true},
+  {"name": "open Pacific", "lat": 0.0, "lon": -140.0, "codes": [], "country_code": null, "at_sea": true},
+  {"name": "Clipperton", "lat": 10.29, "lon": -109.22, "codes": ["CP"], "country_code": "CP", "at_sea": false},
+  {"name": "off Clipperton", "lat": 10.29, "lon": -108.5, "codes": ["CP"], "country_code": "CP", "at_sea": true},
+  {"name": "Bouvet", "lat": -54.42, "lon": 3.36, "codes": ["BV"], "country_code": "BV", "at_sea": false}
+ ]
+}

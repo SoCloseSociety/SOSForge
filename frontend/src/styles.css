@@ -531,6 +531,8 @@ a {
 }
 
 .body {
+  /* the containing block of the place report's button (.map-report) */
+  position: relative;
   display: grid;
   /* capped at 520 px: on a 4K screen 30% was an 1150 px wide feed of
      one-line rows and a map squeezed for nothing */
@@ -1787,6 +1789,54 @@ a {
   text-align: center;
   color: var(--t2);
   background: var(--bg-1);
+}
+
+/* The place report's button, over the top-left of the map. Out of the
+   flow, it costs the feed no row: on the grid (wide) its grid area is the
+   map's, so it is placed inside the map column; in the phone column the
+   map comes first, so the top-left of .body is the map's. Under the event
+   panel (z 3), clear of the zoom buttons (56 px on the right). Opaque, as
+   every map overlay is (below). */
+.map-report {
+  position: absolute;
+  grid-column: 2;
+  grid-row: 1;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  max-width: calc(100% - 24px - 56px);
+}
+
+.map-report-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  max-width: 100%;
+  min-width: 0;
+  /* NOT a pill: the label wraps on a 280 px phone (see .footer-tool) */
+  padding: 6px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 16px;
+  background: var(--surface-panel);
+  color: var(--t1);
+  font: inherit;
+  font-size: var(--ts-label);
+  text-align: start;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.map-report-open:hover {
+  border-color: var(--edge);
+}
+
+/* Where the label would wrap, the icon alone (FooterTools.tsx
+   useIconOnly): a two-line button over a 139 px phone map covered the
+   place the map flew to. Still a 44 px target. */
+.map-report-open.icon-only {
+  min-width: 44px;
+  justify-content: center;
 }
 
 /* Map overlays sit on OPAQUE surfaces: a translucent card over a white map
@@ -3195,7 +3245,8 @@ a {
   .source,
   .filter-chip,
   .scope-elsewhere,
-  .footer-tool {
+  .footer-tool,
+  .map-report-open {
     min-height: 44px;
   }
 

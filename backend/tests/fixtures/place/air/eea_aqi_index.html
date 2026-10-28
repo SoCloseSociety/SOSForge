@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>European Air Quality Index</title>
+
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="MobileOptimized" content="320" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, minimal-ui" />
+    <meta http-equiv="cleartype" content="on" />
+
+    <link
+      rel="apple-touch-icon-precomposed"
+      sizes="144x144"
+      href="img/touch/apple-touch-icon-144x144-precomposed.png"
+    />
+    <link
+      rel="apple-touch-icon-precomposed"
+      sizes="114x114"
+      href="img/touch/apple-touch-icon-114x114-precomposed.png"
+    />
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="img/touch/apple-touch-icon-72x72-precomposed.png" />
+    <link rel="apple-touch-icon-precomposed" href="img/touch/apple-touch-icon-57x57-precomposed.png" />
+    <link rel="shortcut icon" sizes="196x196" href="img/touch/touch-icon-196x196.png" />
+    <link rel="shortcut icon" href="img/touch/apple-touch-icon.png" />
+
+    <link
+      href="//fonts.googleapis.com/css?family=Open+Sans:400,700&amp;subset=latin-ext,latin"
+      rel="stylesheet"
+      type="text/css"
+    />
+    <link href="//fonts.googleapis.com/css?family=Muli" rel="stylesheet" type="text/css" />
+    <link href="script/vendor/visavail/css/visavail.css" rel="stylesheet" type="text/css" />
+    <link href="script/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+
+    <link rel="stylesheet" href="css/normalize.css" />
+    <link rel="stylesheet" href="css/boilerplate.css" />
+    <link rel="stylesheet" href="css/style.css" />
+
+    <script type="text/javascript">
+      function GetIEVersion() {
+        var sAgent = window.navigator.userAgent;
+        var Idx = sAgent.indexOf('MSIE');
+
+        // If IE, return version number.
+        if (Idx > 0) return parseInt(sAgent.substring(Idx + 5, sAgent.indexOf('.', Idx)));
+        // If IE 11 then look for Updated user agent string.
+        else if (!!navigator.userAgent.match(/Trident\/7\./)) return 11;
+        else return 0; //It is not IE
+      }
+
+      if (GetIEVersion() > 0)
+        alert(
+          'This tool is not compatible with Internet Explorer ' + GetIEVersion() + ', please use any other browser'
+        );
+    </script>
+
+    <script src="script/vendor/maplibre/maplibre-gl.js"></script>
+    <link href="script/vendor/maplibre/maplibre-gl.css" rel="stylesheet" />
+
+    <script src="script/vendor/jsts-lite.js"></script>
+
+    <script src="script/vendor/moment/moment-with-locales.min.js"></script>
+    <script src="script/vendor/d3/d3.min.js" charset="utf-8"></script>
+    <script src="script/vendor/visavail/js/visavail.js"></script>
+    <script src="script/vendor/handlebars.min.js"></script>
+    <script src="https://www.gstatic.com/charts/loader.js" type="text/javascript"></script>
+    <script src="script/vendor/jquery-3.2.1.min.js"></script>
+    <script src="script/vendor/spin.min.js"></script>
+    <script src="script/vendor/polyfill.js"></script>
+    <script src="script/util.js"></script>
+    <script src="script/data.js"></script>
+    <script src="script/vendor/underscore-min.js"></script>
+    <script src="script/ui.js"></script>
+    <script src="script/ui-station.js"></script>
+    <script src="script/ui-modelled.js"></script>
+    <script src="script/graph.js"></script>
+    <script src="script/esri-locator.js"></script>
+    <script src="script/geonames-locator.js"></script>
+    <script src="script/locator.js"></script>
+    <script src="script/layer-control.js"></script>
+    <script src="script/map-mb.js"></script>
+  </head>
+  <body>
+    <div id="header">
+      <div class="eea_logo">
+        <a href="//eea.europa.eu">
+          <img
+            class="large-devices"
+            src="img/logos/EEA-logo-compact.png"
+            title="European Environment Agency"
+            alt="Flower-Gear"
+          />
+          <img
+            class="small-devices"
+            src="img/logos/eea_mini.png"
+            title="European Environment Agency"
+            alt="Flower-Gear"
+          />
+        </a>
+      </div>
+      <div class="title">
+        <div class="titleText">
+          <h1>European Air Quality Index</h1>
+          <p>Up-To-Date air quality levels and forecasts across Europe</p>
+        </div>
+
+        <div class="titleDate">
+          <h2></h2>
+        </div>
+        <!-- TODO:  <h2><%=initialDate %></h2>  -->
+      </div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- Cookies message box -->
+    <div id="footer">
+      <div id="viewlet-cookiepolicy" class="portalMessage">
+        <h2 id="tlspu_cookiepolicy_title">This site uses cookies</h2>
+        <p id="tlspu_cookiepolicy_message">
+          We use cookies to record some preference settings and to analyse how visitors use our web site. Cookies do not
+          contain any personal information about you. If you wish, see
+          <a href="http://www.aboutcookies.org/how-to-delete-cookies/" title="how to delete or disable cookies">
+            how to delete/disable cookies in your web browser</a
+          >. See also
+          <a href="http://www.eea.europa.eu/legal/privacy" title="our privacy policy">our privacy policy</a>.
+        </p>
+        <button id="tlspu_cookiepolicy_button" value="hide" onclick="RecordCookiesAception()">
+          I am fine with this
+        </button>
+      </div>
+    </div>
+    <!--_END_Cookies message box-->
+    <div id="attribution" class="attribution">© Esri, HERE, DeLorme, OpenStreetMap contributors</div>
+    <div id="attribution_long" class="attribution">
+      © Esri, HERE, DeLorme, MapmyIndia, OpenStreetMap contributors, and the GIS user community
+    </div>
+    <div id="legend_tab" onclick="ToggleLegend(event)">
+      <a
+        ><span>Legend <i class="fa fa-caret-up" aria-hidden="true"></i></span
+      ></a>
+    </div>
+
+    <div class="panelBackground"></div>
+
+    <div id="legend">
+      <ul>
+        <li><span style="background-color: var(--band-color-good)"></span>Good</li>
+        <li><span style="background-color: var(--band-color-fair)"></span>Fair</li>
+        <li><span style="background-color: var(--band-color-moderate)"></span>Moderate</li>
+        <li><span style="background-color: var(--band-color-poor)"></span>Poor</li>
+        <li><span style="background-color: var(--band-color-veryPoor)"></span>Very poor</li>
+        <li><span style="background-color: var(--band-color-extremelyPoor)"></span>Extremely poor</li>
+        <li><span style="background-color: var(--band-color-nodata)"></span>No data</li>
+      </ul>
+      <div class="legend_link">
+        <a onclick="OpenLegendHelp(event)">Legend explained</a>
+      </div>
+    </div>
+
+    <input id="toggle-mobile-menu" type="checkbox" checked />
+    <div id="filters">
+      <div class="main">
+        <div class="filterItem">
+          <label>Country</label>
+          <select id="cmbCountry" onchange="CountryChanged()">
+            <option value="All">(All)</option>
+          </select>
+        </div>
+        <div class="period" data-mode="historic" style="display: none">
+          <label>Date</label>
+          <input
+            id="timesliderAqi"
+            type="date"
+            onmouseup="RequestFromControls()"
+            oninput="showTimesliderVal()"
+            onchange="showTimesliderVal()"
+          />
+        </div>
+        <div class="period" data-mode="forecast" style="display: none">
+          <label>Period</label>
+        </div>
+
+        <div class="filterItem" id="stationType">
+          <label>Stations</label>
+          <select id="cmbStationType" onchange="RequestFromControls()">
+            <option value="All">All</option>
+            <option value="Traffic">Traffic</option>
+            <option value="Non-traffic">Non-traffic</option>
+          </select>
+        </div>
+
+        <div class="botonera">
+          <div id="tsInfo" class="tsInfo">
+            <span id="tsText"></span>
+          </div>
+          <div class="controls">
+            <div class="buttons">
+              <span
+                type="button"
+                class="toolButton"
+                id="_activatePrevButtonMini"
+                title="Show previous time step"
+                value=""
+                onclick="_onActivatePrevButtonClick(tsMinValue)"
+              >
+                <i class="fa fa-backward" aria-hidden="true"></i>
+              </span>
+              <span
+                type="button"
+                class="toolButton"
+                id="_activateDemoButton"
+                title="Animate a Time-Based player"
+                value=" "
+                onclick="_onActivateDemoButtonClick(tsMinValue,tsMaxValue)"
+              >
+                <i class="fa fa-play" aria-hidden="true"></i>
+              </span>
+              <span
+                type="button"
+                class="toolButton"
+                id="_activateNextButtonMini"
+                title="Show next time step"
+                value=""
+                onclick="_onActivateNextButtonClick(tsMaxValue)"
+              >
+                <i class="fa fa-forward" aria-hidden="true"></i>
+              </span>
+            </div>
+            <div class="slider">
+              <input
+                id="_gotoitemsScrollBarMini"
+                class="sliderBar"
+                type="range"
+                min="0"
+                max="1"
+                step="1"
+                value="0"
+                onmouseup="RequestFromControls()"
+                onchange="showTimesliderVal()"
+                oninput="showTimesliderVal()"
+              />
+            </div>
+          </div>
+        </div>
+        <div class="infoLink">
+          <a class="infoLink" href="#" onclick="OpenHelp()" title="Info">About the European Air Quality Index</a>
+        </div>
+        <div class="infoLink">
+          Click to download the mobile app for
+          <a href="https://play.google.com/store/apps/details?id=com.eea.AQIMobile" target="_blank">Android</a>
+          or
+          <a href="https://apps.apple.com/bw/app/european-air-quality-index/id1566371648" target="_blank">iOS</a>.
+        </div>
+      </div>
+      <div class="aux">
+        <label for="toggle-mobile-menu" aria-label="Menu">&#9776;</label>
+      </div>
+    </div>
+
+    <div id="locator">
+      <div>
+        <input type="text" placeholder="City or place name" />
+        <button onclick="Locator.Toggle()">
+          <i class="fa fa-search" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>
+
+    <div id="layer_control">
+      <div class="layer_control_item">
+        <button id="stations_button" onclick="LayerControl.ClickStations()">
+          <img src="img/aqiw-station-map-btn-image.png" alt="Modelled Map Button" />
+        </button>
+        <p>Station map</p>
+      </div>
+      <div class="layer_control_item">
+        <button id="modelled_button" onclick="LayerControl.ClickModelled()">
+          <img src="img/aqiw-modelled-map-btn-image.png" alt="Modelled Map Button" />
+        </button>
+        <p>Modelled map</p>
+      </div>
+    </div>
+
+    <div id="locator_results">
+      <ul></ul>
+    </div>
+    <div id="zoom">
+      <button class="plus" onclick="ZoomIn()"><span>+</span></button>
+      <button class="minus" onclick="ZoomOut()"><span>-</span></button>
+    </div>
+
+    <div id="help" class="panel text help">
+      <div class="header">
+        <h3>The European Air Quality Index</h3>
+        <div class="close" onclick="CloseHelp()">x</div>
+      </div>
+
+      <div class="content">
+        <p>
+          The European Air Quality Index allows users to understand more about air quality where they live, work or
+          travel. Displaying up-to-date information for Europe, users can gain insights into the air quality in
+          individual countries, regions and cities.
+        </p>
+        <p>The Index is based on concentration values for up to five key pollutants:</p>
+        <ul>
+          <li>particulate matter (PM<sub>10</sub>);</li>
+          <li>fine particulate matter (PM<sub>2.5</sub>);</li>
+          <li>nitrogen dioxide (NO<sub>2</sub>);</li>
+          <li>ozone (O<sub>3</sub>);</li>
+          <li>sulphur dioxide (SO<sub>2</sub>).</li>
+        </ul>
+
+        <p>
+          It reflects the potential impact of air quality on health, driven by the pollutant for which concentrations
+          are poorest due to associated health impacts.
+        </p>
+
+        <p>
+          The index is defined hourly and it consists of two independent layers: the stations layer and the modelled
+          layer.
+        </p>
+
+        <p>
+          The <strong>station layer</strong> shows information for more than 3.500 air quality monitoring stations
+          across Europe, using a combination of Up-To-Date (UTD) data reported by EEA member countries (data is not
+          formally verified by countries) and a forecast of the air quality level following a downscaling of the
+          forecast provided by the Copernicus Atmospheric Monitoring Service (CAMS).
+        </p>
+
+        <p>
+          The user can filter the stations by country and by station type. Stations are classified in relation to the
+          predominant emission sources: traffic, industry and background (where the station’s main pollution source is
+          dominated neither by traffic nor by industry). The available viewing options include all stations, traffic
+          stations only, or non-traffic stations (i.e. industrial and background stations).
+        </p>
+
+        <p>
+          The <strong>modelled</strong> layer shows information for every single 1x1 km grid in Europe using a
+          downscaling of the forecast provided by CAMS. This allows getting information also for locations without any
+          monitoring stations nearby.
+        </p>
+
+        <p>
+          By default, the Air Quality Index depicts the situation 3 hours ago. Additionally, users can select any hour
+          within the past 48 hours and also view forecast values for the next 48 hours.
+        </p>
+
+        <p>
+          European Union legislation sets air quality standardsfor both short-term (hourly or daily) and long-term
+          (annual) air quality levels. The Index indicates the short-term (hourly) air quality situation. It does not
+          reflect the long-term (annual) air quality situation, which may differ significantly (information on this can
+          be found at the
+          <a href="https://ec.europa.eu/environment/air/quality/standards.htm" target="_blank"
+            >quality statistics | European Environment Agency's home page).</a
+          >
+        </p>
+
+        <p>
+          <strong>
+            The air quality index is not a tool for checking compliance with air quality standards and cannot be used
+            for this purpose.
+          </strong>
+        </p>
+
+        <h3>1. Methodology</h3>
+
+        <p>
+          Concentration values for up to five key pollutants determine the index level that reflects air quality at each
+          monitoring station in the station layer, or grid in the modelled layer. The index corresponds to the poorest
+          level for any of the five pollutants, according to the table shown below.
+        </p>
+
+        <p>&emsp;<strong>a. Stations layer</strong></p>
+
+        <p>
+          The Index uses Up-To-Date (UTD) air quality data officially reported every hour by EEA member countries,
+          complemented (where necessary) by modelled air quality data obtained by downscaling the forecast from the CAMS
+          ,i.e. if there are gaps in the UTD data, it is filled with the downscaled CAMS modelling.
+        </p>
+
+        <p>
+          Circles and dots on the map represent the locations of the air quality monitoring stations. The colours
+          reflect the air quality index category at the given hour at that specific station according to the colour
+          coding presented in the table below.
+        </p>
+
+        <h4>Averaging time for pollutants</h4>
+        <p>
+          To determine the AQI level, hourly concentrations of all five pollutants (PM<sub>2.5</sub>, PM<sub>10</sub>,
+          NO<sub>2</sub>, O<sub>3</sub>, SO<sub>2</sub>) are used.
+        </p>
+
+        <h4>Determining the index for traffic stations</h4>
+        <p>
+          When determining the index for traffic stations data from all available pollutants are used. However, the
+          station is painted in full colour only when data is available for NO<sub>2</sub> and PM (either
+          PM<sub>2.5</sub>, PM<sub>10</sub> or both), otherwise the station is painted semi-transparent.
+        </p>
+
+        <h4>Determining the index for industrial and background stations</h4>
+        <p>
+          Similarly, at industrial and background stations, the index is determined for all stations but only those
+          stations with data for at least the three pollutants NO<sub>2</sub>, O<sub>3</sub> and PM (either
+          PM<sub>2.5</sub>, PM<sub>10</sub> or both) are painted in full colour, i.e. If they don’t have data for all
+          three pollutants, the station is painted semi-transparent.
+        </p>
+
+        <h4>Stations missing data for certain pollutants</h4>
+        <p>
+          Stations not measuring all necessary pollutants to determine an overall station index are depicted as
+          semi-transparent grey circles, indicating that the index is not determined with the minimum range of
+          pollutants. These include stations that do not report data for all pollutants (or for which missing data
+          cannot be gap-filled with modelled data). However, at there stations, the index is calculted internally for
+          each measuerd pollutat individually. In the event, that the individual pollutant index is poor or worse, then
+          the index colour is used at station level painted semi-transparent.
+        </p>
+        <p>
+          Small grey dots indicate active stations for which no data have been reported to allow the index to be
+          determined. This might be because measurements are done manually with samplers or Up-To-Date transmission of
+          data has not been established with EEA.
+        </p>
+
+        <!-- <h4>Averaging time for pollutants</h4>
+    <p>
+      <u
+        >For NO<sub>2</sub>, O<sub>3</sub> and SO<sub>2</sub>, hourly
+        concentrations</u
+      >
+      are fed into the calculation of the index.
+    </p>
+    <p>
+      <u
+        >For PM<sub>10</sub> and PM<sub>2.5</sub>, the 24-hour running means
+        for the past 24 hours</u
+      >
+      are fed into the calculation of the index. A 24-hour running mean will
+      be calculated if there are values for at least 18 out of the 24 hours.
+    </p> -->
+
+        <h4>Missing data and gap filling</h4>
+        <p>
+          When data is not reported for a given hour, values are approximated, or 'gap-filled' using a downscaling of
+          CAMS modelled air quality data. In such cases, it is marked with an asterisk in the pollutant timeline of the
+          “Show details” view.
+        </p>
+
+        <p>The method used for gap-filling depends on the pollutant.</p>
+        <ul>
+          <li>For NO<sub>2</sub>, PM<sub>2.5</sub> and PM<sub>10</sub> a so called Difference method is used.</li>
+          <li>For O<sub>3</sub> a Multiplicative method is used.</li>
+          <li>No gap filling is performed for SO<sub>2</sub></li>
+        </ul>
+
+        <p>
+          <u>Difference method</u>: The value is approximated by taking the downscaled CAMS modelled value and adding or
+          subtracting a correction difference. This correction is the average difference between previously measured
+          values and the downscaled CAMS modelled value for the same hour for at least three of the four previous days.
+        </p>
+        <p>
+          <u>Multiplicative method</u>: The value is approximated by taking the downscaled CAMS modelled value, and
+          applying a correction factor. This correction is the average ratio between the previously measured values and
+          the downscaled CAMS modelled values for the same hour for at least three of the four previous days.
+        </p>
+        <p>
+          In cases where there are no measured values for the same hour over three of the four previous days, the AQI
+          for the given pollutant is not determined.
+        </p>
+
+        <h4>Forecast index</h4>
+        <p>
+          Forecast values for the following 48 hours are shown as transparent circles. Circles are coloured as grey if
+          the minimum number of required pollutants, depending on the type of station, could not be forecasted and the
+          forecast index is good, fair or moderate.
+        </p>
+        <p>
+          To calculate the forecast values for the following 48 hours, CAMS modelled air quality data are downscaled and
+          corrected using the gap-filling methods described above. No forecast values are provided for SO<sub>2</sub>.
+        </p>
+
+        <p>&emsp;<strong>b. Model layer</strong></p>
+
+        <p>
+          In this case there are no missing values, since a model is used and it pvoidesprovides results for every
+          single 1x1km grid in the covered territory. The downscaled CAMS model is used for every hour, and the previous
+          48 hours together with the forecasted next 48 hours are presented.
+        </p>
+
+        <h3>2. Bands of concentrations and index levels</h3>
+
+        <p>
+          The AQI bands that determine the category thresholds are linked to health impacts, specifically to the risk
+          factor of mortality due to short-term exposure.
+        </p>
+
+        <p>
+          The first two bands (Good and Fair) are set based on the World Health Organization Air Quality Guidelines
+          (AQG, published by WHO in 2021) on long-term and short-term exposure, For SO<sub>2</sub>, that does not have a
+          long-term AQG level defined, the annual limit value in the revised Ambient Air Quality Directive (EU
+          2024/2881) was used instead.
+        </p>
+        <p>
+          The higher pollution bands (Moderate, Poor, Very Poor, Extremely Poor) were defined first for PM<sub>2.5</sub>
+          considering the WHO interim targets and then for the rest of pollutants by estimating equivalent health risks
+          to those for PM<sub>2.5</sub>.
+        </p>
+
+        <p>
+          The Very Poor category for O<sub>3</sub> was adjusted to align with the EU information threshold, ensuring
+          better public communication.
+        </p>
+        <p>Other pollutant bands were rounded to match EU alert and information levels.</p>
+
+        <div class="table_wrapper">
+          <table class="index_level_table" border="1" cellpadding="2" cellspacing="0">
+            <thead>
+              <tr>
+                <td rowspan="1" style="vertical-align: top">Pollutant</td>
+                <td colspan="6">
+                  Index level
+                  <br />
+                  <span>(based on pollutant concentrations in µg/m<sup>3</sup>)</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="width: 25%"></td>
+                <td>Good</td>
+                <td>Fair</td>
+                <td>Moderate</td>
+                <td>Poor</td>
+                <td>Very poor</td>
+                <td>Extremely poor</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Particles less than 2.5 µm (PM<sub>2.5</sub>)</td>
+                <td>0-5</td>
+                <td>6-15</td>
+                <td>16-50</td>
+                <td>51-90</td>
+                <td>91-140</td>
+                <td>>140</td>
+              </tr>
+              <tr>
+                <td>Particles less than 10 µm (PM<sub>10</sub>)</td>
+                <td>0-15</td>
+                <td>16-45</td>
+                <td>46-120</td>
+                <td>121-195</td>
+                <td>196-270</td>
+                <td>>270</td>
+              </tr>
+              <tr>
+                <td>Ozone (O<sub>3</sub>)</td>
+                <td>0-60</td>
+                <td>61-100</td>
+                <td>101-120</td>
+                <td>121-160</td>
+                <td>161-180</td>
+                <td>>180</td>
+              </tr>
+              <tr>
+                <td>Nitrogen dioxide (NO<sub>2</sub>)</td>
+                <td>0-10</td>
+                <td>11-25</td>
+                <td>26-60</td>
+                <td>61-100</td>
+                <td>101-150</td>
+                <td>>150</td>
+              </tr>
+              <tr>
+                <td>Sulphur dioxide (SO<sub>2</sub>)</td>
+                <td>0-20</td>
+                <td>21-40</td>
+                <td>41-125</td>
+                <td>126-190</td>
+                <td>191-275</td>
+                <td>>275</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>3. Health messages</h3>
+
+        <p>
+          The index bands are complemented by health-related messages that provide recommendations for both the general
+          population and sensitive populations. The latter includes both adults and children with respiratory problems
+          and adults with heart conditions.
+        </p>
+
+        <div>
+          <table border="1" cellpadding="2" cellspacing="0">
+            <thead>
+              <tr>
+                <td>AQ index</td>
+                <td>General population</td>
+                <td>Sensitive populations</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="background-color: var(--band-color-good); color: #333">Good</td>
+                <td style="background-color: white; color: #333">
+                  The air quality is good. Enjoy your usual outdoor activities.
+                </td>
+                <td style="background-color: white; color: #333">
+                  The air quality is good. Enjoy your usual outdoor activities.
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: var(--band-color-fair); color: white">Fair</td>
+                <td style="background-color: white; color: #333">Enjoy your usual outdoor activities</td>
+                <td style="background-color: white; color: #333">Enjoy your usual outdoor activities</td>
+              </tr>
+              <tr>
+                <td style="background-color: var(--band-color-moderate); color: #333">Moderate</td>
+                <td style="background-color: white; color: #333">Enjoy your usual outdoor activities</td>
+                <td style="background-color: white; color: #333">
+                  Consider reducing intense outdoor activities, if you experience symptoms.
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: var(--band-color-poor); color: white">Poor</td>
+                <td style="background-color: white; color: #333">
+                  Consider reducing intense activities outdoors, if you experience symptoms such as sore eyes, a cough
+                  or sore throat
+                </td>
+                <td style="background-color: white; color: #333">
+                  Consider reducing physical activities, particularly outdoors, especially if you experience symptoms.
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: var(--band-color-veryPoor); color: white">Very poor</td>
+                <td style="background-color: white; color: #333">
+                  Consider reducing intense activities outdoors, if you experience symptoms such as sore eyes, a cough
+                  or sore throat
+                </td>
+                <td style="background-color: white; color: #333">
+                  Reduce physical activities, particularly outdoors, especially if you experience symptoms.
+                </td>
+              </tr>
+              <tr>
+                <td style="background-color: var(--band-color-extremelyPoor); color: white">Extremely poor</td>
+                <td style="background-color: white; color: #333">Reduce physical activities outdoors.</td>
+                <td style="background-color: white; color: #333">Avoid physical activities outdoors.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3>4. Additional information</h3>
+
+        <p>&emsp;<strong>a. Station layer</strong></p>
+
+        <p>When clicking on a station , a pop-up window appears with the following additional information:</p>
+
+        <p>1. The name of the station and the air quality index at that station and hour.</p>
+        <p>2. The Index level at the given station.</p>
+        <p>
+          3. A “Show details” option, with a summary of the station information; the air quality index and the
+          associated health advice for the general population and sensitive populations; links to information on air
+          pollution for the country where the station is located and to the webpage of the administration in charge of
+          reporting the concentrations for that station; and two graphs, a pie- chart and a horizontal pie-chart.
+        </p>
+
+        <p>
+          The values indicated when hovering over the horizontal pie -chart show the hourly AQ Index, the hourly
+          concentrations for all pollutants measured at the station or gap-filled over the last 7 days. An asterisk next
+          to a value indicates that the value has been gap-filled.
+        </p>
+
+        <p>
+          The pie -chart indicates the number of days that fell under each Index band over the past 365 days, with the
+          highest hourly index level recorded on a given day determining the daily index classification.
+        </p>
+
+        <p>4. A “View station location” option, that provides the location of the station using © Google Maps.</p>
+
+        <p>&emsp;<strong>b. Modelled layer</strong></p>
+
+        <p>
+          When clicking on any point of the modelled layer, similar information to the one for stations appears for the
+          grid to which the points belong to, although without the pie chart and the “View location” option.
+        </p>
+
+        <h3>Methodology documentation and further information</h3>
+        <p>
+          The European Air Quality Index was developed jointly by the
+          <a href="http://ec.europa.eu/environment/air/index_en.htm" target="_blank"
+            >European Commission’s Directorate General for Environment</a
+          >
+          and the
+          <a href="https://www.eea.europa.eu/" target="_blank">European Environment Agency</a>
+          to inform citizens and public authorities about the recent air quality status across Europe. A detailed
+          explanation of the methodology applied to infer the bands of concentrations, index levels and health messages
+          can be found at the
+          <a
+            href="https://www.eionet.europa.eu/etcs/etc-he/products/etc-he-products/etc-he-reports/etc-he-report-2024-17-eeas-revision-of-the-european-air-quality-index-bands"
+            target="_blank"
+          >
+            ETC HE Report 2024/17: EEA´s revision of the European air quality index bands </a
+          >.
+        </p>
+        <p>The European Environment Agency publishes a range of information on air quality:</p>
+
+        <ul>
+          <li>
+            <a href="https://www.eea.europa.eu/themes/air" target="_blank">Air pollution web page</a>
+          </li>
+          <li>
+            <a href="https://www.eea.europa.eu/en/analysis/maps-and-charts/up-to-date-air-quality-data" target="_blank"
+              >Air quality live: Up-to-date air quality measurement</a
+            >
+          </li>
+          <li>
+            <a href="https://www.eea.europa.eu/data-and-maps/dashboards/air-quality-statistics" target="_blank">
+              Key air quality statistics for the main air pollutants: map viewer
+            </a>
+          </li>
+          <li>
+            <a href="https://www.eea.europa.eu/en/analysis/publications/air-quality-status-report-2025" target="_blank">
+              Air quality status report
+            </a>
+          </li>
+          <li>
+            <a
+              href="https://www.eea.europa.eu/en/topics/in-depth/air-pollution/air-pollution-country-fact-sheets-2024"
+              target="_blank"
+            >
+              Air pollution country profiles
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="buttonGroup">
+        <button onclick="CloseHelp()" style="padding: 0 20px">Close</button>
+      </div>
+    </div>
+
+    <div id="legend_help" class="panel text help">
+      <div class="header">
+        <h3>Legend explained</h3>
+        <div class="close" onclick="CloseLegendHelp()">x</div>
+      </div>
+      <div class="content">
+        <p>
+          Circles and dots on the station layer represent the locations of air quality monitoring stations. Similarly,
+          coloured grids in the modelled layer represent squares sized 1x1km. The colour corresponds to the air quality
+          index at the given hour at that station or grid.
+        </p>
+        <p>
+          Note that this hourly concentration may be quite differ to the annual average (see additional information
+          under “<a href="#" onclick="OpenHelp()">About the European Air Quality Index</a>)
+        </p>
+        <p>
+          Measurements of up to five key pollutants supported by modelled data determine the index level that describes
+          the current air quality situation at each monitoring station or grid. The index corresponds to the poorest
+          level for any of five pollutants according to the following scheme.
+        </p>
+        <div class="table_wrapper">
+          <table border="1" cellpadding="2" cellspacing="0">
+            <thead>
+              <tr>
+                <td rowspan="2" style="vertical-align: top">Pollutant</td>
+                <td colspan="6">
+                  Index level
+                  <br />
+                  <span>(based on pollutant concentrations in µg/m3)</span>
+                </td>
+              </tr>
+              <tr>
+                <td>Good</td>
+                <td>Fair</td>
+                <td>Moderate</td>
+                <td>Poor</td>
+                <td>Very poor</td>
+                <td>Extremely poor</td>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Particles less than 2.5 µm (PM<sub>2.5</sub>)</td>
+                <td>0-5</td>
+                <td>6-15</td>
+                <td>16-50</td>
+                <td>51-90</td>
+                <td>91-140</td>
+                <td>>140</td>
+              </tr>
+              <tr>
+                <td>Particles less than 10 µm (PM<sub>10</sub>)</td>
+                <td>0-15</td>
+                <td>16-45</td>
+                <td>46-120</td>
+                <td>121-195</td>
+                <td>196-270</td>
+                <td>>270</td>
+              </tr>
+              <tr>
+                <td>Ozone (O<sub>3</sub>)</td>
+                <td>0-60</td>
+                <td>61-100</td>
+                <td>101-120</td>
+                <td>121-160</td>
+                <td>161-180</td>
+                <td>>180</td>
+              </tr>
+              <tr>
+                <td>Nitrogen dioxide (NO<sub>2</sub>)</td>
+                <td>0-10</td>
+                <td>11-25</td>
+                <td>26-60</td>
+                <td>61-100</td>
+                <td>101-150</td>
+                <td>>150</td>
+              </tr>
+              <tr>
+                <td>Sulphur dioxide (SO<sub>2</sub>)</td>
+                <td>0-20</td>
+                <td>21-40</td>
+                <td>41-125</td>
+                <td>126-190</td>
+                <td>191-275</td>
+                <td>>275</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>
+          For the stations layer, the colour scheme is provided to give information on the status of the air quality at
+          each station. Colours at the stations are either full or semi-transparent:
+        </p>
+        <ol>
+          <li>
+            <strong>Full colour</strong>: the minimum number of pollutants required needed to calculate the index are
+            met (see “<a href="#" onclick="OpenHelp()">About the European Air Quality Index</a>” for details).
+          </li>
+          <li>
+            <strong>Semi-transparent colour</strong>: the minimum pollutant requirements for calculating the index are
+            not met. The circle appears grey unless the available subset of pollutants indicates poor or worse air
+            quality, in which case the corresponding index colour is shown.
+          </li>
+          <li>
+            <strong>Forecast values</strong>: Always displayed as semi-transparent. The index colour is shown if the
+            forecast meets the minimum pollutant requirements, or if the forecasted index is poor or worse. If the
+            minimum requirement is not met and the forecast indicates moderate or better air quality, the circle appears
+            grey.
+          </li>
+        </ol>
+        <p>
+          The <strong>grey</strong> dots indicate stations for which: no data has been reported nor could be gap-filled
+          (using modelled data) to allow the index to be calculated.
+        </p>
+        <p>For the map layer, colours are always solid as there are no missing data for any pollutant.</p>
+
+        <p>
+          The graphs presented under “Show details” when clicking on a station or grid on the maps follows the same
+          colour scheme as the station and gird. When hovering over the horizontal pie chart, the displayed
+          concentrations correspond to:
+        </p>
+        <ul>
+          <li>
+            <strong
+              >The hourly concentrations for all pollutants (PM<sub>10</sub>, PM<sub>2.5</sub>, NO<sub>2</sub>, O<sub
+                >3</sub
+              >
+              and SO<sub>2</sub>)</strong
+            >
+          </li>
+        </ul>
+        <p>
+          For stations, an asterisk next to a value indicates that the value has been gap-filled (see details under “<a
+            href="#"
+            onclick="OpenHelp()"
+            >About the European Air Quality Index</a
+          >”).
+        </p>
+        <p>
+          The pie chart (only available for stations) indicates the number of days for each index category for the past
+          365 days (the highest hourly index level in a day determines the daily index category considered).
+        </p>
+
+        <p>
+          Details on the methodology to calculate the AQ Index can be found by clicking on “<a
+            href="#"
+            onclick="OpenHelp()"
+            >About the European Air Quality Index</a
+          >”.
+        </p>
+      </div>
+      <div class="buttonGroup">
+        <button onclick="CloseLegendHelp()" style="padding: 0 20px">Close</button>
+      </div>
+    </div>
+
+    <div id="detail" class="panel">
+      <script id="detail-template" type="text/x-handlebars-template">
+        <div class='close' onclick='CloseDetails()'>x</div>
+        <div class='detail-content'>
+          <div id='station_table' class='block'>
+            <h4>{{StationName}} ({{StationCode}})</h4>
+            <table>
+              <tr>
+                <th style='font-size: 1.2em;'>Air Quality Index</th>
+                <td class='aqi-field' style='font-size: 1.2em;'>
+                  <div class='aqibandColor'></div>
+                  {{WorstBandName}}
+                  {{#if ShowCausedBy}}(due to
+                    {{WorstPollutantName}}<sub>{{WorstPollutantValue}}</sub>){{/if}}
+                </td>
+              </tr>
+              <tr>
+                <th>Date</th>
+                <td>{{Date}}</td>
+              </tr>
+              <tr>
+                <th>Country</th>
+                <td class='country-field'>{{Country}}</td>
+              </tr>
+              <tr>
+                <th>Location</th>
+                <td>{{Location}}</td>
+              </tr>
+              {{#if StationClassification}}
+                <tr>
+                  <th>Classification</th>
+                  <td>{{StationClassification}}</td>
+                </tr>
+              {{/if}}
+              {{#if AreaClassification}}
+                <tr>
+                  <th>Area</th>
+                  <td>{{AreaClassification}}</td>
+                </tr>
+              {{/if}}
+            </table>
+
+            <div class='details'>
+              <p>{{{WorstBandHealthMessage}}}</p>
+
+            </div>
+          </div>
+
+          <div class='pie_wrapper'>
+            <h4>Accumulated past 365 days</h4>
+            <div id='pie_lock' class='pie block' style='z-index: 2; display: none'></div>
+            <div id='pie' class='pie block'></div>
+          </div>
+
+          <div class='bar_char_wrapper'>
+            <div id='seven_days' class='seven_days block'></div>
+            <div class='seven_days_footnote'>(*) indicates modelled data</div>
+          </div>
+
+          <div class='legend-wrapper'>
+            <div class='legend'>
+              <div class='legend_item'><span style='background-color: var(--band-color-good)'></span>Good</div>
+              <div class='legend_item'><span style='background-color: var(--band-color-fair)'></span>Fair</div>
+              <div class='legend_item'><span style='background-color: var(--band-color-moderate)'></span>Moderate</div>
+              <div class='legend_item'><span style='background-color: var(--band-color-poor)'></span>Poor</div>
+              <div class='legend_item'><span style='background-color: var(--band-color-veryPoor)'></span>Very poor</div>
+              <div class='legend_item'><span style='background-color: var(--band-color-extremelyPoor)'></span>Extremely
+                poor</div>
+              <!--<div class="legend_item"><span style="background-color: #6f6f6f"></span>No data</div>-->
+            </div>
+          </div>
+
+          <div class='country_facts'>
+            {{#if Factsheet}}
+              <a target='_blank' href='{{Factsheet}}'>Country fact sheet
+                {{Country}}
+                <img src='img/external_link.png' />
+              </a>
+            {{/if}}
+            {{#if OrganisationUrl}}
+              <br />
+              <a target='_blank' href='{{OrganisationUrl}}'>Organization website
+                <img src='img/external_link.png' />
+              </a>
+            {{/if}}
+          </div>
+        </div>
+      </script>
+    </div>
+
+    <div id="lock"></div>
+
+    <div id="mobile-app-promo">
+      <p>For a better experience, download the Air Quality mobile app:</p>
+      <div class="promoButtonGroup">
+        <button onclick="window.open('https://play.google.com/store/apps/details?id=com.eea.AQIMobile', '_blank')">
+          Download for Android
+        </button>
+        <button
+          onclick="window.open('https://apps.apple.com/bw/app/european-air-quality-index/id1566371648', '_blank')"
+        >
+          Download for iOS
+        </button>
+      </div>
+      <button onclick="CloseMobileAppPromo()" class="closePromoButton">Close</button>
+    </div>
+
+    <script src="script/init.js"></script>
+    <script>
+      // For hiding cookies panel if already acepted or if the parent domain has already shown the message
+      var cookiesTAG = 'AQI_cookies_acepted';
+      var url = null;
+      if (embededInIframe()) {
+        HideCookiesPanel();
+      } else {
+        if (typeof Storage !== 'undefined') {
+          myStorage = window.localStorage;
+          if (myStorage.getItem(cookiesTAG) == 'true') {
+            HideCookiesPanel();
+          }
+        }
+      }
+    </script>
+
+    <!-- Matomo -->
+    <script type="text/javascript">
+      var _paq = _paq || [];
+      /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+      _paq.push(['trackPageView']);
+      _paq.push(['enableLinkTracking']);
+      (function () {
+        var u = 'https://matomo.eea.europa.eu/';
+        _paq.push(['setTrackerUrl', u + 'piwik.php']);
+        _paq.push(['setSiteId', '6']);
+        var d = document,
+          g = d.createElement('script'),
+          s = d.getElementsByTagName('script')[0];
+        g.type = 'text/javascript';
+        g.async = true;
+        g.defer = true;
+        g.src = u + 'piwik.js';
+        s.parentNode.insertBefore(g, s);
+      })();
+    </script>
+    <noscript
+      ><p>
+        <img src="https://matomo.eea.europa.eu/piwik.php?idsite=6&amp;rec=1" style="border: 0" alt="" /></p
+    ></noscript>
+    <!-- End Matomo Code -->
+  </body>
+</html>

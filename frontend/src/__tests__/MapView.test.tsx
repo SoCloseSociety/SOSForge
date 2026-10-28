@@ -94,6 +94,17 @@ const fake = vi.hoisted(() => {
       this.jumpToCalls.push(options)
     }
 
+    isMoving() {
+      return false
+    }
+
+    /** Where a point is on screen: fixed, what is tested is who asks. */
+    projected: unknown[] = []
+    project(lngLat: unknown) {
+      this.projected.push(lngLat)
+      return { x: 160.4, y: 105.2 }
+    }
+
     remove() {
       this.removed += 1
     }
@@ -295,6 +306,258 @@ describe('a selection made before the map is ready', () => {
 
     expect(map.flyToCalls).toHaveLength(1)
     expect(fake.FakePopup.instances).toHaveLength(1)
+  })
+})
+
+describe('the place report button over the map', () => {
+  /* The place report's button sits over the map's top-left (App.tsx
+   * `.map-report`). At 320x568 and 200 % text it was two lines tall, y 12
+   * to 99 on a 139 px map, and a flight to the place put the place at the
+   * map's centre, y 70: under the opaque button. The flight now pads its
+   * top by what the button covers, like the event panel on the right. */
+  const NONE = { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: 0, width: 0, height: 0 }
+  function layout(rects: Record<string, Partial<DOMRect>>) {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      const hit = Object.entries(rects).find(([selector]) => this.matches(selector))
+      return { ...NONE, ...hit?.[1] } as DOMRect
+    })
+  }
+  const MAP = { top: 0, left: 0, right: 320, bottom: 140, width: 320, height: 140 }
+  const KO_SAMUI = { lat: 9.51, lon: 100.01, zoom: 7, name: 'Ko Samui' }
+
+  function mapUnder(button: boolean) {
+    render(
+      <div className="body">
+        {button ? <div className="map-report" /> : null}
+        <div className="map-column">
+          <MapView events={[]} now={NOW} />
+        </div>
+      </div>,
+    )
+    act(() => lastMap().fire('load'))
+    act(() => useStore.getState().setFocus(KO_SAMUI))
+    return lastMap()
+  }
+
+  it('a flight to the place lands below a two-line button, capped at half the map', () => {
+    layout({ '.map-wrap > .map': MAP, '.map-report': { top: 12, left: 12, right: 252, bottom: 99, width: 240, height: 87 } })
+    const map = mapUnder(true)
+    expect(map.flyToCalls).toHaveLength(1)
+    expect(map.flyToCalls[0].center).toEqual([100.01, 9.51])
+    // 99 + 12 = 111, capped at 70: the place lands at y 105, below y 99
+    expect(map.flyToCalls[0].padding).toEqual({ top: 70, bottom: 0, left: 0, right: 0 })
+  })
+
+  it('a one-line button pads by what it covers, plus the 12 px margin', () => {
+    layout({ '.map-wrap > .map': MAP, '.map-report': { top: 12, left: 12, right: 56, bottom: 56, width: 44, height: 44 } })
+    expect(mapUnder(true).flyToCalls[0].padding).toEqual({ top: 68, bottom: 0, left: 0, right: 0 })
+  })
+
+  it('no button, no padding: Near me and the world fly to the centre', () => {
+    layout({ '.map-wrap > .map': MAP })
+    expect(mapUnder(false).flyToCalls[0].padding).toEqual({ top: 0, bottom: 0, left: 0, right: 0 })
+  })
+
+  it('says where the place landed once the camera stops, and nothing while it moves', () => {
+    layout({ '.map-wrap > .map': MAP, '.map-report': { top: 12, left: 12, right: 56, bottom: 56, width: 44, height: 44 } })
+    render(
+      <div className="body">
+        <div className="map-report" />
+        <div className="map-column">
+          <MapView events={[]} now={NOW} />
+        </div>
+      </div>,
+    )
+    const map = lastMap()
+    const el = document.querySelector<HTMLElement>('.map-wrap > .map')!
+    act(() => map.fire('load'))
+    // a camera stop before any flight says nothing
+    act(() => map.fire('moveend'))
+    expect(el.dataset.focusAt).toBeUndefined()
+    act(() => useStore.getState().setFocus(KO_SAMUI))
+    act(() => map.fire('moveend'))
+    expect(map.projected.at(-1)).toEqual([100.01, 9.51])
+    expect(el.dataset.focusAt).toBe('160,105')
+    act(() => map.fire('movestart'))
+    expect(el.dataset.focusAt).toBeUndefined()
+  })
+
+  /* The button can arrive AFTER the flight to the place has started: it
+   * waits for /api/version (useApiFeature), and a check that got no answer
+   * is asked again 5 s later. Measured in a real Chrome at 568x320 and
+   * 200 % text, the first answer held 4 s: the button appeared at 4.8 s,
+   * x 12 to 330 and y 12 to 62 of a 99 px map, and the place stayed where
+   * the unpadded flight had put it, (284, 50): under the button. The flight
+   * is padded again when the button arrives or changes size, until the
+   * reader (or another flight) moves the camera. */
+  describe('a button that arrives or changes size after the flight', () => {
+    const LANDSCAPE = { top: 0, left: 0, right: 568, bottom: 99, width: 568, height: 99 }
+    const ONE_LINE = { top: 12, left: 12, right: 330, bottom: 62, width: 318, height: 50 }
+
+    /** jsdom has no ResizeObserver: this one is triggered by the test. */
+    class FakeResizeObserver {
+      static instances: FakeResizeObserver[] = []
+      targets = new Set<Element>()
+      constructor(public callback: () => void) {
+        FakeResizeObserver.instances.push(this)
+      }
+      observe(el: Element) {
+        this.targets.add(el)
+      }
+      unobserve(el: Element) {
+        this.targets.delete(el)
+      }
+      disconnect() {
+        this.targets.clear()
+      }
+    }
+    /** What a browser does after a layout that changed a watched box. */
+    function resized(el: Element) {
+      for (const observer of FakeResizeObserver.instances) if (observer.targets.has(el)) observer.callback()
+    }
+
+    beforeEach(() => {
+      FakeResizeObserver.instances = []
+      vi.stubGlobal('ResizeObserver', FakeResizeObserver)
+    })
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    function Page({ button, events = [] }: { button: boolean; events?: ReturnType<typeof makeEvent>[] }) {
+      return (
+        <div className="body">
+          {button ? <div className="map-report" /> : null}
+          <div className="map-column">
+            <MapView events={events} now={NOW} />
+          </div>
+        </div>
+      )
+    }
+    /** The button's mount is seen by a MutationObserver: a microtask. */
+    async function settle(change: () => void) {
+      await act(async () => {
+        change()
+        await Promise.resolve()
+      })
+    }
+
+    it('pads the flight again when the button arrives after it started', async () => {
+      layout({ '.map-wrap > .map': LANDSCAPE, '.map-report': ONE_LINE })
+      const { rerender } = render(<Page button={false} />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      expect(map.flyToCalls).toHaveLength(1)
+      expect(map.flyToCalls[0].padding).toEqual({ top: 0, bottom: 0, left: 0, right: 0 })
+      // the flight's own start says nothing about the reader
+      act(() => map.fire('movestart', {}))
+
+      await settle(() => rerender(<Page button />))
+      // 62 + 12 = 74, capped at half the 99 px map: the place lands at y 75
+      expect(map.flyToCalls).toHaveLength(2)
+      expect(map.flyToCalls[1]).toMatchObject({
+        center: [100.01, 9.51],
+        zoom: 7,
+        padding: { top: 50, bottom: 0, left: 0, right: 0 },
+      })
+    })
+
+    it('jumps there instead when the reader asked for less motion', async () => {
+      stubMatchMedia([REDUCED_MOTION])
+      layout({ '.map-wrap > .map': LANDSCAPE, '.map-report': ONE_LINE })
+      const { rerender } = render(<Page button={false} />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      await settle(() => rerender(<Page button />))
+      expect(map.flyToCalls).toHaveLength(0)
+      expect(map.jumpToCalls.map((call) => call.padding)).toEqual([
+        { top: 0, bottom: 0, left: 0, right: 0 },
+        { top: 50, bottom: 0, left: 0, right: 0 },
+      ])
+    })
+
+    it('pads it again when the button changes size, and only then', async () => {
+      const rects: Record<string, Partial<DOMRect>> = {
+        '.map-wrap > .map': { top: 0, left: 0, right: 320, bottom: 200, width: 320, height: 200 },
+        // the icon alone
+        '.map-report': { top: 12, left: 12, right: 56, bottom: 56, width: 44, height: 44 },
+      }
+      layout(rects)
+      const { rerender } = render(<Page button />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      const tops = () => map.flyToCalls.map((call) => (call.padding as { top: number }).top)
+      expect(tops()).toEqual([68])
+      const report = document.querySelector('.map-report')!
+      const mapEl = document.querySelector('.map-wrap > .map')!
+
+      // a size report that changes nothing moves nothing
+      act(() => resized(report))
+      act(() => resized(mapEl))
+      expect(tops()).toEqual([68])
+
+      // the label shown again, on two lines: 99 + 12, capped at 100
+      rects['.map-report'] = { top: 12, left: 12, right: 252, bottom: 99, width: 240, height: 87 }
+      act(() => resized(report))
+      expect(tops()).toEqual([68, 100])
+      expect(map.flyToCalls[1]).toMatchObject({ center: [100.01, 9.51], zoom: 7 })
+
+      // the map's own height follows the URL bar on a phone (dvh): never
+      // watched, or every scroll would move the camera
+      rects['.map-wrap > .map'] = { top: 0, left: 0, right: 320, bottom: 180, width: 320, height: 180 }
+      act(() => resized(mapEl))
+      expect(tops()).toEqual([68, 100])
+
+      // the button goes: the place goes back to the centre
+      await settle(() => rerender(<Page button={false} />))
+      expect(tops()).toEqual([68, 100, 0])
+    })
+
+    it('never pulls back a reader who moved the map', async () => {
+      layout({ '.map-wrap > .map': LANDSCAPE, '.map-report': ONE_LINE })
+      const { rerender } = render(<Page button={false} />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      // a drag (MapLibre passes the DOM event that started it)
+      act(() => map.fire('movestart', { originalEvent: new MouseEvent('mousedown') }))
+      await settle(() => rerender(<Page button />))
+      act(() => resized(document.querySelector('.map-report')!))
+      expect(map.flyToCalls).toHaveLength(1)
+    })
+
+    it('never undoes the flight to an event selected since', async () => {
+      const event = makeEvent({ id: 'emsc:since', time: minutesAgo(30) })
+      layout({ '.map-wrap > .map': LANDSCAPE, '.map-report': ONE_LINE })
+      const { rerender } = render(<Page button={false} events={[event]} />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      act(() => useStore.getState().select('emsc:since'))
+      expect(map.flyToCalls.map((call) => call.center)).toEqual([
+        [100.01, 9.51],
+        [event.lon, event.lat],
+      ])
+      await settle(() => rerender(<Page button events={[event]} />))
+      expect(map.flyToCalls).toHaveLength(2)
+    })
+
+    it('a new place is padded by what the button covers then', async () => {
+      layout({ '.map-wrap > .map': LANDSCAPE, '.map-report': ONE_LINE })
+      const { rerender } = render(<Page button={false} />)
+      const map = lastMap()
+      act(() => map.fire('load'))
+      act(() => useStore.getState().setFocus(KO_SAMUI))
+      act(() => map.fire('movestart', { originalEvent: new MouseEvent('mousedown') }))
+      await settle(() => rerender(<Page button />))
+      act(() => useStore.getState().setFocus({ lat: 13.75, lon: 100.5, zoom: 7, name: 'Bangkok' }))
+      expect(map.flyToCalls.at(-1)).toMatchObject({ center: [100.5, 13.75], padding: { top: 50 } })
+      act(() => resized(document.querySelector('.map-report')!))
+      expect(map.flyToCalls).toHaveLength(2)
+    })
   })
 })
 

@@ -1,0 +1,5 @@
+time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type,horizontalError,depthError,magError,magNst,status,locationSource,magSource
+2006-10-07T21:12:26.370Z,11.743,100.179,10,5,mwc,84,57.3,,0.97,us,usp000eunq,2022-05-02T18:29:16.454Z,"Gulf of Thailand",earthquake,,,,,reviewed,us,gcmt
+2006-09-28T09:47:59.120Z,11.749,99.987,22.3,4.5,mb,18,125.4,,0.84,us,usp000etzw,2014-11-07T01:30:19.706Z,"23 km ESE of Prachuap Khiri Khan, Thailand",earthquake,,21.1,,2,reviewed,us,us
+2006-09-27T18:46:02.070Z,11.816,100.145,10,4.7,mwc,25,125.7,,1.14,us,usp000ety2,2016-11-10T01:28:42.812Z,"39 km E of Prachuap Khiri Khan, Thailand",earthquake,,0,,,reviewed,us,gcmt
+2006-09-27T15:57:30.290Z,11.72,99.866,10,4.5,mb,16,125.1,,1.16,us,usp000etxr,2020-09-18T21:11:16.366Z,"14 km SE of Prachuap Khiri Khan, Thailand",earthquake,,0,,2,reviewed,us,us

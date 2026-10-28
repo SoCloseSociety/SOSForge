@@ -1,0 +1,14 @@
+{
+  "url": "https://firms.modaps.eosdis.nasa.gov/data/active_fire/noaa-21-viirs-c2/csv/J2_VIIRS_C2_Alaska_24h.csv",
+  "fetched_at_utc": "2026-10-27T10:51:30Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 10:51:29 GMT",
+    "content-type": "text/csv",
+    "content-length": "112",
+    "last-modified": "Tue, 27 Oct 2026 10:43:15 GMT",
+    "etag": "\"cb29b22195c2bf4c59156adbc524a594\""
+  },
+  "bytes": 112,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

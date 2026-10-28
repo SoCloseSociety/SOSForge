@@ -179,6 +179,20 @@ class Settings(BaseSettings):
     dedupe_radius_km: float = 250.0
     dedupe_mag_delta: float = 1.2
 
+    # --- place report (GET /api/place, app/place/) ---
+    enable_place: bool = True
+    # what one report waits for its 22 blocks; what has not finished comes
+    # back `budget` and keeps filling the cache for the panel's refetch
+    place_budget_seconds: float = 8.0
+    # upstream requests in flight for the whole process
+    place_max_upstream: int = 16
+    # per client address: a report that starts at least one NEW upstream
+    # fetch spends a token (a fully cached report spends nothing)
+    place_rate_burst: float = 4.0
+    place_rate_per_second: float = 0.0667
+    place_cache_entries: int = 4096
+    place_history_cache_mb: float = 64.0
+
     @property
     def cors_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

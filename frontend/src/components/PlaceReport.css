@@ -1,0 +1,629 @@
+/* PlaceReport -- every selector is scoped under .place-report, so nothing
+   here can leak into the rest of the app, and nothing in it depends on the
+   order this sheet lands in.
+
+   Colours are the tokens of styles.css only (Lunar on :root, Soft on
+   :root[data-theme="soft"]), so both themes follow without a rule here. The
+   severity colours appear on the alert pills only (.sev, styles.css); every
+   other state is a glyph and words (.state, styles.css).
+
+   Nothing overflows its card, at a 280 px card and a 32 px root (200 % text):
+   flex rows wrap with a real basis and min-width: 0, grids use
+   min(100%, ...) so a narrow card drops to one column, long tokens (raw
+   METAR, station ids, WRI labels, error reasons) break anywhere, and tables
+   become stacked rows when their SECTION (not the window, not the panel) is
+   too narrow for their columns. Container and media queries go at the end
+   of the sheet. */
+
+/* `container` (inline-size containment) means the panel takes its width
+   from its parent, never from its content: a long METAR or a table can
+   never widen it. Mount it as a block, not inside a shrink-to-fit box. The
+   tables key on their SECTION's width (end of the sheet). */
+.place-report {
+  container: place / inline-size;
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--pad-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-card);
+  color: var(--t1);
+  font-size: var(--ts-body);
+  line-height: var(--lh-body);
+  overflow-wrap: anywhere;
+}
+
+.place-report * {
+  min-width: 0;
+}
+
+/* ------------------------------------------------------------- header */
+
+.place-report .place-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: var(--gap);
+}
+
+.place-report .place-overline {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: var(--ts-over);
+  letter-spacing: var(--ls-over);
+  text-transform: uppercase;
+  color: var(--t3);
+}
+
+.place-report .place-name {
+  margin: 0;
+  font-size: var(--ts-row);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  letter-spacing: var(--ls-title);
+}
+
+.place-report .place-summary,
+.place-report .place-loading {
+  margin: 0;
+  font-size: var(--ts-sub);
+  color: var(--t2);
+}
+
+/* ------------------------------------------------------------- sections */
+
+.place-report .place-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr));
+  gap: var(--gap);
+  align-items: start;
+}
+
+/* each section is the container its tables key on (end of the sheet): its
+   width comes from the grid track, never from its content */
+.place-report .place-section {
+  container: place-section / inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface-mini);
+}
+
+.place-report .place-section > * {
+  max-width: 100%;
+}
+
+.place-report .place-section-title {
+  margin: 0;
+  font-size: var(--ts-sub);
+  font-weight: 600;
+  line-height: var(--lh-title);
+  color: var(--t1);
+}
+
+.place-report .place-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.place-report .place-block {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.place-report .place-line {
+  margin: 0;
+  font-size: var(--ts-sub);
+  line-height: var(--lh-body);
+  color: var(--t1);
+}
+
+.place-report .place-headline {
+  font-weight: 500;
+}
+
+.place-report .place-muted {
+  color: var(--t3);
+}
+
+.place-report .place-line.place-muted {
+  font-size: var(--ts-label);
+}
+
+/* A field the source does not publish: words, never a 0 or a dash. */
+.place-report .place-missing {
+  font-style: italic;
+  color: var(--t3);
+}
+
+.place-report .place-token {
+  font-family: var(--mono);
+  font-size: 0.95em;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* The date of a block and its Late flag, side by side when there is room. */
+.place-report .place-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.place-report .place-chips > * {
+  flex: 0 1 auto;
+}
+
+.place-report .place-asof {
+  font-variant-numeric: tabular-nums;
+}
+
+.place-report .place-late {
+  font-size: var(--ts-label);
+  color: var(--t1);
+}
+
+.place-report .state.place-na,
+.place-report .state.place-unavailable,
+.place-report .state.place-refresh-failed,
+.place-report .state.place-partial,
+.place-report .state.place-error {
+  font-size: var(--ts-sub);
+}
+
+/* A status keeps its glyph beside its words: the words wrap, the glyph
+   never sits alone on a line (it did at 200 % text on a 280 px card). */
+.place-report .state {
+  flex-wrap: nowrap;
+}
+
+.place-report .state > span:not(.state-glyph) {
+  flex: 1 1 auto;
+}
+
+/* the dataset a status line is about, where a section holds several */
+.place-report .place-status-name {
+  font-size: var(--ts-meta);
+  font-weight: 600;
+  color: var(--t2);
+}
+
+/* not applicable: one muted line */
+.place-report .state.place-na {
+  color: var(--t3);
+}
+
+.place-report .state.place-unavailable,
+.place-report .state.place-error {
+  color: var(--t1);
+}
+
+.place-report .place-error .state-glyph {
+  color: var(--red);
+}
+
+.place-report .place-section.is-na {
+  gap: 4px;
+}
+
+/* ------------------------------------------------------------- facts */
+
+.place-report .place-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 7.5rem), 1fr));
+  gap: 6px 12px;
+  margin: 0;
+}
+
+.place-report .place-fact {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.place-report .place-fact dt {
+  font-size: var(--ts-meta);
+  color: var(--t3);
+}
+
+.place-report .place-fact dd {
+  margin: 0;
+  font-size: var(--ts-sub);
+  color: var(--t1);
+  font-variant-numeric: tabular-nums;
+}
+
+.place-report .place-facts-main .place-fact dd {
+  font-size: var(--ts-card);
+  font-weight: 500;
+}
+
+/* provenance and sources rows read label then value, full width */
+.place-report .place-more .place-facts {
+  grid-template-columns: 1fr;
+}
+
+.place-report .place-more .place-fact {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 0 8px;
+}
+
+.place-report .place-more .place-fact dt {
+  flex: 1 1 10ch;
+}
+
+.place-report .place-more .place-fact dd {
+  flex: 999 1 16ch;
+  font-size: var(--ts-meta);
+}
+
+.place-report .place-wind-from {
+  white-space: normal;
+}
+
+/* Where the wind blows TO, for the eye; the words say where it comes from. */
+.place-report .place-arrow {
+  display: inline-block;
+  margin-inline-end: 4px;
+  font-family: var(--mono);
+  line-height: 1;
+  color: var(--t2);
+}
+
+.place-report .place-where {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+.place-report .place-away {
+  font-size: var(--ts-label);
+  color: var(--t2);
+}
+
+/* ------------------------------------------------------------- alerts */
+
+.place-report .place-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-report .place-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
+.place-report .place-pill {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  border-radius: var(--pill);
+  line-height: 1.4;
+}
+
+.place-report .place-alert-title {
+  flex: 1 1 14ch;
+  font-size: var(--ts-sub);
+  color: var(--t1);
+}
+
+.place-report .place-alert-meta {
+  flex: 1 1 100%;
+  font-size: var(--ts-meta);
+  color: var(--t3);
+}
+
+/* ------------------------------------------------------------- days */
+
+.place-report .place-days {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-report .place-day {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: var(--ts-sub);
+}
+
+.place-report .place-day-name {
+  flex: 1 1 12ch;
+  font-weight: 500;
+}
+
+.place-report .place-day[data-partial] .place-day-name {
+  font-weight: 400;
+  color: var(--t2);
+}
+
+.place-report .place-sky,
+.place-report .place-day-temps,
+.place-report .place-day-precip {
+  flex: 0 1 auto;
+}
+
+.place-report .place-day-temps {
+  font-variant-numeric: tabular-nums;
+}
+
+.place-report .place-day-precip {
+  color: var(--t2);
+}
+
+/* The next hours: as many cells per row as fit, one column at worst. */
+.place-report .place-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 4.25rem), 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.place-report .place-strip-hour {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  font-size: var(--ts-meta);
+  color: var(--t2);
+  font-variant-numeric: tabular-nums;
+}
+
+.place-report .place-strip-temp {
+  font-size: var(--ts-sub);
+  color: var(--t1);
+}
+
+/* ------------------------------------------------------------- show more */
+
+.place-report .place-more-btn {
+  align-self: flex-start;
+  min-height: var(--target);
+  max-width: 100%;
+  padding: 0 4px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: var(--ts-label);
+  font-weight: 500;
+  color: var(--t2);
+  text-align: start;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.place-report .place-more-btn:hover {
+  color: var(--t1);
+}
+
+.place-report .place-more-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+.place-report .place-more {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: var(--ts-meta);
+}
+
+.place-report .place-more[hidden] {
+  display: none;
+}
+
+.place-report .place-prov {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+
+.place-report .place-prov-name,
+.place-report .place-sub {
+  margin: 0;
+  font-size: var(--ts-label);
+  font-weight: 600;
+  color: var(--t2);
+}
+
+.place-report .place-list {
+  margin: 0;
+  padding-inline-start: 1.1em;
+  font-size: var(--ts-label);
+  color: var(--t1);
+}
+
+.place-report .place-list > li + li {
+  margin-top: 2px;
+}
+
+.place-report .place-decades {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--ts-label);
+}
+
+.place-report .place-decades > li {
+  flex: 0 1 auto;
+}
+
+.place-report .place-count {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ------------------------------------------------------------- tables */
+
+.place-report .place-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ts-meta);
+  font-variant-numeric: tabular-nums;
+}
+
+.place-report .place-table caption {
+  padding-bottom: 4px;
+  font-size: var(--ts-label);
+  font-weight: 600;
+  text-align: start;
+  color: var(--t2);
+}
+
+.place-report .place-table th,
+.place-report .place-table td {
+  padding: 3px 6px;
+  border-bottom: 1px solid var(--line-soft);
+  text-align: start;
+  vertical-align: baseline;
+}
+
+.place-report .place-table th {
+  font-weight: 500;
+  color: var(--t3);
+}
+
+/* ------------------------------------------------------------- sources */
+
+.place-report .place-sources {
+  margin: 0;
+  font-size: var(--ts-meta);
+  line-height: var(--lh-body);
+  color: var(--t3);
+}
+
+.place-report a {
+  color: var(--cyan);
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+
+.place-report .place-disclaimer {
+  margin: var(--gap) 0 0;
+  font-size: var(--ts-meta);
+  font-style: italic;
+  color: var(--t3);
+}
+
+/* ------------------------------------------------------------- narrow section */
+
+/* Tables become stacked rows: each cell on its own line, its column name in
+   front of it. Keyed on the SECTION's width, the box a table actually lives
+   in: on a wide panel the sections are a grid of about 22rem columns, and a
+   seven-column table kept as a table there broke its headers mid-word
+   ("Temp/erature", 40 px cells at a 1200 px panel, measured). A table of
+   more than three columns needs about 40rem; a three-column one fits in any
+   section the grid makes, so it stacks only below 22rem (a 280 px card).
+   rem, not px: at a 32 px root the thresholds double with the text. */
+@container place-section (max-width: 39.99rem) {
+  /* each cell says its column itself (::before below), so the header row
+     would only lay out off the card */
+  .place-report .place-table.is-wide thead {
+    display: none;
+  }
+
+  .place-report .place-table.is-wide,
+  .place-report .place-table.is-wide tbody,
+  .place-report .place-table.is-wide tr,
+  .place-report .place-table.is-wide td {
+    display: block;
+    width: 100%;
+  }
+
+  .place-report .place-table.is-wide tr {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .place-report .place-table.is-wide td {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
+    padding: 1px 0;
+    border-bottom: none;
+  }
+
+  .place-report .place-table.is-wide td::before {
+    content: attr(data-label);
+    flex: 1 1 10ch;
+    color: var(--t3);
+  }
+
+  .place-report .place-table.is-wide td > * {
+    flex: 999 1 12ch;
+  }
+}
+
+@container place-section (max-width: 21.99rem) {
+  /* each cell says its column itself (::before below), so the header row
+     would only lay out off the card */
+  .place-report .place-table thead {
+    display: none;
+  }
+
+  .place-report .place-table,
+  .place-report .place-table tbody,
+  .place-report .place-table tr,
+  .place-report .place-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .place-report .place-table tr {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .place-report .place-table td {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 8px;
+    padding: 1px 0;
+    border-bottom: none;
+  }
+
+  .place-report .place-table td::before {
+    content: attr(data-label);
+    flex: 1 1 10ch;
+    color: var(--t3);
+  }
+
+  .place-report .place-table td > * {
+    flex: 999 1 12ch;
+  }
+}

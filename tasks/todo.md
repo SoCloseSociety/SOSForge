@@ -1571,6 +1571,386 @@ parts and safe names holding a value of the wrong shape.
       id "untuk tanggal ini", fr "pour cette date"; en "for this day", es
       "para este día", ja "この日の" kept (they say "this day", not today).
 
+## Place report (2026-10-27) -- plan (critical files main.py, core/config.py, core/privacy.py, pyproject.toml)
+
+The owner, after searching "koh samui" and seeing nothing: "notre systeme
+devrait tout donner! meteo, mers, vent, air, risque etc, tout l'historique".
+`GET /api/place?lat=&lon=` builds a report of 22 blocks for one searched or
+clicked point (never the device position: "your location never leaves your
+device" stays true). Contract v1 (corrected) is the spec; this is the order
+of work and what each critical file gets.
+
+- [x] Base: this lane starts from `feat/sosforge-round2-2026-10` (privacy.py,
+      climate.py, `geocode.AddressBudget` and lesson 30 live there, not on main).
+- [x] `pyproject.toml`: `numpy==2.5.4`, `omfiles==1.2.0` (exact pins). Gate
+      before the first commit: `pip install .` in `python:3.12-slim`
+      linux/amd64, `app/data/*.json` present in the installed package, one
+      real `.om` read from the Open-Meteo bucket. Fails -> `air`, `pollen`,
+      `sea.waves`, `sea.level` are removed from this work, never placeholders.
+- [x] `core/config.py`: `enable_place`, `place_budget_seconds` (8),
+      `place_max_upstream` (16), `place_rate_burst` (4), `place_rate_per_second`
+      (0.0667), `place_cache_entries` (4096), `place_history_cache_mb` (64).
+- [x] `core/privacy.py`: an httpx filter that rewrites every URL argument
+      (`str` or `httpx.URL`) for a `place.fetch.HOSTS` host to `scheme://host`
+      (NWS carries the point in the PATH: `/points/61.2180,-149.9000`).
+      `lat`, `lon`, `radius_km` stay outside `SAFE`, so access logs blank them.
+- [x] `main.py`: one route `GET /api/place` (strict query read from
+      `request.query_params`: 400 `bad_point` / `bad_radius` / `bad_lang` /
+      `unknown_param`, duplicates refused, -0.00 normalised; 404
+      `place_disabled`; 429 `rate_limited` + Retry-After from its own
+      `AddressBudget(4, 1/15)`, spent only when the report starts a new
+      upstream fetch; ETag = sha1 of the body minus `server_time` and every
+      `fetched_at`, 304 on If-None-Match, `Cache-Control: no-cache`), and
+      `"place"` in FEATURES when enabled. The alerts block reads the store
+      through a provider main.py passes in; the package never imports main.
+- [x] `backend/app/place/`: block envelope + messages (5 languages), fetch
+      layer (UA, HOSTS, global 16 / per-host caps, token buckets, queue bound
+      -> `busy`, timeouts, retry-once, single flight, LRU + byte-bounded caches,
+      60 s failure memory, URL-free reasons, a 4-thread executor), geo
+      (country rule of `countries.ts` ported, NEAR_BORDER_KM 25, coast distance
+      with a bbox prefilter, sea gate), `.om` range adapter (thread -> loop,
+      If-Match, meta re-check), PNG decoder, METAR parser, and the 22 blocks.
+- [x] Tests offline only, on verbatim fixtures copied with a MANIFEST per family.
+- [x] Live: API on :8338 (PID recorded, stopped by PID), the 8 places, each
+      block's status and as_of recorded below; no coordinate or place-host URL
+      path in any log line (grep recorded).
+
+### Place report -- review (2026-10-27)
+
+**The `.om` gate.** `pip install .` in `python:3.12-slim` linux/amd64 passed,
+the installed package holds `app/data/{countries,iso3,coastline_50m,guidance}.json`,
+and a real read from the bucket succeeded (cams_global pm2_5 at the Ko Samui
+cell: 7.3 ug/m3, run 2026-10-27 00Z) -- under Rosetta (a throwaway colima VM,
+deleted after). Under colima's default QEMU emulation the same read died with
+**SIGILL**: the omfiles 1.2.0 linux wheel uses AVX2 (5905 ymm instructions,
+no AVX-512, scanned with objdump), and an illegal instruction kills the whole
+process, not the block (lesson 3). So `om.decoder_ready()` reads
+`/proc/cpuinfo` first: without `avx2` the four `.om` blocks are
+`unavailable` with that reason and the decoder never runs. To check on the
+production VPS before deploying: `grep -c avx2 /proc/cpuinfo`.
+
+**Captures recorded live for this work** (verbatim, sidecar + MANIFEST): MET
+Oslo (Nordic gusts and precipitation probability), the EPA AQS breakpoint CSV,
+the EEA EAQI page (2024 bands), the INFORM workflow group listing, every
+Aqueduct `(cat, label)` pair (25), the GWIS world probe for today, today+7 and
+an unrendered date (2026-11-20: a real 82-byte answer with no colour), the
+IBTrACS v04 column documentation (wind averaging per agency), and the NCEI
+OpenAPI description (from the research lane's raw capture, URL not recorded).
+
+**Still out of `data` until their captures exist** (contract rule): MFWAM
+period / direction / partitions; SMOC currents; cams_global CO, AOD and
+clear-sky UV (the US AQI says "CO not included"); cams_europe alder, mugwort,
+olive; CoastWatch `analysis_error` / `sea_ice_fraction`; NDBC owner names
+(`owner` stays null). Not tested for lack of a real two-chunk cassette: the
+2294/2295 chunk straddle; the meta run-change branch (the re-read after a cold
+read and its absence after a warm one are tested).
+
+**Measured and changed on the way:**
+- a cold cams_global cell (7 variables x 5 ranges) read one variable at a time
+  missed the 8 s budget at all 8 places; all variables in parallel -> it fits
+  on most first views (Lima, Kathmandu, mid-Pacific complete on the first view);
+- two warm reports 2 s apart had different ETags: the live block's `as_of` is
+  `server_time`, and an event's `last_seen` moves on every poll. The ETag now
+  drops a live block's `as_of` and hashes alerts as id|revision|updated_at
+  (the `/api/events` doctrine); measured after: same ETag, 304;
+- GDO at the mid-Pacific CELL CENTRE answers dates with null soil values where
+  the exact point answered an empty series: both now read as "no soil series";
+- MET Norway: TLS setup is 1.3 to 2 s from this machine; under the startup
+  load some first reads hit the 5 s connect timeout. The reason now says
+  "no connection to api.met.no within 5 s"; the next report (failure memory
+  60 s) succeeded everywhere;
+- GWIS publishes no FWI pixel at Ko Samui (the island is outside ECMWF's land
+  mask: the tile is transparent there) nor at the Paris pixel: `masked`.
+  **WRONG, corrected by the fixer pass below**: the pixel read was 16.7 km
+  away, in the sea; GWIS renders "low" on the island itself.
+
+**Live smoke, :8338, real sources, `SOS_DATA_DIR` in the scratchpad.** Cold =
+first report after a restart (IBTrACS index read from disk), warm = the same
+places a few minutes later. `U` unavailable, `NA` not applicable, else the
+block's own `as_of` (UTC, MM-DD HH:MM). Warm run:
+
+| block | Ko Samui | Tokyo | Paris | Lima | Reykjavik | Anchorage | Kathmandu | mid-Pacific |
+|---|---|---|---|---|---|---|---|---|
+| `weather_now` | 10-27 14:00 | 10-27 14:30 | 10-27 14:30 | 10-27 14:00 | 10-27 14:00 | 10-27 14:38 | 10-27 14:30 | U no_station |
+| `forecast_hourly` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 |
+| `forecast_daily` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 |
+| `wind` | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 13:17 | 10-27 12:17 (NWS) | 10-27 13:17 | 10-27 13:17 |
+| `sea.waves` | 10-27 00:00 | 10-27 00:00 | NA inland 150 km | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA inland 648 km | 10-27 00:00 |
+| `sea.level` | 10-27 00:00 | 10-27 00:00 | NA inland | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA inland | 10-27 00:00 |
+| `sea.temperature` | 10-25 12:00 | 10-25 12:00 | NA inland | 10-25 12:00 | 10-25 12:00 | 10-25 12:00 | NA inland | 10-25 12:00 |
+| `sea.buoy` | U no_station | U no_station | NA inland | U no_station | U no_station | 10-27 14:22 (APMA2) | NA inland | U no_station |
+| `air` | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 |
+| `pollen` | U no_coverage | U no_coverage | 10-27 00:00 | U no_coverage | 10-27 00:00 | U no_coverage | U no_coverage | U no_coverage |
+| `drought` | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | 10-01 00:00 | NA at_sea |
+| `fire.hotspots` | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 | 10-27 11:36 |
+| `fire.danger` | U masked | 10-27 00:00 | U masked | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | 10-27 00:00 | NA at_sea |
+| `risk.water` | 08-10 14:44 (2023) | 2023 | 2023 | 2023 | U masked | 2023 | 2023 | NA at_sea |
+| `risk.country` | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | 09-02 00:00 | NA no_country |
+| `history.earthquakes` | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 | 10-27 12:01 |
+| `history.significant_earthquakes` | 10-22 14:33 | same | same | same | same | same | same | same |
+| `history.tsunamis` | 10-09 17:56 | same | same | same | same | same | same | same |
+| `history.eruptions` | 05-07 00:00 | same | same | same | same | same | same | same |
+| `history.volcanoes` | 03-31 00:00 | same | same | same | same | same | same | same |
+| `history.cyclones` | 10-25 00:00 | same | same | same | same | same | same | same |
+| `alerts_now` | live | live | live | live | live | live | live | live |
+| complete | true | true | true | true | true | true | true | true |
+| ok / unavailable / n.a. | 19/3/0 | 20/2/0 | 17/1/4 | 20/2/0 | 20/2/0 | 21/1/0 | 17/1/4 | 15/3/4 |
+
+Cold run (first view): complete at Lima, Kathmandu, mid-Pacific; elsewhere
+3 to 10 blocks `budget` (NCEI tsunamis on its one slot every time, as the
+contract expected), Ko Samui `fire.hotspots` `warming` (5.4 MB FIRMS files on
+the first read). Every `unavailable` and `not_applicable` above is a measured
+state of the upstream, not ours: no METAR within 50 km of the mid-Pacific
+point, no NDBC station within 100 km reporting in 3 h, CAMS Europe ends at
+30.05 N, the GWIS land mask, no Aqueduct sub-basin polygon at the Reykjavik
+point (1:50m coast), no country at sea.
+
+`place` objects (live): Reykjavik IS / IS / at_sea false / coast 0.0 km;
+Stockholm SE / 0.7 km; NYC US / 2.5 km; Lisbon PT / 2.1 km; Ko Tao null / []
+/ at_sea **true** / 36.7 km (the 1:50m limit, owner decision).
+
+Live HTTP: `/api/version` lists `place`; a warm Ko Samui report answered 200
+with `Cache-Control: no-cache` and an ETag, then 304 on If-None-Match, and a
+second 200 two seconds later carried a new `server_time` with the same ETag;
+five new places in a row from one address: the fifth got 429
+`rate_limited`, Retry-After 7.
+
+Log audit (4490 lines over the four runs): 59 `/api/place` access lines, all
+`lat=-&lon=-`; 2999 httpx lines to place hosts, all `scheme://host` only (this
+also shortens the live USGS feed's own httpx lines to the host: same host);
+no coordinate of a queried place, no "Task exception was never retrieved", no
+traceback. Gates: ruff check + format on app and tests, mypy app, pytest
+1135 passed (935 before). Server PIDs 54855, 76573, 84083, 92937 started and
+stopped by PID, each checked to be the :8338 listener with this worktree's cwd.
+
+## Place report -- fixer pass on the live-truth and backend-review findings (plan, critical file main.py)
+
+Twenty findings, each reproduced before it is touched (or shown not real with
+evidence); every new fixture is a verbatim capture with its sidecar and a
+MANIFEST entry. `main.py` gets two lines of the place route only (the IPv6
+/64 key of the place budget, a `Server-Time` header on the 200 AND the 304);
+nothing else in it moves.
+
+- [x] `fire.danger`: the pixel read is the requester's own point (a tile
+      centred on it, 0.01 deg per pixel), not a 2 deg tile's pixel up to 17 km away.
+- [x] `sea.level`: datum is the GLOBAL mean sea level (Open-Meteo's own docs);
+      the window mean is exposed so the local offset is visible.
+- [x] `sea.buoy`: owner names from NDBC `station_owners.txt`, credited in the block.
+- [x] stale-while-revalidate: a copy served while its refresh runs makes the
+      report `complete: false` (retry in 5 s), so does a `warming` block; a
+      background refresh never spends a client's token.
+- [x] `risk.water`: `bws_raw` requested and returned.
+- [x] US AQI: the full AQS table (501-999 rows, the 1-h SO2 cap, 1-h ozone),
+      never a pollutant dropped above the table.
+- [x] executor: `.om` reads that wait on the network get a pool of their own;
+      `place_of` never queues behind them.
+- [x] memory: MET / NWS grid caches hold the reduced payload and a byte bound
+      on a measured size; history sizes measured, the MB setting is the total.
+- [x] IBTrACS: first-ingest failures back off (minutes to hours), a parse
+      failure keeps the download; one disk load shared by concurrent reports.
+- [x] `om.series` stale fallback re-sliced to the asked window; `alerts_now`
+      as_of = newest source success; `round_point` wraps 180 and clamps 90.
+- [x] tests on invented or mismatched payloads replaced by real captures;
+      GVP licence and citation checked against GVP's own terms.
+- [x] gates, live smoke :8338 at the eight places (PID recorded, stopped by PID).
+
+### Fixer pass -- review (2026-10-27)
+
+Every finding was reproduced before it was touched; none turned out not real.
+New fixtures are verbatim captures (sidecar with URL, fetch time, status,
+headers, User-Agent; MANIFEST `additions` entries), most of them of the very
+URL the code now sends.
+
+| # | finding | reproduced | fix | test (verbatim fixtures) |
+|---|---|---|---|---|
+| 1 | `fire.danger` read 2-17 km from the point | live, 8 places x 3 days: Samui `masked` where the point is `low` (old pixel 9.403,99.903 = sea); Lima 10-28 `moderate` where the point is `high` | 9x9 tile centred ON the rounded point, 0.01 deg/px (`tile_box`); matched a 101 px reference at all 8 places x 3 days | Samui/Lima/Paris point tiles + the two old cell tiles |
+| 2 | `sea.level` "relative to mean sea level" | Open-Meteo docs: datum is the GLOBAL mean sea level; 49 h means +1.02 (Samui) to -0.40 (Reykjavik) | `datum: global_msl`, `window_mean_m` (derived); docstrings fixed | marine docs page; Lima cassette |
+| 3 | buoy owner never named | APMA2 `MA` = Marine Exchange of Alaska in `station_owners.txt` | owners file read (24 h, swr), `owner`, `owner_country`, and the owner in the block's own attribution | owners file; every owner code of the table resolves |
+| 4 | swr served a 31-min copy as complete | live: VTSM 1400Z shown while AWC had 1500Z | a copy served while its refresh runs -> `complete: false`, retry 5 s | AWC cache file; live: 16:24:43 `complete false`, 16:24:49 fresh `fetched_at`, `complete true` |
+| 5 | `warming` left `complete: true` | first IBTrACS ingest | a finished `warming` block -> `complete: false` | held IBTrACS download |
+| 6 | `bws_raw` never selected | Carto: Samui 0.491, Lima 1.678 | selected and returned | two new Carto captures (old Samui capture removed) |
+| 7 | US AQI dropped a pollutant above the table | offline: PM2.5 400 + PM10 700 -> "good" | every AQS row but NONE (501-999 rows, 1-h SO2 cap 200 `at_least`, 1-h ozone, the larger ozone index); above the last row = its ceiling, `at_least` | AQS CSV; 12 real CAMS cells (8 places + Bodele, Taklamakan, Delhi, Lahore) read live: identical before/after, none above the old table today |
+| 8 | `place_of` and `.om` readers on the 4 decode threads | 2.96 s on a 0.5 s budget | `place_of` on the loop (0.7-0.8 ms, tables preloaded at startup); `.om` readers in `om.READERS` (8) | both scenarios fail on the old wiring (2.96 s, 2.98 s), pass now |
+| 9 | MET / NWS caches unbounded in bytes | 259 KB / 330 KB parsed per entry | slim payloads (MET 197 KB, NWS grid 31 KB), `fetch.deep_size`, 64 MB / 16 MB bounds | blocks identical from full and slim at 4 MET captures + NWS |
+| 10 | first ingest retried the 333 MB every 60 s | code path | backoff 10 min doubling to 6 h; a complete download is KEPT and revalidated (304 = no download) | column documentation PDF as the unparsable body |
+| 11 | concurrent disk load started a download | code path | one shared disk-load task | slow load, two reports; live: two reports at startup, no NCEI request in the log |
+| 12 | history sizes 2.3-3x low, MB per cache | deep sizes measured | deep size per entry; the MB is the total (a third each) | Kathmandu USGS, Lima runups |
+| 13 | stale om series kept its old window | code path | `om.within` cuts to the asked window; `need_hour` fails with the refresh's reason | Paris cassette, refresh failing +20 h and +50 h |
+| 14 | `alerts_now` always "as of now" | code path | as_of = newest `last_ok`; no overwrite in `compose.body` | sources failing 2 h -> stale |
+| 15 | background refresh spent the client's token | code path | swr refresh and the IBTrACS daily check claim nothing | empty budget, no 429 |
+| 16 | invented / mismatched test payloads | the four tests named | Paris soil, Reykjavik trio (window to 09-15: rdria ends null after 1), USGS `limit=1` probe and the exact cell query | captured today |
+| 17 | GVP licence, NDBC attribution | GVP terms (web.archive.org 2026-07-09): VOTW "falls under (2)", never eligible for copyright; the live site answers 403 + JS challenge | licence "No known copyright restrictions: a work of US Government employees"; citation names the day the service was read (the version is only on the challenged page); NDBC: see 3. Aqueduct: WRI data page "Creative Commons" + open data commitment "CC BY 4.0" captured | terms, database page, the 403, the two WRI pages |
+| 18 | lon 180 / lat 90 cell centres | `longitude=180.05` | `cell_key` folds lon 180 -> -180, lat below 90; the echo keeps 180.0 (the panel matches its answer on it) | Taveuni |
+| 19 | 304 without a current clock | Android (feat/sosforge-android) has no OkHttp Cache and no `/api/place` call yet, but revalidates `/api/events` by hand | `Server-Time` on the 200 and the 304 | TestClient + real uvicorn/curl (lesson 31): 304 at 16:21:56 carried `server-time: 2026-10-27T16:21:56Z` |
+| 20 | IPv6 address = one bucket each | code path | the place budget keyed by `geocode.address_key` (/64; IPv4-mapped -> IPv4) | three clients, two in one /64 |
+
+**Live smoke, :8338, PID 65062 (cwd this worktree, started 17:17:53 local),
+stopped by PID.** Cold = first reports after the restart (index from disk);
+warm = 16:21Z. Warm run, `U` unavailable, `NA` not applicable:
+
+| | Ko Samui | Tokyo | Paris | Lima | Reykjavik | Anchorage | Kathmandu | mid-Pacific |
+|---|---|---|---|---|---|---|---|---|
+| complete | true | true | true | true | true | true | true | true |
+| ok / U / NA | 20/2/0 | 20/2/0 | 17/1/4 | 20/2/0 | 20/2/0 (2nd read) | 21/1/0 | 17/1/4 | 15/3/4 |
+| `fire.danger` days | low low low | low low low | U masked | moderate high high | low low low | low low low | low moderate low | NA at_sea |
+| = 101 px point reference | yes | yes | masked at the point | yes | yes | yes | yes | -- |
+| `sea.level` window mean | +1.02 | +0.29 | NA | +0.38 | -0.40 | +0.18 | NA | +0.71 |
+| `water_stress.raw` | 0.491 | 0.300 | 0.133 | 1.678 | U masked | 0.059 | 0.281 | NA |
+
+Anchorage buoy: APMA2, owner "Marine Exchange of Alaska" (US), attribution
+"Observations of station APMA2, owned by Marine Exchange of Alaska, relayed
+by NOAA's National Data Buoy Center". `alerts_now` as_of = the newest source
+poll (1-4 s before `server_time`), not stale. Cold: `complete: false` at all
+8 (budget on the bucket and NCEI, FIRMS `warming`), as before. Reykjavik's
+first warm read had `history.tsunamis` `timeout` ("no connection to
+www.ngdc.noaa.gov within 5 s"), the next one 10-09 17:56: NCEI's state.
+
+Log audit (1062 lines): 21 `/api/place` access lines, all `lat=-&lon=-`; no
+httpx line to a place host with a path or a query; no coordinate of the
+eight places; no traceback, no "never retrieved". Gates: ruff check + format
+(app, tests), mypy app, pytest 1174 passed (1135 before).
+
+**Left for others.** The panel (worktree wf_b765ef57-e77-9, `i18n.ts`
+`place.sea.msl`) still prints "relative to mean sea level, not chart datum"
+whatever `datum` says: it should read the datum ("relative to the global
+mean sea level, not the local mean nor chart datum") and can show the level
+about `window_mean_m`; it can show `at_least` ("200 or more") and the owner.
+`om._last_good` (4096 series, about 20 KB each) is bounded by count only, as
+the history caches were. The geocoder and websocket quotas still key IPv6 by
+the full address. GVP's version number cannot be read by this server; if the
+owner wants it named, it has to come from a page a browser fetches.
+
+## Place report -- integration on round 2 (2026-10-27, integrator)
+
+Branch `feat/sosforge-place-report`, on the round-2 head b1e5bc2 (stacked on
+PR #5). Both workflow branches merged (backend 1e4f054, frontend f450f54);
+conflicts in core/privacy.py imports, tasks/todo.md and frontend/src/i18n.ts
+(both sides kept, 587 keys per language, none duplicated).
+
+- [x] Country table drift: round 2 moved the page's table to 1:10m with holes
+      and the overseas departments; the place backend held the 1:50m copy.
+      Ported (holes, offshore rule `nearest_within_100km`), iso3.json rebuilt
+      from 1:10m plus the six overseas alpha-3. Measured: Maseru LS, Reunion RE
+      (INFORM now says it has no REU score instead of scoring mainland France),
+      Ko Tao TH at sea, the mid-Pacific test point 41 km from Jarvis (UM). The
+      shared points are asserted by pytest AND vitest.
+- [x] M1 (final live check): METAR reads merged across refreshes; "no station"
+      names the window held after a restart. Tests on two real reads 15 min
+      apart (51 stations dropped by the second, all still served).
+- [x] M2: drought asked at the rounded point. Live: Anchorage soil anomaly
+      -2.15 (was 0.25 from the cell centre).
+- [x] Mounted: one button over the map for a searched or clicked place only,
+      opening the report in the climate panel's dialog. Never in Near me
+      (behavioural test with a real fix through useNearMe; the `center`
+      mutant fails it). No /api/place before the button is pressed.
+- [x] tools/responsive.py gains --place and --near. The button's first spots
+      (a row under the scope bar, a pill in it) cost the fold on 3-4 landscape
+      viewports; over the map it costs none.
+- [x] Measured for the VPS: AVX2 present (EPYC Milan); IBTrACS index build
+      peak RSS 337 MB for 6.4 s (720 997 rows, 22.7 MB index), on a host with
+      617 MB available. Watch `free -m` during the first ingest at deploy.
+- [ ] Round-2 regression found by --near: Near me at a granted position (what
+      real visitors get) shows NO event above the fold on 280x653, 320x568,
+      360x640, 375x667 and 568x320, where production shows 1 to 4. Place mode
+      fails the same five. Fix in progress (workflow, on the round-2 branch so
+      PR #5 carries it).
+- [ ] Adversarial review of this branch's own commits, then PR.
+- [x] Review (geo): the coastline is now 1:10m, the country table's scale
+      (branch place-fix-geo). Islands 1:10m draws were land "inland" 71 to
+      957 km from the ocean (Lampedusa 137.1, Rodrigues 592.1, Wake 903.3);
+      now 0.0 to 22.6 km, sea_gate true for all 15 of the review's points,
+      Paris 149 / Kathmandu 642 still inland. Live: Lampedusa's waves, level
+      and SST served (cells 5.2 / 5.2 / 3.6 km), Paris "149 km away".
+      1.91 MB table, 383 163 segments; preload 150 ms (80), the coastline
+      keeps 12.3 MB and peaks at 20.6 (tracemalloc; 1.9 / 4.2 at 1:50m);
+      coast_km p50 0.69 ms, p95 1.68 (a latitude band, exact). Clipperton
+      CP and Bouvet BV have their own codes (no France or Norway warnings,
+      INFORM no_coverage); the country build was proven byte-reproducible
+      first (natural-earth-vector ca96624, shapely 2.1.2). Known limit: Hans
+      Island's Danish half is a MINOR island the coastline omits (16.8 km,
+      gate still true).
+- [ ] Known limit: the Chrome-overlap test of the responsive tool failed
+      once under load (passes alone and in two full runs).
+
+## Place report -- weather_now fixes from the review (2026-10-27, branch place-fix-weather)
+
+Two confirmed findings in `backend/app/place/weather.py`. Plan, written before
+touching `app/main.py` (critical file):
+
+- [x] A correction wins: `merge_metar` kept the held original over the
+      issuer's same-time COR (strict `>`). The report from the NEWER file
+      wins a same-time tie (an older CDN copy read later does not bring the
+      original back). Test on the real pair: ETAR at 17:40Z serves the COR
+      (10 km, VFR), SAZG has only SCT025.
+- [x] An honest `since`: it was the oldest row of the first file, but the
+      file is not a window by observation time (KOYE's 17:10Z report was
+      listed at 17:24Z and gone at 17:39Z while 16:30Z rows stayed). The
+      cover now starts at the first read's own time (the file's
+      Last-Modified, never later than the read), and stays unbroken only
+      while consecutive reads are closer than a report can stay listed
+      (`METAR_MAX_GAP` 5.5 min, from one-minute captures); a wider gap starts
+      over from the fresh file alone. Under an hour of cover no window is
+      named ("No station within 50 km is in the latest reports.", new
+      variant `no_station:km` in five languages; a variant is now the one
+      naming the most parameters, whatever the table order); from an hour,
+      "since HH:MM UTC" rounded UP to the minute; from 3 h, "in the last 3
+      hours".
+- [x] A background read of the cache file, so the cover does not depend on
+      visitors: `place.start(enabled)` spawns (fetch.spawn) one loop that
+      reads the file through the same cache entry (single flight shared
+      with reports, no client token) each time its copy expires, 60 s after
+      a failure. `main.py` lifespan extends its task list with it, cancelled
+      at shutdown like the others; nothing starts when `enable_place` is
+      off. Measured, the 5 minutes first planned were too slow: every 3 min
+      (TTL 180 s, 480 GETs of about 260 KB a day).
+
+**Measured** (58 one-minute reads of the file, 18:21-19:20Z, SOSForge UA):
+79 reports were seen arrive and then leave with no newer one of their
+station. The shortest stayed 6.9 to 10 min: KOYE's 18:30Z (listed
+18:31-18:38Z) and its 18:50Z and 19:10Z, KW63's 18:35Z and 18:55Z (both
+report every 20 min). Simulated cadences over the series: read every 10 min
+(the gap first proposed in the review) misses KOYE twice in the hour; every
+3 min (files 2.8 to 4.1 min apart) misses none of those. What no cadence
+under one minute catches: two late copies listed one or two files and
+superseded within 6 min (SVMI's 18:00Z, listed only at 18:54Z, 54 min
+late; MSSS's 18:50Z at 18:57-18:58Z), and a report missing from ONE file and
+back in the next (KHTH's 18:35Z at 18:40Z, PAAD's 19:15Z at 19:18Z): the
+next read or report catches up. Every gap seen between files was 0.8 to
+2.1 min; one capture failed (RemoteDisconnected at 18:30:55Z).
+
+Live: the real refresher outside the app read at 18:41, 18:46, 18:51Z
+(5 min TTL, before the change to 3) and kept the cover from 18:40:10 with
+5123, 5129, 5133 stations; at KOYE it said "No station within 50 km is in
+the latest reports." for 10 minutes, then served KOYE 18:50Z. The API
+itself (port 8359, scratch data dir, ash source off so its 180 s SIGMET poll
+could not be mistaken for it) read aviationweather.gov at boot and then
+every 3:03 and 3:06 with no request at all, and stopped cleanly.
+
+Fixtures: two of those reads 3 min apart (18:37:06Z and 18:40:10Z by
+Last-Modified) are now `awc_metars_cache_global_chain_a/_b` with sidecars
+and manifest entries: KOYE's 18:30Z in the first, gone from the second, no
+other station within 50 km (KPBM 61 km).
+
+Left: a report listed for less than a read period (the late copies, the
+one-file gaps above) can still be missed for one period; the window message
+stays a measured claim, not a guarantee. The frontend fixtures captured
+before this change still show the old sentence (verbatim captures, left as
+they are).
+
+### Integration review fixes merged (2026-10-27)
+
+- [x] place-fix-geo (1:10m coastline, Clipperton CP, Bouvet BV), place-fix-weather
+      (a COR wins its tie, `since` from the reads, METAR refresh every 3 min),
+      place-fix-web (icon-only label when it would wrap, the place flight padded
+      under the button even when it mounts late, the button only where
+      /api/version lists "place"). Each accepted by an adversarial verifier
+      (web after a second pass). Merged tree: pytest 1282, vitest 553, tsc,
+      mypy, ruff, build in 5 languages.
+- [x] The verifier's open note on Bouvet, measured instead of faked: 0 of the 89
+      live MET Norway warnings (feeds-norway, 2026-10-27) lack a position, all
+      carry polygons, so no unplaced NO warning exists to count there today; the
+      BV code itself is asserted in the shared country points.
+
 - [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
       (warning) for a counter of every bulletin; the phone's short label is now
       「津波情報」, JMA's umbrella term (2026-10-27, integrator).

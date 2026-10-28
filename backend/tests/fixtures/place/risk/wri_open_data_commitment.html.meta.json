@@ -1,0 +1,16 @@
+{
+  "url": "https://www.wri.org/data/open-data-commitment",
+  "fetched_at_utc": "2026-10-27T16:16:01Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 16:16:01 GMT",
+    "content-type": "text/html; charset=UTF-8",
+    "content-encoding": "gzip",
+    "last-modified": "Tue, 27 Oct 2026 14:12:07 GMT",
+    "cache-control": "public, max-age=3600",
+    "expires": "Sun, 19 Nov 1978 05:00:00 GMT",
+    "age": "16"
+  },
+  "bytes": 75117,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

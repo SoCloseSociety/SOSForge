@@ -1,0 +1,12 @@
+{
+  "url": "https://drought.emergency.copernicus.eu/services/webmap/hst?lon=-21.95&lat=64.15&appCode=gdo_map&srvs=rdria&inds=rdria&date_ini=2026-06-01&date_end=2026-09-15",
+  "fetched_at_utc": "2026-10-27T15:56:57Z",
+  "status": 200,
+  "headers": {
+    "date": "Tue, 27 Oct 2026 15:56:58 GMT",
+    "content-type": "application/json",
+    "cache-control": "no-cache, private"
+  },
+  "bytes": 198,
+  "user_agent": "SOSForge/1.0 (+https://sosforge.soclose.co)"
+}

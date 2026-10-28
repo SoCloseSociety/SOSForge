@@ -1,0 +1,382 @@
+time,latitude,longitude,depth,mag,magType,nst,gap,dmin,rms,net,id,updated,place,type,horizontalError,depthError,magError,magNst,status,locationSource,magSource
+2026-09-08T16:08:34.747Z,29.2042,83.9776,10,4.9,mb,104,53,10.163,0.77,us,us7000tfur,2026-10-10T15:34:49.040Z,"90 km NNE of Chitre, Nepal",earthquake,24.72,2.001,0.047,142,reviewed,us,us
+2026-08-26T02:52:10.000Z,28.271,85.515,0,5.2,ms_vx,0,,,3.9,us,us7000tbwb,2026-10-23T21:36:53.040Z,"55 km NW of Kodāri̇̄, Nepal",landslide,13.39,1.955,0.085,29,reviewed,us,us
+2026-07-19T10:45:31.176Z,28.5087,82.6592,10,4.5,mb,51,82,9.542,0.58,us,us7000t1s3,2026-10-08T15:34:46.040Z,"54 km NE of Tulsīpur, Nepal",earthquake,11.83,1.881,0.072,56,reviewed,us,us
+2026-03-29T03:14:38.812Z,27.1414,88.1012,10,4.5,mb,48,160,3.69,0.68,us,us7000s8h7,2026-06-10T15:14:55.040Z,"13 km W of Naya Bāzār, India",earthquake,9.68,1.905,0.08,45,reviewed,us,us
+2026-03-12T07:45:48.786Z,28.9576,86.8579,10,4.5,mb,59,160,3.801,0.52,us,us6000sfsn,2026-05-26T19:16:53.040Z,"111 km N of Lobuche, Nepal",earthquake,8.36,2.466,0.071,58,reviewed,us,us
+2026-02-26T06:04:05.847Z,27.2253,88.1573,10,4.8,mb,62,98,3.596,0.63,us,us7000s0ec,2026-05-15T22:02:27.040Z,"12 km SW of Gyalshing, India",earthquake,10.46,1.872,0.07,63,reviewed,us,us
+2026-02-07T13:05:24.212Z,27.381,88.1413,10,4.6,mb,64,66,3.5,0.76,us,us6000s757,2026-05-01T14:35:44.040Z,"15 km NW of Gyalshing, India",earthquake,7.99,1.864,0.068,65,reviewed,us,us
+2026-02-05T19:39:28.253Z,27.2775,88.1055,10,4.6,mb,73,73,3.594,0.87,us,us6000s6si,2026-05-01T14:35:42.040Z,"15 km W of Gyalshing, India",earthquake,7.57,1.478,0.068,64,reviewed,us,us
+2025-11-10T22:44:14.464Z,29.0846,86.7036,10,4.5,mb,26,164,3.909,0.71,us,us7000refy,2026-01-29T22:05:28.040Z,"126 km N of Lobuche, Nepal",earthquake,9.68,1.889,0.124,19,reviewed,us,us
+2025-11-03T20:57:22.312Z,28.5267,87.3673,10,4.7,mb,64,79,3.493,0.77,us,us6000rl8r,2026-01-27T17:59:07.040Z,"84 km NE of Lobuche, Nepal",earthquake,9.64,1.872,0.058,89,reviewed,us,us
+2025-09-12T21:42:10.839Z,29.1796,87.0157,10,5,mb,73,73,3.624,0.75,us,us7000qvtp,2025-12-03T03:58:15.040Z,"137 km N of Lobuche, Nepal",earthquake,7.3,1.476,0.044,165,reviewed,us,us
+2025-08-26T02:03:56.690Z,29.9566,84.4391,10,4.6,mb,70,78,5.816,0.56,us,us7000qqxx,2025-11-12T16:25:44.040Z,"103 km NW of Saga, China",earthquake,9.1,1.794,0.067,66,reviewed,us,us
+2025-05-11T21:11:22.060Z,29.0536,87.6068,9,5.5,mww,151,22,2.401,0.67,us,us7000pyq7,2025-07-24T21:30:14.040Z,"126 km W of Rikaze, China",earthquake,8.15,1.787,0.08,15,reviewed,us,us
+2025-03-08T08:50:17.952Z,28.5719,87.5508,10,5,mww,94,41,2.148,0.67,us,us6000pxlv,2025-05-16T17:30:03.040Z,"100 km NE of Lobuche, Nepal",earthquake,8.01,1.857,0.11,8,reviewed,us,us
+2025-02-27T21:06:10.378Z,27.8626,85.9232,10,5,mww,98,26,0.574,0.77,us,us6000pvwf,2025-05-08T19:24:42.040Z,"11 km SSW of Kodāri̇̄, Nepal",earthquake,6.15,1.743,0.075,17,reviewed,us,us
+2025-02-21T10:11:47.229Z,28.4908,87.4621,10,4.9,mb,99,55,2.047,0.46,us,us7000pf75,2025-05-06T21:39:17.040Z,"87 km NE of Lobuche, Nepal",earthquake,7.01,1.837,0.046,145,reviewed,us,us
+2025-02-16T03:28:58.304Z,28.9741,87.4658,10,4.8,mb,76,94,2.254,0.74,us,us7000pe20,2025-05-02T16:26:19.040Z,"130 km NNE of Lobuche, Nepal",earthquake,8.01,1.864,0.058,94,reviewed,us,us
+2025-01-27T09:33:37.563Z,28.6098,87.4588,10,4.8,mb,75,107,2.086,0.82,us,us6000pmj5,2025-04-08T22:01:01.040Z,"97 km NE of Lobuche, Nepal",earthquake,7.31,1.869,0.059,88,reviewed,us,us
+2025-01-24T05:59:17.789Z,28.8632,87.5218,10,4.6,mb,67,97,2.243,0.52,us,us6000plzm,2025-04-08T22:00:59.040Z,"Southern Tibetan Plateau",earthquake,9.84,1.865,0.067,66,reviewed,us,us
+2025-01-21T00:14:17.923Z,28.3525,87.488,10,4.8,mb,66,74,2.028,0.66,us,us6000plca,2025-03-29T22:12:45.040Z,"Southern Tibetan Plateau",earthquake,8.27,1.847,0.051,119,reviewed,us,us
+2025-01-20T21:03:11.864Z,28.3855,87.5651,10,5,mb,95,39,2.102,0.7,us,us6000plbf,2025-03-29T22:12:45.040Z,"Southern Tibetan Plateau",earthquake,8.6,1.799,0.041,194,reviewed,us,us
+2025-01-19T17:56:44.997Z,28.3527,87.5481,10,4.5,mb,77,106,2.079,0.67,us,us6000pl3u,2025-03-29T22:12:44.040Z,"Southern Tibetan Plateau",earthquake,5.36,1.822,0.064,71,reviewed,us,us
+2025-01-18T16:26:31.499Z,28.6435,87.4691,10,4.6,mb,91,43,2.107,0.59,us,us6000pkyi,2025-03-29T22:12:42.040Z,"Southern Tibetan Plateau",earthquake,7.71,1.848,0.053,115,reviewed,us,us
+2025-01-18T15:36:54.487Z,28.4323,87.6046,10,4.8,mb,139,39,2.149,0.48,us,us6000pky9,2025-03-29T22:12:42.040Z,"Southern Tibetan Plateau",earthquake,7.3,1.83,0.044,171,reviewed,us,us
+2025-01-16T03:20:02.464Z,28.7777,87.4095,10,4.9,mb,100,84,2.116,0.83,us,us6000pkc3,2025-03-29T22:12:40.040Z,"Southern Tibetan Plateau",earthquake,9.28,1.902,0.058,95,reviewed,us,us
+2025-01-13T15:44:42.737Z,28.4247,87.169,10,4.6,mb,82,130,3.692,0.81,us,us6000pjq9,2025-03-20T20:55:22.040Z,"Southern Tibetan Plateau",earthquake,9.38,1.815,0.06,84,reviewed,us,us
+2025-01-13T12:58:22.257Z,28.4815,87.4058,10,5.1,mb,90,39,3.477,1.01,us,us6000pjpb,2025-03-20T20:55:21.040Z,"Southern Tibetan Plateau",earthquake,4.03,1.766,0.072,63,reviewed,us,us
+2025-01-13T12:57:37.995Z,28.405,87.3079,10,5,mb,115,35,3.585,1.11,us,us6000pjp9,2025-03-20T20:55:21.040Z,"Southern Tibetan Plateau",earthquake,8.04,1.772,0.053,113,reviewed,us,us
+2025-01-12T09:54:01.572Z,28.6622,87.4427,10,4.5,mb,58,132,3.385,0.53,us,us6000pjjb,2025-03-20T20:55:13.040Z,"Southern Tibetan Plateau",earthquake,10.37,1.892,0.071,58,reviewed,us,us
+2025-01-08T03:51:21.676Z,28.4359,87.3648,10,5,mb,133,39,3.527,0.81,us,us6000piij,2025-03-20T20:54:46.040Z,"Southern Tibetan Plateau",earthquake,8.4,1.839,0.05,127,reviewed,us,us
+2025-01-07T19:52:52.207Z,28.7108,87.3437,10,4.5,mb,78,129,3.452,0.98,us,us6000pigg,2025-03-17T21:35:13.040Z,"Southern Tibetan Plateau ",earthquake,9.88,1.85,0.067,66,reviewed,us,us
+2025-01-07T13:29:35.125Z,28.5993,87.2148,10,4.6,mb,126,49,3.595,0.52,us,us6000pif0,2025-03-17T21:35:10.040Z,"Southern Tibetan Plateau ",earthquake,8.42,1.626,0.049,125,reviewed,us,us
+2025-01-07T05:57:16.316Z,28.8918,87.5814,10,4.6,mb,80,87,3.201,1.09,us,us6000pick,2025-03-17T21:35:06.040Z,"Southern Tibetan Plateau",earthquake,9.04,1.818,0.069,63,reviewed,us,us
+2025-01-07T03:45:54.911Z,28.6558,87.3207,10,4.5,mb,93,46,3.489,0.45,us,us6000pic2,2025-03-17T21:35:05.040Z,"Southern Tibetan Plateau",earthquake,9.54,1.859,0.057,91,reviewed,us,us
+2025-01-07T02:27:38.392Z,28.3017,87.1134,10,4.5,mb,35,170,3.783,0.81,us,us6000pkrz,2025-03-17T21:35:03.040Z,"49 km NE of Lobuche, Nepal",earthquake,6.85,1.91,0.103,28,reviewed,us,us
+2025-01-07T02:01:06.777Z,28.7477,87.3101,10,4.5,mb,65,83,3.47,0.8,us,us6000pkpu,2025-03-17T21:35:03.040Z,"101 km NNE of Lobuche, Nepal",earthquake,9.87,1.873,0.077,49,reviewed,us,us
+2025-01-07T01:59:48.239Z,28.779,87.3465,10,4.6,mb,75,97,3.43,0.77,us,us6000pib7,2025-03-17T21:35:02.040Z,"Southern Tibetan Plateau",earthquake,9.96,1.888,0.061,80,reviewed,us,us
+2025-01-07T01:43:49.062Z,28.3885,87.2633,10,4.9,mb,96,93,3.628,0.72,us,us6000piav,2025-03-17T21:35:02.040Z,"Southern Tibetan Plateau",earthquake,6.38,1.869,0.058,94,reviewed,us,us
+2025-01-07T01:37:13.647Z,28.7969,87.2321,10,5,mb,88,44,3.522,0.68,us,us6000piar,2025-03-17T21:35:02.040Z,"Southern Tibetan Plateau",earthquake,9.31,1.802,0.062,82,reviewed,us,us
+2025-01-07T01:31:59.676Z,28.8053,87.608,10,4.9,mb,91,96,3.203,0.53,us,us6000piap,2025-03-17T21:35:01.040Z,"Southern Tibetan Plateau",earthquake,9.49,1.796,0.062,82,reviewed,us,us
+2025-01-07T01:24:25.911Z,28.4845,87.4575,10,5,mb,110,88,3.434,0.51,us,us6000piak,2025-03-17T21:35:01.040Z,"Southern Tibetan Plateau",earthquake,9.47,1.852,0.056,106,reviewed,us,us
+2025-01-07T01:20:47.587Z,28.5147,87.1381,10,4.5,mb,12,177,3.686,0.78,us,us6000pkq7,2025-03-17T21:35:01.040Z,"70 km NNE of Lobuche, Nepal",earthquake,14.37,1.959,0.271,4,reviewed,us,us
+2025-01-07T01:18:30.934Z,28.5411,87.4266,10,4.6,mb,39,106,3.439,0.61,us,us6000pkq5,2025-03-17T21:35:01.040Z,"89 km NE of Lobuche, Nepal",earthquake,8.9,1.772,0.114,23,reviewed,us,us
+2025-01-07T01:17:24.736Z,28.3398,87.1798,10,4.7,mb,30,151,3.714,0.84,us,us6000pks2,2025-03-17T21:35:01.040Z,"56 km NE of Lobuche, Nepal",earthquake,13.2,1.918,0.12,21,reviewed,us,us
+2025-01-07T01:14:42.239Z,28.5282,87.356,10,5.2,mb,97,60,3.501,0.44,us,us6000pkpp,2025-03-17T21:35:01.040Z,"83 km NE of Lobuche, Nepal",earthquake,9.78,1.754,0.065,79,reviewed,us,us
+2025-01-07T01:13:27.197Z,28.4421,87.4659,10,5.2,mb,72,82,3.443,0.6,us,us6000pia7,2025-03-17T21:35:00.040Z,"Southern Tibetan Plateau",earthquake,9.27,1.856,0.072,63,reviewed,us,us
+2025-01-07T01:10:54.880Z,28.8057,87.1343,10,5.2,mb,15,177,3.602,0.66,us,us6000pks6,2025-03-17T21:35:00.040Z,"100 km NNE of Lobuche, Nepal",earthquake,9.18,1.859,0.159,13,reviewed,us,us
+2025-01-07T01:09:13.529Z,28.7537,87.1968,10,5.4,mb,30,64,3.563,0.35,us,us6000pks1,2025-03-17T21:35:00.040Z,"96 km NNE of Lobuche, Nepal",earthquake,9.8,1.849,0.09,42,reviewed,us,us
+2025-01-07T01:05:16.734Z,28.6036,87.3781,10,7.1,mww,315,17,3.458,0.56,us,us6000pi9w,2025-08-11T06:50:22.632Z,"2025 Southern Tibetan Plateau Earthquake",earthquake,8.15,1.74,0.039,63,reviewed,us,us
+2024-08-09T01:27:10.980Z,27.1586,88.1937,35,4.5,mb,68,77,2.667,0.88,us,us6000nj06,2024-10-24T17:57:38.040Z,"5 km NW of Naya Bāzār, India",earthquake,8.52,1.557,0.053,108,reviewed,us,us
+2024-01-07T14:28:32.992Z,28.0886,86.3806,10,4.5,mb,39,106,1.016,0.54,us,us6000m2cb,2024-03-09T21:39:58.040Z,"44 km ENE of Kodāri̇̄, Nepal",earthquake,5.72,1.751,0.08,46,reviewed,us,us
+2023-12-31T16:36:23.043Z,27.727,85.799,22.322,4.6,mb,60,99,0.466,0.55,us,us6000m0uh,2025-02-28T01:38:53.465Z,"27 km E of Nagarkot, Nepal",earthquake,9.97,2.373,0.064,73,reviewed,us,us
+2023-11-27T22:15:46.743Z,28.6795,87.7852,74.708,4.7,mb,69,61,1.119,0.4,us,us7000le79,2024-02-06T21:53:53.040Z,"124 km WSW of Rikaze, China",earthquake,9.05,8.214,0.068,66,reviewed,us,us
+2023-10-22T01:54:21.100Z,27.8879,84.7252,25.706,5.2,mb,101,29,1.848,0.82,us,us6000lh8c,2024-08-02T09:02:20.213Z,"36 km NE of Bharatpur, Nepal",earthquake,5.82,4.541,0.038,230,reviewed,us,us
+2023-04-01T05:42:20.397Z,27.6685,86.1761,10,4.5,mb,37,84,0.806,0.62,us,us6000k1b0,2023-06-03T22:06:16.040Z,"38 km SSE of Kodāri̇̄, Nepal",earthquake,6.89,1.919,0.086,40,reviewed,us,us
+2022-12-27T20:22:03.128Z,28.4898,83.1553,18.597,4.6,mb,119,58,1.997,0.52,us,us7000j0i3,2023-03-07T18:59:53.040Z,"48 km WNW of B?glung, Nepal",earthquake,8.13,3.731,0.054,117,reviewed,us,us
+2022-12-23T01:31:21.071Z,28.4999,83.1015,10,4.5,mb,27,100,2.045,0.65,us,us7000j29h,2023-02-28T23:06:46.040Z,"Nepal",earthquake,10.66,1.894,0.14,15,reviewed,us,us
+2022-10-19T09:22:40.123Z,27.894,86.0386,23.943,4.9,mb,51,56,0.679,0.74,us,us6000iut9,2024-01-18T17:13:59.271Z,"10 km SE of Kod?ri??, Nepal",earthquake,6.4,5.545,0.076,54,reviewed,us,us
+2022-07-31T02:28:08.777Z,27.1316,86.7827,10,5.1,mb,106,51,1.493,0.7,us,us6000i6vr,2022-10-12T14:49:01.040Z,"26 km W of Bhojpur, Nepal",earthquake,6.84,1.776,0.037,232,reviewed,us,us
+2022-06-22T22:11:46.712Z,28.3742,83.8247,10,4.6,mb,97,44,1.406,0.46,us,us7000hjf5,2022-08-28T03:20:18.040Z,"14 km ESE of Chitre, Nepal",earthquake,8.1,1.8,0.061,81,reviewed,us,us
+2021-11-05T01:48:32.008Z,28.8267,87.4455,10,5,mb,,139,5.095,0.92,us,us7000frkq,2022-01-15T20:51:33.040Z,"115 km NNE of Lobujya, Nepal",earthquake,7.5,1.8,0.049,137,reviewed,us,us
+2021-10-18T10:32:14.377Z,28.7052,87.2852,10,4.7,mb,,158,5.133,0.82,us,us6000fwqi,2021-12-25T22:58:59.040Z,"95 km NNE of Lobujya, Nepal",earthquake,10.3,1.9,0.088,39,reviewed,us,us
+2021-10-01T07:09:27.899Z,27.694,86.111,10,4.5,mb,,115,0.674,0.82,us,us6000fscx,2021-12-10T21:14:14.040Z,"33 km SSE of Kod?ri??, Nepal",earthquake,6.2,1.4,0.205,9,reviewed,us,us
+2021-07-25T15:09:21.630Z,27.3429,88.3092,10,4.5,mb,,79,3.417,0.69,us,us6000eyy4,2021-11-07T16:36:56.248Z,"7 km NE of Gyalshing, India",earthquake,4.9,1.9,0.068,65,reviewed,us,us
+2021-05-25T20:46:06.127Z,28.9684,86.3755,10,4.5,mb,,66,1.076,0.53,us,us7000e680,2021-07-31T22:09:46.040Z,"118 km ESE of Saga, China",earthquake,6.3,1.8,0.058,98,reviewed,us,us
+2021-05-19T16:54:29.784Z,28.2544,84.3876,10,4.5,mb,,158,2.161,0.7,us,us7000e4ij,2021-07-24T21:08:20.040Z,"41 km E of Pokhara, Nepal",earthquake,9.6,1.9,0.082,44,reviewed,us,us
+2021-05-19T02:41:38.847Z,28.3088,84.3042,10,4.9,mb,,40,2.241,0.53,us,us7000e4bb,2025-12-22T19:00:26.626Z,"33 km E of Pokhara, Nepal",earthquake,8.3,1.9,0.052,114,reviewed,us,us
+2021-05-18T23:57:58.646Z,28.2785,84.3373,10,5.3,mb,,36,2.208,0.93,us,us7000e4aq,2025-12-22T19:00:25.381Z,"36 km E of Pokhara, Nepal",earthquake,3.4,1.7,0.034,290,reviewed,us,us
+2021-03-16T13:16:08.835Z,30.1485,86.3698,10,4.6,mb,,145,6.663,0.53,us,us7000djtf,2021-05-26T22:08:04.040Z,"143 km NE of Saga, China",earthquake,10.3,1.9,0.082,47,reviewed,us,us
+2021-02-04T05:06:23.654Z,28.7463,87.3785,10,5.1,mb,,64,0.93,0.47,us,us6000decu,2021-04-16T19:03:24.040Z,"104 km NNE of Lobujya, Nepal",earthquake,6,1.8,0.048,140,reviewed,us,us
+2021-02-02T16:14:13.363Z,28.8039,84.0135,29.41,4.5,mb,,126,2.605,0.62,us,us6000ddxt,2021-04-16T19:03:02.040Z,"52 km NE of Chitre, Nepal",earthquake,8.6,4.7,0.082,44,reviewed,us,us
+2021-02-02T02:31:13.845Z,28.8225,87.362,8.7,5,mww,,64,3.404,0.58,us,us6000ddsr,2025-12-22T18:49:15.444Z,"110 km NNE of Lobujya, Nepal",earthquake,7.7,3.5,0.086,13,reviewed,us,us
+2020-11-23T13:36:04.648Z,27.5457,87.0358,27.68,4.5,mb,,125,0.456,0.91,us,us7000ck3c,2021-02-03T17:49:19.040Z,"25 km NW of Kh??db?ri??, Nepal",earthquake,8.4,8.4,0.204,9,reviewed,us,us
+2020-09-15T23:34:03.386Z,27.8464,85.8765,10,5.3,mb,,39,0.835,0.85,us,us7000bnsh,2025-12-22T18:42:10.660Z,"14 km SSW of Kod?ri??, Nepal",earthquake,5.6,1.8,0.033,309,reviewed,us,us
+2020-05-12T18:08:38.863Z,27.7046,86.0378,10,4.9,mb,,42,4.893,0.81,us,us70009ett,2025-12-22T17:57:30.308Z,"29 km SSE of Kod?ri??, Nepal",earthquake,7.8,1.8,0.041,202,reviewed,us,us
+2020-03-20T01:33:15.443Z,28.5896,87.3081,10,5.7,mww,,18,0.766,1.02,us,us70008cld,2025-12-22T18:31:23.016Z,"85 km NE of Lobujya, Nepal",earthquake,5.7,1.7,0.063,24,reviewed,us,us
+2019-11-27T16:23:31.706Z,27.7986,85.8214,10,4.6,mb,,96,0.891,0.69,us,us70006dt0,2020-02-19T18:58:13.040Z,"22 km SW of Kod?ri??, Nepal",earthquake,6.1,1.8,0.068,65,reviewed,us,us
+2019-09-22T16:17:01.966Z,28.4605,84.3309,18.23,4.5,mb,,148,6.075,1.06,us,us70005nyj,2019-12-10T17:27:19.040Z,"41 km ENE of Pokhara, Nepal",earthquake,11.8,5.1,0.164,11,reviewed,us,us
+2019-08-27T09:57:51.030Z,28.9012,86.4476,10,4.5,mb,,88,0.992,1.18,us,us70005bgh,2019-11-15T17:18:47.040Z,"111 km NNW of Lobujya, Nepal",earthquake,4.3,1.9,0.094,33,reviewed,us,us
+2019-06-17T17:58:20.595Z,28.4217,87.173,84.75,4.6,mb,,136,0.56,0.87,us,us600041vn,2019-09-06T14:25:18.040Z,"62 km NE of Lobujya, Nepal",earthquake,10.3,9.4,0.09,37,reviewed,us,us
+2019-05-25T05:17:24.276Z,27.6468,86.3425,10,4.5,mb,,147,4.676,0.64,us,us60003s00,2019-08-13T14:30:35.040Z,"40 km WSW of Namche Bazar, Nepal",earthquake,9.8,1.9,0.075,52,reviewed,us,us
+2019-05-17T08:23:37.430Z,27.9487,84.7453,10,4.7,mb,,167,1.828,0.98,us,us70003mg6,2019-08-07T22:03:44.040Z,"42 km NE of Bharatpur, Nepal",earthquake,9.1,1.9,0.083,44,reviewed,us,us
+2019-04-24T00:44:31.986Z,27.7651,85.0667,27.34,4.7,mb,,47,1.556,0.71,us,us70003b3q,2019-07-13T18:42:35.040Z,"22 km WNW of Kirtipur, Nepal",earthquake,7,3.7,0.043,165,reviewed,us,us
+2018-06-28T04:07:47.290Z,27.8919,84.8272,10,4.8,mb,,96,1.757,0.51,us,us2000fpul,2018-09-21T16:25:47.040Z,"45 km ENE of Bharatpur, Nepal",earthquake,7.6,1.9,0.048,131,reviewed,us,us
+2017-12-08T02:51:18.860Z,27.7618,86.1471,10,5,mb,,40,4.781,0.68,us,us2000c1xk,2022-05-03T19:01:51.566Z,"28 km SE of Kod?ri??, Nepal",earthquake,8.5,1.8,0.046,151,reviewed,us,us
+2017-08-21T12:03:13.970Z,27.5881,86.1237,10,4.5,mb,,142,4.875,1.03,us,us2000aa5v,2017-11-22T03:43:27.040Z,"44 km SSE of Kod?ri??, Nepal",earthquake,7.1,1.8,0.079,47,reviewed,us,us
+2017-07-02T01:58:27.200Z,27.2384,86.1159,10,4.8,mb,,98,5.048,0.82,us,us100095t8,2017-10-03T00:47:44.040Z,"59 km NNE of Janakpur, Nepal",earthquake,8,1.9,0.054,107,reviewed,us,us
+2017-02-27T04:21:41.730Z,27.3706,85.9319,20.28,4.6,mb,,156,0.626,0.69,us,us20008mlv,2017-05-24T02:48:09.040Z,"47 km ESE of Panauti, Nepal",earthquake,7.5,3.7,0.066,69,reviewed,us,us
+2017-02-27T03:37:45.990Z,27.4259,86.0789,11.23,4.7,mb,,57,0.725,0.62,us,us20008mll,2017-05-24T02:48:09.040Z,"57 km ESE of Dhulikhel, Nepal",earthquake,6,3.8,0.059,86,reviewed,us,us
+2016-11-27T23:35:21.020Z,27.8015,86.5319,10,5.4,mb,,30,1.081,0.67,us,us10007cuh,2022-05-03T19:50:04.618Z,"17 km W of Namche Bazar, Nepal",earthquake,5.3,1.7,0.033,314,reviewed,us,us
+2016-06-27T14:53:00.680Z,28.7638,87.4704,10,4.7,mb,,82,2.17,0.58,us,us10005z6t,2016-08-31T03:08:19.040Z,"110 km NE of Lobujya, Nepal",earthquake,7.7,1.8,0.082,45,reviewed,us,us
+2016-05-28T09:39:10.850Z,28.0097,85.4237,10,4.6,mb,,67,0.311,0.86,us,us20005ysr,2016-11-28T03:15:00.070Z,"34 km NNW of Nagarkot, Nepal",earthquake,5.7,1.7,0.053,107,reviewed,us,us
+2016-05-22T02:05:54.680Z,28.5654,87.4796,4.44,5.1,mb,,39,2.091,0.71,us,us10005j6d,2022-08-02T23:28:12.819Z,"94 km NE of Lobujya, Nepal",earthquake,5.5,2.9,0.039,213,reviewed,us,us
+2016-05-22T01:48:48.130Z,28.4538,87.5326,9.36,5.4,mwc,,36,2.093,0.9,us,us10005j6b,2022-08-02T23:27:14.468Z,"89 km NE of Lobujya, Nepal",earthquake,6.5,3.5,,,reviewed,us,gcmt
+2016-05-22T01:32:31.690Z,28.4767,87.5067,6.99,4.5,mb,,89,2.08,0.73,us,us10005j69,2016-08-03T22:33:41.040Z,"89 km NE of Lobujya, Nepal",earthquake,6.9,4,0.067,66,reviewed,us,us
+2016-05-11T08:52:47.570Z,28.0545,84.5639,15.99,4.5,mb,,73,5.984,0.63,us,us10005ggl,2016-07-20T18:10:53.040Z,"43 km NNE of Bharatpur, Nepal",earthquake,8.7,4.2,0.087,38,reviewed,us,us
+2016-05-11T01:19:42.320Z,27.9448,84.9277,10.23,4.5,mb,,104,0.414,1.04,us,us10005ihi,2022-08-02T23:40:09.428Z,"45 km NW of Kirtipur, Nepal",earthquake,5.9,5.3,0.076,50,reviewed,us,us
+2016-02-24T09:22:16.670Z,27.8322,85.7365,10,4.7,mb,,49,0.391,0.71,us,us10004sb7,2022-08-07T10:00:30.413Z,"24 km ENE of Nagarkot, Nepal",earthquake,6.5,1.9,0.073,57,reviewed,us,us
+2016-02-21T18:10:00.970Z,27.9633,84.6943,16.72,5.1,mb,,39,0.604,0.87,us,us10004rjm,2022-08-07T09:55:35.375Z,"40 km NE of Bharatpur, Nepal",earthquake,7,4.5,0.059,94,reviewed,us,us
+2016-02-05T16:20:11.740Z,27.8782,85.3377,23.53,5.2,mb,,44,0.166,0.82,us,us20004y4t,2022-08-07T09:22:10.461Z,"19 km N of Kathmandu, Nepal",earthquake,9.2,4.4,0.052,120,reviewed,us,us
+2016-01-21T19:22:43.590Z,28.0269,85.0515,19.01,4.5,mb,,96,0.391,0.81,us,us10004g5f,2016-04-06T17:30:30.040Z,"Xizang-Nepal border region",earthquake,7.4,4.4,0.068,64,reviewed,us,us
+2015-11-24T12:24:15.590Z,28.1552,84.7587,8.19,4.6,mb,,60,0.661,0.96,us,us100040q1,2016-02-18T04:48:52.040Z,"Nepal",earthquake,6.2,4.5,0.079,48,reviewed,us,us
+2015-11-19T04:15:52.600Z,27.8525,85.6776,16.51,5,mb,,49,0.349,0.79,us,us10003zfw,2022-08-01T18:42:06.686Z,"21 km NE of Nagarkot, Nepal",earthquake,6.5,3.9,0.053,115,reviewed,us,us
+2015-10-12T15:39:07.360Z,28.9796,86.3729,10,4.5,mb,,57,1.088,0.79,us,us10003n1q,2016-01-11T21:07:22.040Z,"117 km ESE of Saga, China",earthquake,2.4,1.8,0.066,67,reviewed,us,us
+2015-10-09T20:29:56.020Z,28.8544,86.469,10,4.9,mb,,60,0.942,0.96,us,us10003mkt,2022-05-03T17:32:54.401Z,"105 km NNW of Lobujya, Nepal",earthquake,4.8,1.8,0.046,149,reviewed,us,us
+2015-10-05T07:33:21.920Z,27.6395,86.0343,10,4.5,mb,,138,0.641,0.92,us,us10003kcl,2016-01-04T22:29:12.040Z,"36 km SSE of Kod?ri??, Nepal",earthquake,6.4,1.8,0.07,60,reviewed,us,us
+2015-08-30T13:17:34.680Z,27.6519,85.6673,10,4.5,mb,,83,0.317,0.67,us,us1000365l,2022-08-01T02:35:58.853Z,"12 km ENE of Dhulikhel, Nepal",earthquake,4.6,1.8,0.06,81,reviewed,us,us
+2015-08-23T09:02:05.080Z,27.8355,86.0795,10,5,mb,,51,0.659,0.63,us,us100034be,2022-08-01T01:19:51.790Z,"18 km SE of Kod?ri??, Nepal",earthquake,7.6,1.7,0.044,166,reviewed,us,us
+2015-08-15T18:11:39.530Z,27.7023,85.9473,10,4.7,mb,,75,0.56,0.86,us,us100032lr,2022-08-01T00:12:27.909Z,"28 km S of Kod?ri??, Nepal",earthquake,5.1,1.7,0.052,111,reviewed,us,us
+2015-08-14T13:02:26.290Z,27.5691,86.086,10,4.6,mb,,144,0.698,1.04,us,us100036bf,2015-11-17T00:13:27.040Z,"45 km SSE of Kod?ri??, Nepal",earthquake,5.3,2,0.182,9,reviewed,us,us
+2015-07-03T20:04:07.080Z,27.7236,84.9064,3.36,4.5,mb,,93,0.362,0.86,us,us10002nbj,2022-07-31T16:48:05.899Z,"34 km NNW of Hetauda, Nepal",earthquake,7.2,4.2,0.065,69,reviewed,us,us
+2015-06-28T23:57:15.530Z,28.0316,86.056,10,4.7,mb,,94,0.728,1.26,us,us10002m90,2022-07-31T15:46:25.420Z,"12 km NE of Kod?ri??, Nepal",earthquake,6.8,1.9,0.062,78,reviewed,us,us
+2015-06-20T12:23:05.580Z,28.5523,82.6319,10,4.7,mb,,92,2.513,0.61,us,us10002khh,2022-07-31T14:14:15.599Z,"41 km NNE of Besisahar, Nepal",earthquake,8.2,1.8,0.056,97,reviewed,us,us
+2015-06-13T01:18:30.200Z,27.6326,86.0709,10,4.8,mb,,40,0.674,0.68,us,us20002pk4,2022-07-31T12:46:09.800Z,"38 km SSE of Kod?ri??, Nepal",earthquake,6.6,1.9,0.057,94,reviewed,us,us
+2015-06-11T16:12:20.290Z,27.8321,85.5836,24.49,4.8,mb,,76,0.265,0.61,us,us20002p1y,2022-07-31T12:27:46.292Z,"14 km NNE of Nagarkot, Nepal",earthquake,8,1.4,0.052,114,reviewed,us,us
+2015-05-29T10:00:00.270Z,27.9798,84.7819,10,4.8,mb,,41,0.542,0.91,us,us20002kau,2022-07-31T10:07:29.021Z,"47 km NE of Bharatpur, Nepal",earthquake,6.7,1.6,0.052,112,reviewed,us,us
+2015-05-26T17:07:14.360Z,28.2338,85.1005,10,4.6,mb,,71,0.553,1.05,us,us10002c8p,2022-07-31T09:27:25.750Z,"62 km NNW of Kathmandu, Nepal",earthquake,6.6,1.9,0.06,83,reviewed,us,us
+2015-05-22T10:59:33.780Z,27.9555,84.9671,10,4.7,mb,,41,0.392,0.88,us,us10002bcr,2022-07-31T08:31:48.889Z,"43 km NW of Kirtipur, Nepal",earthquake,5.5,1.7,0.056,97,reviewed,us,us
+2015-05-20T09:02:32.260Z,27.3231,85.0483,10,4.6,mb,,145,5.85,0.81,us,us10002ar2,2022-07-31T08:08:10.373Z,"11 km S of Hetauda, Nepal",earthquake,6.8,1.7,0.077,52,reviewed,us,us
+2015-05-16T11:34:09.980Z,27.5603,86.0734,7,5.5,mww,,13,4.928,0.72,us,us100029rn,2022-07-31T07:18:14.026Z,"45 km SSE of Kod?ri??, Nepal",earthquake,7.5,1.7,,,reviewed,us,us
+2015-05-16T03:39:26.920Z,27.6386,85.713,10,4.7,mb,,40,5.182,0.55,us,us100029pb,2022-07-31T07:13:14.269Z,"16 km E of Dhulikhel, Nepal",earthquake,7.9,1.8,0.051,119,reviewed,us,us
+2015-05-15T01:42:42.800Z,27.9719,84.7499,10,4.9,mb,,40,1.823,0.91,us,us1000295r,2022-07-31T06:55:52.887Z,"45 km NE of Bharatpur, Nepal",earthquake,8.1,1.8,0.047,145,reviewed,us,us
+2015-05-13T21:38:06.390Z,27.7199,86.0503,8.38,5,mb,,40,0.715,0.65,us,us100028tz,2022-07-31T06:38:05.984Z,"28 km SSE of Kod?ri??, Nepal",earthquake,6.5,4.3,0.046,150,reviewed,us,us
+2015-05-13T06:53:00.780Z,27.7201,86.1891,10,4.8,mb,,88,0.6,0.73,us,us20002ew5,2022-07-31T06:29:12.686Z,"35 km SE of Kod?ri??, Nepal",earthquake,8.7,1.9,0.059,87,reviewed,us,us
+2015-05-13T06:37:30.290Z,27.7582,86.1379,10,4.5,mb,,146,0.629,0.93,us,us20002ew1,2015-07-17T07:06:14.040Z,"28 km SE of Kod?ri??, Nepal",earthquake,7.5,1.9,0.08,46,reviewed,us,us
+2015-05-13T06:26:07.550Z,27.6539,86.1557,10,4.7,mb,,118,0.655,0.69,us,us20002evz,2022-07-31T06:33:32.311Z,"39 km SSE of Kod?ri??, Nepal",earthquake,6.7,1.9,0.061,89,reviewed,us,us
+2015-05-12T21:25:11.930Z,27.783,84.6384,10,5.2,mb,,38,1.932,0.62,us,us20002etn,2022-07-31T06:21:43.509Z,"23 km ENE of Bharatpur, Nepal",earthquake,6,1.8,0.051,125,reviewed,us,us
+2015-05-12T19:37:40.910Z,27.6868,86.1308,8.52,4.5,mb,,101,0.661,1.01,us,us20002ert,2022-07-31T06:34:11.810Z,"34 km SSE of Kod?ri??, Nepal",earthquake,5,4.1,0.066,67,reviewed,us,us
+2015-05-12T17:28:39.250Z,27.4989,86.1266,10,4.8,mb,,44,0.76,0.75,us,us20002eqs,2022-07-31T06:16:50.731Z,"53 km SSE of Kod?ri??, Nepal",earthquake,7.4,1.8,0.048,135,reviewed,us,us
+2015-05-12T13:58:57.540Z,27.6013,86.2659,10,4.5,mb,,142,0.6,0.37,us,us10002bgb,2015-07-17T07:06:12.040Z,"49 km WSW of Namche Bazar, Nepal",earthquake,4.9,1.9,0.18,9,reviewed,us,us
+2015-05-12T12:28:22.930Z,27.6751,85.9931,10,4.5,mb,,101,0.778,1.21,us,us20002ena,2022-07-31T06:09:03.290Z,"Nepal",earthquake,4.6,1.9,0.091,35,reviewed,us,us
+2015-05-12T10:41:32.260Z,27.716,86.2746,10,4.5,mb,,153,0.533,1.07,us,us10002bg8,2015-07-17T07:06:12.040Z,"41 km SE of Kod?ri??, Nepal",earthquake,6.4,1.9,0.094,33,reviewed,us,us
+2015-05-12T10:40:07.870Z,27.7987,86.4044,10,4.6,mb,,145,0.394,0.46,us,us10002bh9,2015-07-17T07:06:12.040Z,"30 km W of Namche Bazar, Nepal",earthquake,6.9,1.9,0.223,6,reviewed,us,us
+2015-05-12T10:35:39.950Z,27.6606,86.0849,10,4.5,mb,,38,0.708,1.11,us,us20002ems,2022-07-31T06:04:59.892Z,"35 km SSE of Kod?ri??, Nepal",earthquake,6.4,1.8,0.075,53,reviewed,us,us
+2015-05-12T09:38:19.460Z,27.6658,86.2505,10,4.5,mb,,194,0.576,0.3,us,us10002bfm,2015-07-17T07:06:11.040Z,"43 km SE of Kod?ri??, Nepal",earthquake,7.5,2,0.242,5,reviewed,us,us
+2015-05-12T09:02:09.780Z,27.7318,86.0672,10,4.6,mb,,79,0.696,0.78,us,us10002bfi,2015-07-17T07:06:11.040Z,"27 km SSE of Kod?ri??, Nepal",earthquake,6.9,1.8,0.083,43,reviewed,us,us
+2015-05-12T08:59:39.740Z,27.7729,86.195,10,4.5,mb,,149,0.576,1.06,us,us20002emb,2022-07-31T07:05:44.006Z,"31 km SE of Kod?ri??, Nepal",earthquake,4.2,1.9,0.081,51,reviewed,us,us
+2015-05-12T08:24:24.340Z,27.7486,86.0692,10,4.8,mb,,80,0.689,0.37,us,us100029fv,2015-07-17T07:06:11.040Z,"25 km SSE of Kod?ri??, Nepal",earthquake,3.2,1.9,0.058,93,reviewed,us,us
+2015-05-12T08:21:10.760Z,27.7298,86.1316,15,5.2,mb,,42,0.643,0.7,us,us20002ekr,2022-07-31T06:03:59.276Z,"30 km SE of Kod?ri??, Nepal",earthquake,6.7,1.8,0.043,175,reviewed,us,us
+2015-05-12T08:13:54.600Z,27.7629,85.7574,15,5.1,mb,,49,0.953,0.64,us,us20002ekq,2022-07-31T06:06:08.729Z,"23 km ENE of Nagarkot, Nepal",earthquake,8.3,1.8,0.046,152,reviewed,us,us
+2015-05-12T08:06:05.530Z,27.7221,86.0161,15,5,mb,,42,0.742,0.78,us,us20002ekk,2022-07-31T06:01:55.043Z,"27 km SSE of Kod?ri??, Nepal",earthquake,5.7,1.8,0.044,168,reviewed,us,us
+2015-05-12T07:57:17.360Z,27.7351,86.5554,10,4.5,mb,,156,0.317,0.88,us,us10002bf9,2015-07-17T07:06:11.040Z,"17 km WSW of Namche Bazar, Nepal",earthquake,6.2,1.9,0.102,31,reviewed,us,us
+2015-05-12T07:48:51.490Z,27.7224,86.2576,10,4.9,mb,,78,0.544,0.7,us,us10002bh3,2022-05-03T17:27:34.038Z,"39 km SE of Kod?ri??, Nepal",earthquake,6.9,1.9,0.055,103,reviewed,us,us
+2015-05-12T07:47:46.350Z,27.5579,86.039,10,4.9,mb,,80,0.792,0.73,us,us10002bg4,2022-05-03T17:24:54.525Z,"45 km S of Kod?ri??, Nepal",earthquake,5.1,1.8,0.054,106,reviewed,us,us
+2015-05-12T07:43:17.310Z,27.6521,86.2387,11.77,4.9,mb,,70,0.592,0.49,us,us100029fi,2022-05-03T17:27:32.866Z,"44 km SE of Kod?ri??, Nepal",earthquake,5.7,4.5,0.064,77,reviewed,us,us
+2015-05-12T07:36:54.490Z,27.625,86.1617,15,6.3,mww,,10,0.664,0.93,us,us20002ek5,2022-07-31T05:59:39.785Z,"42 km SSE of Kod?ri??, Nepal",earthquake,7.5,1.7,,,reviewed,us,us
+2015-05-12T07:34:22.630Z,27.7458,86.2449,10,5.4,mb,,45,0.544,0.78,us,us20002ek3,2022-05-03T17:21:50.916Z,"37 km SE of Kod?ri??, Nepal",earthquake,6.3,1.8,0.042,196,reviewed,us,us
+2015-05-12T07:23:32.670Z,27.5589,86.2566,10,5,mb,,243,0.632,0.36,us,us10002bgy,2015-07-17T07:06:10.040Z,"52 km WSW of Namche Bazar, Nepal",earthquake,6.7,2,0.096,35,reviewed,us,us
+2015-05-12T07:22:15.290Z,27.5796,86.2338,10,4.8,mb,,48,0.636,0.62,us,us10002bg0,2015-07-17T07:06:10.040Z,"50 km SSE of Kod?ri??, Nepal",earthquake,6.9,1.9,0.089,39,reviewed,us,us
+2015-05-12T07:20:47.170Z,27.3073,86.2369,10,4.9,mb,,100,0.825,0.65,us,us10002bfy,2022-07-31T08:54:04.747Z,"69 km NNW of Lah?n, Nepal",earthquake,7.2,1.9,0.09,43,reviewed,us,us
+2015-05-12T07:17:20.640Z,27.7141,86.2177,13.01,5.5,mb,,66,0.579,0.89,us,us20002ek0,2022-07-31T05:58:33.083Z,"37 km SE of Kod?ri??, Nepal",earthquake,6.8,4.7,0.043,183,reviewed,us,us
+2015-05-12T07:05:19.730Z,27.8087,86.0655,15,7.3,mww,,11,0.677,0.92,us,us20002ejl,2024-06-26T05:18:41.027Z,"Nepal",earthquake,7.4,1.7,,,reviewed,us,us
+2015-05-08T00:32:33.960Z,27.6418,85.979,11.56,4.9,mb,,77,0.802,0.66,us,us20002dn5,2022-07-31T05:09:18.479Z,"35 km S of Kod?ri??, Nepal",earthquake,5.7,4.2,0.044,164,reviewed,us,us
+2015-05-04T01:15:07.070Z,27.6326,85.9746,10,4.5,mb,,54,0.809,0.89,us,us20002b2y,2022-07-31T03:59:20.556Z,"36 km S of Kod?ri??, Nepal",earthquake,6,1.8,0.066,66,reviewed,us,us
+2015-05-02T05:35:46.930Z,28.3143,84.6576,10,4.9,mb,,91,1.935,0.86,us,us20002atq,2022-07-31T03:32:26.883Z,"Nepal",earthquake,7.9,1.8,0.058,93,reviewed,us,us
+2015-04-29T22:10:52.110Z,28.33,87.2319,10,4.5,mb,,55,3.675,0.85,us,us20002abh,2022-07-31T03:00:42.869Z,"58 km NE of Lobujya, Nepal",earthquake,6.7,1.9,0.062,75,reviewed,us,us
+2015-04-29T11:27:45.310Z,27.864,85.4086,10,4.6,mb,,94,5.342,0.59,us,us20002a59,2022-07-31T02:49:09.193Z,"19 km NW of Nagarkot, Nepal",earthquake,8.6,1.8,0.06,83,reviewed,us,us
+2015-04-27T18:59:57.010Z,28.0066,84.682,21.35,4.8,mb,,61,1.884,0.74,us,us200029ma,2022-07-31T02:23:48.301Z,"43 km NNE of Bharatpur, Nepal",earthquake,3.9,4.5,0.055,102,reviewed,us,us
+2015-04-27T12:35:53.930Z,26.8644,88.055,31.71,5.1,mb,,29,2.58,0.73,us,us200029k7,2022-07-31T02:18:01.136Z,"13 km ESE of Il?m, Nepal",earthquake,6.6,3.3,0.041,201,reviewed,us,us
+2015-04-26T22:32:34.720Z,27.5298,85.6751,10,4.6,mb,,69,1.094,0.53,us,us200029gc,2022-07-31T02:04:50.500Z,"16 km ESE of Panauti, Nepal",earthquake,4.7,1.7,0.07,61,reviewed,us,us
+2015-04-26T16:26:06.730Z,27.8297,85.865,14,5,mwb,,22,0.847,0.73,us,us200029ea,2022-07-31T01:55:22.787Z,"17 km SSW of Kod?ri??, Nepal",earthquake,5.6,1.7,0.044,50,reviewed,us,us
+2015-04-26T14:44:50.510Z,27.686,85.9657,10,4.5,mb,,149,0.797,0.71,us,us200029dv,2022-07-31T01:56:22.480Z,"30 km S of Kod?ri??, Nepal",earthquake,4.9,1.9,0.081,45,reviewed,us,us
+2015-04-26T13:11:15.170Z,27.8112,85.4088,10,4.5,mb,,79,5.362,0.6,us,us200029dc,2022-07-31T01:53:24.260Z,"14 km N of Madhyapur Thimi, Nepal",earthquake,8.9,1.9,0.069,61,reviewed,us,us
+2015-04-26T08:40:55.820Z,27.7307,85.854,10,4.6,mb,,85,0.877,0.91,us,us200029c4,2022-07-31T01:48:44.592Z,"27 km SSW of Kod?ri??, Nepal",earthquake,6.2,1.8,0.062,77,reviewed,us,us
+2015-04-26T07:36:26.570Z,27.7555,85.9822,10,4.7,mb,,141,0.761,0.72,us,us200029by,2022-07-31T01:47:50.289Z,"22 km S of Kod?ri??, Nepal",earthquake,6.5,1.9,0.079,49,reviewed,us,us
+2015-04-26T07:26:04.190Z,27.7004,85.9136,10,4.9,mb,,40,0.835,0.57,us,us200029bx,2022-07-31T01:46:56.457Z,"29 km S of Kod?ri??, Nepal",earthquake,5.1,1.8,0.055,102,reviewed,us,us
+2015-04-26T07:09:10.670Z,27.7711,86.0173,22.91,6.7,mww,,13,0.727,0.86,us,us200029bt,2025-02-22T05:38:38.490Z,"21 km SSE of Kod?ri??, Nepal",earthquake,6.6,2.9,,,reviewed,us,us
+2015-04-26T04:58:40.040Z,27.9966,84.7082,10,4.5,mb,,125,1.86,1.05,us,us200029bl,2022-07-31T01:44:45.736Z,"44 km NE of Bharatpur, Nepal",earthquake,9.5,1.9,0.086,42,reviewed,us,us
+2015-04-26T02:48:39.070Z,28.2272,84.5858,10,4.5,mb,,62,1.984,0.87,us,us200029b1,2022-07-31T01:43:52.187Z,"60 km E of Pokhara, Nepal",earthquake,8.7,1.9,0.065,70,reviewed,us,us
+2015-04-25T23:41:53.750Z,27.6678,86.0726,15.68,4.5,mb,,86,0.715,0.71,us,us2000299x,2022-07-31T01:39:28.444Z,"34 km SSE of Kod?ri??, Nepal",earthquake,5.5,2.9,0.057,91,reviewed,us,us
+2015-04-25T23:16:15.450Z,27.7993,84.8715,13.61,5.1,mww,,26,1.724,0.67,us,us2000299v,2022-07-31T01:37:39.168Z,"42 km WNW of Kirtipur, Nepal",earthquake,7,3.1,,,reviewed,us,us
+2015-04-25T21:07:20.000Z,27.7657,85.8114,23.88,4.6,mb,,86,0.906,0.69,us,us20002993,2022-07-31T01:36:45.810Z,"25 km SSW of Kod?ri??, Nepal",earthquake,4.9,4.4,0.051,117,reviewed,us,us
+2015-04-25T17:46:17.590Z,28.2139,86.1072,35.26,4.5,mb,,182,0.672,1.33,us,us20002bir,2015-07-03T00:23:40.040Z,"31 km NNE of Kod?ri??, Nepal",earthquake,13,17.1,0.272,5,reviewed,us,us
+2015-04-25T17:42:50.910Z,28.238,85.829,10,5.1,mwr,,31,0.911,0.99,us,us2000297g,2022-07-31T01:32:52.897Z,"33 km NNW of Kod?ri??, Nepal",earthquake,5.7,1.7,0.11,8,reviewed,us,us
+2015-04-25T16:27:21.660Z,27.8695,85.6359,10,4.9,mb,,76,1.044,0.89,us,us20002970,2022-07-31T01:31:58.085Z,"20 km NNE of Nagarkot, Nepal",earthquake,3.2,1.8,0.047,143,reviewed,us,us
+2015-04-25T14:10:03.730Z,27.7109,85.8748,10,4.6,mb,,72,0.865,0.78,us,us20002965,2022-07-31T01:27:15.296Z,"28 km SSW of Kod?ri??, Nepal",earthquake,5.5,1.7,0.077,50,reviewed,us,us
+2015-04-25T13:36:14.620Z,27.7266,85.9826,10,4.7,mb,,166,0.769,0.98,us,us2000295x,2015-07-03T00:23:40.040Z,"26 km S of Kod?ri??, Nepal",earthquake,3.2,1.9,0.079,48,reviewed,us,us
+2015-04-25T13:30:28.030Z,28.0768,85.0378,10,4.6,mb,,86,1.572,1.22,us,us2000295v,2022-07-31T01:25:28.240Z,"50 km NNW of Kirtipur, Nepal",earthquake,7.8,1.9,0.084,42,reviewed,us,us
+2015-04-25T12:44:05.170Z,28.0979,84.5594,10,5.2,mb,,39,1.995,0.91,us,us2000295i,2022-07-31T01:23:20.220Z,"48 km NNE of Bharatpur, Nepal",earthquake,4,1.8,0.038,234,reviewed,us,us
+2015-04-25T12:17:54.790Z,27.9261,85.449,10,4.5,mb,,79,1.206,0.88,us,us2000295f,2022-07-31T01:24:26.398Z,"24 km NNW of Nagarkot, Nepal",earthquake,7.6,1.9,0.069,61,reviewed,us,us
+2015-04-25T11:23:47.560Z,27.6483,85.4309,10,4.5,mb,,46,1.261,0.68,us,us20002bgs,2022-07-31T08:34:33.409Z,"3 km NW of Hari Bdr Tamang House, Nepal",earthquake,8,1.9,0.096,32,reviewed,us,us
+2015-04-25T10:53:43.530Z,27.8061,85.8842,10,4.6,mb,,52,0.835,0.75,us,us2000294y,2015-07-03T00:23:40.040Z,"18 km SSW of Kod?ri??, Nepal",earthquake,6,1.9,0.065,70,reviewed,us,us
+2015-04-25T10:40:35.550Z,27.6033,85.9565,10,4.8,mb,,43,0.836,0.81,us,us2000294x,2022-07-31T01:21:34.219Z,"Nepal",earthquake,5.9,1.9,0.047,141,reviewed,us,us
+2015-04-25T09:30:29.690Z,27.9945,85.5209,10,4.9,mb,,42,1.142,0.68,us,us2000294i,2022-07-31T01:18:33.237Z,"30 km N of Nagarkot, Nepal",earthquake,6.8,1.8,0.043,173,reviewed,us,us
+2015-04-25T09:22:36.900Z,27.7192,85.7503,10,4.7,mb,,50,0.969,0.81,us,us20002bg6,2015-07-03T00:23:39.040Z,"22 km E of Nagarkot, Nepal",earthquake,5.3,1.9,0.088,39,reviewed,us,us
+2015-04-25T09:17:02.310Z,28.3902,87.3173,10,5.7,mb,,22,0.619,0.7,us,us2000294g,2022-07-31T01:17:38.200Z,"69 km NE of Lobujya, Nepal",earthquake,5.8,1.4,0.033,328,reviewed,us,us
+2015-04-25T09:03:14.960Z,27.8743,85.3426,10,4.8,mb,,82,1.302,0.61,us,us2000294e,2015-07-03T00:23:39.040Z,"19 km N of Kathmandu, Nepal",earthquake,7.3,1.8,0.055,102,reviewed,us,us
+2015-04-25T08:55:55.960Z,27.5866,85.5058,10,5.3,mb,,41,1.215,0.8,us,us2000294d,2022-07-31T01:16:42.886Z,"0 km WNW of Panauti??, Nepal",earthquake,6.6,1.8,0.045,168,reviewed,us,us
+2015-04-25T08:31:32.430Z,27.6708,85.9539,10,4.6,mb,,166,0.812,0.78,us,us20002bgc,2015-07-03T00:23:39.040Z,"32 km S of Kod?ri??, Nepal",earthquake,7.2,1.9,0.107,26,reviewed,us,us
+2015-04-25T08:29:24.560Z,27.9351,84.6218,10,5,mb,,99,1.937,0.68,us,us20002946,2022-07-31T01:15:40.894Z,"33 km NNE of Bharatpur, Nepal",earthquake,8.2,1.8,0.05,129,reviewed,us,us
+2015-04-25T08:22:47.620Z,27.8166,85.5666,10,4.6,mb,,149,1.111,0.66,us,us20002bik,2015-07-03T00:23:39.040Z,"12 km NNE of Nagarkot, Nepal",earthquake,8.6,1.9,0.1,30,reviewed,us,us
+2015-04-25T08:20:48.800Z,27.6429,85.16,10,4.9,mb,,69,1.496,0.79,us,us20002bfd,2022-05-03T17:23:06.480Z,"12 km WSW of Kirtipur, Nepal",earthquake,7.2,1.8,0.057,96,reviewed,us,us
+2015-04-25T08:20:11.160Z,27.8549,85.7931,10,4.7,mb,,82,0.907,0.72,us,us20002944,2015-07-03T00:23:39.040Z,"19 km SW of Kod?ri??, Nepal",earthquake,4.2,1.8,0.063,76,reviewed,us,us
+2015-04-25T08:16:59.230Z,27.7014,85.7563,10,4.9,mb,,76,0.969,0.55,us,us20002942,2022-05-03T17:20:47.163Z,"22 km ENE of Dhulikhel, Nepal",earthquake,6.2,1.8,0.051,123,reviewed,us,us
+2015-04-25T08:05:37.950Z,27.8132,85.7943,10,4.6,mb,,104,0.912,0.75,us,us2000293v,2022-07-31T01:14:45.061Z,"22 km SW of Kod?ri??, Nepal",earthquake,5.6,1.4,0.058,90,reviewed,us,us
+2015-04-25T07:47:01.480Z,27.8172,85.5955,10,5,mb,,79,1.085,0.59,us,us2000293p,2022-07-31T01:13:44.729Z,"13 km NNE of Nagarkot, Nepal",earthquake,6.9,1.8,0.052,118,reviewed,us,us
+2015-04-25T07:39:33.970Z,27.6821,85.7383,10,4.5,mb,,99,0.989,0.66,us,us2000293l,2015-07-03T00:23:39.040Z,"20 km ENE of Dhulikhel, Nepal",earthquake,6.5,1.3,0.076,51,reviewed,us,us
+2015-04-25T07:16:55.060Z,27.8818,85.6791,10,4.7,mb,,81,1.005,0.85,us,us2000293d,2015-07-03T00:23:39.040Z,"24 km NE of Nagarkot, Nepal",earthquake,3.1,1.8,0.064,75,reviewed,us,us
+2015-04-25T07:13:44.150Z,27.615,85.7307,10,4.8,mb,,105,1.017,0.72,us,us2000293i,2022-07-31T01:10:44.269Z,"18 km E of Dhulikhel, Nepal",earthquake,6.4,1.5,0.07,63,reviewed,us,us
+2015-04-25T07:07:59.920Z,27.7879,85.914,10,4.9,mb,,57,0.812,0.73,us,us20002939,2022-07-31T01:11:44.856Z,"19 km SSW of Kod?ri??, Nepal",earthquake,6,1.8,0.054,108,reviewed,us,us
+2015-04-25T06:58:27.570Z,27.7219,86.0061,10,5.1,mb,,76,0.751,0.55,us,us20002bfz,2022-05-03T17:23:00.632Z,"26 km S of Kod?ri??, Nepal",earthquake,6.8,1.8,0.077,55,reviewed,us,us
+2015-04-25T06:56:33.860Z,27.8822,85.7505,10,5.5,mb,,39,0.942,0.65,us,us20002934,2022-07-31T01:12:49.171Z,"22 km WSW of Kod?ri??, Nepal",earthquake,3,1.8,0.053,123,reviewed,us,us
+2015-04-25T06:53:42.750Z,27.672,85.2009,10,5,mb,,42,1.455,0.65,us,us20002bf3,2022-05-03T17:22:58.327Z,"7 km W of Kirtipur, Nepal",earthquake,8,1.8,0.095,35,reviewed,us,us
+2015-04-25T06:45:21.320Z,28.2244,84.8216,10,6.6,mww,,16,1.778,0.64,us,us2000292y,2025-02-22T05:33:18.829Z,"71 km NNE of Bharatpur, Nepal",earthquake,7.4,1.7,,,reviewed,us,us
+2015-04-25T06:44:39.040Z,27.5862,85.5012,10,4.6,mb,,117,1.219,1.14,us,us20002bim,2015-07-03T00:23:39.040Z,"1 km W of Panauti??, Nepal",earthquake,5,1.9,0.114,23,reviewed,us,us
+2015-04-25T06:37:58.690Z,27.7435,85.8302,10,5.1,mb,,76,0.895,0.65,us,us2000292w,2022-07-31T01:09:42.615Z,"27 km SSW of Kod?ri??, Nepal",earthquake,4.2,1.8,0.057,101,reviewed,us,us
+2015-04-25T06:32:48.870Z,27.7244,85.9479,10,4.6,mb,,128,0.799,1.07,us,us20002bfx,2015-07-03T00:23:39.040Z,"26 km S of Kod?ri??, Nepal",earthquake,8,1.9,0.126,19,reviewed,us,us
+2015-04-25T06:29:46.130Z,27.8478,85.0717,10,4.7,mb,,98,1.543,0.58,us,us20002bfi,2015-07-03T00:23:39.040Z,"Nepal",earthquake,8.4,1.9,0.159,12,reviewed,us,us
+2015-04-25T06:28:05.780Z,27.7006,85.5043,10,4.8,mb,,75,1.186,0.96,us,us20002bf2,2022-05-03T17:22:54.929Z,"2 km SW of Nagarkot, Nepal",earthquake,7.9,1.8,0.087,41,reviewed,us,us
+2015-04-25T06:25:55.260Z,27.687,85.5854,10,5,mb,,58,1.119,0.63,us,us20002bfk,2022-05-03T17:22:53.826Z,"7 km ESE of Nagarkot, Nepal",earthquake,8.3,1.8,0.075,57,reviewed,us,us
+2015-04-25T06:22:23.350Z,27.813,85.448,18,5.26,mw,,,,,iscgem,iscgem607260025,2022-05-03T17:22:52.632Z,"12 km NNW of Nagarkot, Nepal",earthquake,,8.4,0.22,,reviewed,iscgem,iscgem
+2015-04-25T06:22:02.750Z,27.8006,85.1141,10,5.1,mb,,99,1.511,0.86,us,us20002bhs,2024-01-17T21:09:09.592Z,"21 km NW of Kirtipur, Nepal",earthquake,7.8,1.5,0.131,19,reviewed,us,us
+2015-04-25T06:20:40.340Z,28.2046,84.492,10,5.4,mb,,151,2.064,0.88,us,us20002bi6,2022-05-03T17:22:49.242Z,"Nepal",earthquake,4.3,1.9,0.13,20,reviewed,us,us
+2015-04-25T06:18:10.870Z,27.6857,86.0213,10,5.6,mb,,42,0.751,0.76,us,us20002bi0,2024-06-16T23:45:39.737Z,"31 km SSE of Kod?ri??, Nepal",earthquake,7.4,1.9,0.109,30,reviewed,us,us
+2015-04-25T06:15:22.910Z,27.6285,85.5398,10,6.1,mb,,43,1.173,1.02,us,us20002bi4,2024-06-16T23:45:44.729Z,"0 km NNW of Dhulikhel, Nepal",earthquake,8,1.8,0.089,48,reviewed,us,us
+2015-04-25T06:11:25.950Z,28.2305,84.7314,8.22,7.8,mww,,12,1.857,0.96,us,us20002926,2025-08-07T10:31:11.955Z,"67 km NNE of Bharatpur, Nepal",earthquake,7.3,2.9,,,reviewed,us,us
+2015-04-02T00:56:38.960Z,28.7007,86.3309,57.33,4.6,mb,,75,4.31,0.54,us,us10001szi,2015-06-16T01:00:22.040Z,"89 km NNE of Kod?ri??, Nepal",earthquake,8.6,6.6,0.062,77,reviewed,us,us
+2015-01-31T13:59:45.250Z,28.2987,83.9732,32.41,4.8,mb,,96,6.419,0.82,us,usc000tkl8,2022-07-27T18:09:11.883Z,"3 km N of Pokhara, Nepal",earthquake,9.7,5.3,0.08,54,reviewed,us,us
+2014-12-26T07:08:09.590Z,28.5278,87.3541,57.27,4.9,mb,,62,3.502,0.84,us,usc000ta1g,2015-03-17T02:37:13.040Z,"82 km NE of Lobujya, Nepal",earthquake,8.6,5.3,0.061,87,reviewed,us,us
+2014-12-18T15:32:12.950Z,27.7395,86.3702,33.6,5,mb,,40,4.612,0.84,us,usc000t7wj,2022-07-27T10:57:44.431Z,"34 km WSW of Namche Bazar, Nepal",earthquake,7.2,4.3,0.054,110,reviewed,us,us
+2014-08-03T05:57:30.560Z,29.2757,85.4967,10,5.2,mb,,38,4.926,0.61,us,usb000rzm0,2022-05-03T16:58:08.308Z,"26 km ESE of Saga, China",earthquake,,1.7,0.041,199,reviewed,us,us
+2013-08-30T17:48:42.980Z,28.1613,85.8966,54.65,4.9,mb,,37,0.681,1.09,us,usb000jdvj,2022-07-25T21:27:30.464Z,"23 km NNW of Kod?ri??, Nepal",earthquake,,5,0.049,,reviewed,us,us
+2013-07-15T19:39:44.060Z,28.383,87.599,52.5,4.7,mb,74,75,,1.01,us,usp000k21s,2014-11-07T01:51:16.621Z,"90 km ENE of Lobujya, Nepal",earthquake,,5.4,,56,reviewed,us,us
+2012-11-30T19:39:30.580Z,27.22,88.2,25,4.7,mb,84,116.4,,0.92,us,usp000jw9j,2015-03-24T02:15:46.918Z,"9 km SW of Gyalshing, India",earthquake,,11.3,,30,reviewed,us,us
+2012-11-05T13:08:00.030Z,28.447,86.187,77.8,4.5,mb,71,38.9,,1.04,us,usp000jv2d,2015-03-24T01:47:47.524Z,"58 km NNE of Kod?ri??, Nepal",earthquake,,,,26,reviewed,us,us
+2012-08-23T16:30:21.790Z,28.47,82.69,28.4,5,mb,249,26.1,,0.91,us,usp000jqn6,2022-05-03T15:47:22.205Z,"37 km NE of Besisahar, Nepal",earthquake,,12.1,,141,reviewed,us,us
+2012-08-09T13:12:04.910Z,28.456,86.74,70.2,4.7,mb,108,82.7,,0.93,us,usp000jq3d,2014-11-07T01:48:32.441Z,"56 km N of Lobujya, Nepal",earthquake,,7,,21,reviewed,us,us
+2012-08-01T19:50:01.040Z,29.972,85.344,10,4.5,mb,11,145.1,,1.15,us,usp000jpr8,2014-11-07T01:48:28.082Z,"72 km N of Saga, China",earthquake,,,,2,reviewed,us,us
+2012-06-11T04:35:59.960Z,27.306,88.13,51.5,4.5,mb,74,97.6,,0.75,us,usp000jmm9,2014-11-07T01:48:03.155Z,"12 km W of Gyalshing, India",earthquake,,9.1,,17,reviewed,us,us
+2012-06-09T07:54:11.100Z,28.4,84.126,20.1,4.8,mb,148,45.8,,0.92,us,usp000jmhz,2022-05-03T15:42:13.603Z,"21 km NE of Pokhara, Nepal",earthquake,,10.7,,80,reviewed,us,us
+2011-09-18T12:40:51.830Z,27.73,88.155,50,6.9,mww,383,13,,0.96,us,usp000j88b,2025-03-03T10:37:14.677Z,"43 km NW of Mangan, India",earthquake,,,,,reviewed,us,us
+2011-06-03T00:53:27.280Z,27.529,88.019,45.7,5,mb,118,33.7,,0.99,us,usp000j2m5,2022-07-19T16:41:08.905Z,"35 km NW of Gyalshing, India",earthquake,,,,48,reviewed,us,us
+2011-05-24T12:52:00.090Z,30.042,85.391,41.4,4.5,mb,35,145.1,,0.81,us,usp000j24y,2014-11-07T01:44:54.744Z,"81 km NNE of Saga, China",earthquake,,8.6,,14,reviewed,us,us
+2011-02-13T17:51:21.560Z,27.388,86.941,28.6,4.5,mb,55,116.7,,1.13,us,usp000hufh,2014-11-07T01:43:39.998Z,"26 km NNW of Bhojpur, Nepal",earthquake,,15.9,,21,reviewed,us,us
+2010-10-17T20:11:18.460Z,28.487,85.677,41.1,4.9,mb,100,47.9,,0.93,us,usp000hn7q,2022-07-18T22:23:26.338Z,"64 km NNW of Kod?ri??, Nepal",earthquake,,8.4,,36,reviewed,us,us
+2010-07-10T10:15:45.190Z,29.318,86.981,42.3,4.6,mb,57,51.4,,0.99,us,usp000hf3r,2014-11-07T01:41:51.920Z,"152 km N of Lobujya, Nepal",earthquake,,9.4,,21,reviewed,us,us
+2010-02-26T04:42:39.350Z,28.474,86.745,89.1,5.1,mwc,209,29.6,,0.79,us,usp000h7q0,2025-12-22T15:44:49.767Z,"58 km N of Lobujya, Nepal",earthquake,,,,,reviewed,us,gcmt
+2009-11-07T20:08:46.290Z,29.49,86.008,5.7,5.5,mwc,244,17.8,,0.8,us,usp000h3uf,2022-05-02T21:25:50.948Z,"78 km ENE of Saga, China",earthquake,,10.1,,,reviewed,us,gcmt
+2008-12-02T05:11:42.030Z,27.373,88.051,24.7,5.2,mb,103,93.6,,0.82,us,usp000gpsw,2014-11-07T01:37:52.109Z,"22 km WNW of Gyalshing, India",earthquake,,5.4,,35,reviewed,us,us
+2007-10-29T09:49:21.150Z,27.945,85.38,16.1,4.7,mb,58,59.1,,0.96,us,usp000frhm,2022-07-14T01:43:46.412Z,"27 km NNE of Kathmandu, Nepal",earthquake,,3.9,,18,reviewed,us,us
+2007-08-11T14:35:54.820Z,27.344,87.737,35,5,mb,162,77.5,,0.73,us,usp000fjdy,2022-07-14T04:52:09.068Z,"51 km NNW of Il?m, Nepal",earthquake,,,,73,reviewed,us,us
+2007-05-20T14:18:21.330Z,27.334,88.236,42.8,4.9,mwc,167,76.7,,0.94,us,usp000fccm,2016-11-10T01:40:18.865Z,"5 km NNW of Gyalshing, India",earthquake,,11.4,,,reviewed,us,gcmt
+2007-05-18T12:40:01.190Z,27.276,88.147,15.4,4.7,mb,83,70.7,,1.04,us,usp000fc7u,2014-11-07T01:32:29.290Z,"11 km W of Gyalshing, India",earthquake,,18.2,,40,reviewed,us,us
+2006-08-30T18:25:00.600Z,29.052,83.602,10,4.5,ml,23,74.9,,,us,usp000es41,2014-11-07T01:30:03.357Z,"69 km N of Chitre, Nepal",earthquake,,,,,reviewed,dmn,dmn
+2006-02-03T01:57:47.220Z,27.245,86.383,14.3,4.7,mwc,190,61.2,,0.65,us,usp000e9c4,2016-11-10T01:17:15.148Z,"58 km N of Lah?n, Nepal",earthquake,,3.1,,,reviewed,us,hrv
+2005-10-31T21:47:56.070Z,28.39,84.863,10,4.7,mwc,128,36,,0.79,us,usp000e38d,2016-11-10T01:13:58.553Z,"88 km NNW of Kathmandu, Nepal",earthquake,,0,,,reviewed,us,hrv
+2005-08-28T13:14:08.270Z,27.636,87.419,38.8,4.8,mb,101,52.5,,0.86,us,usp000dy7b,2014-11-07T01:26:53.925Z,"35 km NE of Kh??db?ri??, Nepal",earthquake,,5.1,,37,reviewed,us,us
+2005-06-14T14:23:18.470Z,27.205,87.92,44.4,4.6,mb,48,70.4,,0.89,us,usp000dsz4,2014-11-07T01:26:12.404Z,"32 km WNW of Naya B?z?r, India",earthquake,,5.6,,10,reviewed,us,us
+2005-03-26T20:32:13.420Z,28.259,87.926,70.7,4.7,mwc,159,94.9,,0.73,us,usp000dk47,2016-11-10T01:03:24.491Z,"101 km NW of Mangan, India",earthquake,,9.4,,,reviewed,us,hrv
+2005-02-08T03:35:04.840Z,27.738,86.092,10,4.9,mb,99,81.2,,0.86,us,usp000dfpt,2022-05-02T17:48:03.700Z,"28 km SSE of Kod?ri??, Nepal",earthquake,,,,63,reviewed,us,us
+2004-02-27T12:53:14.600Z,28.127,87.66,68.1,4.8,mb,76,85.7,,0.73,us,usp000cnh0,2014-11-07T01:21:31.351Z,"85 km ENE of Lobujya, Nepal",earthquake,,8.7,,25,reviewed,us,us
+2004-02-18T01:23:43.820Z,27.361,87.758,20.7,4.7,mb,40,88.3,,0.55,us,usp000cmew,2014-11-07T01:21:22.123Z,"50 km W of Gyalshing, India",earthquake,,14.4,,12,reviewed,us,us
+2004-01-03T13:14:28.680Z,27.739,85.931,17.1,4.9,mb,83,80.7,,0.68,us,usp000cgyy,2014-11-07T01:20:57.875Z,"24 km S of Kod?ri??, Nepal",earthquake,,14.8,,33,reviewed,us,us
+2003-09-29T13:40:30.450Z,27.358,87.738,33,4.6,mb,35,97.1,,0.68,us,usp000c927,2014-11-07T01:19:59.493Z,"51 km W of Gyalshing, India",earthquake,,,,15,reviewed,us,us
+2003-02-26T19:58:13.150Z,28.347,86.449,33,4.6,mb,15,,,0.46,us,usp000brj5,2014-11-07T01:17:52.666Z,"56 km NW of Lobujya, Nepal",earthquake,,,,5,reviewed,us,us
+2002-04-02T19:57:21.290Z,29.287,87.009,33,4.6,mb,16,,,1.14,us,usp000b1m8,2014-11-07T01:15:20.220Z,"149 km N of Lobujya, Nepal",earthquake,,,,2,reviewed,us,us
+2002-03-07T15:50:18.920Z,29.625,84.419,70,4.6,mb,16,,,0.88,us,usp000azw0,2014-11-07T01:15:05.714Z,"85 km WNW of Saga, China",earthquake,,12,,4,reviewed,us,us
+2001-12-02T22:41:13.790Z,27.15,88.171,33,5.1,mb,147,,,0.95,us,usp000atwn,2022-04-29T19:42:41.626Z,"7 km WNW of Naya B?z?r, India",earthquake,,,,63,reviewed,us,us
+2001-07-16T16:12:46.750Z,27.957,85.178,33,5,mb,124,,,1,us,usp000ajnb,2022-04-29T19:26:34.041Z,"31 km NNW of Kathmandu, Nepal",earthquake,,,,65,reviewed,us,us
+2001-04-29T10:39:05.170Z,28.912,87.222,33,4.7,mb,73,,,1,us,usp000ae5k,2014-11-07T01:12:39.277Z,"113 km NNE of Lobujya, Nepal",earthquake,,,,33,reviewed,us,us
+2001-04-28T10:37:56.570Z,28.872,87.162,33,5.2,mb,260,,,0.86,us,usp000ae39,2022-04-29T19:15:23.881Z,"107 km NNE of Lobujya, Nepal",earthquake,,,,135,reviewed,us,us
+2001-04-03T23:08:35.920Z,27.801,86.127,33,4.6,mb,68,,,0.99,us,usp000ach7,2014-11-07T01:12:31.411Z,"24 km SE of Kod?ri??, Nepal",earthquake,,,,21,reviewed,us,us
+1999-09-05T02:28:16.980Z,28.159,87.413,33,4.5,mb,,,,0.97,us,usp0009e17,2014-11-07T01:08:26.237Z,"63 km ENE of Lobujya, Nepal",earthquake,,,,20,reviewed,us,us
+1999-08-01T08:24:46.170Z,28.442,86.733,40.2,5.2,mb,,,,0.68,us,usp0009cdv,2014-11-07T01:08:11.461Z,"55 km N of Lobujya, Nepal",earthquake,,6.8,,103,reviewed,us,us
+1999-03-19T05:53:40.650Z,27.748,85.609,33,4.5,mb,,,,1.09,us,usp00094sf,2014-11-07T01:07:14.949Z,"9 km ENE of Nagarkot, Nepal",earthquake,,,,11,reviewed,us,us
+1998-12-01T05:35:09.200Z,27.935,87.649,33,4.8,mb,,,,0.88,us,usp0008z0r,2014-11-07T01:06:34.045Z,"75 km NE of Kh??db?ri??, Nepal",earthquake,,,,12,reviewed,us,us
+1998-11-26T10:14:27.630Z,27.753,87.894,73.1,5.1,mb,,,,0.76,us,usp0008ys2,2014-11-07T01:06:29.427Z,"62 km NW of Gyalshing, India",earthquake,,,,102,reviewed,us,us
+1998-09-06T21:35:49.470Z,27.859,86.895,33,4.6,mb,,,,1.04,us,usp0008uj0,2014-11-07T01:06:01.020Z,"12 km SE of Lobujya, Nepal",earthquake,,,,18,reviewed,us,us
+1998-09-03T23:02:28.330Z,27.6,86.733,33,4.6,mb,,,,0.73,us,usp0008ucq,2014-11-07T01:06:00.153Z,"22 km S of Namche Bazar, Nepal",earthquake,,,,28,reviewed,us,us
+1998-09-03T18:15:56.560Z,27.85,86.941,33,5.6,mb,,,,0.98,us,usp0008uc8,2022-04-29T17:41:14.060Z,"16 km SE of Lobujya, Nepal",earthquake,,,,137,reviewed,us,us
+1998-06-27T09:05:59.270Z,27.675,85.568,33,4.9,mb,,,,0.68,us,usp0008qjx,2022-04-29T16:37:10.100Z,"6 km NNE of Dhulikhel, Nepal",earthquake,,,,44,reviewed,us,us
+1998-02-22T02:40:38.050Z,28.453,85.435,33,4.8,mb,,,,0.88,us,usp0008gdp,2022-04-29T17:19:54.855Z,"74 km NW of Kod?ri??, Nepal",earthquake,,,,34,reviewed,us,us
+1998-02-01T17:32:48.220Z,28.19,87.122,33,4.5,mb,,,,0.98,us,usp0008fa6,2014-11-07T01:04:27.309Z,"40 km NE of Lobujya, Nepal",earthquake,,,,1,reviewed,us,us
+1997-12-08T02:03:55.840Z,27.475,87.175,33,5,mb,,,,0.91,us,usp0008c80,2022-04-29T17:11:50.453Z,"11 km NNW of Kh??db?ri??, Nepal",earthquake,,,,45,reviewed,us,us
+1997-11-27T16:11:57.070Z,27.618,87.347,33,5.1,mb,,,,1.09,us,usp0008be2,2022-04-29T17:09:20.125Z,"30 km NNE of Kh??db?ri??, Nepal",earthquake,,,,62,reviewed,us,us
+1997-11-03T02:29:51.820Z,29.078,85.383,33,5.5,mwc,,,,1.07,us,usp0008a01,2022-04-29T17:06:41.619Z,"31 km SSE of Saga, China",earthquake,,,,,reviewed,us,hrv
+1997-07-05T06:22:53.530Z,28.803,86.862,33,4.8,mb,,,,1.52,us,usp00084d1,2014-11-07T01:03:05.496Z,"94 km N of Lobujya, Nepal",earthquake,,,,1,reviewed,us,us
+1997-04-05T17:31:51.200Z,30.093,86.059,33,4.5,mb,,,,1.12,us,usp0008009,2014-11-07T01:02:30.491Z,"117 km NE of Saga, China",earthquake,,,,8,reviewed,us,us
+1997-03-24T21:28:06.090Z,27.887,84.987,33,4.5,mb,,,,1.2,us,usp0007zcb,2014-11-07T01:02:22.445Z,"36 km NW of Kirtipur, Nepal",earthquake,,,,6,reviewed,us,us
+1997-03-03T09:29:39.970Z,27.244,86.082,44.8,4.7,mb,,,,1.06,us,usp0007y6j,2014-11-07T01:02:16.317Z,"59 km NNE of Janakpur, Nepal",earthquake,,,,11,reviewed,us,us
+1997-01-31T20:02:16.640Z,27.946,85.127,22.2,5.2,mb,,,,1.02,us,usp0007wkg,2022-04-29T16:42:42.333Z,"33 km NW of Kathmandu, Nepal",earthquake,,,,71,reviewed,us,us
+1996-12-30T11:08:18.920Z,27.435,86.638,33,5,mb,,,,1.08,us,usp0007v6h,2022-04-29T16:39:22.326Z,"41 km S of Namche Bazar, Nepal",earthquake,,,,56,reviewed,us,us
+1996-10-03T01:29:03.110Z,28.209,87.489,33,4.5,mb,,,,1.31,us,usp0007qvu,2014-11-07T01:01:19.046Z,"72 km ENE of Lobujya, Nepal",earthquake,,,,2,reviewed,us,us
+1996-09-13T03:41:08.660Z,27.033,88.234,33,4.5,mb,,,,0.84,us,usp0007pwa,2014-11-07T01:01:10.167Z,"3 km W of D?rjiling, India",earthquake,,,,3,reviewed,us,us
+1996-04-26T16:30:58.490Z,27.825,87.821,33,5,mb,,,,0.9,us,usp0007gmx,2022-04-29T20:18:25.790Z,"73 km NW of Gyalshing, India",earthquake,,,,35,reviewed,us,us
+1995-03-29T19:11:20.520Z,28.772,84.203,33,4.7,mb,,,,0.9,us,usp0006uwx,2014-11-07T00:57:34.318Z,"60 km NNE of Pokhara, Nepal",earthquake,,,,6,reviewed,us,us
+1995-03-24T08:12:39.960Z,28.859,87.767,33,4.5,mb,,,,1.3,us,usp0006und,2014-11-07T00:57:33.088Z,"117 km WSW of Rikaze, China",earthquake,,,,7,reviewed,us,us
+1995-01-01T19:56:13.620Z,27.773,87.587,61.1,4.9,mb,,,,0.6,us,usp0006qr3,2014-11-07T00:57:03.912Z,"57 km NE of Kh??db?ri??, Nepal",earthquake,,17.3,,3,reviewed,us,us
+1994-05-25T07:38:53.710Z,27.65,87.792,47.9,4.6,mb,,,,0.7,us,usp0006d2t,2014-11-07T00:55:31.315Z,"60 km NW of Gyalshing, India",earthquake,,17,,5,reviewed,us,us
+1993-12-14T02:27:44.390Z,28.489,86.844,33,4.6,mb,,,,1.2,us,usp000653p,2014-11-07T00:54:35.745Z,"59 km N of Lobujya, Nepal",earthquake,,,,9,reviewed,us,us
+1993-09-05T06:05:54.630Z,27.293,87.31,33,4.5,mb,,,,1.2,us,usp0005zs9,2014-11-07T00:53:55.359Z,"13 km SE of Kh??db?ri??, Nepal",earthquake,,,,27,reviewed,us,us
+1993-07-09T16:23:17.350Z,26.81,86.059,33,4.6,mb,,,,1.2,us,usp0005vvm,2014-11-07T00:53:26.784Z,"15 km NE of Janakpur, Nepal",earthquake,,,,2,reviewed,us,us
+1993-07-05T22:11:09.840Z,27.939,85.118,33,4.7,mb,,,,1.1,us,usp0005vnw,2014-11-07T00:53:25.404Z,"32 km NNW of Kirtipur, Nepal",earthquake,,,,31,reviewed,us,us
+1993-07-03T02:00:22.230Z,28.357,86.63,33,4.7,mb,,,,1.1,us,usp0005vht,2014-11-07T00:53:23.993Z,"48 km NNW of Lobujya, Nepal",earthquake,,,,24,reviewed,us,us
+1993-04-12T00:57:57.980Z,28.314,82.799,33,4.7,mb,,,,1.4,us,usp0005r1g,2014-11-07T00:52:48.660Z,"38 km ENE of Besisahar, Nepal",earthquake,,,,7,reviewed,us,us
+1993-03-31T13:44:10.110Z,29.091,87.349,20.1,5.1,mb,,,,0.9,us,usp0005qey,2022-04-28T18:19:45.912Z,"136 km NNE of Lobujya, Nepal",earthquake,,,,76,reviewed,us,us
+1993-03-20T21:26:39.450Z,28.994,87.383,21.1,5.2,mw,,,,1.1,us,usp0005pvs,2022-04-28T18:19:06.179Z,"128 km NNE of Lobujya, Nepal",earthquake,,,,,reviewed,us,hrv
+1993-03-20T14:51:59.770Z,29.084,87.333,12.2,6.2,mw,,,,1.1,us,usp0005pv9,2022-04-28T18:19:03.777Z,"135 km NNE of Lobujya, Nepal",earthquake,,,,,reviewed,us,hrv
+1993-02-15T14:29:40.870Z,25.85,87.473,29.7,5,mb,,,,1.4,us,usp0005n4k,2022-04-28T18:20:15.354Z,"6 km W of Kasba, India",earthquake,,,,37,reviewed,us,us
+1992-06-13T15:40:05.410Z,28.945,82.927,32.9,4.9,ms,,,,1.1,us,usp000591s,2014-11-07T00:50:49.685Z,"81 km ESE of Jumla, Nepal",earthquake,,,,2,reviewed,us,us
+1992-04-04T17:43:20.710Z,28.147,87.979,33,4.9,mb,,,,1.1,us,usp00055b6,2014-11-07T00:50:24.619Z,"88 km NW of Mangan, India",earthquake,,,,41,reviewed,us,us
+1991-12-21T19:52:45.500Z,27.904,88.139,57.1,4.9,mb,,,,1.2,us,usp00050rs,2014-11-07T00:49:46.277Z,"57 km NW of Mangan, India",earthquake,,8.9,,27,reviewed,us,us
+1991-03-15T04:28:16.300Z,28.317,87.683,42.6,4.6,mb,,,,1.2,us,usp0004p2m,2014-11-07T00:48:12.158Z,"94 km ENE of Lobujya, Nepal",earthquake,,16.7,,7,reviewed,us,us
+1990-12-20T17:04:44.080Z,28.138,82.944,66.8,4.8,mb,,,,1.2,us,usp0004jd6,2014-11-07T00:47:38.223Z,"53 km ESE of Besisahar, Nepal",earthquake,,8.8,,9,reviewed,us,us
+1990-05-20T18:01:57.390Z,28.26,83.193,62.1,4.5,mb,,,,0.8,us,usp00049jd,2014-11-07T00:46:23.435Z,"38 km W of B?glung, Nepal",earthquake,,20.2,,6,reviewed,us,us
+1990-05-20T09:10:02.320Z,28.458,83.343,33,4.8,mb,,,,0.8,us,usp00049hx,2014-11-07T00:46:23.236Z,"31 km NW of B?glung, Nepal",earthquake,,,,27,reviewed,us,us
+1990-02-21T07:21:17.300Z,28.082,82.43,33,4.8,mb,,,,1.2,us,usp00045qv,2014-11-07T00:45:47.214Z,"14 km ESE of Tuls?pur, Nepal",earthquake,,,,7,reviewed,us,us
+1990-01-30T15:06:26.080Z,28.599,85.714,52.4,4.5,mb,,,,1.5,us,usp00044wj,2014-11-07T00:45:36.100Z,"74 km NNW of Kod?ri??, Nepal",earthquake,,17.7,,3,reviewed,us,us
+1990-01-10T23:01:21.960Z,26.559,86.663,68.5,4.7,mb,,,,1.4,us,usp000443p,2014-11-07T00:45:31.693Z,"8 km WNW of R?jbir?j, Nepal",earthquake,,11.6,,4,reviewed,us,us
+1990-01-09T02:29:26.690Z,28.225,88.163,79.1,5.5,mb,,,,1,us,usp0004417,2022-04-28T20:00:52.912Z,"86 km NNW of Mangan, India",earthquake,,,,53,reviewed,us,us
+1989-10-10T04:11:00.630Z,28.653,87.481,75.7,4.6,mb,,,,0.9,us,usp00040gz,2014-11-07T00:45:00.825Z,"101 km NE of Lobujya, Nepal",earthquake,,14,,4,reviewed,us,us
+1989-05-22T19:24:34.980Z,27.243,87.886,33.8,5,mb,,,,0.9,us,usp0003vhk,2022-04-28T20:18:18.483Z,"37 km W of Gyalshing, India",earthquake,,8.2,,39,reviewed,us,us
+1989-03-08T07:21:26.040Z,28.001,84.028,33,4.5,mb,,,,0.8,us,usp0003sr3,2014-11-07T00:43:47.884Z,"16 km NE of Bhattarai Danda, Nepal",earthquake,,,,3,reviewed,us,us
+1988-12-27T02:56:03.850Z,27.887,87.773,64.6,4.6,mb,,,,1.3,us,usp0003q7f,2014-11-07T00:43:19.280Z,"79 km NE of Kh??db?ri??, Nepal",earthquake,,13.5,,5,reviewed,us,us
+1988-10-29T09:10:52.550Z,27.871,85.648,17.6,5.2,mw,,,,1,us,usp0003nb0,2022-04-28T20:34:30.939Z,"21 km NE of Nagarkot, Nepal",earthquake,,,,,reviewed,us,hrv
+1988-09-27T19:10:10.700Z,27.175,88.293,33,5,ms,,,,1.1,us,usp0003mae,2022-04-28T20:36:39.570Z,"7 km W of Namchi, India",earthquake,,,,2,reviewed,us,us
+1988-09-21T13:51:14.770Z,28.715,85.568,53.8,4.7,mb,,,,1.2,us,usp0003m54,2014-11-07T00:42:50.070Z,"75 km SSE of Saga, China",earthquake,,12,,10,reviewed,us,us
+1988-09-01T22:04:11.240Z,26.766,86.564,33,4.6,mb,,,,1.4,us,usp0003kkm,2014-11-07T00:42:44.897Z,"9 km ENE of Lah?n, Nepal",earthquake,,,,1,reviewed,us,us
+1988-08-24T09:55:33.620Z,26.746,86.549,33,4.7,mb,,,,0.8,us,usp0003kbq,2014-11-07T00:42:42.235Z,"7 km ENE of Lah?n, Nepal",earthquake,,,,4,reviewed,us,us
+1988-08-20T23:09:09.560Z,26.755,86.616,57.4,6.9,mw,,,,1.1,us,usp0003k6t,2022-04-28T20:39:02.824Z,"9 km WSW of Triyuga, Nepal",earthquake,,,,,reviewed,us,hrv
+1988-04-25T16:04:02.760Z,26.817,86.625,66.8,4.8,mb,,,,1.3,us,usp0003fbz,2014-11-07T00:41:59.088Z,"7 km WNW of Triyuga, Nepal",earthquake,,8.8,,4,reviewed,us,us
+1988-04-20T06:40:25.910Z,27.042,86.694,54.8,5.4,mb,,,,0.9,us,usp0003f6g,2022-04-28T20:49:48.130Z,"27 km N of Triyuga, Nepal",earthquake,,3,,68,reviewed,us,us
+1988-04-11T12:11:31.030Z,27.516,85.86,38.5,4.9,mb,,,,1.4,us,usp0003exq,2014-11-07T00:41:56.908Z,"33 km ESE of Dhulikhel, Nepal",earthquake,,9.9,,6,reviewed,us,us
+1988-04-09T12:57:55.860Z,29.779,86.909,33,4.5,mb,,,,1.1,us,usp0003ev2,2014-11-07T00:41:56.705Z,"170 km ENE of Saga, China",earthquake,,,,7,reviewed,us,us
+1987-11-25T19:20:39.840Z,27.95,85.879,33,4.6,mb,,,,1.3,us,usp0003ajb,2014-11-07T00:41:15.747Z,"7 km W of Kod?ri??, Nepal",earthquake,,,,1,reviewed,us,us
+1987-08-09T21:15:00.010Z,29.502,83.714,47.5,5.6,mw,,,,1,us,usp00037d9,2022-04-27T21:37:09.503Z,"119 km N of Chitre, Nepal",earthquake,,7.8,,,reviewed,us,hrv
+1987-05-10T05:10:40.050Z,28.22,86.739,33,4.6,mb,,,,0.9,us,usp00034vq,2014-11-07T00:40:24.127Z,"30 km NNW of Lobujya, Nepal",earthquake,,,,3,reviewed,us,us
+1987-04-23T09:05:56.920Z,27.991,87.102,47.6,4.7,mb,,,,0.8,us,usp00034da,2014-11-07T00:40:16.726Z,"28 km E of Lobujya, Nepal",earthquake,,7,,20,reviewed,us,us
+1987-01-19T08:12:05.810Z,28.243,83.572,33,4.9,mb,,,,1.1,us,usp00031s1,2022-04-27T21:55:47.609Z,"3 km SSW of B?glung, Nepal",earthquake,,,,30,reviewed,us,us
+1987-01-19T07:46:24.490Z,28.385,83.682,33,5.2,mb,,,,1,us,usp00031rz,2022-04-27T21:55:46.485Z,"4 km S of Chitre, Nepal",earthquake,,,,50,reviewed,us,us
+1986-01-10T03:46:29.910Z,28.648,86.527,54.6,5.2,mw,,,,1,us,usp0002pxe,2022-04-27T22:25:58.294Z,"82 km NNW of Lobujya, Nepal",earthquake,,7.9,,,reviewed,us,hrv
+1986-01-06T09:50:42.290Z,27.8,85.392,33.6,4.5,mb,,,,1.4,us,usp0002ptn,2014-11-07T00:37:45.303Z,"12 km NNE of Kathmandu, Nepal",earthquake,,8.4,,4,reviewed,us,us
+1985-12-23T13:49:44.990Z,27.61,85.722,45.3,4.6,mb,,,,1.4,us,usp0002pa9,2014-11-07T00:37:39.717Z,"17 km E of Dhulikhel, Nepal",earthquake,,9,,4,reviewed,us,us
+1985-10-21T08:57:09.130Z,28.845,83.974,33,4.5,mb,,,,1.4,us,usp0002kzx,2014-11-07T00:37:20.311Z,"53 km NNE of Chitre, Nepal",earthquake,,,,6,reviewed,us,us
+1985-09-13T05:33:08.110Z,29.824,84.052,33,4.5,mb,,,,1.4,us,usp0002jqm,2014-11-07T00:37:10.008Z,"126 km WNW of Saga, China",earthquake,,,,6,reviewed,us,us
+1984-11-18T22:04:32.070Z,28.799,84.073,33,5.3,mb,,,,1.1,us,usp000296h,2014-11-07T00:35:43.642Z,"55 km NE of Chitre, Nepal",earthquake,,,,3,reviewed,us,us
+1984-05-30T22:27:26.040Z,28.828,83.936,33,4.5,mb,,,,0.9,us,usp00024rh,2014-11-07T00:34:56.848Z,"50 km NNE of Chitre, Nepal",earthquake,,,,5,reviewed,us,us
+1984-01-25T23:49:47.470Z,27.486,86.089,33,4.6,mb,,,,1.2,us,usp00021jh,2014-11-07T00:34:24.230Z,"54 km SSE of Kod?ri??, Nepal",earthquake,,,,8,reviewed,us,us
+1984-01-06T23:48:08.290Z,27.777,84.74,33,4.5,mb,,,,1.2,us,usp000212s,2014-11-07T00:34:21.796Z,"31 km ENE of Bharatpur, Nepal",earthquake,,,,5,reviewed,us,us
+1982-08-03T08:03:31.060Z,27.895,85.465,33,4.6,mb,,,,0.9,us,usp0001ntu,2014-11-07T00:31:42.066Z,"20 km NNW of Nagarkot, Nepal",earthquake,,,,12,reviewed,us,us
+1981-04-09T17:19:31.370Z,28.006,84.409,33,4.5,mb,,,,0.7,us,usp0001d2j,2014-11-07T00:29:11.383Z,"36 km N of Bharatpur, Nepal",earthquake,,,,11,reviewed,us,us
+1980-11-20T14:03:28.800Z,29.593,85.222,33,4.8,mb,,,,,us,usp0001awh,2026-01-07T19:20:33.862Z,"29 km N of Saga, China",earthquake,,,,,reviewed,us,us
+1980-11-18T13:46:22.000Z,29.558,85.173,33,4.7,mb,,,,,us,usp0001avn,2026-01-07T19:20:32.183Z,"26 km N of Saga, China",earthquake,,,,,reviewed,us,us
+1979-11-16T19:17:27.700Z,27.243,88.159,33,4.6,mb,,,,,us,usp000141u,2014-11-06T23:22:07.409Z,"11 km WSW of Gyalshing, India",earthquake,,,,,reviewed,us,us
+1979-06-19T16:29:11.600Z,26.741,87.506,24,5.1,mb,,,,,us,usp00011e7,2025-12-19T22:05:21.808Z,"23 km ESE of Dhar?n, Nepal",earthquake,,,,,reviewed,us,us
+1978-12-25T20:00:02.700Z,28.115,83.912,33,4.5,mb,,,,,us,usp0000y41,2014-11-06T23:21:55.338Z,"Nepal",earthquake,,,,,reviewed,us,us
+1978-10-04T13:53:52.000Z,27.834,85.963,33,5.2,mb,,,,,us,usp0000wua,2026-01-07T19:26:19.237Z,"14 km S of Kod?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1978-02-19T04:52:27.800Z,29.298,84.994,16,4.7,mb,,,,,us,usp0000t1g,2014-11-06T23:21:47.133Z,"22 km W of Saga, China",earthquake,,,,,reviewed,us,us
+1978-02-10T17:29:52.000Z,28.072,84.644,33,5.2,mb,,,,,us,usp0000swx,2022-04-27T15:55:23.902Z,"48 km NNE of Bharatpur, Nepal",earthquake,,,,,reviewed,us,us
+1976-10-23T16:09:19.800Z,28.676,86.228,63,5.1,mb,,,,,us,usp0000k0f,2014-11-06T23:21:37.835Z,"83 km NNE of Kod?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1976-09-12T15:36:11.800Z,27.672,85.752,33,4.8,mb,,,,,us,usp0000jc8,2014-11-06T23:21:37.165Z,"21 km ENE of Dhulikhel, Nepal",earthquake,,,,,reviewed,us,us
+1975-11-26T15:02:32.900Z,28.343,87.636,33,5.1,mb,,,,,us,usp0000dqz,2014-11-06T23:21:32.812Z,"91 km ENE of Lobujya, Nepal",earthquake,,,,,reviewed,us,us
+1975-11-21T13:49:29.820Z,26.925,86.514,15,5.19,mw,,,,,iscgem,iscgem722040,2022-04-27T17:28:26.571Z,"22 km N of Lah?n, Nepal",earthquake,,6.9,0.24,,reviewed,iscgem,iscgem
+1975-06-24T15:38:27.800Z,27.473,87.294,33,5.2,mb,,,,,us,usp0000brn,2022-04-27T17:43:38.604Z,"13 km NE of Kh??db?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1975-04-24T01:35:51.300Z,27.238,86.902,33,5.1,mb,,,,,us,usp0000asj,2022-04-27T17:48:21.765Z,"16 km WNW of Bhojpur, Nepal",earthquake,,,,,reviewed,us,us
+1975-02-06T06:39:44.600Z,27.891,87.826,33,4.7,mb,,,,,us,usp00009tp,2014-11-06T23:21:28.755Z,"79 km NNW of Gyalshing, India",earthquake,,,,,reviewed,us,us
+1975-01-31T12:38:52.400Z,28.1,84.729,33,5.4,mb,,,,,us,usp00009r6,2025-12-19T20:33:59.945Z,"55 km NNE of Bharatpur, Nepal",earthquake,,,,,reviewed,us,us
+1975-01-23T01:37:42.900Z,27.314,88.255,33,4.8,mb,,,,,us,usp00009kx,2014-11-06T23:21:28.513Z,"2 km N of Gyalshing, India",earthquake,,,,,reviewed,us,us
+1974-09-27T05:26:39.400Z,28.596,85.496,70,5.6,mb,,,,,us,usp0000861,2025-12-19T19:27:33.075Z,"83 km NNW of Kod?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1974-03-24T16:17:39.600Z,27.594,86.021,33,4.8,mb,,,,,us,usp00005r1,2022-04-27T18:27:38.063Z,"41 km S of Kod?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1974-03-24T14:16:03.100Z,27.727,86.11,33,5.7,ms,,,,,us,usp00005qy,2025-12-19T19:31:34.047Z,"29 km SSE of Kod?ri??, Nepal",earthquake,,,,,reviewed,us,us
+1973-10-16T09:50:43.300Z,28.219,82.945,33,5.2,mb,,,,,us,usp00003ur,2026-01-07T19:04:19.351Z,"52 km E of Besisahar, Nepal",earthquake,,,,,reviewed,us,us
+1973-03-22T01:06:57.200Z,28.135,86.993,33,5.2,mb,,,,,us,usp000010t,2022-04-27T18:58:03.400Z,"26 km NE of Lobujya, Nepal",earthquake,,,,,reviewed,us,us
+1972-08-21T14:04:33.600Z,27.375,87.999,15,5.12,mw,,,,,iscgem,iscgem770787,2022-04-26T20:45:33.197Z,"27 km WNW of Gyalshing, India",earthquake,,13.2,0.2,,reviewed,iscgem,iscgem
+1970-07-21T15:37:43.570Z,27.977,84.76,15,5.24,mw,,,,,iscgem,iscgem793928,2022-04-26T21:35:30.499Z,"46 km NE of Bharatpur, Nepal",earthquake,,10.1,0.2,,reviewed,iscgem,iscgem
+1970-02-26T19:30:06.160Z,27.653,85.914,10,5.41,mw,,,,,iscgem,iscgem799449,2022-04-26T21:49:29.239Z,"34 km S of Kod?ri??, Nepal",earthquake,,4.8,0.33,,reviewed,iscgem,iscgem
+1966-11-05T18:53:02.900Z,28.252,83.798,15,5.23,mw,,,,,iscgem,iscgem841348,2022-04-26T23:06:25.378Z,"Nepal",earthquake,,25,0.23,,reviewed,iscgem,iscgem
+1965-06-01T07:52:25.440Z,28.486,83.041,15,5.45,mw,,,,,iscgem,iscgem855767,2022-04-26T23:37:32.064Z,"58 km WNW of B?glung, Nepal",earthquake,,25,0.26,,reviewed,iscgem,iscgem
+1965-01-12T13:55:19.660Z,27.407,87.735,15,5.45,mw,,,,,iscgem,iscgem861009,2022-04-26T23:49:18.476Z,"52 km E of Kh??db?ri??, Nepal",earthquake,,6.9,0.2,,reviewed,iscgem,iscgem
+1965-01-12T13:32:26.170Z,27.38,87.837,26.3,5.9,mw,,,,,iscgem,iscgem861007,2025-12-19T18:14:37.644Z,"42 km WNW of Gyalshing, India",earthquake,,13.2,0.2,,reviewed,iscgem,iscgem
+1964-08-30T02:35:07.120Z,27.385,88.304,10,5.46,mw,,,,,iscgem,iscgem865558,2025-12-19T18:13:39.940Z,"11 km NNE of Gyalshing, India",earthquake,,6.7,0.2,,reviewed,iscgem,iscgem
+1954-09-04T06:43:49.430Z,28.169,83.825,15,5.91,mw,,,,,iscgem,iscgem891025,2022-04-26T17:46:34.078Z,"17 km SW of Pokhara, Nepal",earthquake,,25,0.5,,reviewed,iscgem,iscgem
+1953-08-29T01:58:29.180Z,28.168,82.333,15,5.77,mw,,,,,iscgem,iscgem891953,2022-04-26T17:54:41.482Z,"5 km NE of Tuls?pur, Nepal",earthquake,,25,0.38,,reviewed,iscgem,iscgem
+1952-11-19T10:23:32.010Z,29.682,86.506,15,5.84,mw,,,,,iscgem,iscgem893776,2022-04-26T18:10:54.777Z,"130 km ENE of Saga, China",earthquake,,4.5,0.2,,reviewed,iscgem,iscgem
+1951-05-28T15:59:23.720Z,28.925,86.685,15,5.97,mw,,,,,iscgem,iscgem894375,2022-04-26T18:14:50.536Z,"108 km N of Lobujya, Nepal",earthquake,,3.8,0.2,,reviewed,iscgem,iscgem
+1945-09-19T10:41:02.780Z,29.168,83.145,25,5.78,mw,,,,,iscgem,iscgem899103,2024-01-17T20:32:33.376Z,"94 km E of Jumla, Nepal",earthquake,,25,0.68,,reviewed,iscgem,iscgem
+1938-01-29T04:13:10.790Z,27.603,87.098,15,5.79,mw,,,,,iscgem,iscgem902347,2022-04-25T20:52:40.891Z,"27 km NNW of Kh??db?ri??, Nepal",earthquake,,5.1,0.2,,reviewed,iscgem,iscgem
+1936-09-07T02:30:53.930Z,27.901,86.263,15,5.67,mw,,,,,iscgem,iscgem903830,2022-04-25T21:08:28.664Z,"30 km ESE of Kod?ri??, Nepal",earthquake,,25,0.2,,reviewed,iscgem,iscgem
+1936-05-27T06:19:14.800Z,28.378,83.32,15,6.87,mw,,,,,iscgem,iscgem903650,2022-04-25T21:22:55.775Z,"28 km WNW of B?glung, Nepal",earthquake,,3.8,0.3,,reviewed,iscgem,iscgem
+1936-02-11T04:47:40.620Z,28.263,86.73,15,5.86,mw,,,,,iscgem,iscgem903473,2022-04-25T21:20:17.310Z,"35 km NNW of Lobujya, Nepal",earthquake,,10.5,0.56,,reviewed,iscgem,iscgem
+1934-01-15T08:43:25.820Z,27.275,86.941,15,8,mw,,,,,iscgem,iscgem904745,2025-08-06T17:28:22.105Z,"1934 Bihar-Nepal Earthquake",earthquake,,3.9,0.3,,reviewed,iscgem,iscgem

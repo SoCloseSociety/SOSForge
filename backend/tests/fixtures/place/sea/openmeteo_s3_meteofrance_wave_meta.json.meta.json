@@ -1,0 +1,22 @@
+{
+ "url": "https://openmeteo.s3.amazonaws.com/data/meteofrance_wave/static/meta.json",
+ "range": null,
+ "status": 200,
+ "headers": {
+  "x-amz-id-2": "YjsNN3gAuxeENNJE5969qY3B8y8KgsBmkDzS+Shk6WgeGzhvnE1L44sY90iPrBYqOWoAmPiUEmo=",
+  "x-amz-request-id": "S6TVV01N6246M9D0",
+  "date": "Tue, 27 Oct 2026 11:18:23 GMT",
+  "last-modified": "Tue, 27 Oct 2026 00:18:01 GMT",
+  "etag": "\"fadf652a9f191d339f2e1d5b69f3fbcc\"",
+  "x-amz-server-side-encryption": "AES256",
+  "x-amz-meta-mtime": "1793059589",
+  "accept-ranges": "bytes",
+  "content-type": "application/json",
+  "content-length": "613",
+  "server": "AmazonS3"
+ },
+ "fetched_utc": "2026-10-27T11:18:22Z",
+ "elapsed_ms": 1332,
+ "bytes": 613,
+ "sha256": "686a94c7005b7f0f668452cb68a5d3c285eb5c7cc8ab5114a358219a1df9a272"
+}

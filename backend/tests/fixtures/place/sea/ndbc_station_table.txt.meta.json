@@ -1,0 +1,31 @@
+{
+ "url": "https://www.ndbc.noaa.gov/data/stations/station_table.txt",
+ "range": null,
+ "status": 200,
+ "headers": {
+  "content-type": "text/plain; charset=ISO-8859-1",
+  "transfer-encoding": "chunked",
+  "connection": "keep-alive",
+  "date": "Tue, 27 Oct 2026 11:17:46 GMT",
+  "cache-control": "max-age=600, must-revalidate",
+  "strict-transport-security": "max-age=31536000",
+  "server": "Apache",
+  "last-modified": "Sat, 24 Oct 2026 16:02:20 GMT",
+  "etag": "\"5909f-65e9838bf3d73-gzip\"",
+  "accept-ranges": "bytes",
+  "content-encoding": "gzip",
+  "x-content-type-options": "nosniff",
+  "x-xss-protection": "1; mode=block",
+  "x-frame-options": "deny",
+  "content-security-policy": "frame-ancestors 'none'; object-src 'self'; base-uri 'self';",
+  "vary": "Accept-Encoding",
+  "x-cache": "Miss from cloudfront",
+  "via": "1.1 d95e4afc1e00d1f8f6243cfdbce3c64e.cloudfront.net (CloudFront)",
+  "x-amz-cf-pop": "BKK50-P2",
+  "x-amz-cf-id": "Ntff_gX6Y7FH__nuCAXO8B6Q4V3Xc-vTzhUX8ZxwQWj4dSt1QNfoGA=="
+ },
+ "fetched_utc": "2026-10-27T11:17:47Z",
+ "elapsed_ms": 938,
+ "bytes": 364703,
+ "sha256": "982bf7b5b0b26e40b531dee255918e9aa647b256ae043017dddaea4080d105c2"
+}

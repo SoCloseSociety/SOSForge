@@ -1,0 +1,6 @@
+{
+ "url": "https://aviationweather.gov/data/cache/metars.cache.csv.gz",
+ "status": 200,
+ "raw_headers": "HTTP/2 200 \ndate: Tue, 27 Oct 2026 11:09:26 GMT\ncontent-type: application/octet-stream\ncontent-length: 254960\nlast-modified: Tue, 27 Oct 2026 11:09:06 GMT\netag: \"6ae08652-3e3f0\"\ncache-control: max-age=30\nx-azure-ref: 20261027T110926Z-r1789d6887brmlt7hC1KULb9p000000002fg00000000a4rb\nx-fd-int-roxy-purgeid: 66959009\nx-cache-info: L2_T2\nx-cache: TCP_REMOTE_HIT\naccept-ranges: bytes\n\n",
+ "note": "fetched with curl -D; body byte for byte (gzip)"
+}
