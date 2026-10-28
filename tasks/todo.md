@@ -2374,3 +2374,21 @@ Cost: a task that needs more than 0.5 s to unwind after its cancel is
 cancelled again; the only awaited cleanup found is the context exits
 (httpx `aclose`, the EMSC websocket close, `close_timeout=5`), so a slow
 websocket close handshake can be cut short at shutdown.
+
+## USGS backfill: a total deadline (plan, 2026-10-28, integrator; critical file app/sources/usgs.py)
+
+Why: the hang hunt (scratchpad followups/hang/confirm) reproduced a second
+way to block: the startup backfill's `httpx.AsyncClient(timeout=30.0)`
+bounds each READ, not the request, so a body trickling one byte every 2 s
+held the lifespan's startup for good (2/2 runs, 90 s+). In production
+uvicorn binds no socket before startup ends: the API stays down while it
+lasts.
+
+- [ ] `backfill()`: the GET under `asyncio.timeout(BACKFILL_DEADLINE_S)`
+      (60 s; the day feed is well under 1 MB). A timeout raises
+      TimeoutError with a message naming the deadline, which main.py's
+      existing `except Exception` logs as "backfill failed (...), cold
+      start" and the API starts on the journal alone. No field touched.
+- [ ] Test: a loopback server sends 200 headers then one byte every 0.2 s;
+      with the deadline patched to 1 s, backfill raises within 2 s. On the
+      unfixed code it must fail, bounded by an outer timeout, not hang.
