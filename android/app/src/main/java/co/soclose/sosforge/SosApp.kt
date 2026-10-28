@@ -59,6 +59,16 @@ import java.io.File
 object LiveUrl {
     enum class Mode { ZONED, PLAIN, NONE, UNKNOWN }
 
+    /**
+     * The zones of the socket: the owner's places, plus where the person is right now while the app
+     * is on screen (the Live "near me" view). The Watch, alone, never carries "here": the alerts are
+     * the places the owner chose, and the position is never read in the background.
+     */
+    fun zonePlaces(places: List<co.soclose.sosforge.core.geo.Place>, here: co.soclose.sosforge.core.Here?): List<co.soclose.sosforge.core.geo.Place> =
+        if (here == null) places else places + co.soclose.sosforge.core.geo.Place(HERE_ID, "", here.lat, here.lon, co.soclose.sosforge.core.geo.Place.DEFAULT_RADIUS_KM, "here", countryCode = here.countryCode)
+
+    const val HERE_ID = "__here__"
+
     fun mode(v: ApiVersion?, hasPlaces: Boolean): Mode = when {
         v == null -> Mode.UNKNOWN
         !v.wsScope -> Mode.PLAIN
@@ -102,6 +112,65 @@ class SosApp : Application() {
     lateinit var alerts: AlertEngine private set
     lateinit var live: LiveClient private set
     lateinit var watch: Watch private set
+    lateinit var offline: co.soclose.sosforge.core.map.OfflineMaps private set
+
+    /**
+     * "Use my location", in the APP scope: a recomposition, the permission dialog, a fold or the
+     * screen being left cannot cancel it (0.1.1 lost its request after 2.7 s on the owner's Fold).
+     * The place is added HERE, when the fix comes, whoever is on screen then; the adder only shows
+     * [locate] and reads its outcome. The wait is bounded ([co.soclose.sosforge.core.sys.LocateRules.TIMEOUT_MS]),
+     * and "Search instead" cancels it, so no place appears long after the person moved on.
+     */
+    sealed interface LocateState {
+        data object Idle : LocateState
+        data class Waiting(val since: Long) : LocateState
+        data class Done(val fix: co.soclose.sosforge.core.sys.Fix, val countryCode: String?) : LocateState
+    }
+
+    private val _locate = MutableStateFlow<LocateState>(LocateState.Idle)
+    val locate: StateFlow<LocateState> = _locate.asStateFlow()
+    private var locateJob: kotlinx.coroutines.Job? = null
+
+    fun startLocate() {
+        if (_locate.value is LocateState.Waiting) return
+        _locate.value = LocateState.Waiting(System.currentTimeMillis())
+        locateJob = scope.launch {
+            val f = co.soclose.sosforge.core.sys.Locate.fix(this@SosApp)
+            val cc = (f as? co.soclose.sosforge.core.sys.Fix.Ok)?.let { co.soclose.sosforge.core.sys.Locate.countryOf(this@SosApp, it.lat, it.lon) }
+            if (f is co.soclose.sosforge.core.sys.Fix.Ok) {
+                prefs.setHere(co.soclose.sosforge.core.Here(f.lat, f.lon, System.currentTimeMillis() - f.ageMs, cc))
+                val now = prefs.places.value
+                if (now.size < co.soclose.sosforge.core.geo.Place.MAX_PLACES) {
+                    val p = co.soclose.sosforge.core.geo.Place(
+                        java.util.UUID.randomUUID().toString(), getString(R.string.place_here), f.lat, f.lon,
+                        co.soclose.sosforge.core.geo.Place.DEFAULT_RADIUS_KM, "here", countryCode = cc,
+                    )
+                    prefs.setPlaces(now + p)
+                    watch.reconcile()
+                }
+            }
+            _locate.value = LocateState.Done(f, cc)
+        }
+    }
+
+    /** "Search instead": the wait stops, and its position (if it was about to come) is not added. */
+    fun cancelLocate() {
+        locateJob?.cancel()
+        locateJob = null
+        _locate.value = LocateState.Idle
+    }
+
+    fun consumeLocate() {
+        if (_locate.value is LocateState.Done) _locate.value = LocateState.Idle
+    }
+
+    /** The latest.json verdict (Settings, and the quiet card on Live). */
+    private val _update = MutableStateFlow<co.soclose.sosforge.core.update.UpdateState>(co.soclose.sosforge.core.update.UpdateState.NotChecked)
+    val update: StateFlow<co.soclose.sosforge.core.update.UpdateState> = _update.asStateFlow()
+
+    /** The active network does not count bytes (Wi-Fi, Ethernet): offline map packs may download. */
+    private val _unmetered = MutableStateFlow(false)
+    val unmetered: StateFlow<Boolean> = _unmetered.asStateFlow()
 
     private val _feed = MutableStateFlow(FeedState())
     val feed: StateFlow<FeedState> = _feed.asStateFlow()
@@ -134,6 +203,7 @@ class SosApp : Application() {
         alerts = AlertEngine(this, prefs, notifier)
         live = LiveClient(scope, http) { batch, now -> onBatch(batch, now) }
         watch = Watch(this)
+        offline = co.soclose.sosforge.core.map.OfflineMaps(this)
         scope.launch { loadCache() }
         watchNetwork()
         // a new server: forget what the old one offered, re-read, reconnect
@@ -148,9 +218,69 @@ class SosApp : Application() {
         }
         // the scope follows the places and prefs (only matters while the Watch runs alone)
         scope.launch {
-            combine(prefs.places, prefs.alerts, foreground, watchRunning, version) { _, _, _, _, _ -> Unit }.collect { updateLiveDemand() }
+            combine(combine(prefs.places, prefs.here) { _, _ -> Unit }, prefs.alerts, foreground, watchRunning, version) { _, _, _, _, _ -> Unit }.collect { updateLiveDemand() }
         }
         scope.launch { watch.reconcile() }
+        // the offline packs follow the places (a removed place loses its pack), on the main thread
+        scope.launch {
+            prefs.places.drop(1).collect { syncOfflineMaps() }
+        }
+        scope.launch {
+            _unmetered.drop(1).collect { u ->
+                withContext(Dispatchers.Main) { offline.onNetwork(u) }
+                if (u) syncOfflineMaps()
+            }
+        }
+    }
+
+    suspend fun syncOfflineMaps() {
+        val places = prefs.places.value
+        withContext(Dispatchers.Main) { offline.sync(places, _unmetered.value) }
+        if (!_unmetered.value) co.soclose.sosforge.core.map.OfflineMaps.schedule(this)
+    }
+
+    /**
+     * Where the person is, for the Live "near me" view: re-read in the foreground when older than 15 min.
+     * A permission no longer granted (refused, "only this time" expired, revoked) forgets the position.
+     */
+    suspend fun refreshHere(force: Boolean = false) {
+        if (!co.soclose.sosforge.core.sys.Locate.granted(this)) {
+            if (prefs.here.value != null) prefs.setHere(null)
+            return
+        }
+        val h = prefs.here.value
+        if (!force && h != null && System.currentTimeMillis() - h.at < HERE_REFRESH_MS) return
+        val f = co.soclose.sosforge.core.sys.Locate.fix(this)
+        if (f is co.soclose.sosforge.core.sys.Fix.Ok) {
+            val cc = if (h != null && co.soclose.sosforge.core.geo.Geo.distanceKm(h.lat, h.lon, f.lat, f.lon) < 50) h.countryCode
+                else co.soclose.sosforge.core.sys.Locate.countryOf(this, f.lat, f.lon)
+            prefs.setHere(co.soclose.sosforge.core.Here(f.lat, f.lon, System.currentTimeMillis() - f.ageMs, cc))
+        }
+    }
+
+    /** Reads latest.json at most every 6 h (or now, from Settings). A 404 is "nothing published yet". */
+    suspend fun checkUpdate(force: Boolean = false) {
+        val last = prefs.getLong(Prefs.K_UPDATE_AT)
+        if (!force && last > 0 && System.currentTimeMillis() - last < co.soclose.sosforge.core.update.UpdateRules.EVERY_MS) {
+            val r = prefs.getString(Prefs.K_UPDATE_JSON)?.let { j ->
+                runCatching { SosJson.decodeFromString(co.soclose.sosforge.core.update.LatestRelease.serializer(), j) }.getOrNull()
+            }
+            // the cached verdict survives a restart: "nothing published" too (0.1.2 test build said "Not checked yet")
+            when {
+                r != null -> _update.value = co.soclose.sosforge.core.update.UpdateRules.decide(r, prefs.origin.value, BuildConfig.VERSION_CODE, android.os.Build.VERSION.SDK_INT)
+                prefs.getString(Prefs.K_UPDATE_RESULT) == RESULT_NONE -> _update.value = co.soclose.sosforge.core.update.UpdateState.NonePublished
+            }
+            return
+        }
+        val origin = prefs.origin.value
+        val (state, rel) = withContext(Dispatchers.IO) { co.soclose.sosforge.core.update.UpdateCheck(http).read(origin) }
+        // an unreachable server is asked again at the next foreground, not in 6 h
+        if (rel != null || state != co.soclose.sosforge.core.update.UpdateState.Unreachable) prefs.putLong(Prefs.K_UPDATE_AT, System.currentTimeMillis())
+        prefs.putString(Prefs.K_UPDATE_JSON, rel?.let { SosJson.encodeToString(co.soclose.sosforge.core.update.LatestRelease.serializer(), it) })
+        prefs.putString(Prefs.K_UPDATE_RESULT, if (state == co.soclose.sosforge.core.update.UpdateState.NonePublished) RESULT_NONE else null)
+        _update.value = if (rel != null) {
+            co.soclose.sosforge.core.update.UpdateRules.decide(rel, origin, BuildConfig.VERSION_CODE, android.os.Build.VERSION.SDK_INT)
+        } else state
     }
 
     fun api(): SosApi = SosApi(prefs.origin.value, http)
@@ -163,7 +293,12 @@ class SosApp : Application() {
 
     fun onForeground(on: Boolean) {
         foreground.value = on
-        if (on) scope.launch { refreshVersion() }
+        if (on) {
+            scope.launch { refreshVersion() }
+            scope.launch { refreshHere() }
+            scope.launch { runCatching { checkUpdate() } }
+            scope.launch { syncOfflineMaps() }
+        }
     }
 
     /**
@@ -180,13 +315,14 @@ class SosApp : Application() {
         }
         if (_version.value == null) scope.launch { refreshVersion() }
         val origin = prefs.origin.value
-        val mode = LiveUrl.mode(_version.value, prefs.places.value.isNotEmpty())
+        val mode = LiveUrl.mode(_version.value, LiveUrl.zonePlaces(prefs.places.value, if (fg) prefs.here.value else null).isNotEmpty())
         if (mode == LiveUrl.Mode.NONE) {
             live.stop()
             return
         }
         live.start {
-            LiveUrl.url(origin, _version.value, prefs.places.value, prefs.alerts.value, foreground.value, live.state.value.refused != null)
+            val f = foreground.value
+            LiveUrl.url(origin, _version.value, LiveUrl.zonePlaces(prefs.places.value, if (f) prefs.here.value else null), prefs.alerts.value, f, live.state.value.refused != null)
         }
     }
 
@@ -225,13 +361,22 @@ class SosApp : Application() {
     private val _world = MutableStateFlow<WorldRead?>(null)
     val world: StateFlow<WorldRead?> = _world.asStateFlow()
 
-    suspend fun refreshWorld() {
+    /** Severe+ events of the whole world (a zoned server's socket only carries the zones): the near view's "elsewhere" count. */
+    private val _severeWorld = MutableStateFlow<WorldRead?>(null)
+    val severeWorld: StateFlow<WorldRead?> = _severeWorld.asStateFlow()
+
+    suspend fun refreshWorld(severeOnly: Boolean = false) {
         val now = System.currentTimeMillis()
+        val target = if (severeOnly) _severeWorld else _world
         try {
-            val r = withContext(Dispatchers.IO) { api().events(ApiVersion.NONE, null, null, null, limit = 300) }.reply!!
-            _world.value = WorldRead(r.events.sortedWith(FeedReducer.byEventTime), now, co.soclose.sosforge.core.net.Iso.ms(r.serverTime), null)
+            val v = _version.value ?: ApiVersion.NONE
+            val scope = if (severeOnly) Scope(emptyList(), co.soclose.sosforge.core.net.Severity.SEVERE.key, null) else null
+            val r = withContext(Dispatchers.IO) { api().events(v, scope, null, null, limit = if (severeOnly) 200 else 300) }.reply!!
+            // the client filters again (a legacy server ignores min_severity)
+            val events = r.events.let { if (severeOnly) it.filter { e -> co.soclose.sosforge.core.alert.AlertRules.rankOf(e) >= co.soclose.sosforge.core.net.Severity.SEVERE.rank } else it }
+            target.value = WorldRead(events.sortedWith(FeedReducer.byEventTime), now, co.soclose.sosforge.core.net.Iso.ms(r.serverTime), null)
         } catch (e: ApiException) {
-            _world.value = (_world.value ?: WorldRead(emptyList(), 0L, null, null)).copy(error = e.error)
+            target.value = (target.value ?: WorldRead(emptyList(), 0L, null, null)).copy(error = e.error)
         }
     }
 
@@ -364,6 +509,7 @@ class SosApp : Application() {
     private fun watchNetwork() {
         val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         _network.value = cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) } ?: false
+        _unmetered.value = cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) } ?: false
         runCatching {
             cm.registerDefaultNetworkCallback(object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
@@ -372,14 +518,21 @@ class SosApp : Application() {
                     live.nudge()
                 }
 
+                override fun onCapabilitiesChanged(network: Network, caps: NetworkCapabilities) {
+                    _unmetered.value = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+                }
+
                 override fun onLost(network: Network) {
                     _network.value = false
+                    _unmetered.value = false
                 }
             })
         }
     }
 
     companion object {
+        private const val RESULT_NONE = "none"
+        const val HERE_REFRESH_MS = 15 * 60_000L
         fun errorWords(e: Throwable): ApiError = (e as? ApiException)?.error ?: ApiError.Unreachable
         val EVENT_LIST = ListSerializer(SosEvent.serializer())
     }

@@ -14,15 +14,17 @@
 #   5. signer      not the debug key; CN=SOSForge; the certificate SHA-256 equals the one recorded when
 #                  the key was made (~/.soclose/android/sosforge.cert.sha256). The keystore is never
 #                  opened here: no password ever reaches a command line.
-#   6. hosts       the release names https://sosforge.soclose.co and no development URL. The bare host
-#                  names of the cleartext allowlist (localhost, 10.0.2.2...) ARE expected: the owner may
-#                  type one in Settings (adb reverse to `make dev-api`), see network_security_config.xml.
+#   6. hosts       the release names https://sosforge.soclose.co and NO development host at all: no
+#                  127.0.0.1, 10.0.2.2, 10.8.0.1, no drill port or word (owner rule, 2026-10-27: nothing
+#                  fake, a release talks to production only; the override and its hosts are debug-only)
+#   7. network     the shipped network_security_config permits no cleartext, and the server editor's
+#                  strings are absent from the release resources (no override screen shipped)
 set -uo pipefail
 
 MIN_TARGET_SDK=36
 APP_ID="co.soclose.sosforge"
 ALLOWED_PERMISSIONS="android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE android.permission.POST_NOTIFICATIONS android.permission.VIBRATE android.permission.FOREGROUND_SERVICE android.permission.FOREGROUND_SERVICE_SPECIAL_USE android.permission.RECEIVE_BOOT_COMPLETED android.permission.ACCESS_COARSE_LOCATION android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS android.permission.WAKE_LOCK"
-DEV_URLS="http://localhost http://127.0.0.1 http://10.0.2.2 http://10.8.0.1 :8300 :5273 :8380"
+DEV_URLS="http://localhost 127.0.0.1 10.0.2.2 10.8.0.1 :8300 :5273 :8380 :8334 :8360 drill DRILL"
 PAGE=16384
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CERT_FILE="$HOME/.soclose/android/sosforge.cert.sha256"
@@ -72,7 +74,9 @@ PERMS="$(sed -n "s/^uses-permission: name='\([^']*\)'.*/\1/p" "$TMP/badging" | s
 [ "$PKG" = "$APP_ID" ] && pass "package $PKG" || fail "package '$PKG' is not $APP_ID (a debug build?)"
 [ -n "$TARGET" ] && [ "$TARGET" -ge "$MIN_TARGET_SDK" ] && pass "targetSdk $TARGET" || fail "targetSdk '$TARGET' < $MIN_TARGET_SDK"
 LAST="$(cat "$ROOT/dist/.last-version-code" 2>/dev/null || echo 0)"
-[ -n "$CODE" ] && [ "$CODE" -gt "$LAST" ] && pass "versionCode $CODE (> $LAST shipped)" || fail "versionCode '$CODE' is not above the last shipped ($LAST)"
+if [ -n "$CODE" ] && [ "$CODE" -gt "$LAST" ]; then pass "versionCode $CODE (> $LAST shipped)"
+elif [ -n "$CODE" ] && [ "$CODE" -eq "$LAST" ] && [ "${REBUILD_SAME_CODE:-0}" = "1" ]; then pass "versionCode $CODE rebuilt (REBUILD_SAME_CODE: this code never left the machine)"
+else fail "versionCode '$CODE' is not above the last shipped ($LAST)"; fi
 printf '%s' "$NAME" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' && pass "versionName $NAME" || fail "versionName '$NAME' is not X.Y.Z"
 
 bad=""
@@ -105,7 +109,19 @@ unzip -p "$APK" 'classes*.dex' > "$TMP/dex" 2>/dev/null
 found=""
 for u in $DEV_URLS; do LC_ALL=C grep -aqF -- "$u" "$TMP/dex" && found="$found $u"; done
 LC_ALL=C grep -aqF "https://sosforge.soclose.co" "$TMP/dex" || found="$found (default origin missing)"
-[ -z "$found" ] && pass "hosts: https://sosforge.soclose.co, no development URL" || fail "hosts:$found"
+[ -z "$found" ] && pass "hosts: https://sosforge.soclose.co, no development host, no drill" || fail "hosts:$found"
+
+"$BT/aapt2" dump resources "$APK" > "$TMP/res" 2>/dev/null
+NSC="$(grep -A3 'xml/network_security_config' "$TMP/res" | sed -n 's/.*(\(res\/[^)]*\)).*/\1/p; s/.*\[\(res\/[^]]*\)\].*/\1/p' | head -1)"
+[ -z "$NSC" ] && NSC="$(grep -A3 'xml/network_security_config' "$TMP/res" | grep -o 'res/[^ )"]*' | head -1)"
+if [ -n "$NSC" ] && "$BT/aapt2" dump xmltree --file "$NSC" "$APK" > "$TMP/nsc" 2>/dev/null; then
+  if grep -q 'cleartextTrafficPermitted.*true\|cleartextTrafficPermitted.*0xffffffff' "$TMP/nsc"; then fail "network: the shipped network config permits cleartext ($NSC)"
+  elif grep -q 'domain' "$TMP/nsc"; then fail "network: the shipped network config lists a domain ($NSC)"
+  else pass "network: no cleartext anywhere ($NSC)"; fi
+else fail "network: network_security_config not found in the APK"; fi
+editor=""
+for k in set_server_hint set_server_bad set_server_default; do grep -q "string/$k" "$TMP/res" && editor="$editor $k"; done
+[ -z "$editor" ] && pass "no server override screen (its strings are not in the release)" || fail "the server editor shipped:$editor"
 
 echo
 [ "$FAILED" -eq 0 ] && echo "RESULT  ready to ship" || echo "RESULT  NOT ready (see FAIL lines)"

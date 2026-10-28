@@ -87,19 +87,18 @@ fun PageHero(
     meta: (@Composable () -> Unit)? = null,
 ) {
     Column(modifier.fillMaxWidth().padding(top = Space.s, bottom = Space.m)) {
-        Row(verticalAlignment = Alignment.Top) {
-            Column(Modifier.weight(1f)) {
-                if (overline != null) {
-                    Overline(overline)
-                    Spacer(Modifier.height(6.dp))
+        HeroTop(
+            head = {
+                Column {
+                    if (overline != null) {
+                        Overline(overline)
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    Text(title, style = Sos.type.display, color = Sos.colors.t1, modifier = Modifier.semantics { heading() })
                 }
-                Text(title, style = Sos.type.display, color = Sos.colors.t1, modifier = Modifier.semantics { heading() })
-            }
-            if (trailing != null) {
-                Spacer(Modifier.width(Space.s))
-                trailing()
-            }
-        }
+            },
+            trailing = trailing,
+        )
         if (sentence != null) {
             Spacer(Modifier.height(6.dp))
             Text(sentence, style = Sos.type.body, color = Sos.colors.t2)
@@ -113,6 +112,40 @@ fun PageHero(
         if (meta != null) {
             Spacer(Modifier.height(Space.s))
             meta()
+        }
+    }
+}
+
+/**
+ * The title block and its pill side by side when the title's longest word still fits beside the pill;
+ * otherwise the pill goes ABOVE (320 dp at font scale 2.0: beside "SERVER BUSY", "Live" broke as
+ * "Liv / e" and the overline as "NEA / R ...").
+ */
+@Composable
+private fun HeroTop(head: @Composable () -> Unit, trailing: (@Composable () -> Unit)?) {
+    if (trailing == null) {
+        head()
+        return
+    }
+    Layout(contents = listOf(head, trailing)) { (heads, trails), c ->
+        val h = heads.first()
+        val t = trails.first()
+        val gap = Space.s.roundToPx()
+        val loose = c.copy(minWidth = 0, minHeight = 0)
+        val tp = t.measure(loose)
+        val side = c.maxWidth - tp.width - gap
+        if (side > 0 && side >= h.minIntrinsicWidth(Constraints.Infinity)) {
+            val hp = h.measure(Constraints(maxWidth = side))
+            layout(c.maxWidth, maxOf(hp.height, tp.height)) {
+                hp.place(0, 0)
+                tp.place(c.maxWidth - tp.width, 0)
+            }
+        } else {
+            val hp = h.measure(loose)
+            layout(c.maxWidth, tp.height + gap + hp.height) {
+                tp.place(0, 0)
+                hp.place(0, tp.height + gap)
+            }
         }
     }
 }

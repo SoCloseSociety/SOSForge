@@ -10,7 +10,15 @@ import co.soclose.sosforge.ui.theme.ThemeMode
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+
+/**
+ * Where the person is, read once in the foreground (never in the background, never sent anywhere but
+ * as a zone). It drives the Live "near me" view; alerts stay on the places the owner chose.
+ */
+@Serializable
+data class Here(val lat: Double, val lon: Double, val at: Long, val countryCode: String? = null)
 
 /**
  * The owner's choices, on this device only (no backup, no cloud transfer: see the res/xml backup and extraction rules). Every
@@ -22,7 +30,12 @@ class Prefs(ctx: Context) {
 
     private fun <T> flow(read: () -> T) = MutableStateFlow(read())
 
-    private val _origin = flow { ServerAddress.normalize(sp.getString(K_ORIGIN, null) ?: "") ?: ServerAddress.DEFAULT }
+    // a release ignores any stored address (0.1.0 / 0.1.1 let the owner type one): it talks to the
+    // production server only (owner rule, 2026-10-27). Only a debug build reads the override.
+    private val _origin = flow {
+        if (!co.soclose.sosforge.core.net.DevHosts.OVERRIDE) ServerAddress.DEFAULT
+        else ServerAddress.normalize(sp.getString(K_ORIGIN, null) ?: "") ?: ServerAddress.DEFAULT
+    }
     val origin: StateFlow<String> = _origin.asStateFlow()
 
     private val _theme = flow { ThemeMode.fromKey(sp.getString(K_THEME, null)) }
@@ -50,11 +63,25 @@ class Prefs(ctx: Context) {
     }
     val quiet: StateFlow<QuietHours> = _quiet.asStateFlow()
 
+    private val _here = flow {
+        runCatching { SosJson.decodeFromString(Here.serializer(), sp.getString(K_HERE, null)!!) }.getOrNull()
+    }
+    val here: StateFlow<Here?> = _here.asStateFlow()
+
+    fun setHere(v: Here?) {
+        sp.edit().apply { if (v == null) remove(K_HERE) else putString(K_HERE, SosJson.encodeToString(Here.serializer(), v)) }.apply()
+        _here.value = v
+    }
+
     /** The owner switched the live Watch (foreground service) on. */
     private val _watchLive = flow { sp.getBoolean(K_WATCH, false) }
     val watchLive: StateFlow<Boolean> = _watchLive.asStateFlow()
 
-    fun setOrigin(v: String) { sp.edit().putString(K_ORIGIN, v).apply(); _origin.value = v }
+    fun setOrigin(v: String) {
+        if (!co.soclose.sosforge.core.net.DevHosts.OVERRIDE) return
+        sp.edit().putString(K_ORIGIN, v).apply()
+        _origin.value = v
+    }
     fun setTheme(v: ThemeMode) { sp.edit().putString(K_THEME, v.key).apply(); _theme.value = v }
     fun setTextSize(v: TextSize) { sp.edit().putString(K_TEXT, v.key).apply(); _textSize.value = v }
     fun setOnboarded(v: Boolean) { sp.edit().putBoolean(K_ONBOARDED, v).apply(); _onboarded.value = v }
@@ -90,6 +117,13 @@ class Prefs(ctx: Context) {
         const val K_POLL_ETAG = "poll_etag"
         const val K_WATCH_STARTED = "watch_started"
         const val K_WATCH_ERROR = "watch_error"
+        private const val K_HERE = "here"
+        /** The location permission was asked once (a refusal after that, with no rationale, is "for good"). */
+        const val K_LOC_ASKED = "loc_asked"
+        const val K_UPDATE_AT = "update_at"
+        const val K_UPDATE_JSON = "update_json"
+        const val K_UPDATE_RESULT = "update_result"
+        const val K_UPDATE_DISMISSED = "update_dismissed_code"
     }
 }
 

@@ -1,6 +1,13 @@
 package co.soclose.sosforge.feature.places
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.Intent
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import co.soclose.sosforge.core.sys.Fix
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -64,7 +71,29 @@ import kotlinx.coroutines.withContext
 import java.util.UUID
 
 /** The steps of "use my location": the rationale BEFORE the system prompt, then honest outcomes. */
-enum class LocateStep { IDLE, RATIONALE, LOCATING, DENIED, FAILED }
+enum class LocateStep { IDLE, RATIONALE, LOCATING, DENIED, DENIED_FOREVER, LOCATION_OFF, FAILED }
+
+/** The state a permission refusal lands in, pure (LocateRulesTest): "for good" once Android stops asking. */
+object LocateFlow {
+    fun afterRefusal(askedBefore: Boolean, systemWillAskAgain: Boolean): LocateStep =
+        if (askedBefore && !systemWillAskAgain) LocateStep.DENIED_FOREVER else LocateStep.DENIED
+
+    fun afterFix(f: Fix): LocateStep = when (f) {
+        is Fix.Ok -> LocateStep.IDLE
+        Fix.Denied -> LocateStep.DENIED
+        Fix.LocationOff -> LocateStep.LOCATION_OFF
+        Fix.NoFix -> LocateStep.FAILED
+    }
+}
+
+private fun Context.findActivity(): Activity? {
+    var c: Context? = this
+    while (c is ContextWrapper) {
+        if (c is Activity) return c
+        c = c.baseContext
+    }
+    return null
+}
 
 /**
  * Adds a place, two ways: the phone's position (a rationale screen first, then the system prompt;
@@ -72,7 +101,7 @@ enum class LocateStep { IDLE, RATIONALE, LOCATING, DENIED, FAILED }
  * server's `/api/geocode` (which holds Nominatim's 1 request per second).
  */
 @Composable
-fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
+fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier, onLocated: () -> Unit = {}) {
     val ctx = LocalContext.current
     val app = ctx.app
     val scope = rememberCoroutineScope()
@@ -82,27 +111,31 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
     var results by remember { mutableStateOf<List<GeoResult>>(emptyList()) }
     var searchNote by remember { mutableStateOf<String?>(null) }
     var searching by remember { mutableStateOf(false) }
-    val here = stringResource(R.string.place_here)
     val noneText = stringResource(R.string.search_none)
     val unreachableText = stringResource(R.string.search_unreachable)
     val failedText = stringResource(R.string.search_failed)
 
-    fun locate() {
-        step = LocateStep.LOCATING
-        scope.launch {
-            val loc = Locate.once(ctx)
-            if (loc == null) step = LocateStep.FAILED
-            else {
-                step = LocateStep.IDLE
-                // the country, for country-wide warnings (null when this phone has no geocoder: then none)
-                val cc = Locate.countryOf(ctx, loc.latitude, loc.longitude)
-                onAdd(Place(UUID.randomUUID().toString(), here, loc.latitude, loc.longitude, Place.DEFAULT_RADIUS_KM, "here", countryCode = cc))
-            }
-        }
+    fun locate() = app.startLocate()
+
+    // the request lives in the app (it survives this composition, and adds the place itself); here we
+    // show the wait and read the outcome
+    val ls by app.locate.collectAsStateWithLifecycle()
+    LaunchedEffect(ls) {
+        val done = ls as? co.soclose.sosforge.SosApp.LocateState.Done ?: return@LaunchedEffect
+        step = LocateFlow.afterFix(done.fix)
+        app.consumeLocate()
+        if (done.fix is Fix.Ok) onLocated()
     }
+    val shown = if (ls is co.soclose.sosforge.SosApp.LocateState.Waiting) LocateStep.LOCATING else step
 
     val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) locate() else step = LocateStep.DENIED
+        val asked = app.prefs.getLong(co.soclose.sosforge.core.Prefs.K_LOC_ASKED) > 0
+        app.prefs.putLong(co.soclose.sosforge.core.Prefs.K_LOC_ASKED, 1L)
+        if (ok) locate()
+        else {
+            val again = ctx.findActivity()?.let { ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.ACCESS_COARSE_LOCATION) } ?: true
+            step = LocateFlow.afterRefusal(asked, again)
+        }
     }
 
     suspend fun search(q: String) {
@@ -131,7 +164,7 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
     }
 
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Space.s)) {
-        when (step) {
+        when (shown) {
             LocateStep.RATIONALE -> Card {
                 Text(stringResource(R.string.locate_rationale_title), style = Sos.type.heading, color = Sos.colors.t1)
                 Spacer(Modifier.height(Space.xs))
@@ -144,9 +177,34 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
                     TextAction(stringResource(R.string.not_now), { step = LocateStep.IDLE })
                 }
             }
-            LocateStep.LOCATING -> Text(stringResource(R.string.locate_working), style = Sos.type.small, color = Sos.colors.t2)
+            LocateStep.LOCATING -> {
+                val since = (ls as? co.soclose.sosforge.SosApp.LocateState.Waiting)?.since ?: System.currentTimeMillis()
+                val now = co.soclose.sosforge.ui.kit.rememberNow(1_000L)
+                Card {
+                    Text(stringResource(R.string.locate_working_s, ((now - since) / 1000).coerceAtLeast(0).toInt()), style = Sos.type.small, color = Sos.colors.t1)
+                    Text(stringResource(R.string.locate_working_why), style = Sos.type.meta, color = Sos.colors.t3)
+                    // the search is never blocked by the wait: it stops the wait (no place appears later)
+                    TextAction(stringResource(R.string.locate_search_instead), { app.cancelLocate(); step = LocateStep.IDLE })
+                }
+            }
             LocateStep.DENIED -> Note(stringResource(R.string.locate_denied)) { step = LocateStep.IDLE }
-            LocateStep.FAILED -> Note(stringResource(R.string.locate_failed)) { step = LocateStep.IDLE }
+            LocateStep.DENIED_FOREVER -> Note(
+                stringResource(R.string.locate_denied_forever),
+                action = stringResource(R.string.locate_open_app_settings),
+                onAction = { runCatching { ctx.startActivity(co.soclose.sosforge.core.sys.Diagnostics.appSettings(ctx)) } },
+            ) { step = LocateStep.IDLE }
+            LocateStep.LOCATION_OFF -> Note(
+                stringResource(R.string.locate_off),
+                action = stringResource(R.string.locate_open_location_settings),
+                onAction = {
+                    runCatching { ctx.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                },
+            ) { step = LocateStep.IDLE }
+            LocateStep.FAILED -> Note(
+                stringResource(R.string.locate_failed),
+                action = stringResource(R.string.locate_retry),
+                onAction = { locate() },
+            ) { step = LocateStep.IDLE }
             LocateStep.IDLE -> SecondaryButton(
                 stringResource(R.string.locate_use),
                 { if (Locate.granted(ctx)) locate() else step = LocateStep.RATIONALE },
@@ -194,10 +252,13 @@ fun PlaceAdder(onAdd: (Place) -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Note(text: String, onOk: () -> Unit) {
+private fun Note(text: String, action: String? = null, onAction: () -> Unit = {}, onOk: () -> Unit) {
     Card {
         Text(text, style = Sos.type.small, color = Sos.colors.t2)
-        TextAction(stringResource(R.string.ok), onOk)
+        co.soclose.sosforge.ui.kit.MetaRow {
+            if (action != null) TextAction(action, onAction)
+            TextAction(stringResource(R.string.ok), onOk, color = Sos.colors.t2)
+        }
     }
 }
 

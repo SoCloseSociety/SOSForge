@@ -138,11 +138,21 @@ class RulesTest {
 
     // ------------------------------------------------------------------ network
 
-    @Test fun cleartext_hosts_are_exactly_the_network_security_config() {
-        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(File("src/main/res/xml/network_security_config.xml"))
+    @Test fun cleartext_hosts_are_exactly_the_network_security_config_of_this_build_type() {
+        // debug replaces the file (src/debug/res/xml); release ships src/main's, which allows no cleartext
+        val f = if (co.soclose.sosforge.core.net.DevHosts.OVERRIDE) "src/debug/res/xml/network_security_config.xml" else "src/main/res/xml/network_security_config.xml"
+        val doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(File(f))
         val nodes = doc.getElementsByTagName("domain")
         val hosts = (0 until nodes.length).map { nodes.item(it).textContent.trim() }.toSet()
         assertEquals(ServerAddress.CLEARTEXT_HOSTS, hosts)
+        assertFalse("the release config permits cleartext", File("src/main/res/xml/network_security_config.xml").readText().contains("cleartextTrafficPermitted=\"true\""))
+    }
+
+    @Test fun a_release_talks_to_production_only() {
+        if (co.soclose.sosforge.core.net.DevHosts.OVERRIDE) return // the debug build is the drills' build
+        assertTrue(ServerAddress.CLEARTEXT_HOSTS.isEmpty())
+        assertEquals(null, ServerAddress.normalize("http://127.0.0.1:8334"))
+        assertEquals(null, ServerAddress.normalize("http://10.0.2.2:8300"))
     }
 
     // ------------------------------------------------------------------ words
