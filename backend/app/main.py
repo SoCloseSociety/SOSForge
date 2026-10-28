@@ -398,6 +398,11 @@ async def felt_reports() -> None:
         log.warning("felt reports unavailable: %s", exc)
 
 
+# At most 5 s in all: under Docker's 10 s stop grace, before its SIGKILL.
+SHUTDOWN_CANCEL_ROUNDS = 10
+SHUTDOWN_CANCEL_WAIT_S = 0.5
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global sources
@@ -454,9 +459,23 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    # One Task.cancel() does not always arrive. anyio (under httpx) swallows
+    # a cancel that lands in the loop step where connect_tcp's winning
+    # attempt cancels its own task group: the source polls on, and a gather
+    # with no timeout never returned (CI hung 5 h 25 min on 2026-10-28).
+    # Cancel again whatever still runs, bounded, so a shutdown always ends.
+    pending = set(tasks)
+    for _ in range(SHUTDOWN_CANCEL_ROUNDS):
+        for task in pending:
+            task.cancel()
+        _, pending = await asyncio.wait(pending, timeout=SHUTDOWN_CANCEL_WAIT_S)
+        if not pending:
+            break
+    if pending:
+        log.warning("shutdown: still running: %s", ", ".join(t.get_name() for t in pending))
     for task in tasks:
-        task.cancel()
-    await asyncio.gather(*tasks, return_exceptions=True)
+        if task.done() and not task.cancelled():
+            task.exception()  # retrieved, as gather(return_exceptions=True) did
     log.info("SOSForge stopped")
 
 
