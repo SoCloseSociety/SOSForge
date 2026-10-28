@@ -421,20 +421,10 @@ def _index_on_disk(folder) -> None:  # type: ignore[no-untyped-def]
     csv_path.unlink()
 
 
-@pytest.fixture
-def threads_for_the_build(monkeypatch: pytest.MonkeyPatch):  # type: ignore[no-untyped-def]
-    # the index build runs in a spawned process in production; a thread here
-    from concurrent.futures import ThreadPoolExecutor
-
-    pool = ThreadPoolExecutor(1)
-    monkeypatch.setattr(cyclones, "_executor", lambda: pool)
-    yield
-    pool.shutdown(wait=True)
-
-
 async def test_a_failed_first_ingest_backs_off_and_keeps_the_download(
-    tmp_path, threads_for_the_build
+    tmp_path,
 ) -> None:  # type: ignore[no-untyped-def]
+    # the real build process, as in production (python -m app.ibtracs_index)
     import httpx
 
     router = install()
@@ -478,7 +468,7 @@ async def test_a_failed_first_ingest_backs_off_and_keeps_the_download(
 
 
 async def test_a_kept_download_builds_once_the_upstream_answers_304(
-    tmp_path, threads_for_the_build
+    tmp_path,
 ) -> None:  # type: ignore[no-untyped-def]
     import httpx
 

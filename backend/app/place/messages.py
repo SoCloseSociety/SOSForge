@@ -120,6 +120,13 @@ MESSAGES: dict[str, dict[str, str]] = {
         "ja": "この情報源を初めて読み込んでいます。数分後に再度お試しください。",
         "id": "Sumber ini sedang dibaca untuk pertama kali: coba lagi dalam beberapa menit.",
     },
+    "build_failed": {
+        "en": "The server could not finish preparing this data: it will try again later.",
+        "fr": "Le serveur n’a pas pu finir de préparer ces données : il réessaiera plus tard.",
+        "es": "El servidor no pudo terminar de preparar estos datos: lo intentará más tarde.",
+        "ja": "サーバーでこのデータの準備を完了できませんでした。後で再試行します。",
+        "id": "Server tidak dapat menyelesaikan penyiapan data ini: akan dicoba lagi nanti.",
+    },
     "inland": {
         "en": "This place is not on a coast.",
         "fr": "Ce lieu n’est pas sur une côte.",

@@ -2063,3 +2063,102 @@ country asked in the same seconds still goes past the budget (`budget`,
 lifespan test in `test_audit5_security.py` runs the real lifespan, so the
 keeper now sends one real WorkflowGroups GET per suite run, next to the
 source and METAR reads that test already makes.
+
+## IBTrACS ingest memory (2026-10-28, branch fix-ibtracs-ingest-memory) -- plan (critical file docker-compose.yml)
+
+Why: `cyclones.build_index` (the 333 MB IBTrACS ALL CSV, 720 997 rows,
+13 339 storms) peaks at about 360 MiB RSS in its child. The VPS has 600-700 MB
+available, swap 3.2 of 6 GB used, and the api service has no memory limit: the
+peak lands in the neighbours' swap, every time NCEI publishes a new file.
+
+- [x] Measure 8111e5a first: `/usr/bin/time -l`, three runs, same CSV
+      (scratch `ibtmem/ibtracs.ALL.csv`, Last-Modified 2026-10-27 09:03:14),
+      and the sha256 of the index it writes.
+- [x] Cut the build's peak without changing a byte of its output: the parse
+      keeps typed buffers (`array.array`) instead of one Python object per
+      value, and the 1-degree segment grid is enumerated by numpy in the SAME
+      order (segment, then latitude, then longitude) before the same stable
+      argsort, instead of five Python lists of 707k ints plus two lists of
+      cells all alive at once. Proof: the index sha256 equal to 8111e5a's
+      for the same CSV, and the peak before/after, three runs each.
+- [x] The build process: one fresh `python -m app.ibtracs_index` per build
+      (asyncio subprocess) instead of a `ProcessPoolExecutor` worker, because
+      (a) the pool worker unpickles `app.place.cyclones`, so it imports the
+      whole `app.place` package (measure the import cost), (b) it stays
+      alive, idle, for the life of the API after its first build, and
+      (c) once a worker is killed (what the OOM killer does) the pool is
+      BROKEN for good: every later ingest fails at once with
+      BrokenProcessPool until a restart. The child raises its own
+      `oom_score_adj` to 1000 (no privilege needed to raise it), so inside a
+      cgroup the kernel kills IT before the API whatever their sizes.
+- [x] A killed or out-of-memory build says so: a new unavailable code
+      `build_failed` (the 5 languages of `place/messages.py`) instead of
+      `upstream_parse`, whose sentence blames the source; the reason names
+      the signal. The 10 min -> 6 h backoff and the 24 h check are unchanged.
+- [x] docker-compose.yml (critical): `mem_limit` on `api`, sized from the
+      measurements (steady API, the place caches' byte bounds, the loaded
+      index twice during a swap, the new ingest peak) with the reasoning in a
+      comment, plus `memswap_limit` equal to it so the container cannot spill
+      into the host swap either. Nothing on `web`.
+- [x] Tests that FAIL on 8111e5a: the index is byte-identical to a pinned
+      digest of the fixture build; a real build child SIGKILLed mid-build
+      (blocked on a FIFO, so the kill is deterministic) leaves the API
+      serving, history.cyclones saying why, the backoff set, and the next
+      attempt really runs a new child.
+
+### IBTrACS ingest memory -- review (2026-10-28)
+
+**Measured** (this Mac, `/usr/bin/time -l`, the 333 131 682-byte ALL file of
+2026-10-27, Last-Modified 09:03:14, one build at a time):
+
+| build | peak RSS, three runs | wall | index sha256 |
+|---|---|---|---|
+| 8111e5a, as its pool worker imports it | 359.8 / 361.9 / 363.4 MiB | 5.3 s | 778d2798...bce19 |
+| branch, new algorithm with the `app.place` imports | 97.9 MiB (one run) | 5.7 s | 778d2798...bce19 |
+| branch, as the child runs it (`app.ibtracs_index`) | 77.7 / 83.5 / 86.4 MiB | 5.5-6.2 s | 778d2798...bce19 |
+
+The import alone: `app.place.cyclones` 48.9 MiB, `app.ibtracs_index` 27.7.
+Where the old peak was (tracemalloc): the grid's Python lists; then, once
+vectorized whole, its int64 temporaries (65 MiB): hence the chunked two-pass
+counting sort. `CHUNK = 1 << 16` peaked about 12 MiB higher than `1 << 14`.
+
+**Live, the real API** (port 8361, scratch data dir, PIDs 55060 then 56673,
+each stopped by its PID): a place report started the first ingest, NCEI
+answered 304 to the kept file's Last-Modified, `python -m app.ibtracs_index`
+ran 5.6 s (74.6 MiB sampled), the index it wrote has the sha256 above and
+history.cyclones served 44 storms at Ko Samui (GAY 1989 first). Second run:
+the build process SIGKILLed by its PID after 2.0 s; the API stayed up
+(`/healthz` ok), the next report answered 200 with all 22 blocks and
+history.cyclones `build_failed` ("killed by SIGKILL (signal 9) before it
+finished ..."), French message; the kept CSV stayed, a third report started
+no build (backoff), no build process left behind.
+
+**On 8111e5a** (its tests + this branch's new test file, run against its
+own `app`): the killed worker gave `upstream_parse` "BrokenProcessPool
+building IBTrACS"; a scratch probe then retried with a good CSV: the same
+BrokenProcessPool, no process started, no index. The new tests fail there
+(per-row cost 304 B against < 160; `upstream_parse` != `build_failed`; no
+`mem_limit`), the byte-identity test passes there by design.
+
+**OOM choice inside a cgroup** (mm/oom_kill.c): `oom_badness` = RSS + swap
+entries + page tables, plus `oom_score_adj * totalpages / 1000`, totalpages
+being the cgroup's limit on a memcg OOM; the highest is killed, only tasks
+of that cgroup are candidates, `memory.oom.group` is 0 under Docker so only
+that task dies. The child writes 1000 to `/proc/self/oom_score_adj` before
+any work (raising needs no privilege): first victim whatever the sizes. Its
+death is `build_failed`, the 10 min -> 6 h backoff without an index, the
+24 h check with one; nothing restarts the API.
+
+Left, to check at deploy (no ssh from here):
+- [ ] `docker inspect` shows Memory = MemorySwap = 671088640 on the api
+      container, and the host kernel accounts swap (cgroup v2
+      `memory.swap.max` present); without it `memswap_limit` is ignored with
+      a warning and only RAM is capped.
+- [ ] During the next real ingest on the VPS: `cat /proc/<child>/oom_score_adj`
+      is 1000 (asserted in CI on Linux; macOS has no /proc), and the peak
+      RSS of the child under glibc (budgeted 100 MiB for 78-87 here).
+- [ ] The steady 220-290 MB is the production figure handed to this lane,
+      not re-measured here (the local API sat at 110-240 MiB during reports).
+- [ ] Native review (es, ja, id) of the new `build_failed` sentence.
+- [ ] `busy` still says "The source is busy" for "less than 1 GB free in the
+      data directory": the same misattribution, left as it was.

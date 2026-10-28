@@ -43,6 +43,9 @@ UNAVAILABLE = (
     "coast_not_resolved",
     "masked",
     "warming",
+    # our own processing of a good download did not finish (IBTrACS: the
+    # build process killed or out of memory): never blamed on the source
+    "build_failed",
 )
 NOT_APPLICABLE = ("inland", "at_sea", "no_country")
 
