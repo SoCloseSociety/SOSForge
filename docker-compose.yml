@@ -14,8 +14,8 @@ services:
       - '8300'
     # A hard ceiling, so an overrun is paid inside this container and never
     # by the neighbours on the VPS (about 600-700 MB available, swap 3.2 of
-    # 6 GB already used, 2026-10-27). Sized from measurements, every worst
-    # case at once, in MiB (what `m` means here):
+    # 6 GB already used, 2026-10-27). Sized from measurements, in MiB (what
+    # `m` means here), with every byte-bounded part at its bound at once:
     #   290  the steady API (220-290 measured in production, the high end)
     # + 144  the place caches at their byte bounds (history 64 + MET Norway
     #        64 + NWS grid 16), counted again in full on top of the steady
@@ -24,9 +24,14 @@ services:
     #        file: 78-87 MiB peak RSS since 2026-10-28 (360-363 before),
     #        /usr/bin/time -l on the 333 MB file of 2026-10-27
     # = 556. 640m leaves 84 over that and 350 over the steady API, and keeps
-    # SOSForge's own growth well inside what the host has available. The
-    # page cache of the 333 MB CSV is charged here too, but the kernel
-    # reclaims it before it kills anything.
+    # SOSForge's own growth well inside what the host has available. Not in
+    # the sum, because nothing bounds them in bytes: the per-place caches
+    # bounded by entry count (GWIS tiles, SST, om cells, points, water,
+    # INFORM), the websocket queues (QUEUE_MAX per client, no cap on
+    # clients), the kernel's socket memory and the healthcheck's python
+    # every 30 s. The 84 of margin is for those. The page cache of the
+    # 333 MB CSV is charged here too, but the kernel reclaims it before it
+    # kills anything.
     # If the ceiling is reached anyway, the kernel's OOM killer chooses
     # inside this cgroup only: the task with the most RSS + swap + page
     # tables, plus oom_score_adj thousandths of the limit (mm/oom_kill.c).

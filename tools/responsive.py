@@ -849,6 +849,10 @@ async def main() -> int:
                         f", place at y {focus['y']}, button bottom {button.get('bottom', '--')}"
                         f"{' (icon only)' if focus['iconOnly'] else ''}"
                     )
+                controls = (m.get("reach") or {}).get("mapControls") or {}
+                if controls.get("credit") == "empty":
+                    # passing without judging must not read as a pass
+                    where += ", map credit NOT judged (no text yet, tiles slow)"
                 print(
                     f"  {mark}  {label:28s} {w:>4}x{h:<4}  "
                     f"{m['itemsAboveFold']} event(s) above the fold, map "

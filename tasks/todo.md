@@ -2228,7 +2228,8 @@ summary kind is measured on MapLibre's. The build keeps the rules
 **2. The map's credit (fixed).** Before, on 8 of 30 viewports, a tap on
 zoom-out could land on the credit: closed, 576 px^2 and 2 of 9 tap points
 (568x320, both text scales; 96 px^2 at 932x430); open (by itself on a map
-640 px wide: 667x375, 844x390, 932x430, or by a tap), 1056 px^2 and 3 of 9;
+640 px wide: 667x375, 844x390, or by a tap), 1056 px^2 and 3 of 9, and at
+932x430 176 px^2 and 2 of 9 (corrected by the verifier's re-measure);
 open on 280x653 and 320x568 (the strip wraps to two lines), 572 px^2 and 3
 of 9. After: 0 px^2 in both states on all 90 runs, 9 of 9 taps land, the
 place report's button never covered (0 px^2, both states). Same page, same
@@ -2271,3 +2272,49 @@ Found on the way, not fixed (out of scope):
       fold when the place has nothing within reach (scope bar 177 px + the
       61 px intro, first event at 722), identical before / after; World and
       Near me pass there.
+
+## Follow-ups integration (2026-10-28, branch followups-2026-10-28, integrator)
+
+Merged on origin/main 8111e5a: fix-inform-spacing (08ffe43),
+fix-ibtracs-ingest-memory (a4e30f5, 5f1d654), fix-ui-leftovers (f198de3,
+70f9007, 3bd8c3b). The only conflicts were the three appended todo
+sections, all kept. Each branch was accepted by its own adversarial
+verifier; their low notes, handled here:
+
+- [x] A build process that dies before main() (an import, the
+      interpreter, its cwd) exited 1 with no JSON line and read as
+      `upstream_parse`, blaming IBTrACS for our side: now `build_failed`,
+      "exited with status N before reading the file". Test kills the
+      mutant (upstream_parse without the fix).
+- [x] The compose sizing comment claimed "every worst case at once": it
+      now says which parts are byte-bounded and names what is outside the
+      sum (entry-bounded caches, websocket queues, socket memory, the
+      healthcheck), covered by the 84 MiB margin. Comment only.
+- [x] tools/responsive.py: a run where the map credit had no text yet
+      passed that check without judging it; the line now says "map credit
+      NOT judged".
+- [x] The UI review's 932x430 open-credit numbers corrected (176 px^2, 2
+      of 9, from the verifier's re-measure).
+- [ ] Normal theme: a keyboard-focused map canvas shows no ring (the map
+      clips the outer box-shadow, and an inset shadow paints under a
+      canvas). Fix is an outline with a negative offset; it needs one
+      measured Chrome run, not taken today (Mac swap 1.1 GB free).
+- [ ] Japanese, place mode, 280x653: no event above the fold (same on
+      8111e5a and this branch).
+- [ ] 568x320 Near me / place: the second count straddles the fold; needs
+      the watch line out of `.filters` (a DOM change).
+- [ ] main.py's comment at `place.start` names only the METAR file (critical
+      file, left).
+
+Gates on the merged tree: ruff check + format (153 files), mypy (71 files),
+pytest 1294 passed (3 Chrome-launching responsive tests deselected for the
+one-Chrome rule on a memory-short host; CI runs them), tsc, vitest 577/577,
+build with 5 languages prerendered.
+
+Deploy checklist (from the branch reviews):
+- [ ] `docker inspect sosforge-api-1`: Memory = MemorySwap = 671088640, and
+      cgroup v2 `memory.swap.max` exists (else memswap is ignored).
+- [ ] risk.country ok for the first new countries after the restart (the
+      INFORM keeper warms the release; raise `spacing` if the VPS drops).
+- [ ] At the next real IBTrACS ingest: the child's oom_score_adj = 1000 and
+      its peak RSS under glibc (budgeted 100 MiB).

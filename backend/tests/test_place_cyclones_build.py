@@ -13,6 +13,7 @@ import hashlib
 import os
 import signal
 import subprocess
+import sys
 import time
 import tracemalloc
 from pathlib import Path
@@ -276,6 +277,26 @@ async def test_a_build_process_that_cannot_start_is_our_failure_not_the_files(
     error = cyclones._state.error
     assert error is not None and error.code == "build_failed"
     assert error.reason == "the IBTrACS build process could not start (FileNotFoundError)"
+    assert cyclones._state.failures == 1 and (tmp_path / cyclones.CSV_NAME).exists()
+
+
+async def test_a_build_process_that_dies_before_reading_is_our_failure_too(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An import error in the child exits 1 with no JSON line: before, that
+    read as upstream_parse, blaming IBTrACS for our own environment."""
+    router = install()
+    cyclones.configure(tmp_path)
+    _gay_csv(tmp_path).replace(tmp_path / cyclones.CSV_NAME)
+    (tmp_path / (cyclones.CSV_NAME + ".last-modified")).write_text(LAST_MODIFIED)
+    router.handler(cyclones.URL, lambda request: httpx.Response(304))
+    monkeypatch.setattr(cyclones, "CHILD", (sys.executable, "-c", "import no_such_module_here"))
+    await cyclones.ensure(ctx_for(9.512, 100.013, NOW))
+    assert cyclones._state.task is not None
+    await cyclones._state.task
+    error = cyclones._state.error
+    assert error is not None and error.code == "build_failed"
+    assert error.reason == "the IBTrACS build process exited with status 1 before reading the file"
     assert cyclones._state.failures == 1 and (tmp_path / cyclones.CSV_NAME).exists()
 
 

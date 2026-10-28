@@ -242,6 +242,13 @@ async def _build_in_child(csv_path: Path, out_path: Path, modified: str) -> None
         raise fetch.FetchError("build_failed", reason)
     error = _child_error(stdout)
     log.warning("IBTrACS build: %s (exit status %s)", error, status)
+    if error is None:
+        # main() never reported: it died before reading the file (an import,
+        # the interpreter, its working directory), which is our side again
+        raise fetch.FetchError(
+            "build_failed",
+            f"the IBTrACS build process exited with status {status} before reading the file",
+        )
     if error == "MemoryError":
         raise fetch.FetchError("build_failed", "the IBTrACS build process ran out of memory")
     raise fetch.FetchError("upstream_parse", f"{error or f'exit status {status}'} building IBTrACS")
