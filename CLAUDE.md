@@ -359,6 +359,17 @@ port 8300) or `lsof -ti tcp:8300 -sTCP:LISTEN | xargs kill` (`-sTCP:LISTEN` is
 load-bearing: without it lsof also returns the CLIENT sockets connected to the
 port, so the kill hits the browser tab or the Vite proxy instead of the API).
 
+**One `Task.cancel()` does not always arrive.** anyio 4.15.1, under httpx,
+swallows a native cancel that lands in the loop step where `connect_tcp`'s
+winning attempt cancels its own task group; the source then polls on with
+`cancelling()` at 1. A shutdown that cancelled once and gathered with no
+timeout held CI for 5 h 25 min (2026-10-28) and kept uvicorn running after
+SIGTERM. The lifespan re-cancels what still runs, 10 x 0.5 s: never go back
+to a single cancel plus an unbounded gather, here or in a new background
+task's owner. Tests must not enter the real lifespan (`TestClient(app)`
+without `with`), and `tools/drill.py serve` without `--with-sources` sends
+nothing upstream: the suite runs with the network blocked (0 attempts).
+
 ## Commands
 
 ```bash
