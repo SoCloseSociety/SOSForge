@@ -2331,23 +2331,46 @@ attempt cancels its own task group: the host wakes with ONE CancelledError,
 anyio's message, and `CancelScope.__exit__` swallows it as its own
 (`cancelling()` stays at 1). The source keeps polling, `gather` never
 returns. Lose order 10/10 hung on this branch, 10/10 on origin/main 8111e5a,
-5/5 under uvicorn + SIGTERM (still running 30 s later); keep order 0/10.
+3/3 under uvicorn + SIGTERM (still running 30 s later); keep order 0/10.
 4.15.1 is the latest anyio: no upgrade fixes it.
 
 Plan:
-- [ ] `main.py` lifespan: re-cancel what is still running, at most 10
+- [x] `main.py` lifespan: re-cancel what is still running, at most 10
       rounds of 0.5 s (5 s, under Docker's 10 s stop grace), log what
       survives, retrieve the exceptions `gather(return_exceptions=True)`
       used to retrieve. Every lifespan task, whatever loop it runs.
-- [ ] Regression test: the real lifespan, one source whose poll has the
+- [x] Regression test: the real lifespan, one source whose poll has the
       shape of `connect_tcp` (a task group the winning attempt cancels),
       driven into the lose order; bounded by `asyncio.timeout`, so the
       unfixed code FAILS instead of hanging. Run it against the unfixed
       tree to show the failure.
-- [ ] Gates: ruff check + format, mypy, pytest; the confirm step's
+- [x] Gates: ruff check + format, mypy, pytest; the confirm step's
       deterministic repro (detgate, test 187) against the fixed tree in
       the python:3.12-slim container.
 
 Left out (not the root cause): test 187 without the lifespan (stops ~35
 real upstream requests per CI run); a total deadline on the USGS backfill
 (a trickling body holds startup, reproduced 2/2 for 90 s).
+
+Review (b9b4eae). `tests/test_lifespan_shutdown.py`, whose single
+`sleep(0)` puts the attempt's scope cancel one callback before the
+lifespan's cancel loop:
+- unfixed (1e28c1c + the test): 10/10 FAILED on macOS and 5/5 in the
+  container (python 3.12.15, anyio 4.15.1, --network none), each at the
+  3.0 s bound, "cancel lost [1], 1 poll(s)"; the same test without the
+  `sleep(0)` (keep order) passes on it, shutdown 0.0 s.
+- fixed: 10/10 passed on macOS and 5/5 in the container, call 0.50-0.51 s
+  (one re-cancel round).
+Confirm step's detgate (test 187, real lifespan, 34 completed connects
+held), container, fixed tree: lose 5/5 OK in 0.504-0.511 s, keep 5/5 OK in
+0.005-0.011 s; unfixed control lose 1/1 HUNG (34 pending, cancelling()=1).
+uvicorn + SIGTERM: fixed lose 3/3 exit in 0.65-0.67 s with "Application
+shutdown complete", keep 0.19 s; unfixed lose still running at 30 s, no
+shutdown line. No "still running" warning in any fixed run.
+Gates: ruff check + format (154 files), mypy (71 files), pytest 1295
+passed in 44.06 s (3 Chrome tests deselected). That suite run is the only
+real-network run (test 187 still runs the real lifespan).
+Cost: a task that needs more than 0.5 s to unwind after its cancel is
+cancelled again; the only awaited cleanup found is the context exits
+(httpx `aclose`, the EMSC websocket close, `close_timeout=5`), so a slow
+websocket close handshake can be cut short at shutdown.
