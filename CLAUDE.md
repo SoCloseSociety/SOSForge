@@ -317,6 +317,17 @@ the narrowing costs.
   popup had the same defect (`.maplibregl-popup-content { background: #fff }`
   won, white text on white): every `.maplibregl-*` override in `styles.css`
   is scoped under `.map`, and any new one must be too.
+- **The map's credit** sits BESIDE the zoom column on the phone layout
+  (`margin-right: 64px`): MapLibre stacks it right under the column, and on
+  the 100 px landscape map it lay on the zoom-out button. Keep it one tap
+  away (the OpenFreeMap / OpenStreetMap licence); `tools/responsive.py`
+  fails a viewport where it covers a zoom button or the place report's
+  button, closed or open.
+- **Forced colours remove every box-shadow**, and THE focus ring is one:
+  in Windows High Contrast no focused control showed anything. Its twin is
+  an important `outline` in the forced-colors block at the END of
+  `styles.css`; a new box-shadow ring needs its outline there too (an inset
+  one a negative `outline-offset`), which `forcedFocus.test.ts` enforces.
 - **Basemap**: OpenFreeMap (`tiles.openfreemap.org`, no key). CARTO's free
   raster tiles started answering "API KEY REQUIRED" in 2026-09. The host
   `connect-src` in BOTH `deploy/nginx.conf` and the VPS host nginx must name

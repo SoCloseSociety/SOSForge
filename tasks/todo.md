@@ -1954,3 +1954,112 @@ they are).
 - [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
       (warning) for a counter of every bulletin; the phone's short label is now
       「津波情報」, JMA's umbrella term (2026-10-27, integrator).
+
+## UI leftovers of the fold fix (fix-ui-leftovers, from 8111e5a, 2026-10-28)
+
+Plan (no critical file touched: styles.css, tests, tools/responsive.py):
+
+- [x] 1. Forced colours: ONE forced-colors focus block at the end of
+      styles.css -- an important 2 px Highlight outline on `:focus-visible`
+      (exclusions in `:where()`: the search input and the language select,
+      whose frames carry the ring, and the dialog containers, which show no
+      ring in the normal theme either), the two frames, the inset rings kept
+      inside, HighlightText on the pressed (Highlight) segment. Checked in
+      Chrome with forced-colors emulated, every focusable kind, pixels
+      changed around each one, before and after; normal theme unchanged.
+- [x] 2. Map credit: on the phone layout, MapLibre's compact attribution
+      sits beside the zoom column (margin-right 64 px = 10 + 44 + 10),
+      scoped under `.map`; the place report's button keeps the top-left.
+      tools/responsive.py gains a map controls check (credit over a zoom
+      button or the report button, as shown and toggled by a tap).
+- [x] 3. 568x320 scoped: measure; change only if the first event keeps
+      >= 67 px and nothing moves on the other 29 viewports, else document.
+- [x] 4. Tests that fail on 8111e5a: forcedFocus.test.ts, mapCredit.test.ts,
+      test_responsive_tool.py (map credit verdict). Gates. Review below.
+
+### Review -- UI leftovers (fix-ui-leftovers, 2026-10-28)
+
+Measured against this worktree's Vite (:5361) proxied READ-ONLY to
+production (GET /api, the /ws subscription), one headless Chrome at a time,
+en, Near me at 48.85,2.35, place "Ko Samui". Layout: the integrator's
+tools/responsive.py (place-int) measure() + verdict(), with probes added to
+its MEASURE (first event, every block above the feed, the scope bar's parts,
+the map controls), all 30 viewports x World / Near me / place, before (the
+8111e5a stylesheet) and after.
+
+**1. Focus in forced colours (fixed).** Chrome, `Emulation.setEmulatedMedia`
+forced-colors: active, a real Tab key then focus(), pixels changed in a clip
+around each target (focused vs focus moved away), 26 targets: buttons
+(header, Filters, footer tool, place clear, scope counts, zoom in / out,
+place report), links (footer, event panel, place report), the search input
+(its frame), the language select (its pill), the pressed and unpressed
+segments, a feed row, the sources strip, the map canvas, MapLibre's
+attribution summary, the filter sheet's close / checkbox / chip, the event
+panel's close, the place report's close / "more" and its dialog.
+
+| forced colours | 320x568 | 568x320 | 1280x720 | 1280x720 light |
+|---|---|---|---|---|
+| targets with a ring, before | 1 of 26 | 1 of 26 | 1 of 26 | 1 of 19 |
+| targets with a ring, after | 25 of 26 | 25 of 26 | 25 of 26 | 19 of 19 |
+
+Before, every button, link, segment, row, map control and dialog control
+changed 0 px; the input 20 px (its text caret, forced too); the only ring
+was the pressed segment's own box-shadow, which survives because the block
+opts it out (`forced-color-adjust: none`). After: 196 to 220 px (the 24 px
+attribution summary) to 5152 px (the map canvas at 1280), e.g. zoom-out
+401, the place report button 1375, the place clear 600, the pressed segment
+648 (HighlightText ring inside the Highlight segment). The one target
+without a ring is the place report's dialog container, deliberately, as in
+the normal theme. Normal theme, 320x568 and 1280x720: 26 of 26 targets
+identical before / after (computed outline, box-shadow, changed pixels).
+Not reachable today: an event panel `summary` (no event with a description
+in the first 15 rows) and the climate `summary` (no failed source); the
+summary kind is measured on MapLibre's. The build keeps the rules
+(minified CSS checked).
+
+**2. The map's credit (fixed).** Before, on 8 of 30 viewports, a tap on
+zoom-out could land on the credit: closed, 576 px^2 and 2 of 9 tap points
+(568x320, both text scales; 96 px^2 at 932x430); open (by itself on a map
+640 px wide: 667x375, 844x390, 932x430, or by a tap), 1056 px^2 and 3 of 9;
+open on 280x653 and 320x568 (the strip wraps to two lines), 572 px^2 and 3
+of 9. After: 0 px^2 in both states on all 90 runs, 9 of 9 taps land, the
+place report's button never covered (0 px^2, both states). Same page, same
+data (CSSOM A/B, 90 runs): deleting this branch's 6 rules moves only the
+credit's own elements (its container, details, summary, text and 3 links,
+54 px) on the 17 phone-layout viewports, nothing on the other 13, and no
+other element anywhere. The two-run comparison does show other moves, all
+live data (the vital banner went from two lines to one between the runs).
+
+**3. 568x320 scoped (documented, not changed).** Unchanged before / after:
+Near me first event 238 / 82 px visible, the second count at 312-328 (8 of
+16 px above the fold); place 298 / 22 (today "Nothing within 1000 km of Ko
+Samui" adds a 60 px intro), the clear button 297-341 (23 of 44), the second
+count 311-343 (9 of 32). Why not: the scope bar's column starts at y 238
+under the full-width tools row and has 82 px above the fold; it holds the
+44 px switch row, then a second row of 44 px targets (the counts control,
+and the clear button in place mode): 4 + 44 + 4 + 44 + 4 = 100 > 82, and
+no target goes under 44 px. The clear button in the switch row needs 206 +
+6 + 44 = 256 px of a 245 px column, and the counts would still be a second
+row. Moving the bar up beside the tools is the World layout, measured at
+286 / 34 px for the first event (< 67). A wider column or a smaller map
+would change 568x320 at 200 % text too (same media), or put the place
+under the report button. Needs the DOM change the recheck named (the watch
+line out of `.filters`), not CSS.
+
+Tests failing on 8111e5a, passing after: forcedFocus.test.ts 6 of 6
+(fail), mapCredit.test.ts 2 of 4 (fail; the other 2 are guards: MapLibre's
+own margins, every `.maplibregl-*` override under `.map`),
+test_responsive_tool.py `test_the_map_credit_must_not_lie_on_the_map_controls`
+(fails against 8111e5a's tool). tools/responsive.py with the new check on
+the 8111e5a stylesheet: 8 of 13 viewports FAIL on the credit; after: World
+30/30, Near me 30/30, place 29/30.
+
+Found on the way, not fixed (out of scope):
+- [ ] normal theme: a focused map canvas shows NO ring (0 px at 320x568 and
+      1280x720, before and after): THE ring is a box-shadow and MapLibre's
+      container clips it. Forced colours now draw one inside; the normal
+      theme needs `--ring-inset` on `.map .maplibregl-canvas:focus-visible`.
+- [ ] place mode, Pixel Fold open landscape (841x673): no event above the
+      fold when the place has nothing within reach (scope bar 177 px + the
+      61 px intro, first event at 722), identical before / after; World and
+      Near me pass there.
