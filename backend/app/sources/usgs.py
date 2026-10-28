@@ -20,6 +20,12 @@ from app.sources.base import Emit, Source
 
 log = logging.getLogger(__name__)
 
+# The whole startup GET, not each read: httpx's timeout bounds one read, so a
+# body trickling a byte every 2 s held startup (and the API, which binds no
+# socket before it) for good (reproduced 2026-10-28). The day feed is well
+# under 1 MB; past this the API starts on its journal alone.
+BACKFILL_DEADLINE_S = 60.0
+
 
 def _ts(ms: int | float | None) -> datetime | None:
     if ms is None:
@@ -202,7 +208,11 @@ async def backfill(url: str, emit: Emit) -> int:
     """Loads recent history at startup so we don't show an empty map."""
     headers = {"User-Agent": "SOSForge/1.0 (+https://soclose.co)"}
     async with httpx.AsyncClient(timeout=30.0, headers=headers) as client:
-        resp = await client.get(url)
+        try:
+            async with asyncio.timeout(BACKFILL_DEADLINE_S):
+                resp = await client.get(url)
+        except TimeoutError:
+            raise TimeoutError(f"no complete answer within {BACKFILL_DEADLINE_S:g} s") from None
         resp.raise_for_status()
         features = (resp.json() or {}).get("features") or []
     features.sort(key=lambda f: (f.get("properties") or {}).get("time") or 0)

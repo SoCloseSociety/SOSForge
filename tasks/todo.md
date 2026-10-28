@@ -2384,11 +2384,14 @@ held the lifespan's startup for good (2/2 runs, 90 s+). In production
 uvicorn binds no socket before startup ends: the API stays down while it
 lasts.
 
-- [ ] `backfill()`: the GET under `asyncio.timeout(BACKFILL_DEADLINE_S)`
+- [x] `backfill()`: the GET under `asyncio.timeout(BACKFILL_DEADLINE_S)`
       (60 s; the day feed is well under 1 MB). A timeout raises
       TimeoutError with a message naming the deadline, which main.py's
       existing `except Exception` logs as "backfill failed (...), cold
       start" and the API starts on the journal alone. No field touched.
-- [ ] Test: a loopback server sends 200 headers then one byte every 0.2 s;
+- [x] Test: a loopback server sends 200 headers then one byte every 0.2 s;
       with the deadline patched to 1 s, backfill raises within 2 s. On the
       unfixed code it must fail, bounded by an outer timeout, not hang.
+
+Done: the test fails on the unfixed code at its 5 s outer bound (the GET
+still waiting) and passes on the fix in 1.0 s.
