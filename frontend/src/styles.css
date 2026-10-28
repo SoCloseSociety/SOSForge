@@ -2957,6 +2957,19 @@ a {
     display: none;
   }
 
+  /* MapLibre stacks its compact credit right under the zoom column (both
+     10 px from the right edge; the column runs to y 98 with 44 px touch
+     buttons). On the 100 px landscape map the credit's button lay ON the
+     zoom-out button (2 of 9 taps went to it at 568x320), and open -- by a
+     tap, or by itself on a map 640 px wide -- its strip covered the
+     button at 280 to 932 px (tools/responsive.py, 2026-10-28). Beside the
+     column instead (10 + 44 + 10): the credit stays one tap away and the
+     footer carries it permanently; the place report's button keeps the
+     top-left, clear of the bottom row the credit opens along. */
+  .map .maplibregl-ctrl-bottom-right > .maplibregl-ctrl-attrib {
+    margin-right: 64px;
+  }
+
   /* A card floating over a 36dvh map covers the map. On a phone it becomes
      what it always was in intent: a sheet, at the bottom, thumb-reachable. */
   .live-panel {
@@ -3298,5 +3311,47 @@ a {
     forced-color-adjust: none;
     background: Highlight;
     color: HighlightText;
+  }
+
+  /* Keyboard focus. THE ring (top of this file) is a box-shadow drawn with
+     `outline: none`, and forced colours remove every box-shadow: with a
+     high-contrast theme on, no focused control showed anything at all (a
+     focused button measured outline none, shadow none; review of the fold
+     fix, 2026-10-27). Here it is an outline in the system's Highlight.
+     `!important`: component sheets and MapLibre's (injected after this
+     one) set `outline: none` on their own controls at a higher weight,
+     and in this mode the focus has to win over all of them. The
+     exclusions sit in :where(), so the rule weighs one pseudo-class and
+     the inset rings below can still move it. Left out: the two fields
+     whose FRAME carries the ring (the language select is invisible over
+     its flag on a phone; the search input would get a ring inside a
+     ring), and a dialog taking the focus as a container for the screen
+     reader, which shows no ring in the normal theme either. */
+  :focus-visible:where(:not(.search input, .lang select, [role="dialog"])) {
+    outline: 2px solid Highlight !important;
+    outline-offset: 2px;
+  }
+
+  .search:focus-within,
+  .lang:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* The inset rings stay inside: these sit flush with a scroller's edge or
+     inside the switch, where an outer ring is cut off. MapLibre's canvas
+     fills a map that clips its overflow. */
+  .arrival:focus-visible,
+  .search-results button:focus-visible,
+  .segmented button:focus-visible,
+  .item:focus-visible,
+  .sources-strip:focus-visible,
+  .map .maplibregl-canvas:focus-visible {
+    outline-offset: -4px;
+  }
+
+  /* the pressed segment IS Highlight (above): its ring is its text colour */
+  .segmented button[aria-pressed="true"]:focus-visible {
+    outline-color: HighlightText !important;
   }
 }
