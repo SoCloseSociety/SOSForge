@@ -36,6 +36,9 @@ const fr: Dict = {
   "kpi.maxmag.sub": "toutes zones",
   "kpi.tsunami": "Alertes tsunami",
   "kpi.tsunami.sub": "bulletins actifs",
+  "kpi.quakes.short": "Séismes (1\u00a0h)",
+  "kpi.maxmag.short": "Mag. max (1\u00a0h)",
+  "kpi.tsunami.short": "Alertes tsunami",
   "kpi.tracked": "Événements suivis",
   "kpi.tracked.sub": "{n} sur la dernière heure",
   "kpi.sources": "Sources en ligne",
@@ -306,6 +309,7 @@ const fr: Dict = {
   "feed.countrywide": "{country}, zone non précisée",
   "feed.noarea": "Zone non précisée",
   "scope.unlocated": "{n} grave(s) sans localisation",
+  "scope.counts.sep": ", ",
   "scope.unmatched": "{n} alerte(s) sans zone précise pas encore rapprochée(s) de votre pays : voir Monde.",
   "scope.empty.unmatched": "Rien de localisé près de vous dans cette période, et {unmatched} alerte(s) sans zone précise pas encore rapprochée(s) de votre pays : voir Monde.",
   // lane C2 (2026-10-27): climate panel
@@ -377,6 +381,9 @@ const en: Dict = {
   "kpi.maxmag.sub": "worldwide",
   "kpi.tsunami": "Tsunami alerts",
   "kpi.tsunami.sub": "active bulletins",
+  "kpi.quakes.short": "Quakes (1\u00a0h)",
+  "kpi.maxmag.short": "Max mag. (1\u00a0h)",
+  "kpi.tsunami.short": "Tsunami alerts",
   "kpi.tracked": "Tracked events",
   "kpi.tracked.sub": "{n} in the last hour",
   "kpi.sources": "Sources online",
@@ -646,6 +653,7 @@ const en: Dict = {
   "feed.countrywide": "{country}, no exact area",
   "feed.noarea": "No exact area",
   "scope.unlocated": "{n} severe without a location",
+  "scope.counts.sep": ", ",
   "scope.unmatched": "{n} alert(s) without an exact area not matched to your country yet: see World.",
   "scope.empty.unmatched": "Nothing with a position near you in this window, and {unmatched} alert(s) without an exact area not matched to your country yet: see World.",
   // lane C2 (2026-10-27): climate panel
@@ -715,6 +723,9 @@ const es: Dict = {
   "kpi.maxmag.sub": "todo el mundo",
   "kpi.tsunami": "Alertas de tsunami",
   "kpi.tsunami.sub": "boletines activos",
+  "kpi.quakes.short": "Sismos (1\u00a0h)",
+  "kpi.maxmag.short": "Mag. máx. (1\u00a0h)",
+  "kpi.tsunami.short": "Alertas tsunami",
   "kpi.tracked": "Eventos seguidos",
   "kpi.tracked.sub": "{n} en la última hora",
   "kpi.sources": "Fuentes en línea",
@@ -983,6 +994,7 @@ const es: Dict = {
   "feed.countrywide": "{country}, zona sin precisar",
   "feed.noarea": "Zona sin precisar",
   "scope.unlocated": "{n} grave(s) sin ubicación",
+  "scope.counts.sep": ", ",
   "scope.unmatched": "{n} alerta(s) sin zona precisa aún no asociada(s) a su país: vea Mundo.",
   "scope.empty.unmatched": "Nada con ubicación cerca de usted en este periodo, y {unmatched} alerta(s) sin zona precisa aún no asociada(s) a su país: vea Mundo.",
   // lane C2 (2026-10-27): climate panel -- draft, needs a native reader
@@ -1053,6 +1065,12 @@ const ja: Dict = {
   "kpi.maxmag.sub": "全世界",
   "kpi.tsunami": "津波警報",
   "kpi.tsunami.sub": "有効な情報",
+  "kpi.quakes.short": "地震 1時間",
+  "kpi.maxmag.short": "最大M 1時間",
+  // 津波情報, JMA's umbrella term, not 津波警報 (one tier, "warning"): the
+  // counter counts every bulletin, and on a phone the 有効な情報 footnote
+  // that qualifies the long label is hidden (as for "Buletin tsunami")
+  "kpi.tsunami.short": "津波情報",
   "kpi.tracked": "追跡中の事象",
   "kpi.tracked.sub": "直近1時間で {n} 件",
   "kpi.sources": "稼働中の情報源",
@@ -1321,6 +1339,7 @@ const ja: Dict = {
   "feed.countrywide": "{country}（地域の特定なし）",
   "feed.noarea": "地域の特定なし",
   "scope.unlocated": "位置不明の重大 {n} 件",
+  "scope.counts.sep": "、",
   "scope.unmatched": "地域の特定がない警報 {n} 件は、まだお住まいの国と照合できていません。世界を表示してください。",
   "scope.empty.unmatched": "この期間、周辺に位置のわかるものはありません。地域の特定がない警報 {unmatched} 件は、まだお住まいの国と照合できていません。世界を表示してください。",
   // lane C2 (2026-10-27): climate panel -- draft, needs a native reader
@@ -1389,6 +1408,12 @@ const id: Dict = {
   "kpi.maxmag.sub": "seluruh dunia",
   "kpi.tsunami": "Peringatan tsunami",
   "kpi.tsunami.sub": "buletin aktif",
+  "kpi.quakes.short": "Gempa 1\u00a0jam",
+  "kpi.maxmag.short": "M maks 1\u00a0jam",
+  // NOT "Tsunami aktif" ("a tsunami under way"): the counter counts
+  // bulletins, a "potential tsunami" statement or a watch among them, and
+  // on a phone the "buletin aktif" footnote is hidden
+  "kpi.tsunami.short": "Buletin tsunami",
   "kpi.tracked": "Kejadian terpantau",
   "kpi.tracked.sub": "{n} dalam satu jam terakhir",
   "kpi.sources": "Sumber aktif",
@@ -1659,6 +1684,7 @@ const id: Dict = {
   "feed.countrywide": "{country}, tanpa area pasti",
   "feed.noarea": "Tanpa area pasti",
   "scope.unlocated": "{n} parah tanpa lokasi",
+  "scope.counts.sep": ", ",
   "scope.unmatched": "{n} peringatan tanpa area pasti belum dicocokkan dengan negara Anda: lihat Dunia.",
   "scope.empty.unmatched": "Tidak ada yang berlokasi di dekat Anda pada periode ini, dan {unmatched} peringatan tanpa area pasti belum dicocokkan dengan negara Anda: lihat Dunia.",
   // lane C2 (2026-10-27): climate panel -- draft, needs a native reader
