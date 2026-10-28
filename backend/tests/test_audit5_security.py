@@ -107,8 +107,10 @@ class TestTheRawFeedPayloadStaysServerSide:
         event.raw = {"secret_looking": "x" * 5000, "nested": {"payload": "<script>"}}
         store.upsert(event)
 
-        with TestClient(app) as client:
-            body = client.get(f"/api/events/{event.id}").json()
+        # No `with`: the endpoint needs no lifespan, and entering it started
+        # every real source (about 35 upstream requests per CI run, and the
+        # shutdown race that held CI for 5 h 25 min, test_lifespan_shutdown).
+        body = TestClient(app).get(f"/api/events/{event.id}").json()
 
         assert body["found"] is True
         assert "raw" not in body, "the verbatim source payload is still exposed"

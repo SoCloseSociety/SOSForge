@@ -15,6 +15,18 @@ fetching 333 MB again. A failed first ingest backs off from 10 minutes to
 6 hours: on the 60 s failure memory a parse error used to restart the full
 download every minute (about 20 GB an hour from NCEI).
 
+The build process is a fresh `python -m app.ibtracs_index` per build, gone
+when it ends (peak 78-87 MiB RSS on the 2026-10-27 file, against 360-363
+MiB for the first build in a `ProcessPoolExecutor` worker). The pool had
+three faults: its worker imported the whole `app.place` package to unpickle
+the function, it stayed alive and idle for the life of the API after its
+first build, and once the kernel killed it (what the OOM killer does) the
+pool was broken for good: every later ingest failed at once until a
+restart. The child volunteers as the OOM killer's first victim, so an
+overrun inside the container's memory limit kills the build, never the API;
+the build is then retried like any other failure (`build_failed`, the
+backoff above when there is no index yet, the 24 h check otherwise).
+
 Measured traps:
 
 - the second line is a UNITS row, not a storm;
@@ -37,16 +49,16 @@ Measured traps:
 from __future__ import annotations
 
 import asyncio
-import csv
+import contextlib
 import json
 import logging
 import math
-import multiprocessing
 import os
 import shutil
+import signal
+import sys
 import time
 from collections import Counter
-from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime, parsedate_to_datetime
@@ -55,6 +67,8 @@ from typing import Any
 
 import numpy as np
 
+from app.ibtracs_index import EPOCH, FORMAT, NATURES
+from app.ibtracs_index import build_index as build_index
 from app.place import block as B
 from app.place import fetch
 from app.place.context import Context
@@ -65,15 +79,16 @@ URL = (
     "https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-"
     "ibtracs/v04r01/access/csv/ibtracs.ALL.list.v04r01.csv"
 )
-FORMAT = 1
 INDEX_NAME = "ibtracs-index.bin"
 CSV_NAME = "ibtracs-ALL.csv"  # a complete download whose index is not built yet
 MIN_FREE = 1 << 30
 CHECK_EVERY = 86400.0
 RETRY_FIRST_S = 600.0  # a failed first ingest: 10 min, then doubling
 RETRY_MAX_S = 6 * 3600.0
-EPOCH = datetime(1800, 1, 1, tzinfo=UTC)
-NATURES = ("DS", "TS", "ET", "SS", "NR", "MX")
+# The build process, started from the directory that holds the `app` package
+# so it runs the same code as this process.
+CHILD = (sys.executable, "-m", "app.ibtracs_index")
+CHILD_CWD = Path(__file__).resolve().parents[2]
 # IBTrACS v04 column documentation (captured 2026-10-27): WMO_WIND averaging
 # per agency; "US agencies provide 1-minute wind speeds" for USA_WIND.
 AVERAGING = {
@@ -100,149 +115,9 @@ SPEC = B.Spec("history.cyclones", "catalogue", "through", 14 * 86400.0, SRC)
 
 
 # ---------------------------------------------------------------- ingest
-
-
-def _minutes(text: str) -> int:
-    when = datetime.strptime(text, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
-    return int((when - EPOCH).total_seconds() // 60)
-
-
-def _wind(text: str) -> int:
-    text = text.strip()
-    return int(float(text)) if text else -1
-
-
-def build_index(csv_path: str, out_path: str, last_modified: str) -> dict[str, Any]:
-    """Runs in the ingest SUBPROCESS: CSV -> packed index file. Returns the
-    header it wrote."""
-    lat: list[float] = []
-    lon: list[float] = []
-    tmin: list[int] = []
-    usa: list[int] = []
-    wmo: list[int] = []
-    nature: list[int] = []
-    storm: list[int] = []
-    sids: list[str] = []
-    names: list[str] = []
-    seasons: list[int] = []
-    provisional: list[bool] = []
-    agencies: list[Counter[str]] = []
-    index: dict[str, int] = {}
-    newest = -(1 << 31)
-    since = 9999
-    rows = 0
-    with open(csv_path, newline="", encoding="utf-8", errors="replace") as f:
-        reader = csv.reader(f)
-        header = next(reader)
-        col = {name: i for i, name in reversed(list(enumerate(header)))}
-        next(reader)  # the units row
-        c_sid, c_season, c_name = col["SID"], col["SEASON"], col["NAME"]
-        c_time, c_nature, c_lat, c_lon = col["ISO_TIME"], col["NATURE"], col["LAT"], col["LON"]
-        c_wmo, c_agency, c_track, c_usa = (
-            col["WMO_WIND"],
-            col["WMO_AGENCY"],
-            col["TRACK_TYPE"],
-            col["USA_WIND"],
-        )
-        last_lon: dict[int, float] = {}
-        for row in reader:
-            if len(row) <= c_usa:
-                continue
-            track = row[c_track].strip()
-            if "spur" in track.lower():
-                continue
-            rows += 1
-            sid = row[c_sid]
-            k = index.get(sid)
-            if k is None:
-                k = len(sids)
-                index[sid] = k
-                sids.append(sid)
-                names.append(row[c_name].strip())
-                season = int(row[c_season])
-                seasons.append(season)
-                since = min(since, season)
-                provisional.append(track.upper() == "PROVISIONAL")
-                agencies.append(Counter())
-            try:
-                minutes = _minutes(row[c_time])
-                la, lo = float(row[c_lat]), float(row[c_lon])
-            except ValueError:
-                continue
-            # continuous longitudes along a track: a segment never spans the globe
-            if k in last_lon:
-                lo = last_lon[k] + ((lo - last_lon[k] + 180.0) % 360.0 - 180.0)
-            last_lon[k] = lo
-            newest = max(newest, minutes)
-            lat.append(la)
-            lon.append(lo)
-            tmin.append(minutes)
-            usa.append(_wind(row[c_usa]))
-            wmo.append(_wind(row[c_wmo]))
-            n = row[c_nature].strip()
-            nature.append(NATURES.index(n) if n in NATURES else NATURES.index("NR"))
-            storm.append(k)
-            agency = row[c_agency].strip()
-            if agency:
-                agencies[k][agency] += 1
-    p_lat = np.asarray(lat, dtype=np.float32)
-    p_lon = np.asarray(lon, dtype=np.float32)
-    p_storm = np.asarray(storm, dtype=np.int32)
-    # 1-degree grid of SEGMENTS (point j -> j+1 of the same storm)
-    seg = np.nonzero(p_storm[:-1] == p_storm[1:])[0].astype(np.int32)
-    lat_lo = np.floor(np.minimum(p_lat[seg], p_lat[seg + 1])).astype(np.int32)
-    lat_hi = np.floor(np.maximum(p_lat[seg], p_lat[seg + 1])).astype(np.int32)
-    lon_lo = np.floor(np.minimum(p_lon[seg], p_lon[seg + 1])).astype(np.int32)
-    lon_hi = np.floor(np.maximum(p_lon[seg], p_lon[seg + 1])).astype(np.int32)
-    cells: list[int] = []
-    owners: list[int] = []
-    for j, a, b, c, d in zip(
-        seg.tolist(),
-        lat_lo.tolist(),
-        lat_hi.tolist(),
-        lon_lo.tolist(),
-        lon_hi.tolist(),
-        strict=True,
-    ):
-        for y in range(max(-90, a), min(89, b) + 1):
-            for x in range(c, d + 1):
-                cells.append((y + 90) * 360 + (x + 180) % 360)
-                owners.append(j)
-    order = np.argsort(np.asarray(cells, dtype=np.int32), kind="stable")
-    cell_sorted = np.asarray(cells, dtype=np.int32)[order]
-    seg_sorted = np.asarray(owners, dtype=np.int32)[order]
-    offsets = np.searchsorted(cell_sorted, np.arange(180 * 360 + 1), side="left").astype(np.int32)
-    agency_of = [c.most_common(1)[0][0] if c else "" for c in agencies]
-    head = {
-        "format": FORMAT,
-        "last_modified": last_modified,
-        "newest": (EPOCH + timedelta(minutes=newest)).isoformat(),
-        "since_season": since,
-        "rows": rows,
-        "storms": len(sids),
-    }
-    tmp = out_path + ".tmp"
-    with open(tmp, "wb") as out:
-        np.savez(
-            out,
-            head=np.asarray(json.dumps(head)),
-            lat=p_lat,
-            lon=p_lon,
-            tmin=np.asarray(tmin, dtype=np.int32),
-            usa=np.asarray(usa, dtype=np.int16),
-            wmo=np.asarray(wmo, dtype=np.int16),
-            nature=np.asarray(nature, dtype=np.uint8),
-            storm=p_storm,
-            sid=np.asarray(sids),
-            name=np.asarray(names),
-            season=np.asarray(seasons, dtype=np.int16),
-            provisional=np.asarray(provisional, dtype=bool),
-            agency=np.asarray(agency_of),
-            offsets=offsets,
-            segments=seg_sorted,
-        )
-    os.replace(tmp, out_path)
-    return head
+#
+# The CSV -> index build itself is `app.ibtracs_index`, run in its own
+# process (see `_build_in_child`). `build_index` stays reachable from here.
 
 
 @dataclass
@@ -301,19 +176,82 @@ class _State:
 
 
 _state = _State()
-_pool: ProcessPoolExecutor | None = None
 
 
 def configure(data_dir: Path) -> None:
     _state.data_dir = Path(data_dir)
 
 
-def _executor() -> ProcessPoolExecutor:
-    global _pool
-    if _pool is None:
-        # spawn, never fork: the parent runs an event loop and threads
-        _pool = ProcessPoolExecutor(1, mp_context=multiprocessing.get_context("spawn"))
-    return _pool
+def _child_error(stdout: bytes) -> str | None:
+    """The exception type the child reported on its last stdout line."""
+    for line in reversed(stdout.decode("utf-8", "replace").splitlines()):
+        try:
+            said = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(said, dict) and isinstance(said.get("error"), str):
+            return str(said["error"])
+        return None
+    return None
+
+
+async def _build_in_child(csv_path: Path, out_path: Path, modified: str) -> None:
+    """Builds the index in a new process and waits for it off the loop.
+    Raises a FetchError saying how it ended when it did not succeed."""
+    out = out_path.resolve()
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *CHILD,
+            str(csv_path.resolve()),
+            str(out),
+            modified,
+            cwd=CHILD_CWD,
+            stdin=asyncio.subprocess.DEVNULL,
+            stdout=asyncio.subprocess.PIPE,
+        )
+    except OSError as exc:  # no process at all (ENOMEM, EAGAIN, ...): our side, not the file
+        log.warning("IBTrACS build: cannot start the process: %s", exc)
+        raise fetch.FetchError(
+            "build_failed", f"the IBTrACS build process could not start ({type(exc).__name__})"
+        ) from None
+    try:
+        stdout, _ = await proc.communicate()
+    except BaseException:
+        # cancelled (shutdown): a build nobody waits for is not left running
+        if proc.returncode is None:
+            with contextlib.suppress(ProcessLookupError):
+                proc.kill()
+        raise
+    status = proc.returncode
+    if status == 0:
+        return
+    Path(f"{out}.tmp").unlink(missing_ok=True)  # what a killed savez left
+    if status is not None and status < 0:
+        number = -status
+        try:
+            name = signal.Signals(number).name
+        except ValueError:
+            name = "a signal"
+        reason = (
+            f"the IBTrACS build process was killed by {name} (signal {number}) before it finished"
+        )
+        if number == signal.SIGKILL:
+            # what sent it is not known here: named, not guessed
+            reason += ", the signal of the kernel's out-of-memory killer or of an operator"
+        log.warning("IBTrACS build: %s", reason)
+        raise fetch.FetchError("build_failed", reason)
+    error = _child_error(stdout)
+    log.warning("IBTrACS build: %s (exit status %s)", error, status)
+    if error is None:
+        # main() never reported: it died before reading the file (an import,
+        # the interpreter, its working directory), which is our side again
+        raise fetch.FetchError(
+            "build_failed",
+            f"the IBTrACS build process exited with status {status} before reading the file",
+        )
+    if error == "MemoryError":
+        raise fetch.FetchError("build_failed", "the IBTrACS build process ran out of memory")
+    raise fetch.FetchError("upstream_parse", f"{error or f'exit status {status}'} building IBTrACS")
 
 
 def _kept(data_dir: Path) -> tuple[Path, str | None]:
@@ -357,10 +295,9 @@ async def _ingest() -> None:
             )
             os.replace(tmp, kept)  # complete: kept until an index is built from it
             stamp.write_text(modified, encoding="utf-8")
-        loop = asyncio.get_running_loop()
-        out = str(data_dir / INDEX_NAME)
-        await loop.run_in_executor(_executor(), build_index, str(kept), out, modified)
-        index = await fetch.in_thread(load_index, out)
+        out = data_dir / INDEX_NAME
+        await _build_in_child(kept, out, modified)
+        index = await fetch.in_thread(load_index, str(out))
         if index is None:
             raise fetch.FetchError("upstream_parse", "the IBTrACS index could not be read back")
         _state.index = index

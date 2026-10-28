@@ -1954,3 +1954,461 @@ they are).
 - [ ] Native review (ja): the long tsunami counter label 「津波警報」 names one tier
       (warning) for a counter of every bulletin; the phone's short label is now
       「津波情報」, JMA's umbrella term (2026-10-27, integrator).
+
+## Place report -- INFORM drops close requests (plan, 2026-10-28, branch fix-inform-spacing)
+
+Production, 2026-10-28 04:48Z: the F5 in front of drmkc.jrc.ec.europa.eu
+answers a request and then closes the connection without a response for the
+requests that follow it too closely; a cold report fires WorkflowGroups,
+GetByWorkflowGroup and Countries/Scores back to back, the immediate fresh
+retry is dropped too, and `risk.country` reads "the source cannot be
+reached" for the first countries asked after a start. No critical file is
+touched (main.py, core/config.py, docker-compose.yml, deploy/nginx.conf
+unchanged: the keeper starts from `place.start`, which the lifespan already
+calls).
+
+- [x] Reproduce from the Mac (a few spaced requests, SOSForge UA) and with
+      the 8111e5a code path itself.
+- [x] `place/fetch.py`, generally: `Host.spacing` (quiet seconds between the
+      END of one request to the host and the START of the next, every
+      attempt included; a spaced host takes one request at a time) and
+      `Host.retry_pause` (the quiet after a failed attempt, at least
+      `spacing`). The retry waits that quiet only when it still leaves a
+      usable attempt inside the host timeout; the first attempt leaves room
+      for pause + retry. Hosts without them behave exactly as before.
+- [x] INFORM's policy: spacing and pause chosen from the measurement, and the
+      pause sized so that a dropped first attempt + pause + answer fits the
+      8 s report budget (unchanged).
+- [x] `place/risk.py`: the release (WorkflowGroups + the newest published
+      group) read at startup and refreshed every 12 h in the background
+      (`keep_inform_release`, spawned by `place.start`), through a forced
+      `fetch.refresh` that keeps serving the current copy, so a report for
+      a new country costs one INFORM request. No special case in the report
+      path: build_country reads the same cache entries.
+- [x] Tests with a fake F5 (drops a request closer than N s to the previous
+      one's end): a cold report after the warm-up gets risk.country ok
+      inside the real 8 s budget; two reports at once keep the interval; the
+      retry waits the pause; a pause that does not fit the host timeout is
+      not taken; other hosts (and their retries) are not slowed. Each fix
+      test fails on 8111e5a.
+
+### Review -- INFORM spacing (2026-10-28, fix-inform-spacing)
+
+**Measured from the Mac** (SOSForge UA, about 45 requests to INFORM in 30
+min, spaced except inside the repro runs):
+
+- one shared httpx client (keep-alive + cookie jar, as `fetch.py` uses): the
+  second read 0 s after the first answer -> `ReadError` (0.40 s), and the
+  third (a new connection carrying the cookies) -> `ReadError` too;
+- same session 1.0 s after the answer: dropped; 2.0 s, 3.0 s (reused
+  connection) and 8.0 s (new connection): answered;
+- new connection WITH the cookies 0 s after: dropped; 1.0 s after: answered;
+- new client, no cookie: answered back to back (3 of 3), and at 2 s and 5 s.
+  From the Mac the front end keys on the session; from the VPS (production
+  note) even new connections back to back were dropped. The VPS threshold
+  somewhere between 0 and 10 s could not be measured from here (no ssh).
+- **the 8111e5a code path itself**, cold, Thailand + Italy + Mauritius at
+  once: WorkflowGroups 200, GetByWorkflowGroup `ReadError`, its immediate
+  fresh retry `ReadError` -> all three `upstream_unreachable: ReadError from
+  drmkc.jrc.ec.europa.eu` (the production symptom, reproduced).
+- **the fixed code**, cold, the same three: 5 requests 3.0 s apart, none
+  dropped, all three ok -- but Thailand at 8.37 s, past the budget: hence
+  the warm-up.
+- **the fixed code**, warm-up then the three at once 4 s later: one request
+  per country (0.45 to 0.47 s each); Thailand ok 0.46 s after its report
+  started, Italy 3.92 s, Mauritius 7.36 s (all inside 8 s), none dropped.
+- **a real drop, forced** (spacing 0 in the measurement script only, the
+  pause kept): GetByWorkflowGroup dropped (0.40 s), fresh retry 5.0 s later
+  200; Scores THA dropped (1.25 s), fresh retry 5.0 s later 200: 1.25 + 5.0
+  + 1.30 = 7.55 s, inside the budget. The immediate retry of 8111e5a was
+  dropped; the paused one passed 2 of 2.
+- answers: 0.4 to 1.5 s, and one Scores (ITA, curl) took 8.3 s.
+
+**Changed:**
+
+- `place/fetch.py`: `Host.spacing` (quiet between the END of a request to
+  the host and the START of the next, every attempt counted) and
+  `Host.retry_pause` (the quiet after a failed attempt). A spaced host takes
+  one request at a time (`__post_init__` refuses otherwise); the quiet is
+  waited inside the slot wait (bounded by the host timeout, `busy` after
+  it), and before a retry only when at least `MIN_ATTEMPT_S` (1 s, the old
+  literal) still follows it. The first attempt leaves room for pause + retry
+  (`(remaining - pause) * 2/3`, unchanged for every unspaced host).
+  `fetch.refresh()`: a forced background read that keeps serving the copy.
+- INFORM: `Host(20.0, concurrency=1, per_minute=20, retries=1,
+  fresh_retry=True, spacing=3.0, retry_pause=5.0)`. Timeout 15 -> 20 s so
+  the first attempt keeps its 10 s (the 8.3 s answer) and the retry its 5 s.
+- `place/risk.py`: `keep_inform_release()` (spawned by `place.start`, so no
+  critical file is touched) reads the release at startup and every 12 h
+  through `fetch.refresh`; copies live 24 h, so a refresh lands while the
+  last one serves. After a failure: 1 min, doubling to 30 min, with an INFO
+  line (host-only reason). `build_country` reads the same entries through
+  the same `_release()` loop: no special case.
+- Tests (`test_place_inform_spacing.py`, a fake F5 that drops a request
+  closer than N s to the previous end): the warm report pays one request
+  inside the real 8 s budget (real policy); the policy arithmetic against
+  the measurements; two cold reports at once keep the interval and none is
+  dropped; a drop is retried after the pause; a pause leaving no usable
+  attempt is not taken; other hosts and their retries are not slowed; a
+  failed refresh keeps the copy. All 7 fail on 8111e5a (6 on what they
+  observe, the refresh one on the missing function) and pass after.
+  Italy's Scores captured verbatim (sidecar + manifest). The Bouvet test
+  switches the quiet off (it is about the country code; 6 s with it).
+- Gates: ruff, ruff format, mypy app, pytest 1289 passed.
+
+**Left:** the VPS threshold is unknown (3 s comes from the Mac); if
+production still shows drops, `spacing` is one number. A third or fourth new
+country asked in the same seconds still goes past the budget (`budget`,
+`complete: false`, the panel asks again 5 s later and finds it cached). The
+lifespan test in `test_audit5_security.py` runs the real lifespan, so the
+keeper now sends one real WorkflowGroups GET per suite run, next to the
+source and METAR reads that test already makes.
+
+## IBTrACS ingest memory (2026-10-28, branch fix-ibtracs-ingest-memory) -- plan (critical file docker-compose.yml)
+
+Why: `cyclones.build_index` (the 333 MB IBTrACS ALL CSV, 720 997 rows,
+13 339 storms) peaks at about 360 MiB RSS in its child. The VPS has 600-700 MB
+available, swap 3.2 of 6 GB used, and the api service has no memory limit: the
+peak lands in the neighbours' swap, every time NCEI publishes a new file.
+
+- [x] Measure 8111e5a first: `/usr/bin/time -l`, three runs, same CSV
+      (scratch `ibtmem/ibtracs.ALL.csv`, Last-Modified 2026-10-27 09:03:14),
+      and the sha256 of the index it writes.
+- [x] Cut the build's peak without changing a byte of its output: the parse
+      keeps typed buffers (`array.array`) instead of one Python object per
+      value, and the 1-degree segment grid is enumerated by numpy in the SAME
+      order (segment, then latitude, then longitude) before the same stable
+      argsort, instead of five Python lists of 707k ints plus two lists of
+      cells all alive at once. Proof: the index sha256 equal to 8111e5a's
+      for the same CSV, and the peak before/after, three runs each.
+- [x] The build process: one fresh `python -m app.ibtracs_index` per build
+      (asyncio subprocess) instead of a `ProcessPoolExecutor` worker, because
+      (a) the pool worker unpickles `app.place.cyclones`, so it imports the
+      whole `app.place` package (measure the import cost), (b) it stays
+      alive, idle, for the life of the API after its first build, and
+      (c) once a worker is killed (what the OOM killer does) the pool is
+      BROKEN for good: every later ingest fails at once with
+      BrokenProcessPool until a restart. The child raises its own
+      `oom_score_adj` to 1000 (no privilege needed to raise it), so inside a
+      cgroup the kernel kills IT before the API whatever their sizes.
+- [x] A killed or out-of-memory build says so: a new unavailable code
+      `build_failed` (the 5 languages of `place/messages.py`) instead of
+      `upstream_parse`, whose sentence blames the source; the reason names
+      the signal. The 10 min -> 6 h backoff and the 24 h check are unchanged.
+- [x] docker-compose.yml (critical): `mem_limit` on `api`, sized from the
+      measurements (steady API, the place caches' byte bounds, the loaded
+      index twice during a swap, the new ingest peak) with the reasoning in a
+      comment, plus `memswap_limit` equal to it so the container cannot spill
+      into the host swap either. Nothing on `web`.
+- [x] Tests that FAIL on 8111e5a: the index is byte-identical to a pinned
+      digest of the fixture build; a real build child SIGKILLed mid-build
+      (blocked on a FIFO, so the kill is deterministic) leaves the API
+      serving, history.cyclones saying why, the backoff set, and the next
+      attempt really runs a new child.
+
+### IBTrACS ingest memory -- review (2026-10-28)
+
+**Measured** (this Mac, `/usr/bin/time -l`, the 333 131 682-byte ALL file of
+2026-10-27, Last-Modified 09:03:14, one build at a time):
+
+| build | peak RSS, three runs | wall | index sha256 |
+|---|---|---|---|
+| 8111e5a, as its pool worker imports it | 359.8 / 361.9 / 363.4 MiB | 5.3 s | 778d2798...bce19 |
+| branch, new algorithm with the `app.place` imports | 97.9 MiB (one run) | 5.7 s | 778d2798...bce19 |
+| branch, as the child runs it (`app.ibtracs_index`) | 77.7 / 83.5 / 86.4 MiB | 5.5-6.2 s | 778d2798...bce19 |
+
+The import alone: `app.place.cyclones` 48.9 MiB, `app.ibtracs_index` 27.7.
+Where the old peak was (tracemalloc): the grid's Python lists; then, once
+vectorized whole, its int64 temporaries (65 MiB): hence the chunked two-pass
+counting sort. `CHUNK = 1 << 16` peaked about 12 MiB higher than `1 << 14`.
+
+**Live, the real API** (port 8361, scratch data dir, PIDs 55060 then 56673,
+each stopped by its PID): a place report started the first ingest, NCEI
+answered 304 to the kept file's Last-Modified, `python -m app.ibtracs_index`
+ran 5.6 s (74.6 MiB sampled), the index it wrote has the sha256 above and
+history.cyclones served 44 storms at Ko Samui (GAY 1989 first). Second run:
+the build process SIGKILLed by its PID after 2.0 s; the API stayed up
+(`/healthz` ok), the next report answered 200 with all 22 blocks and
+history.cyclones `build_failed` ("killed by SIGKILL (signal 9) before it
+finished ..."), French message; the kept CSV stayed, a third report started
+no build (backoff), no build process left behind.
+
+**On 8111e5a** (its tests + this branch's new test file, run against its
+own `app`): the killed worker gave `upstream_parse` "BrokenProcessPool
+building IBTrACS"; a scratch probe then retried with a good CSV: the same
+BrokenProcessPool, no process started, no index. The new tests fail there
+(per-row cost 304 B against < 160; `upstream_parse` != `build_failed`; no
+`mem_limit`), the byte-identity test passes there by design.
+
+**OOM choice inside a cgroup** (mm/oom_kill.c): `oom_badness` = RSS + swap
+entries + page tables, plus `oom_score_adj * totalpages / 1000`, totalpages
+being the cgroup's limit on a memcg OOM; the highest is killed, only tasks
+of that cgroup are candidates, `memory.oom.group` is 0 under Docker so only
+that task dies. The child writes 1000 to `/proc/self/oom_score_adj` before
+any work (raising needs no privilege): first victim whatever the sizes. Its
+death is `build_failed`, the 10 min -> 6 h backoff without an index, the
+24 h check with one; nothing restarts the API.
+
+Left, to check at deploy (no ssh from here):
+- [ ] `docker inspect` shows Memory = MemorySwap = 671088640 on the api
+      container, and the host kernel accounts swap (cgroup v2
+      `memory.swap.max` present); without it `memswap_limit` is ignored with
+      a warning and only RAM is capped.
+- [ ] During the next real ingest on the VPS: `cat /proc/<child>/oom_score_adj`
+      is 1000 (asserted in CI on Linux; macOS has no /proc), and the peak
+      RSS of the child under glibc (budgeted 100 MiB for 78-87 here).
+- [ ] The steady 220-290 MB is the production figure handed to this lane,
+      not re-measured here (the local API sat at 110-240 MiB during reports).
+- [ ] Native review (es, ja, id) of the new `build_failed` sentence.
+- [ ] `busy` still says "The source is busy" for "less than 1 GB free in the
+      data directory": the same misattribution, left as it was.
+
+## UI leftovers of the fold fix (fix-ui-leftovers, from 8111e5a, 2026-10-28)
+
+Plan (no critical file touched: styles.css, tests, tools/responsive.py):
+
+- [x] 1. Forced colours: ONE forced-colors focus block at the end of
+      styles.css -- an important 2 px Highlight outline on `:focus-visible`
+      (exclusions in `:where()`: the search input and the language select,
+      whose frames carry the ring, and the dialog containers, which show no
+      ring in the normal theme either), the two frames, the inset rings kept
+      inside, HighlightText on the pressed (Highlight) segment. Checked in
+      Chrome with forced-colors emulated, every focusable kind, pixels
+      changed around each one, before and after; normal theme unchanged.
+- [x] 2. Map credit: on the phone layout, MapLibre's compact attribution
+      sits beside the zoom column (margin-right 64 px = 10 + 44 + 10),
+      scoped under `.map`; the place report's button keeps the top-left.
+      tools/responsive.py gains a map controls check (credit over a zoom
+      button or the report button, as shown and toggled by a tap).
+- [x] 3. 568x320 scoped: measure; change only if the first event keeps
+      >= 67 px and nothing moves on the other 29 viewports, else document.
+- [x] 4. Tests that fail on 8111e5a: forcedFocus.test.ts, mapCredit.test.ts,
+      test_responsive_tool.py (map credit verdict). Gates. Review below.
+
+### Review -- UI leftovers (fix-ui-leftovers, 2026-10-28)
+
+Measured against this worktree's Vite (:5361) proxied READ-ONLY to
+production (GET /api, the /ws subscription), one headless Chrome at a time,
+en, Near me at 48.85,2.35, place "Ko Samui". Layout: the integrator's
+tools/responsive.py (place-int) measure() + verdict(), with probes added to
+its MEASURE (first event, every block above the feed, the scope bar's parts,
+the map controls), all 30 viewports x World / Near me / place, before (the
+8111e5a stylesheet) and after.
+
+**1. Focus in forced colours (fixed).** Chrome, `Emulation.setEmulatedMedia`
+forced-colors: active, a real Tab key then focus(), pixels changed in a clip
+around each target (focused vs focus moved away), 26 targets: buttons
+(header, Filters, footer tool, place clear, scope counts, zoom in / out,
+place report), links (footer, event panel, place report), the search input
+(its frame), the language select (its pill), the pressed and unpressed
+segments, a feed row, the sources strip, the map canvas, MapLibre's
+attribution summary, the filter sheet's close / checkbox / chip, the event
+panel's close, the place report's close / "more" and its dialog.
+
+| forced colours | 320x568 | 568x320 | 1280x720 | 1280x720 light |
+|---|---|---|---|---|
+| targets with a ring, before | 1 of 26 | 1 of 26 | 1 of 26 | 1 of 19 |
+| targets with a ring, after | 25 of 26 | 25 of 26 | 25 of 26 | 19 of 19 |
+
+Before, every button, link, segment, row, map control and dialog control
+changed 0 px; the input 20 px (its text caret, forced too); the only ring
+was the pressed segment's own box-shadow, which survives because the block
+opts it out (`forced-color-adjust: none`). After: 196 to 220 px (the 24 px
+attribution summary) to 5152 px (the map canvas at 1280), e.g. zoom-out
+401, the place report button 1375, the place clear 600, the pressed segment
+648 (HighlightText ring inside the Highlight segment). The one target
+without a ring is the place report's dialog container, deliberately, as in
+the normal theme. Normal theme, 320x568 and 1280x720: 26 of 26 targets
+identical before / after (computed outline, box-shadow, changed pixels).
+Not reachable today: an event panel `summary` (no event with a description
+in the first 15 rows) and the climate `summary` (no failed source); the
+summary kind is measured on MapLibre's. The build keeps the rules
+(minified CSS checked).
+
+**2. The map's credit (fixed).** Before, on 8 of 30 viewports, a tap on
+zoom-out could land on the credit: closed, 576 px^2 and 2 of 9 tap points
+(568x320, both text scales; 96 px^2 at 932x430); open (by itself on a map
+640 px wide: 667x375, 844x390, or by a tap), 1056 px^2 and 3 of 9, and at
+932x430 176 px^2 and 2 of 9 (corrected by the verifier's re-measure);
+open on 280x653 and 320x568 (the strip wraps to two lines), 572 px^2 and 3
+of 9. After: 0 px^2 in both states on all 90 runs, 9 of 9 taps land, the
+place report's button never covered (0 px^2, both states). Same page, same
+data (CSSOM A/B, 90 runs): deleting this branch's 6 rules moves only the
+credit's own elements (its container, details, summary, text and 3 links,
+54 px) on the 17 phone-layout viewports, nothing on the other 13, and no
+other element anywhere. The two-run comparison does show other moves, all
+live data (the vital banner went from two lines to one between the runs).
+
+**3. 568x320 scoped (documented, not changed).** Unchanged before / after:
+Near me first event 238 / 82 px visible, the second count at 312-328 (8 of
+16 px above the fold); place 298 / 22 (today "Nothing within 1000 km of Ko
+Samui" adds a 60 px intro), the clear button 297-341 (23 of 44), the second
+count 311-343 (9 of 32). Why not: the scope bar's column starts at y 238
+under the full-width tools row and has 82 px above the fold; it holds the
+44 px switch row, then a second row of 44 px targets (the counts control,
+and the clear button in place mode): 4 + 44 + 4 + 44 + 4 = 100 > 82, and
+no target goes under 44 px. The clear button in the switch row needs 206 +
+6 + 44 = 256 px of a 245 px column, and the counts would still be a second
+row. Moving the bar up beside the tools is the World layout, measured at
+286 / 34 px for the first event (< 67). A wider column or a smaller map
+would change 568x320 at 200 % text too (same media), or put the place
+under the report button. Needs the DOM change the recheck named (the watch
+line out of `.filters`), not CSS.
+
+Tests failing on 8111e5a, passing after: forcedFocus.test.ts 6 of 6
+(fail), mapCredit.test.ts 2 of 4 (fail; the other 2 are guards: MapLibre's
+own margins, every `.maplibregl-*` override under `.map`),
+test_responsive_tool.py `test_the_map_credit_must_not_lie_on_the_map_controls`
+(fails against 8111e5a's tool). tools/responsive.py with the new check on
+the 8111e5a stylesheet: 8 of 13 viewports FAIL on the credit; after: World
+30/30, Near me 30/30, place 29/30.
+
+Found on the way, not fixed (out of scope):
+- [ ] normal theme: a focused map canvas shows NO ring (0 px at 320x568 and
+      1280x720, before and after): THE ring is a box-shadow and MapLibre's
+      container clips it. Forced colours now draw one inside; the normal
+      theme needs `--ring-inset` on `.map .maplibregl-canvas:focus-visible`.
+- [ ] place mode, Pixel Fold open landscape (841x673): no event above the
+      fold when the place has nothing within reach (scope bar 177 px + the
+      61 px intro, first event at 722), identical before / after; World and
+      Near me pass there.
+
+## Follow-ups integration (2026-10-28, branch followups-2026-10-28, integrator)
+
+Merged on origin/main 8111e5a: fix-inform-spacing (08ffe43),
+fix-ibtracs-ingest-memory (a4e30f5, 5f1d654), fix-ui-leftovers (f198de3,
+70f9007, 3bd8c3b). The only conflicts were the three appended todo
+sections, all kept. Each branch was accepted by its own adversarial
+verifier; their low notes, handled here:
+
+- [x] A build process that dies before main() (an import, the
+      interpreter, its cwd) exited 1 with no JSON line and read as
+      `upstream_parse`, blaming IBTrACS for our side: now `build_failed`,
+      "exited with status N before reading the file". Test kills the
+      mutant (upstream_parse without the fix).
+- [x] The compose sizing comment claimed "every worst case at once": it
+      now says which parts are byte-bounded and names what is outside the
+      sum (entry-bounded caches, websocket queues, socket memory, the
+      healthcheck), covered by the 84 MiB margin. Comment only.
+- [x] tools/responsive.py: a run where the map credit had no text yet
+      passed that check without judging it; the line now says "map credit
+      NOT judged".
+- [x] The UI review's 932x430 open-credit numbers corrected (176 px^2, 2
+      of 9, from the verifier's re-measure).
+- [ ] Normal theme: a keyboard-focused map canvas shows no ring (the map
+      clips the outer box-shadow, and an inset shadow paints under a
+      canvas). Fix is an outline with a negative offset; it needs one
+      measured Chrome run, not taken today (Mac swap 1.1 GB free).
+- [ ] Japanese, place mode, 280x653: no event above the fold (same on
+      8111e5a and this branch).
+- [ ] 568x320 Near me / place: the second count straddles the fold; needs
+      the watch line out of `.filters` (a DOM change).
+- [ ] main.py's comment at `place.start` names only the METAR file (critical
+      file, left).
+
+Gates on the merged tree: ruff check + format (153 files), mypy (71 files),
+pytest 1294 passed (3 Chrome-launching responsive tests deselected for the
+one-Chrome rule on a memory-short host; CI runs them), tsc, vitest 577/577,
+build with 5 languages prerendered.
+
+Deploy checklist (from the branch reviews):
+- [ ] `docker inspect sosforge-api-1`: Memory = MemorySwap = 671088640, and
+      cgroup v2 `memory.swap.max` exists (else memswap is ignored).
+- [ ] risk.country ok for the first new countries after the restart (the
+      INFORM keeper warms the release; raise `spacing` if the VPS drops).
+- [ ] At the next real IBTrACS ingest: the child's oom_score_adj = 1000 and
+      its peak RSS under glibc (budgeted 100 MiB).
+
+## CI hang: a shutdown cancel anyio swallows (2026-10-28, branch ci-hang-fix)
+
+The backend job hung 5 h 25 min in `pytest tests -q` (tests 145..216, the
+only `with TestClient(app)` is test 187, test_audit5_security.py:110).
+Confirmed offline and deterministically on macOS and in python:3.12-slim:
+the lifespan shutdown (`backend/app/main.py`, critical file) cancels each
+task ONCE, then `gather`s with no timeout. anyio 4.15.1 (under httpx) loses
+that cancel when it lands in the loop step where `connect_tcp`'s winning
+attempt cancels its own task group: the host wakes with ONE CancelledError,
+anyio's message, and `CancelScope.__exit__` swallows it as its own
+(`cancelling()` stays at 1). The source keeps polling, `gather` never
+returns. Lose order 10/10 hung on this branch, 10/10 on origin/main 8111e5a,
+3/3 under uvicorn + SIGTERM (still running 30 s later); keep order 0/10.
+4.15.1 is the latest anyio: no upgrade fixes it.
+
+Plan:
+- [x] `main.py` lifespan: re-cancel what is still running, at most 10
+      rounds of 0.5 s (5 s, under Docker's 10 s stop grace), log what
+      survives, retrieve the exceptions `gather(return_exceptions=True)`
+      used to retrieve. Every lifespan task, whatever loop it runs.
+- [x] Regression test: the real lifespan, one source whose poll has the
+      shape of `connect_tcp` (a task group the winning attempt cancels),
+      driven into the lose order; bounded by `asyncio.timeout`, so the
+      unfixed code FAILS instead of hanging. Run it against the unfixed
+      tree to show the failure.
+- [x] Gates: ruff check + format, mypy, pytest; the confirm step's
+      deterministic repro (detgate, test 187) against the fixed tree in
+      the python:3.12-slim container.
+
+Left out (not the root cause): test 187 without the lifespan (stops ~35
+real upstream requests per CI run); a total deadline on the USGS backfill
+(a trickling body holds startup, reproduced 2/2 for 90 s).
+
+Review (b9b4eae). `tests/test_lifespan_shutdown.py`, whose single
+`sleep(0)` puts the attempt's scope cancel one callback before the
+lifespan's cancel loop:
+- unfixed (1e28c1c + the test): 10/10 FAILED on macOS and 5/5 in the
+  container (python 3.12.15, anyio 4.15.1, --network none), each at the
+  3.0 s bound, "cancel lost [1], 1 poll(s)"; the same test without the
+  `sleep(0)` (keep order) passes on it, shutdown 0.0 s.
+- fixed: 10/10 passed on macOS and 5/5 in the container, call 0.50-0.51 s
+  (one re-cancel round).
+Confirm step's detgate (test 187, real lifespan, 34 completed connects
+held), container, fixed tree: lose 5/5 OK in 0.504-0.511 s, keep 5/5 OK in
+0.005-0.011 s; unfixed control lose 1/1 HUNG (34 pending, cancelling()=1).
+uvicorn + SIGTERM: fixed lose 3/3 exit in 0.65-0.67 s with "Application
+shutdown complete", keep 0.19 s; unfixed lose still running at 30 s, no
+shutdown line. No "still running" warning in any fixed run.
+Gates: ruff check + format (154 files), mypy (71 files), pytest 1295
+passed in 44.06 s (3 Chrome tests deselected). That suite run is the only
+real-network run (test 187 still runs the real lifespan).
+Cost: a task that needs more than 0.5 s to unwind after its cancel is
+cancelled again; the only awaited cleanup found is the context exits
+(httpx `aclose`, the EMSC websocket close, `close_timeout=5`), so a slow
+websocket close handshake can be cut short at shutdown.
+
+## USGS backfill: a total deadline (plan, 2026-10-28, integrator; critical file app/sources/usgs.py)
+
+Why: the hang hunt (scratchpad followups/hang/confirm) reproduced a second
+way to block: the startup backfill's `httpx.AsyncClient(timeout=30.0)`
+bounds each READ, not the request, so a body trickling one byte every 2 s
+held the lifespan's startup for good (2/2 runs, 90 s+). In production
+uvicorn binds no socket before startup ends: the API stays down while it
+lasts.
+
+- [x] `backfill()`: the GET under `asyncio.timeout(BACKFILL_DEADLINE_S)`
+      (60 s; the day feed is well under 1 MB). A timeout raises
+      TimeoutError with a message naming the deadline, which main.py's
+      existing `except Exception` logs as "backfill failed (...), cold
+      start" and the API starts on the journal alone. No field touched.
+- [x] Test: a loopback server sends 200 headers then one byte every 0.2 s;
+      with the deadline patched to 1 s, backfill raises within 2 s. On the
+      unfixed code it must fail, bounded by an outer timeout, not hang.
+
+Done: with the constant present but no deadline around the GET, the test
+fails at its 5 s outer bound (the GET still waiting); on the parent tree
+it fails at once on the missing constant; on the fix it passes in 1.0 s.
+A second test serves the real day feed (verbatim capture of 2026-10-28,
+207 features) and checks all 207 are emitted oldest first: the success
+path had no test once the raw-payload test stopped entering the lifespan.
+
+Review of these integrator edits (two verifiers): the USGS deadline
+accepted; the coverage lens refuted two claims, both fixed here:
+- [x] "CI makes no network calls" was false: test_drill_guards spawns
+      `tools/drill.py serve`, which kept climate.run() and the place
+      keepers real (27 lookups to 6 hosts per suite run). Without
+      `--with-sources` the drill now switches those off too.
+- [x] The anyio race test's skip could hide a regression (two awaits
+      before the cancel made it skip on the unfixed code). On the measured
+      anyio (4.15.1) an unplayed race now FAILS; and a second test, whose
+      source loses its first cancel by itself (no anyio), proves the
+      re-cancel whatever anyio does. Both fail on the unfixed shutdown,
+      including the two-await variant.

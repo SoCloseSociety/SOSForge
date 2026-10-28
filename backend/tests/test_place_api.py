@@ -302,7 +302,11 @@ async def test_a_stale_global_copy_makes_the_report_incomplete_and_spends_nothin
     body = compose.body(empty, blocks, complete)
     assert body["retry_after_s"] == compose.RETRY_AFTER_S
     release.set()
-    await asyncio.sleep(0.05)
+    # the refresh decodes the gzipped CSV in a thread: waited for, not slept
+    # on (50 ms was not enough on a CI runner, 2026-10-28)
+    task = entry.task
+    assert task is not None
+    await task
     blocks, complete = await compose.run(ctx_for(9.512, 100.013, now), builders, 5)
     assert complete is True and calls["n"] == 2
 

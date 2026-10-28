@@ -2,8 +2,10 @@
 """SOSForge notification drill.
 
 Starts the REAL app in this process (FastAPI + uvicorn, the real pipeline,
-store, deduper and hub) on 127.0.0.1, with the real sources switched off and
-the data directory forced to a fresh temp dir, then plays scripted scenarios
+store, deduper and hub) on 127.0.0.1, with every upstream switched off (the
+sources, the backfill, felt reports, the climate datasets and the place
+report's background reads; `--with-sources` turns them all back on) and the
+data directory forced to a fresh temp dir, then plays scripted scenarios
 from `tools/drills/*.json` through the real normalizers (USGS, JMA EEW,
 Meteoalarm, NWS parsers) and the real `pipeline.emit` / `retract`. Every
 message the hub sends is printed on a timeline with the server's clock, so a
@@ -171,9 +173,17 @@ def load_app(data: Path, with_sources: bool, verbose: bool = False) -> Any:
         async def no_backfill(url: str, emit: Callable[..., Any]) -> int:
             return 0
 
+        async def no_climate() -> None:
+            return None
+
         main.build_sources = lambda: []
         main.backfill = no_backfill
         settings.enable_felt_reports = False
+        # nor the climate datasets, nor the place report's METAR and INFORM
+        # reads: without --with-sources a drill sends nothing upstream (its
+        # guard tests ran them on every CI run, 9 lookups each)
+        main.climate.run = no_climate
+        settings.enable_place = False
     return main
 
 

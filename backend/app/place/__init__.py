@@ -146,11 +146,16 @@ def configure(
 def start(*, enabled: bool) -> list[asyncio.Task[None]]:
     """The report's background work, for the app lifespan to cancel at
     shutdown: the METAR cache file read every 3 minutes, so the cover that
-    "no station" names does not depend on visitors (weather.keep_metar_fresh).
+    "no station" names does not depend on visitors (weather.keep_metar_fresh),
+    and the INFORM release read at startup and every 12 h, so a report for a
+    new country pays one spaced INFORM request (risk.keep_inform_release).
     Nothing at all when the report is switched off."""
     if not enabled:
         return []
-    return [fetch.spawn(weather.keep_metar_fresh(), "place:metar-refresh")]
+    return [
+        fetch.spawn(weather.keep_metar_fresh(), "place:metar-refresh"),
+        fetch.spawn(risk.keep_inform_release(), "place:inform-release"),
+    ]
 
 
 async def report(

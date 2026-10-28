@@ -32,6 +32,9 @@ etre full op pour tout type de format et d'ecran"):
   * every panel is reachable: the Filters dialog opens inside the viewport,
     an event opens its panel inside the viewport, the footer's sources strip
     has room;
+  * the map's credit (MapLibre's attribution) is there, and neither closed
+    nor opened by a tap does it lie on a zoom button or the place report's
+    button (on a 100 px landscape map it lay on zoom-out);
   * the stylesheet and the components agree on what a phone is.
 
 With --place "LAT,LON,NAME" the page starts on that place (the saved scope
@@ -261,6 +264,46 @@ REACH = r"""
              bottom: Math.round(r.bottom), ok: r.width > 0 && r.height > 0 && fits }; };
   const pause = () => new Promise((r) => setTimeout(r, 400));
   const out = {};
+  // The map's own controls, first (before any panel opens over the map).
+  // MapLibre's credit shares the right-hand corner with the zoom column:
+  // on a 100 px landscape map it lay ON the zoom-out button, and open (it
+  // opens by itself on a map 640 px wide or more), its strip covered the
+  // button whole. Judged as shown, then toggled as a tap toggles it (and
+  // put back): overlap in px^2 with the zoom buttons and the place
+  // report's button, and where 9 taps on zoom-out land. A credit still
+  // empty (its text comes with the first tiles) is not judged.
+  const credit = document.querySelector('.map .maplibregl-ctrl-attrib');
+  const creditButton = document.querySelector('.map .maplibregl-ctrl-attrib-button');
+  if (document.querySelector('.maplibregl-canvas')) {
+    const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect();
+      return r.width || r.height ? r : null; };
+    const area = (a, b) => (!a || !b) ? 0 : Math.round(
+      Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left))
+      * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top)));
+    const zoomIn = document.querySelector('.map .maplibregl-ctrl-zoom-in');
+    const zoomOut = document.querySelector('.map .maplibregl-ctrl-zoom-out');
+    const report = document.querySelector('.map-report-open');
+    const covers = () => ({ zoomIn: area(box(credit), box(zoomIn)),
+      zoomOut: area(box(credit), box(zoomOut)), report: area(box(credit), box(report)) });
+    const taps = (el) => { const r = box(el); if (!r) return null; let ok = 0, n = 0;
+      for (const fx of [0, 0.5, 1]) for (const fy of [0, 0.5, 1]) {
+        const x = r.left + 3 + fx * (r.width - 6), y = r.top + 3 + fy * (r.height - 6);
+        if (x < 0 || y < 0 || x > vw || y > vh) continue;
+        n += 1; const hit = document.elementFromPoint(x, y);
+        if (hit && el.contains(hit)) ok += 1;
+      }
+      return { ok, n }; };
+    const state = () => ({ open: credit.classList.contains('maplibregl-compact-show'),
+                           ...covers(), zoomOutTaps: taps(zoomOut) });
+    const controls = { credit: !credit || !creditButton ? null : box(credit) ? 'shown' : 'empty' };
+    if (controls.credit === 'shown') {
+      controls.states = [state()];
+      creditButton.click();
+      controls.states.push(state());
+      creditButton.click();
+    }
+    out.mapControls = controls;
+  }
   const trigger = document.querySelector('.filter-trigger');
   if (trigger) {
     trigger.scrollIntoView({ block: 'center' });
@@ -613,6 +656,40 @@ def place_seed(place: dict) -> str:
     return f"localStorage.setItem('sosforge.scope', {json.dumps(saved)})"
 
 
+def map_controls_failures(controls: dict | None) -> list[str]:
+    """The map's credit (MapLibre's compact attribution) must stay one tap
+    away, and never lie on a zoom button or the place report's button,
+    closed or open. `controls` is REACH's `mapControls`: None without a
+    WebGL map (nothing to judge); `credit` None when the control is gone,
+    "empty" before its text arrived with the tiles (not judged), "shown"
+    with `states`, as shown then as toggled by one tap."""
+    if controls is None:
+        return []
+    if controls.get("credit") is None:
+        return ["the map's credit (OpenFreeMap / OpenStreetMap attribution) is gone"]
+    failures = []
+    names = {
+        "zoomOut": "zoom-out button",
+        "zoomIn": "zoom-in button",
+        "report": "place report's button",
+    }
+    states = controls.get("states") or []
+    for state in states:
+        how = "open" if state["open"] else "closed"
+        for key, what in names.items():
+            if state.get(key, 0) > 0:
+                failures.append(f"the map's credit, {how}, covers the {what} ({state[key]} px^2)")
+        taps = state.get("zoomOutTaps")
+        if taps and taps["ok"] < taps["n"]:
+            failures.append(
+                f"the map's credit, {how}: {taps['n'] - taps['ok']} of {taps['n']} taps "
+                "on the zoom-out button miss it"
+            )
+    if len(states) == 2 and states[0]["open"] == states[1]["open"]:
+        failures.append("the map's credit does not open or close on a tap")
+    return failures
+
+
 def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = False) -> list[str]:
     """The invariants. Each one is a bug this product actually shipped."""
     failures = []
@@ -678,6 +755,7 @@ def verdict(label: str, width: int, m: dict, scale: float = 1.0, place: bool = F
             failures.append(f"{what} did not open")
         elif not got["ok"]:
             failures.append(f"{what} opens outside the viewport: {got}")
+    failures.extend(map_controls_failures(reach.get("mapControls")))
     strip = m["regions"].get("strip")
     if not strip or strip["w"] < 60:
         failures.append(f"the sources strip has no room: {strip}")
@@ -771,6 +849,10 @@ async def main() -> int:
                         f", place at y {focus['y']}, button bottom {button.get('bottom', '--')}"
                         f"{' (icon only)' if focus['iconOnly'] else ''}"
                     )
+                controls = (m.get("reach") or {}).get("mapControls") or {}
+                if controls.get("credit") == "empty":
+                    # passing without judging must not read as a pass
+                    where += ", map credit NOT judged (no text yet, tiles slow)"
                 print(
                     f"  {mark}  {label:28s} {w:>4}x{h:<4}  "
                     f"{m['itemsAboveFold']} event(s) above the fold, map "

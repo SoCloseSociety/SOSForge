@@ -300,3 +300,67 @@ def test_version_late_holds_only_the_first_version_request(responsive):
     # 1 s until the map stopped, then 0.5 s
     assert 1450 <= got["held"] < 3000, got
     assert got["other"] < 1000 and got["again"] < 1000, got
+
+
+def test_the_map_credit_must_not_lie_on_the_map_controls(responsive):
+    """On the 100 px landscape map (568x320, 667x375, 844x390) MapLibre's
+    credit sat on the zoom-out button: closed, 576 px^2 of it and 2 of 9
+    taps on the button went to the credit (568x320); open (it opens by
+    itself on a map 640 px wide, 667x375), its strip covered 1056 px^2 and
+    3 taps (UI leftovers, measured 2026-10-28)."""
+    m = {
+        "gotData": True,
+        "overflowX": 0,
+        "offenders": [],
+        "regions": {"feed": {"h": 400}, "map": {"h": 100, "w": 568}, "strip": {"w": 300}},
+        "itemsAboveFold": 1,
+        "items": 5,
+        "cardOverflow": [],
+        "mapOffset": None,
+        "reach": {"filters": {"ok": True}, "panel": {"ok": True}},
+    }
+    clear = {"zoomIn": 0, "zoomOut": 0, "report": 0}
+    every_tap = {"ok": 9, "n": 9}
+
+    def controls(*states: dict) -> dict:
+        return {"credit": "shown", "states": list(states)}
+
+    m["reach"]["mapControls"] = controls(
+        {"open": False, **clear, "zoomOut": 576, "zoomOutTaps": {"ok": 7, "n": 9}},
+        {"open": True, **clear, "zoomOut": 1056, "zoomOutTaps": {"ok": 6, "n": 9}},
+    )
+    assert responsive.verdict("landscape 568", 568, m) == [
+        "the map's credit, closed, covers the zoom-out button (576 px^2)",
+        "the map's credit, closed: 2 of 9 taps on the zoom-out button miss it",
+        "the map's credit, open, covers the zoom-out button (1056 px^2)",
+        "the map's credit, open: 3 of 9 taps on the zoom-out button miss it",
+    ]
+    # beside the zoom column: nothing covered, every tap lands, either state
+    m["reach"]["mapControls"] = controls(
+        {"open": True, **clear, "zoomOutTaps": every_tap},
+        {"open": False, **clear, "zoomOutTaps": every_tap},
+    )
+    assert responsive.verdict("landscape 667", 667, m) == []
+    # open over the place report's button is a failure too
+    m["reach"]["mapControls"]["states"][0]["report"] = 120
+    assert responsive.verdict("landscape 667", 667, m) == [
+        "the map's credit, open, covers the place report's button (120 px^2)"
+    ]
+    # the credit is the basemap's licence: it must stay, and toggle on a tap
+    m["reach"]["mapControls"] = {"credit": None}
+    assert responsive.verdict("landscape 568", 568, m) == [
+        "the map's credit (OpenFreeMap / OpenStreetMap attribution) is gone"
+    ]
+    m["reach"]["mapControls"] = controls(
+        {"open": False, **clear, "zoomOutTaps": every_tap},
+        {"open": False, **clear, "zoomOutTaps": every_tap},
+    )
+    assert responsive.verdict("landscape 568", 568, m) == [
+        "the map's credit does not open or close on a tap"
+    ]
+    # its text comes with the first tiles: an empty credit is not judged
+    m["reach"]["mapControls"] = {"credit": "empty"}
+    assert responsive.verdict("laptop 1536", 1536, m) == []
+    # no WebGL map: nothing to judge
+    del m["reach"]["mapControls"]
+    assert responsive.verdict("landscape 568", 568, m) == []
