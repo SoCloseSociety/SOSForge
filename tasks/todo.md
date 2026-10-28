@@ -2318,3 +2318,36 @@ Deploy checklist (from the branch reviews):
       INFORM keeper warms the release; raise `spacing` if the VPS drops).
 - [ ] At the next real IBTrACS ingest: the child's oom_score_adj = 1000 and
       its peak RSS under glibc (budgeted 100 MiB).
+
+## CI hang: a shutdown cancel anyio swallows (2026-10-28, branch ci-hang-fix)
+
+The backend job hung 5 h 25 min in `pytest tests -q` (tests 145..216, the
+only `with TestClient(app)` is test 187, test_audit5_security.py:110).
+Confirmed offline and deterministically on macOS and in python:3.12-slim:
+the lifespan shutdown (`backend/app/main.py`, critical file) cancels each
+task ONCE, then `gather`s with no timeout. anyio 4.15.1 (under httpx) loses
+that cancel when it lands in the loop step where `connect_tcp`'s winning
+attempt cancels its own task group: the host wakes with ONE CancelledError,
+anyio's message, and `CancelScope.__exit__` swallows it as its own
+(`cancelling()` stays at 1). The source keeps polling, `gather` never
+returns. Lose order 10/10 hung on this branch, 10/10 on origin/main 8111e5a,
+5/5 under uvicorn + SIGTERM (still running 30 s later); keep order 0/10.
+4.15.1 is the latest anyio: no upgrade fixes it.
+
+Plan:
+- [ ] `main.py` lifespan: re-cancel what is still running, at most 10
+      rounds of 0.5 s (5 s, under Docker's 10 s stop grace), log what
+      survives, retrieve the exceptions `gather(return_exceptions=True)`
+      used to retrieve. Every lifespan task, whatever loop it runs.
+- [ ] Regression test: the real lifespan, one source whose poll has the
+      shape of `connect_tcp` (a task group the winning attempt cancels),
+      driven into the lose order; bounded by `asyncio.timeout`, so the
+      unfixed code FAILS instead of hanging. Run it against the unfixed
+      tree to show the failure.
+- [ ] Gates: ruff check + format, mypy, pytest; the confirm step's
+      deterministic repro (detgate, test 187) against the fixed tree in
+      the python:3.12-slim container.
+
+Left out (not the root cause): test 187 without the lifespan (stops ~35
+real upstream requests per CI run); a total deadline on the USGS backfill
+(a trickling body holds startup, reproduced 2/2 for 90 s).
