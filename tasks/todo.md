@@ -2393,5 +2393,22 @@ lasts.
       with the deadline patched to 1 s, backfill raises within 2 s. On the
       unfixed code it must fail, bounded by an outer timeout, not hang.
 
-Done: the test fails on the unfixed code at its 5 s outer bound (the GET
-still waiting) and passes on the fix in 1.0 s.
+Done: with the constant present but no deadline around the GET, the test
+fails at its 5 s outer bound (the GET still waiting); on the parent tree
+it fails at once on the missing constant; on the fix it passes in 1.0 s.
+A second test serves the real day feed (verbatim capture of 2026-10-28,
+207 features) and checks all 207 are emitted oldest first: the success
+path had no test once the raw-payload test stopped entering the lifespan.
+
+Review of these integrator edits (two verifiers): the USGS deadline
+accepted; the coverage lens refuted two claims, both fixed here:
+- [x] "CI makes no network calls" was false: test_drill_guards spawns
+      `tools/drill.py serve`, which kept climate.run() and the place
+      keepers real (27 lookups to 6 hosts per suite run). Without
+      `--with-sources` the drill now switches those off too.
+- [x] The anyio race test's skip could hide a regression (two awaits
+      before the cancel made it skip on the unfixed code). On the measured
+      anyio (4.15.1) an unplayed race now FAILS; and a second test, whose
+      source loses its first cancel by itself (no anyio), proves the
+      re-cancel whatever anyio does. Both fail on the unfixed shutdown,
+      including the two-await variant.
