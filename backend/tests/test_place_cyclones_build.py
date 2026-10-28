@@ -19,6 +19,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+import yaml
 
 from app import main
 from app.geocode import AddressBudget
@@ -28,6 +29,7 @@ from tests.place_helpers import FIXTURES, at, ctx_for, install
 NOW = at("2026-10-27T11:00:00Z")
 LAST_MODIFIED = "Sun, 25 Oct 2026 09:05:37 GMT"
 HISTORY = FIXTURES / "history"
+COMPOSE = Path(__file__).resolve().parents[2] / "docker-compose.yml"
 
 
 def _gay_csv(folder: Path) -> Path:
@@ -275,3 +277,16 @@ async def test_a_build_process_that_cannot_start_is_our_failure_not_the_files(
     assert error is not None and error.code == "build_failed"
     assert error.reason == "the IBTrACS build process could not start (FileNotFoundError)"
     assert cyclones._state.failures == 1 and (tmp_path / cyclones.CSV_NAME).exists()
+
+
+# --------------------------------------------------------- the container
+
+
+def test_the_api_container_has_a_memory_ceiling_and_no_swap_beyond_it() -> None:
+    """docker-compose.yml: an overrun is paid inside the SOSForge container,
+    never in the neighbours' memory or swap; and the ceiling holds the
+    worst case its comment adds up from measurements (556 MiB)."""
+    api = yaml.safe_load(COMPOSE.read_text())["services"]["api"]
+    limit = str(api["mem_limit"])
+    assert limit.endswith("m") and str(api["memswap_limit"]) == limit
+    assert int(limit[:-1]) > 556
