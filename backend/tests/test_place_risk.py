@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote
@@ -455,8 +456,15 @@ async def test_clipperton_has_no_alpha_3_and_is_not_scored_as_france() -> None:
     assert block.error.reason == "no ISO alpha-3 code for CP"
 
 
-async def test_bouvet_is_bvt_which_inform_does_not_score_not_norway() -> None:
+async def test_bouvet_is_bvt_which_inform_does_not_score_not_norway(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     router = install()
+    # three cold reads, 3 s apart in production: the quiet has its own tests
+    # (test_place_inform_spacing.py), this one is about the country code
+    host = "drmkc.jrc.ec.europa.eu"
+    quiet = dataclasses.replace(fetch.HOSTS[host], spacing=0.0, retry_pause=0.0)
+    monkeypatch.setitem(fetch.HOSTS, host, quiet)
     for name in ("inform_workflow_groups.json", "inform_workflow_2026mid.json"):
         router.add(meta_of("risk", name)["url"], read_bytes("risk", name))
     capture = "inform_mid2026_bvt_empty.json"
